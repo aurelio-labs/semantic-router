@@ -18,7 +18,7 @@ class DecisionLayer:
     def __call__(self, text: str):
 
         results = self._query(text)
-        decision = self.simple_categorise(results)
+        decision = self.simple_categorize(results)
         # return decision
         raise NotImplementedError("To implement decision logic based on scores")
 
@@ -60,14 +60,12 @@ class DecisionLayer:
             {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
         ]
 
-    def simple_categorise(self, text: str, top_k: int=5, apply_tan: bool=True):
+    def simple_classify(self, query_results: dict, apply_tan: bool=True):
         """Given some text, categorises it based on the scores from _query."""
-        # get the results from _query
-        results = self._query(text, top_k)
         
         # apply the scoring system to the results and group by category
         scores_by_category = {}
-        for result in results:
+        for result in query_results:
             score = np.tan(result['score'] * (np.pi / 2)) if apply_tan else result['score']
             if result['decision'] in scores_by_category:
                 scores_by_category[result['decision']] += score
@@ -78,6 +76,6 @@ class DecisionLayer:
         sorted_categories = sorted(scores_by_category.items(), key=lambda x: x[1], reverse=True)
         
         # return the category with the highest total score
-        return sorted_categories[0][0] if sorted_categories else None
+        return sorted_categories[0][0] if sorted_categories else None, scores_by_category
     
 
