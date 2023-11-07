@@ -54,31 +54,19 @@ class DecisionLayer:
         """
         # create query vector
         xq = np.array(self.encoder([text]))
-        # calculate cosine similaritiess
-        sim = np.dot(self.index, xq.T) / (norm(self.index)*norm(xq.T))
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('sim 1')
-        print(sim)
-        print('#'*50)
-        # DEBUGGING: End.
-        sim = np.array([self._cosine_similarity(embedding, xq.T) for embedding in self.index])
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('sim 2')
-        print(sim)
-        print('#'*50)
-        # DEBUGGING: End.
+        xq = np.squeeze(xq) # Reduce to 1d array.
+
+        sim = np.dot(self.index, xq.T) / (norm(self.index, axis=1)*norm(xq.T))
+
         # get indices of top_k records
         top_k = min(top_k, sim.shape[0])
-        idx = np.argpartition(sim.T[0], -top_k)[-top_k:]
+        idx = np.argpartition(sim, -top_k)[-top_k:]
         scores = sim[idx]
         # get the utterance categories (decision names)
         decisions = self.categories[idx]
         return [
             {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
         ]
-
 
     def _semantic_classify(self, query_results: dict, _tan: bool=True, _threshold: float=0.5):
         """Given some text, categorizes."""
