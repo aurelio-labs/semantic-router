@@ -55,7 +55,7 @@ class DecisionLayer:
         # create query vector
         xq = np.array(self.encoder([text]))
         # calculate cosine similaritiess
-        sim = np.dot(self.index, xq.T) / (norm(self.index)*norm(xq.T))
+        sim = np.dot(self.index, xq.T) / (norm(self.index, axis=1)*norm(xq.T))
         # DEBUGGING: Start.
         print('#'*50)
         print('sim 1')
