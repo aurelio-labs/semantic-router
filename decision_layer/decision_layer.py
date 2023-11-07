@@ -55,9 +55,7 @@ class DecisionLayer:
         # create query vector
         xq = np.array(self.encoder([text]))
         xq = np.squeeze(xq) # Reduce to 1d array.
-
         sim = np.dot(self.index, xq.T) / (norm(self.index, axis=1)*norm(xq.T))
-
         # get indices of top_k records
         top_k = min(top_k, sim.shape[0])
         idx = np.argpartition(sim, -top_k)[-top_k:]
