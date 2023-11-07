@@ -15,12 +15,11 @@ class DecisionLayer:
             for decision in decisions:
                 self._add_decision(decision=decision)
 
-    def __call__(self, text: str):
+    def __call__(self, text: str, _tan=False, _threshold=0.5):
 
         results = self._query(text)
-        decision = self.simple_categorize(results)
-        # return decision
-        raise NotImplementedError("To implement decision logic based on scores")
+        predicted_class, scores_by_class = self.simple_classify(results, _tan=_tan, _threshold=_threshold)
+        return predicted_class
 
 
     def add(self, decision: Decision, dimensiona):
@@ -60,22 +59,28 @@ class DecisionLayer:
             {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
         ]
 
-    def simple_classify(self, query_results: dict, apply_tan: bool=True):
+    def simple_classify(self, query_results: dict, _tan: bool=False, _threshold=0.5):
         """Given some text, categorises it based on the scores from _query."""
         
         # apply the scoring system to the results and group by category
-        scores_by_category = {}
+        scores_by_class = {}
         for result in query_results:
-            score = np.tan(result['score'] * (np.pi / 2)) if apply_tan else result['score']
-            if result['decision'] in scores_by_category:
-                scores_by_category[result['decision']] += score
+            score = np.tan(result['score'] * (np.pi / 2)) if _tan else result['score']
+            if result['decision'] in scores_by_class:
+                scores_by_class[result['decision']] += score
             else:
-                scores_by_category[result['decision']] = score
+                scores_by_class[result['decision']] = score
         
         # sort the categories by score in descending order
-        sorted_categories = sorted(scores_by_category.items(), key=lambda x: x[1], reverse=True)
+        sorted_categories = sorted(scores_by_class.items(), key=lambda x: x[1], reverse=True)
+
+        # Determine if the score is sufficiently high.
+        if sorted_categories and sorted_categories[0][1] > _threshold: # TODO: This seems arbitrary.
+            predicted_class = sorted_categories[0][0]
+        else:
+            predicted_class = None
         
         # return the category with the highest total score
-        return sorted_categories[0][0] if sorted_categories else None, scores_by_category
+        return predicted_class, scores_by_class
     
 
