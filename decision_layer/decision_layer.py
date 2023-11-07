@@ -15,14 +15,14 @@ class DecisionLayer:
             for decision in decisions:
                 self._add_decision(decision=decision)
 
-    def __call__(self, text: str, _tan=False, _threshold=0.5):
 
+    def __call__(self, text: str, _tan: bool=True, _threshold: float=0.5):
         results = self._query(text)
-        predicted_class, scores_by_class = self.simple_classify(results, _tan=_tan, _threshold=_threshold)
-        return predicted_class
+        decision = self._semantic_classify(results, apply_tan=_tan, threshold=_threshold)
+        # return decision
+        return decision
 
-
-    def add(self, decision: Decision, dimensiona):
+    def add(self, decision: Decision):
         self._add_decision(devision=decision)
 
     def _add_decision(self, decision: Decision):
@@ -59,8 +59,9 @@ class DecisionLayer:
             {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
         ]
 
-    def simple_classify(self, query_results: dict, _tan: bool=False, _threshold=0.5):
-        """Given some text, categorises it based on the scores from _query."""
+
+    def _semantic_classify(self, query_results: dict, apply_tan: bool=True, threshold: float=0.5):
+        """Given some text, categorizes."""
         
         # apply the scoring system to the results and group by category
         scores_by_class = {}
