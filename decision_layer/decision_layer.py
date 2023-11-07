@@ -18,7 +18,7 @@ class DecisionLayer:
 
     def __call__(self, text: str, _tan: bool=True, _threshold: float=0.5):
         results = self._query(text)
-        decision = self._semantic_classify(results, apply_tan=_tan, threshold=_threshold)
+        decision = self._semantic_classify(results, _tan=_tan, _threshold=_threshold)
         # return decision
         return decision
 
@@ -42,15 +42,35 @@ class DecisionLayer:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
 
+    def _cosine_similarity(self, v1, v2):
+        """Compute the dot product between two embeddings using numpy functions."""
+        np_v1 = np.array(v1)
+        np_v2 = np.array(v2)
+        return np.dot(np_v1, np_v2) / (np.linalg.norm(np_v1) * np.linalg.norm(np_v2))
+
     def _query(self, text: str, top_k: int=5):
         """Given some text, encodes and searches the index vector space to
         retrieve the top_k most similar records.
         """
         # create query vector
         xq = np.array(self.encoder([text]))
-        # calculate cosine similarities
+        # calculate cosine similaritiess
         sim = np.dot(self.index, xq.T) / (norm(self.index)*norm(xq.T))
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('sim 1')
+        print(sim)
+        print('#'*50)
+        # DEBUGGING: End.
+        sim = np.array([self._cosine_similarity(embedding, xq.T) for embedding in self.index])
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('sim 2')
+        print(sim)
+        print('#'*50)
+        # DEBUGGING: End.
         # get indices of top_k records
+        top_k = min(top_k, sim.shape[0])
         idx = np.argpartition(sim.T[0], -top_k)[-top_k:]
         scores = sim[idx]
         # get the utterance categories (decision names)
@@ -60,7 +80,7 @@ class DecisionLayer:
         ]
 
 
-    def _semantic_classify(self, query_results: dict, apply_tan: bool=True, threshold: float=0.5):
+    def _semantic_classify(self, query_results: dict, _tan: bool=True, _threshold: float=0.5):
         """Given some text, categorizes."""
         
         # apply the scoring system to the results and group by category
