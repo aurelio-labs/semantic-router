@@ -16,9 +16,9 @@ class DecisionLayer:
                 self._add_decision(decision=decision)
 
 
-    def __call__(self, text: str, _tan: bool=True, _threshold: float=0.5):
+    def __call__(self, text: str, _method: str='raw', _threshold: float=0.5):
         results = self._query(text)
-        decision = self._semantic_classify(results, _tan=_tan, _threshold=_threshold)
+        decision = self._semantic_classify(results, _method=_method, _threshold=_threshold)
         # return decision
         return decision
 
@@ -65,29 +65,49 @@ class DecisionLayer:
         return [
             {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
         ]
-
-    def _semantic_classify(self, query_results: dict, _tan: bool=True, _threshold: float=0.5):
-        """Given some text, categorizes."""
-        
-        # apply the scoring system to the results and group by category
-        scores_by_class = {}
-        for result in query_results:
-            score = np.tan(result['score'] * (np.pi / 2)) if _tan else result['score']
-            if result['decision'] in scores_by_class:
-                scores_by_class[result['decision']] += score
-            else:
-                scores_by_class[result['decision']] = score
-        
-        # sort the categories by score in descending order
-        sorted_categories = sorted(scores_by_class.items(), key=lambda x: x[1], reverse=True)
-
-        # Determine if the score is sufficiently high.
-        if sorted_categories and sorted_categories[0][1] > _threshold: # TODO: This seems arbitrary.
-            predicted_class = sorted_categories[0][0]
-        else:
-            predicted_class = None
-        
-        # return the category with the highest total score
-        return predicted_class, scores_by_class
     
 
+    def _semantic_classify(self, query_results: dict, _method: str='raw', _threshold: float=0.5):
+        """Given some text, categorizes."""
+
+        # Initialize score dictionaries
+        scores_by_class = {}
+        highest_score_by_class = {}
+
+        # Define valid methods
+        valid_methods = ['raw', 'tan', 'max_score_in_top_class']
+
+        # Check if method is valid
+        if _method not in valid_methods:
+            raise ValueError(f"Invalid method: {_method}")
+
+        # Apply the scoring system to the results and group by category
+        for result in query_results:
+            decision = result['decision']
+            score = result['score']
+
+            # Apply tan transformation if method is 'tan'
+            if _method == 'tan':
+                score = np.tan(score * (np.pi / 2))
+
+            # Update scores_by_class
+            scores_by_class[decision] = scores_by_class.get(decision, 0) + score
+
+            # Update highest_score_by_class for 'max_score_in_top_class' method
+            if _method == 'max_score_in_top_class':
+                highest_score_by_class[decision] = max(score, highest_score_by_class.get(decision, 0))
+
+        # Sort the categories by score in descending order
+        sorted_classes = sorted(scores_by_class.items(), key=lambda x: x[1], reverse=True)
+
+        # Determine if the score is sufficiently high
+        predicted_class = None
+        if sorted_classes:
+            top_class, top_score = sorted_classes[0]
+            if _method == 'max_score_in_top_class':
+                top_score = highest_score_by_class[top_class]
+            if top_score > _threshold:
+                predicted_class = top_class
+
+        # Return the category with the highest total score
+        return predicted_class, scores_by_class
