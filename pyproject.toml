@@ -11,11 +11,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "^2.4.2"
-
-
-[tool.poetry.group.extras.dependencies]
 openai = "^0.28.1"
-transformers = "^4.34.1"
 cohere = "^4.32"
 
 
