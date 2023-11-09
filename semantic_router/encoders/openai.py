@@ -1,6 +1,6 @@
 import os
 
-from decision_layer.encoders import BaseEncoder
+from semantic_router.encoders import BaseEncoder
 import openai
 from time import time
 

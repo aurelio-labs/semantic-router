@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
-from decision_layer.encoders import (
+from semantic_router.encoders import (
     BaseEncoder,
     HuggingFaceEncoder,
     OpenAIEncoder,

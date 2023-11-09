@@ -1,10 +1,10 @@
 import os
 import cohere
-from decision_layer.encoders import BaseEncoder
+from semantic_router.encoders import BaseEncoder
 
 class CohereEncoder(BaseEncoder):
     client: cohere.Client | None
-    def __init__(self, name: str, cohere_api_key: str | None = None):
+    def __init__(self, name: str = "embed-english-v3.0", cohere_api_key: str | None = None):
         super().__init__(name=name, client=None)
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:
@@ -17,6 +17,6 @@ class CohereEncoder(BaseEncoder):
         else:
             input_type = "search_document"
         embeds = self.client.embed(
-            texts, input_type=input_type, model="embed-english-v3.0"
+            texts, input_type=input_type, model=self.name
         )
         return embeds.embeddings
