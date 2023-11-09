@@ -1,4 +1,13 @@
+__pycache__
+*.pyc
+.venv
+.DS_Store
+venv/
+/.vscode
+**/__pycache__
+**/*.py[cod]
+
+# local env files
+.env*.local
 .env
 mac.env
-
-**/__pycache__

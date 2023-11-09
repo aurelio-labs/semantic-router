@@ -1,8 +1,11 @@
 [tool.poetry]
-name = "decision-layer"
+name = "semantic-router"
 version = "0.0.1"
-description = "Super fast decision layer for AI"
-authors = ["James Briggs <james@aurelio.ai>"]
+description = "Super fast semantic router for AI decision making"
+authors = [
+    "James Briggs <james@aurelio.ai>",
+    "Siraj Aizlewood <siraj@aurelio.ai>"
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -14,6 +17,12 @@ pydantic = "^2.4.2"
 openai = "^0.28.1"
 transformers = "^4.34.1"
 cohere = "^4.32"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.26.0"
+ruff = "^0.1.5"
+black = "^23.11.0"
 
 [build-system]
 requires = ["poetry-core"]
