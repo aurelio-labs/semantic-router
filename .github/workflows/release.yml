@@ -14,20 +14,35 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python - -y --version 1.5.1
     - name: Install dependencies
+      run: poetry install
+    - name: Build
+      run: poetry build
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install Poetry
       run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-    - name: Build and publish
+        curl -sSL https://install.python-poetry.org | python - -y --version 1.5.1
+    - name: Publish to PyPI
+      run: |
+        poetry config repositories.remote https://upload.pypi.org/legacy/
+        poetry --no-interaction -v publish --build --repository remote --username "__token__" --password "$PYPI_API_TOKEN"
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+        PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
   release:
-    needs: build
+    needs: publish
     runs-on: ubuntu-latest
     steps:
     - name: Create Release
