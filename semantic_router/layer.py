@@ -93,7 +93,7 @@ class DecisionLayer:
             decision: sum(scores) for decision, scores in scores_by_class.items()
         }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
-        
+
         # Return the top class and its associated scores
         return str(top_class), scores_by_class.get(top_class, [])
 

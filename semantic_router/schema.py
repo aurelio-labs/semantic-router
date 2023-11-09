@@ -1,11 +1,13 @@
 from enum import Enum
+
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
+
 from semantic_router.encoders import (
     BaseEncoder,
+    CohereEncoder,
     HuggingFaceEncoder,
     OpenAIEncoder,
-    CohereEncoder,
 )
 
 
@@ -14,10 +16,12 @@ class Decision(BaseModel):
     utterances: list[str]
     description: str | None = None
 
+
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
     OPENAI = "openai"
     COHERE = "cohere"
+
 
 @dataclass
 class Encoder:
@@ -37,6 +41,7 @@ class Encoder:
 
     def __call__(self, texts: list[str]) -> list[float]:
         return self.model(texts)
+
 
 @dataclass
 class SemanticSpace:

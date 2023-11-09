@@ -21,6 +21,8 @@ cohere = "^4.32"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
+ruff = "^0.1.5"
+black = "^23.11.0"
 
 [build-system]
 requires = ["poetry-core"]
