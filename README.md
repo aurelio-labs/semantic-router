@@ -104,4 +104,4 @@ In this case, no decision could be made as we had no matches — so our decision
 
 |     |     |
 | --- | --- |
-| 🏃 Walkthrough | Quickstart Python notebook |
+| 🏃 [Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |
