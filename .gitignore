@@ -4,6 +4,7 @@ __pycache__
 .DS_Store
 venv/
 /.vscode
+.vscode
 **/__pycache__
 **/*.py[cod]
 
