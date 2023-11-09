@@ -1,8 +1,10 @@
 import os
+from time import sleep
+
+import openai
+from openai.error import RateLimitError
 
 from semantic_router.encoders import BaseEncoder
-import openai
-from time import time
 
 
 class OpenAIEncoder(BaseEncoder):
@@ -16,20 +18,18 @@ class OpenAIEncoder(BaseEncoder):
         """Encode a list of texts using the OpenAI API. Returns a list of
         vector embeddings.
         """
-        passed = False
+        res = None
         # exponential backoff in case of RateLimitError
         for j in range(5):
             try:
-                # create embeddings
-                res = openai.Embedding.create(
-                    input=texts, engine=self.name
-                )
-                passed = True
-            except openai.error.RateLimitError:
-                time.sleep(2 ** j)
-        if not passed:
-            raise openai.error.RateLimitError
+                res = openai.Embedding.create(input=texts, engine=self.name)
+                if isinstance(res, dict) and "data" in res:
+                    break
+            except RateLimitError:
+                sleep(2**j)
+        if not res or not isinstance(res, dict) or "data" not in res:
+            raise ValueError("Failed to create embeddings.")
+
         # get embeddings
         embeds = [r["embedding"] for r in res["data"]]
         return embeds
-        

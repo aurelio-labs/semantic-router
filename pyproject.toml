@@ -18,6 +18,10 @@ openai = "^0.28.1"
 transformers = "^4.34.1"
 cohere = "^4.32"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.26.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
