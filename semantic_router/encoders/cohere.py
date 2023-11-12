@@ -20,9 +20,5 @@ class CohereEncoder(BaseEncoder):
     def __call__(self, texts: list[str]) -> list[list[float]]:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
-        embeds = self.client.embed(
-            texts,
-            input_type="search_query",
-            model=self.name
-        )
+        embeds = self.client.embed(texts, input_type="search_query", model=self.name)
         return embeds.embeddings
