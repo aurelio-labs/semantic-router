@@ -3,11 +3,11 @@ from enum import Enum
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
-from semantic_router.encoders import (
-    BaseEncoder,
-    CohereEncoder,
-    HuggingFaceEncoder,
-    OpenAIEncoder,
+from semantic_router.retrievers import (
+    BaseRetriever,
+    CohereRetriever,
+    HuggingFaceRetriever,
+    OpenAIRetriever,
 )
 
 
@@ -17,27 +17,27 @@ class Decision(BaseModel):
     description: str | None = None
 
 
-class EncoderType(Enum):
+class RetrieverType(Enum):
     HUGGINGFACE = "huggingface"
     OPENAI = "openai"
     COHERE = "cohere"
 
 
 @dataclass
-class Encoder:
-    type: EncoderType
+class Retriever:
+    type: RetrieverType
     name: str
-    model: BaseEncoder
+    model: BaseRetriever
 
     def __init__(self, type: str, name: str):
-        self.type = EncoderType(type)
+        self.type = RetrieverType(type)
         self.name = name
-        if self.type == EncoderType.HUGGINGFACE:
-            self.model = HuggingFaceEncoder(name)
-        elif self.type == EncoderType.OPENAI:
-            self.model = OpenAIEncoder(name)
-        elif self.type == EncoderType.COHERE:
-            self.model = CohereEncoder(name)
+        if self.type == RetrieverType.HUGGINGFACE:
+            self.model = HuggingFaceRetriever(name)
+        elif self.type == RetrieverType.OPENAI:
+            self.model = OpenAIRetriever(name)
+        elif self.type == RetrieverType.COHERE:
+            self.model = CohereRetriever(name)
 
     def __call__(self, texts: list[str]) -> list[float]:
         return self.model(texts)

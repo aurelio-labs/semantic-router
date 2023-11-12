@@ -2,10 +2,10 @@ import os
 
 import cohere
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.retrievers import BaseRetriever
 
 
-class CohereEncoder(BaseEncoder):
+class CohereRetriever(BaseRetriever):
     client: cohere.Client | None
 
     def __init__(
@@ -17,12 +17,12 @@ class CohereEncoder(BaseEncoder):
             raise ValueError("Cohere API key cannot be 'None'.")
         self.client = cohere.Client(cohere_api_key)
 
-    def __call__(self, texts: list[str]) -> list[list[float]]:
+    def __call__(self, docs: list[str]) -> list[list[float]]:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
-        if len(texts) == 1:
+        if len(docs) == 1:
             input_type = "search_query"
         else:
             input_type = "search_document"
-        embeds = self.client.embed(texts, input_type=input_type, model=self.name)
+        embeds = self.client.embed(docs, input_type=input_type, model=self.name)
         return embeds.embeddings
