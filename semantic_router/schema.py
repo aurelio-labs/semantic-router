@@ -31,7 +31,7 @@ class Encoder:
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
-            self.model = HuggingFaceEncoder(name)
+            raise NotImplementedError
         elif self.type == EncoderType.OPENAI:
             self.model = OpenAIEncoder(name)
         elif self.type == EncoderType.COHERE:
