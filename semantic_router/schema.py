@@ -6,7 +6,6 @@ from pydantic.dataclasses import dataclass
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
-    HuggingFaceEncoder,
     OpenAIEncoder,
 )
 
@@ -18,7 +17,6 @@ class Decision(BaseModel):
 
 
 class EncoderType(Enum):
-    HUGGINGFACE = "huggingface"
     OPENAI = "openai"
     COHERE = "cohere"
 
@@ -33,7 +31,7 @@ class Encoder:
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
-            self.model = HuggingFaceEncoder(name)
+            raise NotImplementedError
         elif self.type == EncoderType.OPENAI:
             self.model = OpenAIEncoder(name)
         elif self.type == EncoderType.COHERE:
