@@ -65,7 +65,7 @@ encoder = OpenAIEncoder()
 With our `decisions` and `encoder` defined we now create a `DecisionLayer`. The decision layer handles our semantic decision making.
 
 ```python
-from semantic_router import DecisionLayer
+from semantic_router.layer import DecisionLayer
 
 dl = DecisionLayer(encoder=encoder, decisions=decisions)
 ```
