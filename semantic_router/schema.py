@@ -6,7 +6,6 @@ from pydantic.dataclasses import dataclass
 from semantic_router.retrievers import (
     BaseRetriever,
     CohereRetriever,
-    HuggingFaceRetriever,
     OpenAIRetriever,
 )
 
@@ -33,7 +32,7 @@ class Retriever:
         self.type = RetrieverType(type)
         self.name = name
         if self.type == RetrieverType.HUGGINGFACE:
-            self.model = HuggingFaceRetriever(name)
+            raise NotImplementedError
         elif self.type == RetrieverType.OPENAI:
             self.model = OpenAIRetriever(name)
         elif self.type == RetrieverType.COHERE:
