@@ -17,7 +17,7 @@ class BM25Encoder(BaseEncoder):
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
         if len(docs) == 1:
-            sparse_dicts = self.model.encode_query(docs[0])
+            sparse_dicts = self.model.encode_queries(docs)
         elif len(docs) > 1:
             sparse_dicts = self.model.encode_documents(docs)
         else:
@@ -29,7 +29,6 @@ class BM25Encoder(BaseEncoder):
             values = output["values"]
             for idx, val in zip(indices, values):
                 if idx in self.idx_mapping:
-                    print(idx, self.idx_mapping[idx])
                     position = self.idx_mapping[idx]
                     embeds[position] = val
                 else:

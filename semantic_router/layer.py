@@ -111,6 +111,7 @@ class DecisionLayer:
 
 class HybridDecisionLayer:
     index = None
+    sparse_index = None
     categories = None
     score_threshold = 0.82
 
@@ -150,19 +151,19 @@ class HybridDecisionLayer:
 
     def _add_decision(self, decision: Decision):
         # create embeddings
-        dense_embeds = self.encoder(decision.utterances) * self.alpha
-        sparse_embeds = self.sparse_encoder(decision.utterances) * (1 - self.alpha)
-        # concatenate vectors to create hybrid vecs
-        embeds = np.concatenate([
-            dense_embeds, sparse_embeds
-        ], axis=1)
+        dense_embeds = np.array(
+            self.encoder(decision.utterances)
+        )  # * self.alpha
+        sparse_embeds = np.array(
+            self.sparse_encoder(decision.utterances)
+        )  # * (1 - self.alpha)
 
         # create decision array
         if self.categories is None:
-            self.categories = np.array([decision.name] * len(embeds))
+            self.categories = np.array([decision.name] * len(decision.utterances))
             self.utterances = np.array(decision.utterances)
         else:
-            str_arr = np.array([decision.name] * len(embeds))
+            str_arr = np.array([decision.name] * len(decision.utterances))
             self.categories = np.concatenate([self.categories, str_arr])
             self.utterances = np.concatenate([
                 self.utterances,
@@ -170,17 +171,15 @@ class HybridDecisionLayer:
             ])
         # create utterance array (the dense index)
         if self.index is None:
-            self.index = np.array(dense_embeds)
+            self.index = dense_embeds
         else:
-            embed_arr = np.array(dense_embeds)
-            self.index = np.concatenate([self.index, embed_arr])
+            self.index = np.concatenate([self.index, dense_embeds])
         # create sparse utterance array
         if self.sparse_index is None:
-            self.sparse_index = np.array(sparse_embeds)
+            self.sparse_index = sparse_embeds
         else:
-            sparse_embed_arr = np.array(sparse_embeds)
             self.sparse_index = np.concatenate([
-                self.sparse_index, sparse_embed_arr
+                self.sparse_index, sparse_embeds
             ])
 
     def _query(self, text: str, top_k: int = 5):
@@ -195,17 +194,21 @@ class HybridDecisionLayer:
         xq_s = np.squeeze(xq_s)
         # convex scaling
         xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
-        # concatenate to create single hybrid vec
-        xq = np.concatenate([xq_d, xq_s], axis=1)
 
         if self.index is not None:
+            # calculate dense vec similarity
             index_norm = norm(self.index, axis=1)
-            xq_norm = norm(xq.T)
-            sim = np.dot(self.index, xq.T) / (index_norm * xq_norm)
+            xq_d_norm = norm(xq_d.T)
+            sim_d = np.dot(self.index, xq_d.T) / (index_norm * xq_d_norm)
+            # calculate sparse vec similarity
+            sparse_norm = norm(self.sparse_index, axis=1)
+            xq_s_norm = norm(xq_s.T)
+            sim_s = np.dot(self.sparse_index, xq_s.T) / (sparse_norm * xq_s_norm)
+            total_sim = (sim_d + sim_s)
             # get indices of top_k records
-            top_k = min(top_k, sim.shape[0])
-            idx = np.argpartition(sim, -top_k)[-top_k:]
-            scores = sim[idx]
+            top_k = min(top_k, total_sim.shape[0])
+            idx = np.argpartition(total_sim, -top_k)[-top_k:]
+            scores = total_sim[idx]
             # get the utterance categories (decision names)
             decisions = self.categories[idx] if self.categories is not None else []
             return [
@@ -216,8 +219,8 @@ class HybridDecisionLayer:
         
     def _convex_scaling(self, dense: list[float], sparse: list[float]):
         # scale sparse and dense vecs
-        dense = dense * self.alpha
-        sparse = sparse * (1 - self.alpha)
+        dense = np.array(dense) * self.alpha
+        sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
     def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
