@@ -15,6 +15,7 @@ python = "^3.10"
 pydantic = "^1.8.2"
 openai = "^0.28.1"
 cohere = "^4.32"
+pinecone-text = "^0.7.0"
 
 
 [tool.poetry.group.dev.dependencies]

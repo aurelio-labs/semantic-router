@@ -2,10 +2,10 @@ import os
 
 import cohere
 
-from semantic_router.retrievers import BaseRetriever
+from semantic_router.encoders import BaseEncoder
 
 
-class CohereRetriever(BaseRetriever):
+class CohereEncoder(BaseEncoder):
     client: cohere.Client | None
 
     def __init__(

@@ -4,10 +4,10 @@ from time import sleep
 import openai
 from openai.error import RateLimitError
 
-from semantic_router.retrievers import BaseRetriever
+from semantic_router.encoders import BaseEncoder
 
 
-class OpenAIRetriever(BaseRetriever):
+class OpenAIEncoder(BaseEncoder):
     def __init__(self, name: str, openai_api_key: str | None = None):
         super().__init__(name=name)
         openai.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")

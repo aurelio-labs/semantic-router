@@ -2,10 +2,10 @@ import os
 
 import cohere
 
-from semantic_router.rankers import BaseReranker
+from semantic_router.rankers import BaseRanker
 
 
-class CohereRanker(BaseReranker):
+class CohereRanker(BaseRanker):
     client: cohere.Client | None
 
     def __init__(

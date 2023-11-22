@@ -1,7 +1,7 @@
-from semantic_router.retrievers import BaseRetriever
+from semantic_router.encoders import BaseEncoder
 
 
-class HuggingFaceRetriever(BaseRetriever):
+class HuggingFaceEncoder(BaseEncoder):
     def __init__(self, name: str):
         self.name = name
 

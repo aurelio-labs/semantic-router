@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class BaseRetriever(BaseModel):
+class BaseEncoder(BaseModel):
     name: str
 
     class Config:
