@@ -12,3 +12,6 @@ venv/
 .env*.local
 .env
 mac.env
+
+# Code coverage history
+.coverage
