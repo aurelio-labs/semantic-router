@@ -1,5 +1,3 @@
-import os
-
 import openai
 import pytest
 from openai.error import RateLimitError

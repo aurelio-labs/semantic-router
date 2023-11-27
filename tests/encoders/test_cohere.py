@@ -1,4 +1,3 @@
-import cohere
 import pytest
 
 from semantic_router.encoders import CohereEncoder
