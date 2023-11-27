@@ -18,6 +18,11 @@ def mock_encoder_call(utterances):
 
 
 @pytest.fixture
+def base_encoder():
+    return BaseEncoder(name="test-encoder")
+
+
+@pytest.fixture
 def cohere_encoder(mocker):
     mocker.patch.object(CohereEncoder, "__call__", side_effect=mock_encoder_call)
     return CohereEncoder(name="test-cohere-encoder", cohere_api_key="test_api_key")
@@ -101,6 +106,10 @@ class TestDecisionLayer:
         decision_layer = DecisionLayer(encoder=openai_encoder)
         assert not decision_layer._pass_threshold([], 0.5)
         assert decision_layer._pass_threshold([0.6, 0.7], 0.5)
+
+    def test_failover_similarity_threshold(self, base_encoder):
+        decision_layer = DecisionLayer(encoder=base_encoder)
+        assert decision_layer.similarity_threshold == 0.82
 
 
 # Add more tests for edge cases and error handling as needed.

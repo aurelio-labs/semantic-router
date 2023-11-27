@@ -19,6 +19,7 @@ class Decision(BaseModel):
 class EncoderType(Enum):
     OPENAI = "openai"
     COHERE = "cohere"
+    HUGGINGFACE = "huggingface"
 
 
 @dataclass

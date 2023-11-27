@@ -1,8 +1,9 @@
 import os
+
 import pytest
 import openai
-from semantic_router.encoders import OpenAIEncoder
 from openai.error import RateLimitError
+from semantic_router.encoders import OpenAIEncoder
 
 
 @pytest.fixture
@@ -29,8 +30,8 @@ class TestOpenAIEncoder:
         assert isinstance(result, list), "Result should be a list"
         assert len(result) == 1 and len(result[0]) == 3, "Result list size is incorrect"
 
-    @pytest.mark.skip(reason="Currently quite a slow test")
-    def test_call_method_rate_limit_error(self, openai_encoder, mocker):
+    def test_call_method_rate_limit_error__raises_value_error_after_max_retries(self, openai_encoder, mocker):
+        mocker.patch("semantic_router.encoders.openai.sleep")
         mocker.patch(
             "openai.Embedding.create", side_effect=RateLimitError(message="rate limit exceeded", http_status=429)
         )
@@ -43,3 +44,64 @@ class TestOpenAIEncoder:
 
         with pytest.raises(ValueError):
             openai_encoder(["test"])
+
+    def test_call_method_rate_limit_error__exponential_backoff_single_retry(self, openai_encoder, mocker):
+        mock_sleep = mocker.patch("semantic_router.encoders.openai.sleep")
+        mocker.patch(
+            "openai.Embedding.create",
+            side_effect=[
+                RateLimitError("rate limit exceeded"),
+                {"data": [{"embedding": [1, 2, 3]}]},
+            ],
+        )
+
+        openai_encoder(["sample text"])
+
+        mock_sleep.assert_called_once_with(1)  # 2**0
+
+    def test_call_method_rate_limit_error__exponential_backoff_multiple_retries(self, openai_encoder, mocker):
+        mock_sleep = mocker.patch("semantic_router.encoders.openai.sleep")
+        mocker.patch(
+            "openai.Embedding.create",
+            side_effect=[
+                RateLimitError("rate limit exceeded"),
+                RateLimitError("rate limit exceeded"),
+                {"data": [{"embedding": [1, 2, 3]}]},
+            ],
+        )
+
+        openai_encoder(["sample text"])
+
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_any_call(1)  # 2**0
+        mock_sleep.assert_any_call(2)  # 2**1
+
+    def test_call_method_rate_limit_error__exponential_backoff_max_retries_exceeded(self, openai_encoder, mocker):
+        mock_sleep = mocker.patch("semantic_router.encoders.openai.sleep")
+        mocker.patch("openai.Embedding.create", side_effect=RateLimitError("rate limit exceeded"))
+
+        with pytest.raises(ValueError):
+            openai_encoder(["sample text"])
+
+        assert mock_sleep.call_count == 5  # Assuming 5 retries
+        mock_sleep.assert_any_call(1)  # 2**0
+        mock_sleep.assert_any_call(2)  # 2**1
+        mock_sleep.assert_any_call(4)  # 2**2
+        mock_sleep.assert_any_call(8)  # 2**3
+        mock_sleep.assert_any_call(16)  # 2**4
+
+    def test_call_method_rate_limit_error__exponential_backoff_successful(self, openai_encoder, mocker):
+        mock_sleep = mocker.patch("semantic_router.encoders.openai.sleep")
+        mocker.patch(
+            "openai.Embedding.create",
+            side_effect=[
+                RateLimitError("rate limit exceeded"),
+                RateLimitError("rate limit exceeded"),
+                {"data": [{"embedding": [1, 2, 3]}]},
+            ],
+        )
+
+        embeddings = openai_encoder(["sample text"])
+
+        assert mock_sleep.call_count == 2
+        assert embeddings == [[1, 2, 3]]
