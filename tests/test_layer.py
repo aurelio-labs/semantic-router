@@ -1,8 +1,8 @@
 import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
-from semantic_router.schema import Decision
 from semantic_router.layer import DecisionLayer  # Replace with the actual module name
+from semantic_router.schema import Decision
 
 
 def mock_encoder_call(utterances):

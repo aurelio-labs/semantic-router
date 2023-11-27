@@ -1,5 +1,13 @@
 import pytest
-from semantic_router.schema import Decision, Encoder, EncoderType, OpenAIEncoder, CohereEncoder, SemanticSpace
+
+from semantic_router.schema import (
+    CohereEncoder,
+    Decision,
+    Encoder,
+    EncoderType,
+    OpenAIEncoder,
+    SemanticSpace,
+)
 
 
 class TestEncoderDataclass:
@@ -25,7 +33,10 @@ class TestEncoderDataclass:
 
     def test_encoder_call_method(self, mocker):
         mocker.patch.dict("os.environ", {"OPENAI_API_KEY": "test"})
-        mocker.patch("semantic_router.encoders.openai.OpenAIEncoder.__call__", return_value=[0.1, 0.2, 0.3])
+        mocker.patch(
+            "semantic_router.encoders.openai.OpenAIEncoder.__call__",
+            return_value=[0.1, 0.2, 0.3],
+        )
         encoder = Encoder(type="openai", name="test-engine")
         result = encoder(["test"])
         assert result == [0.1, 0.2, 0.3]
@@ -38,7 +49,9 @@ class TestSemanticSpaceDataclass:
         assert semantic_space.decisions == []
 
     def test_semanticspace_add_decision(self):
-        decision = Decision(name="test", utterances=["hello", "hi"], description="greeting")
+        decision = Decision(
+            name="test", utterances=["hello", "hi"], description="greeting"
+        )
         semantic_space = SemanticSpace()
         semantic_space.add(decision)
 
