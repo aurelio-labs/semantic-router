@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Decision
 
 
@@ -63,18 +64,12 @@ class DecisionLayer:
         xq = np.squeeze(xq)  # Reduce to 1d array.
 
         if self.index is not None:
-            index_norm = norm(self.index, axis=1)
-            xq_norm = norm(xq.T)
-            sim = np.dot(self.index, xq.T) / (index_norm * xq_norm)
-            # get indices of top_k records
-            top_k = min(top_k, sim.shape[0])
-            idx = np.argpartition(sim, -top_k)[-top_k:]
-            scores = sim[idx]
+            # calculate similarity matrix
+            sim = similarity_matrix(xq, self.index)
+            scores, idx = top_scores(sim, top_k)
             # get the utterance categories (decision names)
             decisions = self.categories[idx] if self.categories is not None else []
-            return [
-                {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
-            ]
+            return [{"decision": d, "score": s.item()} for d, s in zip(decisions, scores)]
         else:
             return []
 
@@ -89,9 +84,7 @@ class DecisionLayer:
                 scores_by_class[decision] = [score]
 
         # Calculate total score for each class
-        total_scores = {
-            decision: sum(scores) for decision, scores in scores_by_class.items()
-        }
+        total_scores = {decision: sum(scores) for decision, scores in scores_by_class.items()}
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
