@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.linalg import norm
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
