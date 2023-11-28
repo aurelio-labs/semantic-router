@@ -69,7 +69,9 @@ class DecisionLayer:
             scores, idx = top_scores(sim, top_k)
             # get the utterance categories (decision names)
             decisions = self.categories[idx] if self.categories is not None else []
-            return [{"decision": d, "score": s.item()} for d, s in zip(decisions, scores)]
+            return [
+                {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
+            ]
         else:
             return []
 
@@ -84,7 +86,9 @@ class DecisionLayer:
                 scores_by_class[decision] = [score]
 
         # Calculate total score for each class
-        total_scores = {decision: sum(scores) for decision, scores in scores_by_class.items()}
+        total_scores = {
+            decision: sum(scores) for decision, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores

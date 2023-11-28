@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 
 from semantic_router.linear import similarity_matrix, top_scores
 
