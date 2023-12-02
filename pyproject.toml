@@ -6,7 +6,8 @@ authors = [
     "James Briggs <james@aurelio.ai>",
     "Siraj Aizlewood <siraj@aurelio.ai>",
     "Simonas Jakubonis <simonas@aurelio.ai>",
-    "Luca Mannini <luca@aurelio.ai>"
+    "Luca Mannini <luca@aurelio.ai>",
+    "Bogdan Buduroiu <bogdan@aurelio.ai>"
 ]
 readme = "README.md"
 
@@ -15,6 +16,7 @@ python = "^3.10"
 pydantic = "^1.8.2"
 openai = "^0.28.1"
 cohere = "^4.32"
+numpy = "^1.25.2"
 pinecone-text = "^0.7.0"
 
 
@@ -22,6 +24,9 @@ pinecone-text = "^0.7.0"
 ipykernel = "^6.26.0"
 ruff = "^0.1.5"
 black = "^23.11.0"
+pytest = "^7.4.3"
+pytest-mock = "^3.12.0"
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]
