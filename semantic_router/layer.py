@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
+from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -27,7 +28,7 @@ class DecisionLayer:
         # if decisions list has been passed, we initialize index now
         if decisions:
             # initialize index now
-            for decision in decisions:
+            for decision in tqdm(decisions):
                 self._add_decision(decision=decision)
 
     def __call__(self, text: str) -> str | None:
@@ -134,7 +135,7 @@ class HybridDecisionLayer:
         # if decisions list has been passed, we initialize index now
         if decisions:
             # initialize index now
-            for decision in decisions:
+            for decision in tqdm(decisions):
                 self._add_decision(decision=decision)
 
     def __call__(self, text: str) -> str | None:
