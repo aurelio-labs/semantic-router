@@ -45,16 +45,16 @@ def decisions():
 class TestDecisionLayer:
     def test_initialization(self, openai_encoder, decisions):
         decision_layer = DecisionLayer(encoder=openai_encoder, decisions=decisions)
-        assert decision_layer.similarity_threshold == 0.82
+        assert decision_layer.score_threshold == 0.82
         assert len(decision_layer.index) == 5
         assert len(set(decision_layer.categories)) == 2
 
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
         decision_layer_cohere = DecisionLayer(encoder=cohere_encoder)
-        assert decision_layer_cohere.similarity_threshold == 0.3
+        assert decision_layer_cohere.score_threshold == 0.3
 
         decision_layer_openai = DecisionLayer(encoder=openai_encoder)
-        assert decision_layer_openai.similarity_threshold == 0.82
+        assert decision_layer_openai.score_threshold == 0.82
 
     def test_add_decision(self, openai_encoder):
         decision_layer = DecisionLayer(encoder=openai_encoder)
@@ -107,9 +107,9 @@ class TestDecisionLayer:
         assert not decision_layer._pass_threshold([], 0.5)
         assert decision_layer._pass_threshold([0.6, 0.7], 0.5)
 
-    def test_failover_similarity_threshold(self, base_encoder):
+    def test_failover_score_threshold(self, base_encoder):
         decision_layer = DecisionLayer(encoder=base_encoder)
-        assert decision_layer.similarity_threshold == 0.82
+        assert decision_layer.score_threshold == 0.82
 
 
 # Add more tests for edge cases and error handling as needed.
