@@ -23,14 +23,14 @@ class BM25Encoder(BaseEncoder):
         else:
             raise ValueError("No documents to encode.")
         # convert sparse dict to sparse vector
-        embeds = [0.0] * len(self.idx_mapping)
-        for output in sparse_dicts:
+        embeds = [[0.0] * len(self.idx_mapping)] * len(docs)
+        for i, output in enumerate(sparse_dicts):
             indices = output["indices"]
             values = output["values"]
             for idx, val in zip(indices, values):
                 if idx in self.idx_mapping:
                     position = self.idx_mapping[idx]
-                    embeds[position] = val
+                    embeds[i][position] = val
                 else:
                     print(idx, "not in encoder.idx_mapping")
         return embeds
