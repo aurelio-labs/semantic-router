@@ -10,11 +10,11 @@ def bm25_encoder():
 
 class TestBM25Encoder:
     def test_initialization(self):
-        self.bm25_encoder = BM25Encoder()
-        assert len(self.bm25_encoder.idx_mapping) != 0
+        bm25_encoder = BM25Encoder()
+        assert len(bm25_encoder.idx_mapping) != 0
 
     def test_call_method(self):
-        result = self.bm25_encoder(["test"])
+        result = bm25_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
         assert all(
             isinstance(sublist, list) for sublist in result
