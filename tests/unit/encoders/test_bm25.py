@@ -13,11 +13,7 @@ class TestBM25Encoder:
         assert len(bm25_encoder.idx_mapping) != 0
 
     def test_fit(self, bm25_encoder):
-        bm25_encoder.fit([
-            "some docs",
-            "and more docs",
-            "and even more docs"
-        ])
+        bm25_encoder.fit(["some docs", "and more docs", "and even more docs"])
         assert len(bm25_encoder.idx_mapping) != 0
 
     def test_call_method(self, bm25_encoder):
