@@ -6,7 +6,7 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     OpenAIEncoder,
-    BM25Encoder
+    BM25Encoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Decision
@@ -114,10 +114,7 @@ class HybridDecisionLayer:
     score_threshold = 0.82
 
     def __init__(
-        self,
-        encoder: BaseEncoder,
-        decisions: list[Decision] = [],
-        alpha: float = 0.3
+        self, encoder: BaseEncoder, decisions: list[Decision] = [], alpha: float = 0.3
     ):
         self.encoder = encoder
         self.sparse_encoder = BM25Encoder()
@@ -149,9 +146,7 @@ class HybridDecisionLayer:
 
     def _add_decision(self, decision: Decision):
         # create embeddings
-        dense_embeds = np.array(
-            self.encoder(decision.utterances)
-        )  # * self.alpha
+        dense_embeds = np.array(self.encoder(decision.utterances))  # * self.alpha
         sparse_embeds = np.array(
             self.sparse_encoder(decision.utterances)
         )  # * (1 - self.alpha)
@@ -163,10 +158,9 @@ class HybridDecisionLayer:
         else:
             str_arr = np.array([decision.name] * len(decision.utterances))
             self.categories = np.concatenate([self.categories, str_arr])
-            self.utterances = np.concatenate([
-                self.utterances,
-                np.array(decision.utterances)
-            ])
+            self.utterances = np.concatenate(
+                [self.utterances, np.array(decision.utterances)]
+            )
         # create utterance array (the dense index)
         if self.index is None:
             self.index = dense_embeds
@@ -176,9 +170,7 @@ class HybridDecisionLayer:
         if self.sparse_index is None:
             self.sparse_index = sparse_embeds
         else:
-            self.sparse_index = np.concatenate([
-                self.sparse_index, sparse_embeds
-            ])
+            self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to
@@ -202,7 +194,7 @@ class HybridDecisionLayer:
             sparse_norm = norm(self.sparse_index, axis=1)
             xq_s_norm = norm(xq_s.T)
             sim_s = np.dot(self.sparse_index, xq_s.T) / (sparse_norm * xq_s_norm)
-            total_sim = (sim_d + sim_s)
+            total_sim = sim_d + sim_s
             # get indices of top_k records
             top_k = min(top_k, total_sim.shape[0])
             idx = np.argpartition(total_sim, -top_k)[-top_k:]
@@ -214,7 +206,7 @@ class HybridDecisionLayer:
             ]
         else:
             return []
-        
+
     def _convex_scaling(self, dense: list[float], sparse: list[float]):
         # scale sparse and dense vecs
         dense = np.array(dense) * self.alpha

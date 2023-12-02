@@ -12,7 +12,8 @@ class BM25Encoder(BaseEncoder):
         # initialize BM25 encoder with default params (trained on MSMarco)
         self.model = encoder.default()
         self.idx_mapping = {
-            idx: i for i, idx in enumerate(self.model.get_params()["doc_freq"]["indices"])
+            idx: i
+            for i, idx in enumerate(self.model.get_params()["doc_freq"]["indices"])
         }
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
