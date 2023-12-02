@@ -22,3 +22,14 @@ class TestBM25Encoder:
         assert all(
             isinstance(sublist, list) for sublist in result
         ), "Each item in result should be a list"
+
+    def test_call_method_no_docs(self, bm25_encoder):
+        with pytest.raises(ValueError):
+            bm25_encoder([])
+
+    def test_call_method_no_word(self, bm25_encoder):
+        result = bm25_encoder(["doc with fake word gta5jabcxyz"])
+        assert isinstance(result, list), "Result should be a list"
+        assert all(
+            isinstance(sublist, list) for sublist in result
+        ), "Each item in result should be a list"
