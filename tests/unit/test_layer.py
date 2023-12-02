@@ -1,7 +1,10 @@
 import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
-from semantic_router.layer import DecisionLayer, HybridDecisionLayer  # Replace with the actual module name
+from semantic_router.layer import (
+    DecisionLayer,
+    HybridDecisionLayer,
+)  # Replace with the actual module name
 from semantic_router.schema import Decision
 
 
@@ -111,9 +114,12 @@ class TestDecisionLayer:
         decision_layer = DecisionLayer(encoder=base_encoder)
         assert decision_layer.score_threshold == 0.82
 
+
 class TestHybridDecisionLayer:
     def test_initialization(self, openai_encoder, decisions):
-        decision_layer = HybridDecisionLayer(encoder=openai_encoder, decisions=decisions)
+        decision_layer = HybridDecisionLayer(
+            encoder=openai_encoder, decisions=decisions
+        )
         assert decision_layer.score_threshold == 0.82
         assert len(decision_layer.index) == 5
         assert len(set(decision_layer.categories)) == 2
@@ -140,7 +146,9 @@ class TestHybridDecisionLayer:
         assert len(set(decision_layer.categories)) == 2
 
     def test_query_and_classification(self, openai_encoder, decisions):
-        decision_layer = HybridDecisionLayer(encoder=openai_encoder, decisions=decisions)
+        decision_layer = HybridDecisionLayer(
+            encoder=openai_encoder, decisions=decisions
+        )
         query_result = decision_layer("Hello")
         assert query_result in ["Decision 1", "Decision 2"]
 
@@ -149,7 +157,9 @@ class TestHybridDecisionLayer:
         assert decision_layer("Anything") is None
 
     def test_semantic_classify(self, openai_encoder, decisions):
-        decision_layer = HybridDecisionLayer(encoder=openai_encoder, decisions=decisions)
+        decision_layer = HybridDecisionLayer(
+            encoder=openai_encoder, decisions=decisions
+        )
         classification, score = decision_layer._semantic_classify(
             [
                 {"decision": "Decision 1", "score": 0.9},
@@ -160,7 +170,9 @@ class TestHybridDecisionLayer:
         assert score == [0.9]
 
     def test_semantic_classify_multiple_decisions(self, openai_encoder, decisions):
-        decision_layer = HybridDecisionLayer(encoder=openai_encoder, decisions=decisions)
+        decision_layer = HybridDecisionLayer(
+            encoder=openai_encoder, decisions=decisions
+        )
         classification, score = decision_layer._semantic_classify(
             [
                 {"decision": "Decision 1", "score": 0.9},
@@ -179,5 +191,6 @@ class TestHybridDecisionLayer:
     def test_failover_score_threshold(self, base_encoder):
         decision_layer = HybridDecisionLayer(encoder=base_encoder)
         assert decision_layer.score_threshold == 0.82
+
 
 # Add more tests for edge cases and error handling as needed.
