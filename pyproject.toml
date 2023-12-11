@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.4"
+version = "0.0.5"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
     "Siraj Aizlewood <siraj@aurelio.ai>",
     "Simonas Jakubonis <simonas@aurelio.ai>",
+    "Luca Mannini <luca@aurelio.ai>",
     "Bogdan Buduroiu <bogdan@aurelio.ai>"
 ]
 readme = "README.md"
@@ -15,7 +16,8 @@ python = "^3.10"
 pydantic = "^1.8.2"
 openai = "^0.28.1"
 cohere = "^4.32"
-numpy = "^1.26.2"
+numpy = "^1.25.2"
+pinecone-text = "^0.7.0"
 
 
 [tool.poetry.group.dev.dependencies]
