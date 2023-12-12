@@ -9,15 +9,15 @@ from semantic_router.encoders import (
     BM25Encoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.schema import Decision
+from semantic_router.schema import Route
 
 
-class DecisionLayer:
+class RouteLayer:
     index = None
     categories = None
     score_threshold = 0.82
 
-    def __init__(self, encoder: BaseEncoder, decisions: list[Decision] = []):
+    def __init__(self, encoder: BaseEncoder, routes: list[Route] = []):
         self.encoder = encoder
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
@@ -26,11 +26,11 @@ class DecisionLayer:
             self.score_threshold = 0.3
         else:
             self.score_threshold = 0.82
-        # if decisions list has been passed, we initialize index now
-        if decisions:
+        # if routes list has been passed, we initialize index now
+        if routes:
             # initialize index now
-            for decision in tqdm(decisions):
-                self._add_decision(decision=decision)
+            for route in tqdm(routes):
+                self._add_route(route=route)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -41,18 +41,18 @@ class DecisionLayer:
         else:
             return None
 
-    def add(self, decision: Decision):
-        self._add_decision(decision=decision)
+    def add(self, route: Route):
+        self._add_route(route=route)
 
-    def _add_decision(self, decision: Decision):
+    def _add_route(self, route: Route):
         # create embeddings
-        embeds = self.encoder(decision.utterances)
+        embeds = self.encoder(route.utterances)
 
-        # create decision array
+        # create route array
         if self.categories is None:
-            self.categories = np.array([decision.name] * len(embeds))
+            self.categories = np.array([route.name] * len(embeds))
         else:
-            str_arr = np.array([decision.name] * len(embeds))
+            str_arr = np.array([route.name] * len(embeds))
             self.categories = np.concatenate([self.categories, str_arr])
         # create utterance array (the index)
         if self.index is None:
@@ -73,10 +73,10 @@ class DecisionLayer:
             # calculate similarity matrix
             sim = similarity_matrix(xq, self.index)
             scores, idx = top_scores(sim, top_k)
-            # get the utterance categories (decision names)
-            decisions = self.categories[idx] if self.categories is not None else []
+            # get the utterance categories (route names)
+            routes = self.categories[idx] if self.categories is not None else []
             return [
-                {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
+                {"route": d, "score": s.item()} for d, s in zip(routes, scores)
             ]
         else:
             return []
@@ -85,15 +85,15 @@ class DecisionLayer:
         scores_by_class = {}
         for result in query_results:
             score = result["score"]
-            decision = result["decision"]
-            if decision in scores_by_class:
-                scores_by_class[decision].append(score)
+            route = result["route"]
+            if route in scores_by_class:
+                scores_by_class[route].append(score)
             else:
-                scores_by_class[decision] = [score]
+                scores_by_class[route] = [score]
 
         # Calculate total score for each class
         total_scores = {
-            decision: sum(scores) for decision, scores in scores_by_class.items()
+            route: sum(scores) for route, scores in scores_by_class.items()
         }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
@@ -107,14 +107,14 @@ class DecisionLayer:
             return False
 
 
-class HybridDecisionLayer:
+class HybridRouteLayer:
     index = None
     sparse_index = None
     categories = None
     score_threshold = 0.82
 
     def __init__(
-        self, encoder: BaseEncoder, decisions: list[Decision] = [], alpha: float = 0.3
+        self, encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
     ):
         self.encoder = encoder
         self.sparse_encoder = BM25Encoder()
@@ -126,11 +126,11 @@ class HybridDecisionLayer:
             self.score_threshold = 0.3
         else:
             self.score_threshold = 0.82
-        # if decisions list has been passed, we initialize index now
-        if decisions:
+        # if routes list has been passed, we initialize index now
+        if routes:
             # initialize index now
-            for decision in tqdm(decisions):
-                self._add_decision(decision=decision)
+            for route in tqdm(routes):
+                self._add_route(route=route)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -141,25 +141,25 @@ class HybridDecisionLayer:
         else:
             return None
 
-    def add(self, decision: Decision):
-        self._add_decision(decision=decision)
+    def add(self, route: Route):
+        self._add_route(route=route)
 
-    def _add_decision(self, decision: Decision):
+    def _add_route(self, route: Route):
         # create embeddings
-        dense_embeds = np.array(self.encoder(decision.utterances))  # * self.alpha
+        dense_embeds = np.array(self.encoder(route.utterances))  # * self.alpha
         sparse_embeds = np.array(
-            self.sparse_encoder(decision.utterances)
+            self.sparse_encoder(route.utterances)
         )  # * (1 - self.alpha)
 
-        # create decision array
+        # create route array
         if self.categories is None:
-            self.categories = np.array([decision.name] * len(decision.utterances))
-            self.utterances = np.array(decision.utterances)
+            self.categories = np.array([route.name] * len(route.utterances))
+            self.utterances = np.array(route.utterances)
         else:
-            str_arr = np.array([decision.name] * len(decision.utterances))
+            str_arr = np.array([route.name] * len(route.utterances))
             self.categories = np.concatenate([self.categories, str_arr])
             self.utterances = np.concatenate(
-                [self.utterances, np.array(decision.utterances)]
+                [self.utterances, np.array(route.utterances)]
             )
         # create utterance array (the dense index)
         if self.index is None:
@@ -199,10 +199,10 @@ class HybridDecisionLayer:
             top_k = min(top_k, total_sim.shape[0])
             idx = np.argpartition(total_sim, -top_k)[-top_k:]
             scores = total_sim[idx]
-            # get the utterance categories (decision names)
-            decisions = self.categories[idx] if self.categories is not None else []
+            # get the utterance categories (route names)
+            routes = self.categories[idx] if self.categories is not None else []
             return [
-                {"decision": d, "score": s.item()} for d, s in zip(decisions, scores)
+                {"route": d, "score": s.item()} for d, s in zip(routes, scores)
             ]
         else:
             return []
@@ -217,15 +217,15 @@ class HybridDecisionLayer:
         scores_by_class = {}
         for result in query_results:
             score = result["score"]
-            decision = result["decision"]
-            if decision in scores_by_class:
-                scores_by_class[decision].append(score)
+            route = result["route"]
+            if route in scores_by_class:
+                scores_by_class[route].append(score)
             else:
-                scores_by_class[decision] = [score]
+                scores_by_class[route] = [score]
 
         # Calculate total score for each class
         total_scores = {
-            decision: sum(scores) for decision, scores in scores_by_class.items()
+            route: sum(scores) for route, scores in scores_by_class.items()
         }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
