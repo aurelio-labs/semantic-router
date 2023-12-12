@@ -2,7 +2,7 @@ import pytest
 
 from semantic_router.schema import (
     CohereEncoder,
-    Decision,
+    Route,
     Encoder,
     EncoderType,
     OpenAIEncoder,
@@ -46,16 +46,16 @@ class TestSemanticSpaceDataclass:
     def test_semanticspace_initialization(self):
         semantic_space = SemanticSpace()
         assert semantic_space.id == ""
-        assert semantic_space.decisions == []
+        assert semantic_space.routes == []
 
-    def test_semanticspace_add_decision(self):
-        decision = Decision(
+    def test_semanticspace_add_route(self):
+        route = Route(
             name="test", utterances=["hello", "hi"], description="greeting"
         )
         semantic_space = SemanticSpace()
-        semantic_space.add(decision)
+        semantic_space.add(route)
 
-        assert len(semantic_space.decisions) == 1
-        assert semantic_space.decisions[0].name == "test"
-        assert semantic_space.decisions[0].utterances == ["hello", "hi"]
-        assert semantic_space.decisions[0].description == "greeting"
+        assert len(semantic_space.routes) == 1
+        assert semantic_space.routes[0].name == "test"
+        assert semantic_space.routes[0].utterances == ["hello", "hi"]
+        assert semantic_space.routes[0].description == "greeting"
