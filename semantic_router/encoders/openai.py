@@ -2,7 +2,7 @@ import os
 from time import sleep
 
 import openai
-from openai.error import RateLimitError, ServiceUnavailableError
+from openai.error import RateLimitError, ServiceUnavailableError, OpenAIError
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
@@ -25,11 +25,12 @@ class OpenAIEncoder(BaseEncoder):
         # exponential backoff
         for j in range(5):
             try:
-                logger.info(f"Encoding {len(docs)} docs...")
+                logger.info(f"Encoding {len(docs)} documents...")
                 res = openai.Embedding.create(input=docs, engine=self.name)
                 if isinstance(res, dict) and "data" in res:
                     break
-            except (RateLimitError, ServiceUnavailableError) as e:
+            except (RateLimitError, ServiceUnavailableError, OpenAIError) as e:
+                logger.warning(f"Retrying in {2**j} seconds...")
                 sleep(2**j)
                 error_message = str(e)
         if not res or not isinstance(res, dict) or "data" not in res:
