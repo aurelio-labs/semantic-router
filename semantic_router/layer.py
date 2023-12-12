@@ -75,9 +75,7 @@ class RouteLayer:
             scores, idx = top_scores(sim, top_k)
             # get the utterance categories (route names)
             routes = self.categories[idx] if self.categories is not None else []
-            return [
-                {"route": d, "score": s.item()} for d, s in zip(routes, scores)
-            ]
+            return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
             return []
 
@@ -92,9 +90,7 @@ class RouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {
-            route: sum(scores) for route, scores in scores_by_class.items()
-        }
+        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
@@ -201,9 +197,7 @@ class HybridRouteLayer:
             scores = total_sim[idx]
             # get the utterance categories (route names)
             routes = self.categories[idx] if self.categories is not None else []
-            return [
-                {"route": d, "score": s.item()} for d, s in zip(routes, scores)
-            ]
+            return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
             return []
 
@@ -224,9 +218,7 @@ class HybridRouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {
-            route: sum(scores) for route, scores in scores_by_class.items()
-        }
+        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores

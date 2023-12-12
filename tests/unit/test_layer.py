@@ -117,9 +117,7 @@ class TestRouteLayer:
 
 class TestHybridRouteLayer:
     def test_initialization(self, openai_encoder, routes):
-        route_layer = HybridRouteLayer(
-            encoder=openai_encoder, routes=routes
-        )
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
@@ -146,9 +144,7 @@ class TestHybridRouteLayer:
         assert len(set(route_layer.categories)) == 2
 
     def test_query_and_classification(self, openai_encoder, routes):
-        route_layer = HybridRouteLayer(
-            encoder=openai_encoder, routes=routes
-        )
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         query_result = route_layer("Hello")
         assert query_result in ["Route 1", "Route 2"]
 
@@ -157,9 +153,7 @@ class TestHybridRouteLayer:
         assert route_layer("Anything") is None
 
     def test_semantic_classify(self, openai_encoder, routes):
-        route_layer = HybridRouteLayer(
-            encoder=openai_encoder, routes=routes
-        )
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -170,9 +164,7 @@ class TestHybridRouteLayer:
         assert score == [0.9]
 
     def test_semantic_classify_multiple_routes(self, openai_encoder, routes):
-        route_layer = HybridRouteLayer(
-            encoder=openai_encoder, routes=routes
-        )
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},

@@ -49,9 +49,7 @@ class TestSemanticSpaceDataclass:
         assert semantic_space.routes == []
 
     def test_semanticspace_add_route(self):
-        route = Route(
-            name="test", utterances=["hello", "hi"], description="greeting"
-        )
+        route = Route(name="test", utterances=["hello", "hi"], description="greeting")
         semantic_space = SemanticSpace()
         semantic_space.add(route)
 
