@@ -2,9 +2,10 @@ import os
 from time import sleep
 
 import openai
-from openai.error import RateLimitError
+from openai.error import RateLimitError, ServiceUnavailableError
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.logger import logger
 
 
 class OpenAIEncoder(BaseEncoder):
@@ -19,17 +20,20 @@ class OpenAIEncoder(BaseEncoder):
         vector embeddings.
         """
         res = None
-        # exponential backoff in case of RateLimitError
+        error_message = ""
+
+        # exponential backoff
         for j in range(5):
             try:
+                logger.info(f"Encoding {len(docs)} docs...")
                 res = openai.Embedding.create(input=docs, engine=self.name)
                 if isinstance(res, dict) and "data" in res:
                     break
-            except RateLimitError:
+            except (RateLimitError, ServiceUnavailableError) as e:
                 sleep(2**j)
+                error_message = str(e)
         if not res or not isinstance(res, dict) or "data" not in res:
-            raise ValueError("Failed to create embeddings.")
+            raise ValueError(f"OpenAI API call failed. Error: {error_message}")
 
-        # get embeddings
         embeds = [r["embedding"] for r in res["data"]]
         return embeds

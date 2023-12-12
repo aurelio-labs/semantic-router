@@ -15,10 +15,16 @@ class CohereEncoder(BaseEncoder):
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:
             raise ValueError("Cohere API key cannot be 'None'.")
-        self.client = cohere.Client(cohere_api_key)
+        try:
+            self.client = cohere.Client(cohere_api_key)
+        except Exception as e:
+            raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
-        embeds = self.client.embed(docs, input_type="search_query", model=self.name)
-        return embeds.embeddings
+        try:
+            embeds = self.client.embed(docs, input_type="search_query", model=self.name)
+            return embeds.embeddings
+        except Exception as e:
+            raise ValueError(f"Cohere API call failed. Error: {e}")
