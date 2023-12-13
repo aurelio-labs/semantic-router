@@ -14,7 +14,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^1.8.2"
-openai = "^0.28.1"
+openai = "^1.0.0"
 cohere = "^4.32"
 numpy = "^1.25.2"
 pinecone-text = "^0.7.0"
