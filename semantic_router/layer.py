@@ -4,9 +4,9 @@ from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
+    BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
-    BM25Encoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Route
@@ -29,8 +29,7 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
-            for route in tqdm(routes):
-                self._add_route(route=route)
+            self.add_routes(routes=routes)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -41,10 +40,7 @@ class RouteLayer:
         else:
             return None
 
-    def add(self, route: Route):
-        self._add_route(route=route)
-
-    def _add_route(self, route: Route):
+    def add_route(self, route: Route):
         # create embeddings
         embeds = self.encoder(route.utterances)
 
@@ -60,6 +56,30 @@ class RouteLayer:
         else:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
+
+    def add_routes(self, routes: list[Route]):
+        # create embeddings for all routes
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
+        embedded_utterance = self.encoder(all_utterances)
+
+        # create route array
+        route_names = [route.name for route in routes for _ in route.utterances]
+        route_array = np.array(route_names)
+        self.categories = (
+            np.concatenate([self.categories, route_array])
+            if self.categories is not None
+            else route_array
+        )
+
+        # create utterance array (the index)
+        embed_utterance_arr = np.array(embedded_utterance)
+        self.index = (
+            np.concatenate([self.index, embed_utterance_arr])
+            if self.index is not None
+            else embed_utterance_arr
+        )
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to

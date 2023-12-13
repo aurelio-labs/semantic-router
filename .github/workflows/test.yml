@@ -36,6 +36,19 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
+      - name: Install nltk
+        run: |
+          pip install nltk
+      - name: Download nltk data
+        run: |
+          python -m nltk.downloader punkt stopwords wordnet
       - name: Pytest
         run: |
           make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
