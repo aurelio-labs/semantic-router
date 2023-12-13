@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.linalg import norm
 from tqdm.auto import tqdm
+from semantic_router.utils.logger import logger
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -89,7 +90,7 @@ class HybridRouteLayer:
         # convex scaling
         xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
 
-        if self.index is not None:
+        if self.index is not None and self.sparse_index is not None:
             # calculate dense vec similarity
             index_norm = norm(self.index, axis=1)
             xq_d_norm = norm(xq_d.T)
@@ -107,9 +108,10 @@ class HybridRouteLayer:
             routes = self.categories[idx] if self.categories is not None else []
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
+            logger.warning("No index found. Please add routes to the layer.")
             return []
 
-    def _convex_scaling(self, dense: list[float], sparse: list[float]):
+    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray):
         # scale sparse and dense vecs
         dense = np.array(dense) * self.alpha
         sparse = np.array(sparse) * (1 - self.alpha)
