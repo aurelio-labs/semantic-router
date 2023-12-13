@@ -1,6 +1,14 @@
 [![Aurelio AI](https://pbs.twimg.com/profile_banners/1671498317455581184/1696285195/1500x500)](https://aurelio.ai)
 
 # Semantic Router
+<p>
+<img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
+<img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
+<img alt="" src="https://img.shields.io/github/repo-size/aurelio-labs/semantic-router" />
+<img alt="GitHub Issues" src="https://img.shields.io/github/issues/aurelio-labs/semantic-router" />
+<img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/aurelio-labs/semantic-router" />
+<img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+</p>
 
 Semantic Router is a superfast decision layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
@@ -23,11 +31,10 @@ politics = Decision(
     utterances=[
         "isn't politics the best thing ever",
         "why don't you tell me about your political opinions",
-        "don't you just love the president"
-        "don't you just hate the president",
+        "don't you just love the president" "don't you just hate the president",
         "they're going to destroy this country!",
-        "they will save the country!"
-    ]
+        "they will save the country!",
+    ],
 )
 
 # this could be used as an indicator to our chatbot to switch to a more
@@ -39,8 +46,8 @@ chitchat = Decision(
         "how are things going?",
         "lovely weather today",
         "the weather is horrendous",
-        "let's go to the chippy"
-    ]
+        "let's go to the chippy",
+    ],
 )
 
 # we place both of our decisions together into single list
@@ -97,13 +104,13 @@ dl("I'm interested in learning about llama 2")
 ```
 
 ```
-[Out]: 
+[Out]:
 ```
 
 In this case, no decision could be made as we had no matches — so our decision layer returned `None`!
 
 ## 📚 Resources
 
-|     |     |
-| --- | --- |
-| 🏃 [Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |
+|                                                                                                                 |                            |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| 🏃[Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |

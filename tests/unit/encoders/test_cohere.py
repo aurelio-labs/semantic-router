@@ -34,8 +34,52 @@ class TestCohereEncoder:
         ), "Each item in result should be a list"
         cohere_encoder.client.embed.assert_called_once()
 
-    def test_call_with_uninitialized_client(self, mocker):
+    def test_returns_list_of_embeddings_for_valid_input(self, cohere_encoder, mocker):
+        mock_embed = mocker.MagicMock()
+        mock_embed.embeddings = [[0.1, 0.2, 0.3]]
+        cohere_encoder.client.embed.return_value = mock_embed
+
+        result = cohere_encoder(["test"])
+        assert isinstance(result, list), "Result should be a list"
+        assert all(
+            isinstance(sublist, list) for sublist in result
+        ), "Each item in result should be a list"
+        cohere_encoder.client.embed.assert_called_once()
+
+    def test_handles_multiple_inputs_correctly(self, cohere_encoder, mocker):
+        mock_embed = mocker.MagicMock()
+        mock_embed.embeddings = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+        cohere_encoder.client.embed.return_value = mock_embed
+
+        result = cohere_encoder(["test1", "test2"])
+        assert isinstance(result, list), "Result should be a list"
+        assert all(
+            isinstance(sublist, list) for sublist in result
+        ), "Each item in result should be a list"
+        cohere_encoder.client.embed.assert_called_once()
+
+    def test_raises_value_error_if_api_key_is_none(self, mocker, monkeypatch):
+        monkeypatch.delenv("COHERE_API_KEY", raising=False)
+        mocker.patch("cohere.Client")
+        with pytest.raises(ValueError):
+            CohereEncoder()
+
+    def test_raises_value_error_if_cohere_client_fails_to_initialize(self, mocker):
+        mocker.patch(
+            "cohere.Client", side_effect=Exception("Failed to initialize client")
+        )
+        with pytest.raises(ValueError):
+            CohereEncoder(cohere_api_key="test_api_key")
+
+    def test_raises_value_error_if_cohere_client_is_not_initialized(self, mocker):
         mocker.patch("cohere.Client", return_value=None)
         encoder = CohereEncoder(cohere_api_key="test_api_key")
         with pytest.raises(ValueError):
             encoder(["test"])
+
+    def test_call_method_raises_error_on_api_failure(self, cohere_encoder, mocker):
+        mocker.patch.object(
+            cohere_encoder.client, "embed", side_effect=Exception("API call failed")
+        )
+        with pytest.raises(ValueError):
+            cohere_encoder(["test"])

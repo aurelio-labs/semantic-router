@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.5"
+version = "0.0.6"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -18,16 +18,21 @@ openai = "^0.28.1"
 cohere = "^4.32"
 numpy = "^1.25.2"
 pinecone-text = "^0.7.0"
+colorlog = "^6.8.0"
 
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
 ruff = "^0.1.5"
-black = "^23.11.0"
+black = {extras = ["jupyter"], version = "^23.12.0"}
 pytest = "^7.4.3"
 pytest-mock = "^3.12.0"
 pytest-cov = "^4.1.0"
+pytest-xdist = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff.per-file-ignores]
+"*.ipynb" = ["E402"]

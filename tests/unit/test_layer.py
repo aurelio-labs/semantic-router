@@ -4,7 +4,8 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import (
     DecisionLayer,
     HybridDecisionLayer,
-)  # Replace with the actual module name
+)
+
 from semantic_router.schema import Decision
 
 
@@ -49,8 +50,12 @@ class TestDecisionLayer:
     def test_initialization(self, openai_encoder, decisions):
         decision_layer = DecisionLayer(encoder=openai_encoder, decisions=decisions)
         assert decision_layer.score_threshold == 0.82
-        assert len(decision_layer.index) == 5
-        assert len(set(decision_layer.categories)) == 2
+        assert len(decision_layer.index) if decision_layer.index is not None else 0 == 5
+        assert (
+            len(set(decision_layer.categories))
+            if decision_layer.categories is not None
+            else 0 == 2
+        )
 
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
         decision_layer_cohere = DecisionLayer(encoder=cohere_encoder)
@@ -61,15 +66,28 @@ class TestDecisionLayer:
 
     def test_add_decision(self, openai_encoder):
         decision_layer = DecisionLayer(encoder=openai_encoder)
-        decision = Decision(name="Decision 3", utterances=["Yes", "No"])
-        decision_layer.add(decision)
+        decision1 = Decision(name="Decision 1", utterances=["Yes", "No"])
+        decision2 = Decision(name="Decision 2", utterances=["Maybe", "Sure"])
+
+        decision_layer.add_decision(decision=decision1)
+        assert (
+            decision_layer.index is not None and decision_layer.categories is not None
+        )
         assert len(decision_layer.index) == 2
         assert len(set(decision_layer.categories)) == 1
+        assert set(decision_layer.categories) == {"Decision 1"}
+
+        decision_layer.add_decision(decision=decision2)
+        assert len(decision_layer.index) == 4
+        assert len(set(decision_layer.categories)) == 2
+        assert set(decision_layer.categories) == {"Decision 1", "Decision 2"}
 
     def test_add_multiple_decisions(self, openai_encoder, decisions):
         decision_layer = DecisionLayer(encoder=openai_encoder)
-        for decision in decisions:
-            decision_layer.add(decision)
+        decision_layer.add_decisions(decisions=decisions)
+        assert (
+            decision_layer.index is not None and decision_layer.categories is not None
+        )
         assert len(decision_layer.index) == 5
         assert len(set(decision_layer.categories)) == 2
 
@@ -121,6 +139,9 @@ class TestHybridDecisionLayer:
             encoder=openai_encoder, decisions=decisions
         )
         assert decision_layer.score_threshold == 0.82
+        assert (
+            decision_layer.index is not None and decision_layer.categories is not None
+        )
         assert len(decision_layer.index) == 5
         assert len(set(decision_layer.categories)) == 2
 
@@ -135,6 +156,9 @@ class TestHybridDecisionLayer:
         decision_layer = HybridDecisionLayer(encoder=openai_encoder)
         decision = Decision(name="Decision 3", utterances=["Yes", "No"])
         decision_layer.add(decision)
+        assert (
+            decision_layer.index is not None and decision_layer.categories is not None
+        )
         assert len(decision_layer.index) == 2
         assert len(set(decision_layer.categories)) == 1
 
@@ -142,6 +166,9 @@ class TestHybridDecisionLayer:
         decision_layer = HybridDecisionLayer(encoder=openai_encoder)
         for decision in decisions:
             decision_layer.add(decision)
+        assert (
+            decision_layer.index is not None and decision_layer.categories is not None
+        )
         assert len(decision_layer.index) == 5
         assert len(set(decision_layer.categories)) == 2
 

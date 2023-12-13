@@ -4,9 +4,9 @@ from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
+    BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
-    BM25Encoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Decision
@@ -29,8 +29,7 @@ class DecisionLayer:
         # if decisions list has been passed, we initialize index now
         if decisions:
             # initialize index now
-            for decision in tqdm(decisions):
-                self._add_decision(decision=decision)
+            self.add_decisions(decisions=decisions)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -41,10 +40,10 @@ class DecisionLayer:
         else:
             return None
 
-    def add(self, decision: Decision):
-        self._add_decision(decision=decision)
+    # def add(self, decision: Decision):
+    #     self.add_decision(decision=decision)
 
-    def _add_decision(self, decision: Decision):
+    def add_decision(self, decision: Decision):
         # create embeddings
         embeds = self.encoder(decision.utterances)
 
@@ -60,6 +59,32 @@ class DecisionLayer:
         else:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
+
+    def add_decisions(self, decisions: list[Decision]):
+        # create embeddings for all decisions
+        all_utterances = [
+            utterance for decision in decisions for utterance in decision.utterances
+        ]
+        embedded_utterance = self.encoder(all_utterances)
+
+        # create decision array
+        decision_names = [
+            decision.name for decision in decisions for _ in decision.utterances
+        ]
+        decision_array = np.array(decision_names)
+        self.categories = (
+            np.concatenate([self.categories, decision_array])
+            if self.categories is not None
+            else decision_array
+        )
+
+        # create utterance array (the index)
+        embed_utterance_arr = np.array(embedded_utterance)
+        self.index = (
+            np.concatenate([self.index, embed_utterance_arr])
+            if self.index is not None
+            else embed_utterance_arr
+        )
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to
