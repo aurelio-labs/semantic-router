@@ -9,7 +9,9 @@ class CohereEncoder(BaseEncoder):
     client: cohere.Client | None
 
     def __init__(
-        self, name: str = "embed-english-v3.0", cohere_api_key: str | None = None
+        self,
+        name: str = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0"),
+        cohere_api_key: str | None = None,
     ):
         super().__init__(name=name)
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")

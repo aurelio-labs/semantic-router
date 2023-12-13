@@ -15,3 +15,5 @@ mac.env
 
 # Code coverage history
 .coverage
+.coverage.*
+.pytest_cache

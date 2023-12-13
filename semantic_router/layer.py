@@ -29,7 +29,7 @@ class DecisionLayer:
         # if decisions list has been passed, we initialize index now
         if decisions:
             # initialize index now
-            self._add_decisions(decisions=decisions)
+            self.add_decisions(decisions=decisions)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -40,10 +40,10 @@ class DecisionLayer:
         else:
             return None
 
-    def add(self, decision: Decision):
-        self._add_decision(decision=decision)
+    # def add(self, decision: Decision):
+    #     self.add_decision(decision=decision)
 
-    def _add_decision(self, decision: Decision):
+    def add_decision(self, decision: Decision):
         # create embeddings
         embeds = self.encoder(decision.utterances)
 
@@ -60,7 +60,7 @@ class DecisionLayer:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
 
-    def _add_decisions(self, decisions: list[Decision]):
+    def add_decisions(self, decisions: list[Decision]):
         # create embeddings for all decisions
         all_utterances = [
             utterance for decision in decisions for utterance in decision.utterances
@@ -196,9 +196,6 @@ class HybridDecisionLayer:
             self.sparse_index = sparse_embeds
         else:
             self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
-
-    def _add_decisions(self, decisions: list[Decision]):
-        raise NotImplementedError
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to
