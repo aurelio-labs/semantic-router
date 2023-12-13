@@ -33,3 +33,22 @@ class TestBM25Encoder:
         assert all(
             isinstance(sublist, list) for sublist in result
         ), "Each item in result should be a list"
+
+    def test_init_with_non_dict_doc_freq(self, mocker):
+        mock_encoder = mocker.MagicMock()
+        mock_encoder.get_params.return_value = {"doc_freq": "not a dict"}
+        mocker.patch(
+            "pinecone_text.sparse.BM25Encoder.default", return_value=mock_encoder
+        )
+        with pytest.raises(TypeError):
+            BM25Encoder()
+
+    def test_call_method_with_uninitialized_model_or_mapping(self, bm25_encoder):
+        bm25_encoder.model = None
+        with pytest.raises(ValueError):
+            bm25_encoder(["test"])
+
+    def test_fit_with_uninitialized_model(self, bm25_encoder):
+        bm25_encoder.model = None
+        with pytest.raises(ValueError):
+            bm25_encoder.fit(["test"])

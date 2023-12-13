@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.6"
+version = "0.0.7"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -29,6 +29,7 @@ pytest = "^7.4.3"
 pytest-mock = "^3.12.0"
 pytest-cov = "^4.1.0"
 pytest-xdist = "^3.5.0"
+mypy = "^1.7.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -36,3 +37,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff.per-file-ignores]
 "*.ipynb" = ["E402"]
+
+[tool.mypy]
+ignore_missing_imports = true

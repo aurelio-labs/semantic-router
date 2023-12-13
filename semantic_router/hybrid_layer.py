@@ -1,22 +1,29 @@
 import numpy as np
+from numpy.linalg import norm
+from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
+    BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
 )
-from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Route
 from semantic_router.utils.logger import logger
 
 
-class RouteLayer:
+class HybridRouteLayer:
     index = None
+    sparse_index = None
     categories = None
     score_threshold = 0.82
 
-    def __init__(self, encoder: BaseEncoder, routes: list[Route] = []):
+    def __init__(
+        self, encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
+    ):
         self.encoder = encoder
+        self.sparse_encoder = BM25Encoder()
+        self.alpha = alpha
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
             self.score_threshold = 0.82
@@ -27,7 +34,8 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
-            self.add_routes(routes=routes)
+            for route in tqdm(routes):
+                self._add_route(route=route)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -38,65 +46,76 @@ class RouteLayer:
         else:
             return None
 
-    def add_route(self, route: Route):
+    def add(self, route: Route):
+        self._add_route(route=route)
+
+    def _add_route(self, route: Route):
         # create embeddings
-        embeds = self.encoder(route.utterances)
+        dense_embeds = np.array(self.encoder(route.utterances))  # * self.alpha
+        sparse_embeds = np.array(
+            self.sparse_encoder(route.utterances)
+        )  # * (1 - self.alpha)
 
         # create route array
         if self.categories is None:
-            self.categories = np.array([route.name] * len(embeds))
+            self.categories = np.array([route.name] * len(route.utterances))
+            self.utterances = np.array(route.utterances)
         else:
-            str_arr = np.array([route.name] * len(embeds))
+            str_arr = np.array([route.name] * len(route.utterances))
             self.categories = np.concatenate([self.categories, str_arr])
-        # create utterance array (the index)
+            self.utterances = np.concatenate(
+                [self.utterances, np.array(route.utterances)]
+            )
+        # create utterance array (the dense index)
         if self.index is None:
-            self.index = np.array(embeds)
+            self.index = dense_embeds
         else:
-            embed_arr = np.array(embeds)
-            self.index = np.concatenate([self.index, embed_arr])
-
-    def add_routes(self, routes: list[Route]):
-        # create embeddings for all routes
-        all_utterances = [
-            utterance for route in routes for utterance in route.utterances
-        ]
-        embedded_utterance = self.encoder(all_utterances)
-
-        # create route array
-        route_names = [route.name for route in routes for _ in route.utterances]
-        route_array = np.array(route_names)
-        self.categories = (
-            np.concatenate([self.categories, route_array])
-            if self.categories is not None
-            else route_array
-        )
-
-        # create utterance array (the index)
-        embed_utterance_arr = np.array(embedded_utterance)
-        self.index = (
-            np.concatenate([self.index, embed_utterance_arr])
-            if self.index is not None
-            else embed_utterance_arr
-        )
+            self.index = np.concatenate([self.index, dense_embeds])
+        # create sparse utterance array
+        if self.sparse_index is None:
+            self.sparse_index = sparse_embeds
+        else:
+            self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to
         retrieve the top_k most similar records.
         """
-        # create query vector
-        xq = np.array(self.encoder([text]))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
+        # create dense query vector
+        xq_d = np.array(self.encoder([text]))
+        xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
+        # create sparse query vector
+        xq_s = np.array(self.sparse_encoder([text]))
+        xq_s = np.squeeze(xq_s)
+        # convex scaling
+        xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
 
-        if self.index is not None:
-            # calculate similarity matrix
-            sim = similarity_matrix(xq, self.index)
-            scores, idx = top_scores(sim, top_k)
+        if self.index is not None and self.sparse_index is not None:
+            # calculate dense vec similarity
+            index_norm = norm(self.index, axis=1)
+            xq_d_norm = norm(xq_d.T)
+            sim_d = np.dot(self.index, xq_d.T) / (index_norm * xq_d_norm)
+            # calculate sparse vec similarity
+            sparse_norm = norm(self.sparse_index, axis=1)
+            xq_s_norm = norm(xq_s.T)
+            sim_s = np.dot(self.sparse_index, xq_s.T) / (sparse_norm * xq_s_norm)
+            total_sim = sim_d + sim_s
+            # get indices of top_k records
+            top_k = min(top_k, total_sim.shape[0])
+            idx = np.argpartition(total_sim, -top_k)[-top_k:]
+            scores = total_sim[idx]
             # get the utterance categories (route names)
             routes = self.categories[idx] if self.categories is not None else []
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
-            logger.warning("No index found for route layer.")
+            logger.warning("No index found. Please add routes to the layer.")
             return []
+
+    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray):
+        # scale sparse and dense vecs
+        dense = np.array(dense) * self.alpha
+        sparse = np.array(sparse) * (1 - self.alpha)
+        return dense, sparse
 
     def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
         scores_by_class: dict[str, list[float]] = {}

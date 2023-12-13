@@ -1,7 +1,7 @@
 import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
-from semantic_router.layer import RouteLayer
+from semantic_router.hybrid_layer import HybridRouteLayer
 from semantic_router.schema import Route
 
 
@@ -42,58 +42,48 @@ def routes():
     ]
 
 
-class TestRouteLayer:
+class TestHybridRouteLayer:
     def test_initialization(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
+        assert route_layer.index is not None and route_layer.categories is not None
         assert route_layer.score_threshold == 0.82
-        assert len(route_layer.index) if route_layer.index is not None else 0 == 5
-        assert (
-            len(set(route_layer.categories))
-            if route_layer.categories is not None
-            else 0 == 2
-        )
+        assert len(route_layer.index) == 5
+        assert len(set(route_layer.categories)) == 2
 
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
-        route_layer_cohere = RouteLayer(encoder=cohere_encoder)
+        route_layer_cohere = HybridRouteLayer(encoder=cohere_encoder)
         assert route_layer_cohere.score_threshold == 0.3
 
-        route_layer_openai = RouteLayer(encoder=openai_encoder)
+        route_layer_openai = HybridRouteLayer(encoder=openai_encoder)
         assert route_layer_openai.score_threshold == 0.82
 
     def test_add_route(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
-        route1 = Route(name="Route 1", utterances=["Yes", "No"])
-        route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
-
-        route_layer.add_route(route=route1)
+        route_layer = HybridRouteLayer(encoder=openai_encoder)
+        route = Route(name="Route 3", utterances=["Yes", "No"])
+        route_layer.add(route)
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 2
         assert len(set(route_layer.categories)) == 1
-        assert set(route_layer.categories) == {"Route 1"}
-
-        route_layer.add_route(route=route2)
-        assert len(route_layer.index) == 4
-        assert len(set(route_layer.categories)) == 2
-        assert set(route_layer.categories) == {"Route 1", "Route 2"}
 
     def test_add_multiple_routes(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder)
-        route_layer.add_routes(routes=routes)
+        route_layer = HybridRouteLayer(encoder=openai_encoder)
+        for route in routes:
+            route_layer.add(route)
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
 
     def test_query_and_classification(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         query_result = route_layer("Hello")
         assert query_result in ["Route 1", "Route 2"]
 
     def test_query_with_no_index(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
+        route_layer = HybridRouteLayer(encoder=openai_encoder)
         assert route_layer("Anything") is None
 
     def test_semantic_classify(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -104,7 +94,7 @@ class TestRouteLayer:
         assert score == [0.9]
 
     def test_semantic_classify_multiple_routes(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -116,12 +106,12 @@ class TestRouteLayer:
         assert score == [0.9, 0.8]
 
     def test_pass_threshold(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
+        route_layer = HybridRouteLayer(encoder=openai_encoder)
         assert not route_layer._pass_threshold([], 0.5)
         assert route_layer._pass_threshold([0.6, 0.7], 0.5)
 
     def test_failover_score_threshold(self, base_encoder):
-        route_layer = RouteLayer(encoder=base_encoder)
+        route_layer = HybridRouteLayer(encoder=base_encoder)
         assert route_layer.score_threshold == 0.82
 
 

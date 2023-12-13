@@ -1,3 +1,4 @@
-from .layer import DecisionLayer, HybridDecisionLayer
+from .hybrid_layer import HybridRouteLayer
+from .layer import RouteLayer
 
-__all__ = ["DecisionLayer", "HybridDecisionLayer"]
+__all__ = ["RouteLayer", "HybridRouteLayer"]

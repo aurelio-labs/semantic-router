@@ -10,7 +10,7 @@ from semantic_router.encoders import (
 )
 
 
-class Decision(BaseModel):
+class Route(BaseModel):
     name: str
     utterances: list[str]
     description: str | None = None
@@ -38,19 +38,19 @@ class Encoder:
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name)
 
-    def __call__(self, texts: list[str]) -> list[float]:
+    def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)
 
 
 @dataclass
 class SemanticSpace:
     id: str
-    decisions: list[Decision]
+    routes: list[Route]
     encoder: str = ""
 
-    def __init__(self, decisions: list[Decision] = []):
+    def __init__(self, routes: list[Route] = []):
         self.id = ""
-        self.decisions = decisions
+        self.routes = routes
 
-    def add(self, decision: Decision):
-        self.decisions.append(decision)
+    def add(self, route: Route):
+        self.routes.append(route)
