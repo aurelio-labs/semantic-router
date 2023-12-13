@@ -1,5 +1,4 @@
 import pytest
-import nltk
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import (
@@ -7,10 +6,7 @@ from semantic_router.layer import (
     HybridDecisionLayer,
 )
 
-# Replace with the actual module name
 from semantic_router.schema import Decision
-
-nltk.download("punkt")
 
 
 def mock_encoder_call(utterances):

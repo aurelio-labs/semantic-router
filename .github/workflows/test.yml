@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
+      - name: Download nltk data
+        run: |
+          python -m nltk.downloader punkt
       - name: Pytest
         run: |
           make test
