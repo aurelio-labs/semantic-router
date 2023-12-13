@@ -38,7 +38,7 @@ class Encoder:
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name)
 
-    def __call__(self, texts: list[str]) -> list[float]:
+    def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)
 
 

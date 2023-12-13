@@ -7,6 +7,7 @@ from semantic_router.encoders import (
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.schema import Route
+from semantic_router.utils.logger import logger
 
 
 class RouteLayer:
@@ -94,10 +95,11 @@ class RouteLayer:
             routes = self.categories[idx] if self.categories is not None else []
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
+            logger.warning("No index found for route layer.")
             return []
 
     def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
-        scores_by_class = {}
+        scores_by_class: dict[str, list[float]] = {}
         for result in query_results:
             score = result["score"]
             route = result["route"]
@@ -111,7 +113,11 @@ class RouteLayer:
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
-        return str(top_class), scores_by_class.get(top_class, [])
+        if top_class is not None:
+            return str(top_class), scores_by_class.get(top_class, [])
+        else:
+            logger.warning("No classification found for semantic classifier.")
+            return "", []
 
     def _pass_threshold(self, scores: list[float], threshold: float) -> bool:
         if scores:

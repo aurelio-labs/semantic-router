@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
 from tqdm.auto import tqdm
-from semantic_router.utils.logger import logger
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -10,6 +9,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 from semantic_router.schema import Route
+from semantic_router.utils.logger import logger
 
 
 class HybridRouteLayer:
@@ -118,7 +118,7 @@ class HybridRouteLayer:
         return dense, sparse
 
     def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
-        scores_by_class = {}
+        scores_by_class: dict[str, list[float]] = {}
         for result in query_results:
             score = result["score"]
             route = result["route"]
@@ -132,7 +132,11 @@ class HybridRouteLayer:
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
-        return str(top_class), scores_by_class.get(top_class, [])
+        if top_class is not None:
+            return str(top_class), scores_by_class.get(top_class, [])
+        else:
+            logger.warning("No classification found for semantic classifier.")
+            return "", []
 
     def _pass_threshold(self, scores: list[float], threshold: float) -> bool:
         if scores:
