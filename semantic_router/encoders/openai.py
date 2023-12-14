@@ -2,39 +2,52 @@ import os
 from time import sleep
 
 import openai
-from openai.error import OpenAIError, RateLimitError, ServiceUnavailableError
+from openai import OpenAIError
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
 
 
 class OpenAIEncoder(BaseEncoder):
-    def __init__(self, name: str, openai_api_key: str | None = None):
+    client: openai.Client | None
+
+    def __init__(
+        self,
+        name: str = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002"),
+        openai_api_key: str | None = None,
+    ):
         super().__init__(name=name)
-        openai.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if openai.api_key is None:
+        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
+        try:
+            self.client = openai.Client(api_key=api_key)
+        except Exception as e:
+            raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
-        """Encode a list of texts using the OpenAI API. Returns a list of
-        vector embeddings.
-        """
-        res = None
+        if self.client is None:
+            raise ValueError("OpenAI client is not initialized.")
+        embeds = None
         error_message = ""
 
-        # exponential backoff
-        for j in range(5):
+        # Exponential backoff
+        for j in range(3):
             try:
                 logger.info(f"Encoding {len(docs)} documents...")
-                res = openai.Embedding.create(input=docs, engine=self.name)
-                if isinstance(res, dict) and "data" in res:
+                embeds = self.client.embeddings.create(input=docs, model=self.name)
+                if isinstance(embeds, dict) and "data" in embeds:
                     break
-            except (RateLimitError, ServiceUnavailableError, OpenAIError) as e:
-                logger.warning(f"Retrying in {2**j} seconds...")
+            except OpenAIError as e:
                 sleep(2**j)
                 error_message = str(e)
-        if not res or not isinstance(res, dict) or "data" not in res:
-            raise ValueError(f"OpenAI API call failed. Error: {error_message}")
+                logger.warning(f"Retrying in {2**j} seconds...")
+            except Exception as e:
+                logger.error(f"OpenAI API call failed. Error: {error_message}")
+                raise ValueError(f"OpenAI API call failed. Error: {e}")
 
-        embeds = [r["embedding"] for r in res["data"]]
-        return embeds
+        if not embeds or not isinstance(embeds, dict) or "data" not in embeds:
+            raise ValueError(f"No embeddings returned. Error: {error_message}")
+
+        embeddings = [r["embedding"] for r in embeds["data"]]
+        return embeddings
