@@ -17,11 +17,11 @@ class OpenAIEncoder(BaseEncoder):
         openai_api_key: str | None = None,
     ):
         super().__init__(name=name)
-        openai.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if openai.api_key is None:
+        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
-            self.client = openai.Client()
+            self.client = openai.Client(api_key=api_key)
         except Exception as e:
             raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
 
