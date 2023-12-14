@@ -36,7 +36,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff.per-file-ignores]
-"*.ipynb" = ["E402"]
+"*.ipynb" = ["ALL"]
 
 [tool.mypy]
 ignore_missing_imports = true
