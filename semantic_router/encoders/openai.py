@@ -4,6 +4,7 @@ from time import sleep
 import openai
 from openai import OpenAIError
 from openai.types import CreateEmbeddingResponse
+
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
 
