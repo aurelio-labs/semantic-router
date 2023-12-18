@@ -71,6 +71,7 @@ class TestOpenAIEncoder:
         )
         with pytest.raises(ValueError) as e:
             openai_encoder(["test document"])
+
         assert "OpenAI API call failed. Error: Non-OpenAIError" in str(e.value)
 
     def test_openai_encoder_call_successful_retry(self, openai_encoder, mocker):
