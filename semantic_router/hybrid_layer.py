@@ -7,6 +7,7 @@ from semantic_router.encoders import (
     BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
+    TfidfEncoder
 )
 from semantic_router.schema import Route
 from semantic_router.utils.logger import logger
@@ -33,7 +34,7 @@ class HybridRouteLayer:
         else:
             self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
-        if self.sparse_encoder.name == 'tfidf':
+        if isinstance(sparse_encoder, TfidfEncoder):
             self.sparse_encoder.fit(routes)
         if routes:
             # initialize index now
@@ -50,11 +51,11 @@ class HybridRouteLayer:
             return None
 
     def add(self, route: Route):
-        if self.sparse_encoder.name == 'tfidf':
+        if isinstance(self.sparse_encoder, TfidfEncoder):
             self.sparse_encoder.fit(self.routes + [route])
             self.sparse_index = None
             for r in self.routes:
-                self.calculate_sparse_embeds(r)
+                self.compute_and_store_sparse_embeddings(r)
         self.routes.append(route)
         self._add_route(route=route)
 
