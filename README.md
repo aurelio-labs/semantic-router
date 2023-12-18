@@ -21,7 +21,7 @@ To get started with _semantic-router_ we install it like so:
 pip install -qU semantic-router
 ```
 
-We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple decisions for now — one for talk on _politics_ and another for _chitchat_:
+We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple routes for now — one for talk on _politics_ and another for _chitchat_:
 
 ```python
 from semantic_router.schema import Route
@@ -51,11 +51,11 @@ chitchat = Route(
     ],
 )
 
-# we place both of our decisions together into single list
-decisions = [politics, chitchat]
+# we place both of our routes together into single list
+routes = [politics, chitchat]
 ```
 
-We have our decisions ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
+We have our routes ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
 
 ```python
 import os
@@ -70,15 +70,15 @@ os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
 encoder = OpenAIEncoder()
 ```
 
-With our `decisions` and `encoder` defined we now create a `DecisionLayer`. The decision layer handles our semantic decision making.
+With our `routes` and `encoder` defined we now create a `DecisionLayer`. The decision layer handles our semantic decision making.
 
 ```python
 from semantic_router.layer import RouteLayer
 
-dl = RouteLayer(encoder=encoder, decisions=decisions)
+dl = RouteLayer(encoder=encoder, routes=routes)
 ```
 
-We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our decisions:
+We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our routes:
 
 ```python
 dl("don't you love politics?")
@@ -98,7 +98,7 @@ dl("how's the weather today?")
 [Out]: 'chitchat'
 ```
 
-We get both decisions correct! Now lets try sending an unrelated query:
+We get both routes correct! Now lets try sending an unrelated query:
 
 ```python
 dl("I'm interested in learning about llama 2")
