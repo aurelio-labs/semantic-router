@@ -19,6 +19,7 @@ cohere = "^4.32"
 numpy = "^1.25.2"
 pinecone-text = "^0.7.0"
 colorlog = "^6.8.0"
+pyyaml = "^6.0.1"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -78,7 +78,7 @@ class TestRouteLayer:
 
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
-        route_layer.add_routes(routes=routes)
+        route_layer._add_routes(routes=routes)
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2

@@ -1,5 +1,6 @@
 from enum import Enum
 
+import yaml
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
@@ -14,6 +15,16 @@ class Route(BaseModel):
     name: str
     utterances: list[str]
     description: str | None = None
+
+    def to_dict(self):
+        return self.dict()
+
+    def to_yaml(self):
+        return yaml.dump(self.dict())
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
 
 
 class EncoderType(Enum):

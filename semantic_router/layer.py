@@ -1,4 +1,7 @@
+import json
+
 import numpy as np
+import yaml
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -15,7 +18,10 @@ class RouteLayer:
     categories = None
     score_threshold = 0.82
 
-    def __init__(self, encoder: BaseEncoder, routes: list[Route] = []):
+    def __init__(
+        self, encoder: BaseEncoder = CohereEncoder(), routes: list[Route] = []
+    ):
+        self.routes: list[Route] = routes
         self.encoder = encoder
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
@@ -27,7 +33,7 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
-            self.add_routes(routes=routes)
+            self._add_routes(routes=routes)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -37,6 +43,20 @@ class RouteLayer:
             return top_class
         else:
             return None
+
+    @classmethod
+    def from_json(cls, file_path: str):
+        with open(file_path, "r") as f:
+            routes_data = json.load(f)
+        routes = [Route.from_dict(route_data) for route_data in routes_data]
+        return cls(routes=routes)
+
+    @classmethod
+    def from_yaml(cls, file_path: str):
+        with open(file_path, "r") as f:
+            routes_data = yaml.load(f, Loader=yaml.FullLoader)
+        routes = [Route.from_dict(route_data) for route_data in routes_data]
+        return cls(routes=routes)
 
     def add_route(self, route: Route):
         # create embeddings
@@ -55,7 +75,7 @@ class RouteLayer:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
 
-    def add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: list[Route]):
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
@@ -124,3 +144,8 @@ class RouteLayer:
             return max(scores) > threshold
         else:
             return False
+
+    def to_json(self, file_path: str):
+        routes = [route.to_dict() for route in self.routes]
+        with open(file_path, "w") as f:
+            json.dump(routes, f, indent=4)
