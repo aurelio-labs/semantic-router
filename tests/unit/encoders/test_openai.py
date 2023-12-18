@@ -1,5 +1,6 @@
 import pytest
 from openai import OpenAIError
+from openai.types import CreateEmbeddingResponse, Embedding
 
 from semantic_router.encoders import OpenAIEncoder
 
@@ -41,10 +42,20 @@ class TestOpenAIEncoder:
 
     def test_openai_encoder_call_success(self, openai_encoder, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
+        mocker.patch("time.sleep", return_value=None)  # To speed up the test
+
+        mock_embedding = Embedding(index=0, object="embedding", embedding=[0.1, 0.2])
+        # Mock the CreateEmbeddingResponse object
+        mock_response = CreateEmbeddingResponse(
+            model="text-embedding-ada-002",
+            object="list",
+            usage={"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 20},
+            data=[mock_embedding],
+        )
+
+        responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
-            openai_encoder.client.embeddings,
-            "create",
-            return_value={"data": [{"embedding": [0.1, 0.2]}]},
+            openai_encoder.client.embeddings, "create", side_effect=responses
         )
         embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -77,7 +88,17 @@ class TestOpenAIEncoder:
     def test_openai_encoder_call_successful_retry(self, openai_encoder, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
-        responses = [OpenAIError("Test error"), {"data": [{"embedding": [0.1, 0.2]}]}]
+
+        mock_embedding = Embedding(index=0, object="embedding", embedding=[0.1, 0.2])
+        # Mock the CreateEmbeddingResponse object
+        mock_response = CreateEmbeddingResponse(
+            model="text-embedding-ada-002",
+            object="list",
+            usage={"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 20},
+            data=[mock_embedding],
+        )
+
+        responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
             openai_encoder.client.embeddings, "create", side_effect=responses
         )

@@ -3,6 +3,7 @@ from time import sleep
 
 import openai
 from openai import OpenAIError
+from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
@@ -36,7 +37,7 @@ class OpenAIEncoder(BaseEncoder):
             try:
                 logger.info(f"Encoding {len(docs)} documents...")
                 embeds = self.client.embeddings.create(input=docs, model=self.name)
-                if "data" in embeds:
+                if embeds.data:
                     break
             except OpenAIError as e:
                 sleep(2**j)
@@ -46,8 +47,12 @@ class OpenAIEncoder(BaseEncoder):
                 logger.error(f"OpenAI API call failed. Error: {error_message}")
                 raise ValueError(f"OpenAI API call failed. Error: {e}")
 
-        if not embeds or not isinstance(embeds, dict) or "data" not in embeds:
+        if (
+            not embeds
+            or not isinstance(embeds, CreateEmbeddingResponse)
+            or not embeds.data
+        ):
             raise ValueError(f"No embeddings returned. Error: {error_message}")
 
-        embeddings = [r["embedding"] for r in embeds["data"]]
+        embeddings = [r.embedding for r in embeds.data]
         return embeddings
