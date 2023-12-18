@@ -54,5 +54,5 @@ class OpenAIEncoder(BaseEncoder):
         ):
             raise ValueError(f"No embeddings returned. Error: {error_message}")
 
-        embeddings = [r.embedding for r in embeds.data]
+        embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
