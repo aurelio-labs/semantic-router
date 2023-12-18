@@ -36,7 +36,7 @@ class OpenAIEncoder(BaseEncoder):
             try:
                 logger.info(f"Encoding {len(docs)} documents...")
                 embeds = self.client.embeddings.create(input=docs, model=self.name)
-                if "data" in embeds:
+                if embeds.data is not None:
                     break
             except OpenAIError as e:
                 sleep(2**j)
