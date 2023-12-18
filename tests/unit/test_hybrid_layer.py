@@ -60,7 +60,7 @@ class TestHybridRouteLayer:
     def test_add_route(self, openai_encoder):
         route_layer = HybridRouteLayer(encoder=openai_encoder)
         route = Route(name="Route 3", utterances=["Yes", "No"])
-        route_layer.add(route)
+        route_layer._add_routes([route])
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 2
         assert len(set(route_layer.categories)) == 1
