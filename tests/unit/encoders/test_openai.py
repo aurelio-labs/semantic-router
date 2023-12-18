@@ -1,6 +1,7 @@
 import pytest
 from openai import OpenAIError
-from openai.types.embedding import Embedding
+from openai.types import CreateEmbeddingResponse, Embedding
+from openai.types.create_embedding_response import Usage
 
 from semantic_router.encoders import OpenAIEncoder
 
@@ -47,10 +48,20 @@ class TestOpenAIEncoder:
         ]
 
         mocker.patch("os.getenv", return_value="fake-api-key")
+        mocker.patch("time.sleep", return_value=None)  # To speed up the test
+
+        mock_embedding = Embedding(index=0, object="embedding", embedding=[0.1, 0.2])
+        # Mock the CreateEmbeddingResponse object
+        mock_response = CreateEmbeddingResponse(
+            model="text-embedding-ada-002",
+            object="list",
+            usage=Usage(prompt_tokens=0, total_tokens=20),
+            data=[mock_embedding],
+        )
+
+        responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
-            openai_encoder.client.embeddings,
-            "create",
-            return_value=mock_embeddings,
+            openai_encoder.client.embeddings, "create", side_effect=responses
         )
         embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -88,7 +99,17 @@ class TestOpenAIEncoder:
 
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
-        responses = [OpenAIError("Test error"), mock_embeddings]
+
+        mock_embedding = Embedding(index=0, object="embedding", embedding=[0.1, 0.2])
+        # Mock the CreateEmbeddingResponse object
+        mock_response = CreateEmbeddingResponse(
+            model="text-embedding-ada-002",
+            object="list",
+            usage=Usage(prompt_tokens=0, total_tokens=20),
+            data=[mock_embedding],
+        )
+
+        responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
             openai_encoder.client.embeddings, "create", side_effect=responses
         )
