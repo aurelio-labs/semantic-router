@@ -19,19 +19,22 @@ class HybridRouteLayer:
     score_threshold = 0.82
 
     def __init__(
-        self, encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
+        self, dense_encoder: BaseEncoder, sparse_encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
     ):
-        self.encoder = encoder
-        self.sparse_encoder = BM25Encoder()
+        self.dense_encoder = dense_encoder
+        self.sparse_encoder = sparse_encoder
         self.alpha = alpha
+        self.routes = routes
         # decide on default threshold based on encoder
-        if isinstance(encoder, OpenAIEncoder):
+        if isinstance(dense_encoder, OpenAIEncoder):
             self.score_threshold = 0.82
-        elif isinstance(encoder, CohereEncoder):
+        elif isinstance(dense_encoder, CohereEncoder):
             self.score_threshold = 0.3
         else:
             self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
+        if self.sparse_encoder.name == 'tfidf':
+            self.sparse_encoder.fit(routes)
         if routes:
             # initialize index now
             for route in tqdm(routes):
@@ -47,15 +50,18 @@ class HybridRouteLayer:
             return None
 
     def add(self, route: Route):
+        if self.sparse_encoder.name == 'tfidf':
+            self.sparse_encoder.fit(self.routes + [route])
+            self.sparse_index = None
+            for r in self.routes:
+                self.calculate_sparse_embeds(r)
+        self.routes.append(route)
         self._add_route(route=route)
 
     def _add_route(self, route: Route):
         # create embeddings
-        dense_embeds = np.array(self.encoder(route.utterances))  # * self.alpha
-        sparse_embeds = np.array(
-            self.sparse_encoder(route.utterances)
-        )  # * (1 - self.alpha)
-
+        dense_embeds = np.array(self.dense_encoder(route.utterances))  # * self.alpha
+        self.compute_and_store_sparse_embeddings(route)
         # create route array
         if self.categories is None:
             self.categories = np.array([route.name] * len(route.utterances))
@@ -71,6 +77,11 @@ class HybridRouteLayer:
             self.index = dense_embeds
         else:
             self.index = np.concatenate([self.index, dense_embeds])
+
+    def compute_and_store_sparse_embeddings(self, route: Route):
+        sparse_embeds = np.array(
+            self.sparse_encoder(route.utterances)
+        )  # * (1 - self.alpha)
         # create sparse utterance array
         if self.sparse_index is None:
             self.sparse_index = sparse_embeds
@@ -82,7 +93,7 @@ class HybridRouteLayer:
         retrieve the top_k most similar records.
         """
         # create dense query vector
-        xq_d = np.array(self.encoder([text]))
+        xq_d = np.array(self.dense_encoder([text]))
         xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
         # create sparse query vector
         xq_s = np.array(self.sparse_encoder([text]))
