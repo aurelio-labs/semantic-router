@@ -46,8 +46,9 @@ class OpenAIEncoder(BaseEncoder):
                 logger.error(f"OpenAI API call failed. Error: {error_message}")
                 raise ValueError(f"OpenAI API call failed. Error: {e}")
 
-        if not embeds or not isinstance(embeds, dict) or "data" not in embeds:
+        if embeds is None or embeds.data is None:
+            logger.error(f"No embeddings returned. Error: {error_message}")
             raise ValueError(f"No embeddings returned. Error: {error_message}")
 
-        embeddings = [r["embedding"] for r in embeds["data"]]
+        embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
