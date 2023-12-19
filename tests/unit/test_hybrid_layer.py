@@ -1,6 +1,12 @@
 import pytest
 
-from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.encoders import (
+    BaseEncoder,
+    CohereEncoder,
+    OpenAIEncoder,
+    TfidfEncoder,
+    BM25Encoder,
+)
 from semantic_router.hybrid_layer import HybridRouteLayer
 from semantic_router.schema import Route
 
@@ -32,6 +38,12 @@ def cohere_encoder(mocker):
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
     return OpenAIEncoder(name="test-openai-encoder", openai_api_key="test_api_key")
+
+
+@pytest.fixture
+def bm25_encoder(mocker):
+    mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
+    return BM25Encoder(name="test-bm25-encoder")
 
 
 @pytest.fixture
@@ -73,8 +85,10 @@ class TestHybridRouteLayer:
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
 
-    def test_query_and_classification(self, openai_encoder, routes):
-        route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
+    def test_query_and_classification(self, openai_encoder, bm25_encoder, routes):
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes
+        )
         query_result = route_layer("Hello")
         assert query_result in ["Route 1", "Route 2"]
 

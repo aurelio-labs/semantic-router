@@ -7,7 +7,7 @@ from semantic_router.encoders import (
     BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
-    TfidfEncoder
+    TfidfEncoder,
 )
 from semantic_router.schema import Route
 from semantic_router.utils.logger import logger
@@ -20,7 +20,11 @@ class HybridRouteLayer:
     score_threshold = 0.82
 
     def __init__(
-        self, dense_encoder: BaseEncoder, sparse_encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
+        self,
+        dense_encoder: BaseEncoder,
+        sparse_encoder: BaseEncoder,
+        routes: list[Route] = [],
+        alpha: float = 0.3,
     ):
         self.dense_encoder = dense_encoder
         self.sparse_encoder = sparse_encoder

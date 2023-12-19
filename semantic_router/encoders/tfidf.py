@@ -3,6 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import Route
 
+
 class TfidfEncoder(BaseEncoder):
     vectorizer: TfidfVectorizer | None = None
 
@@ -28,6 +29,6 @@ class TfidfEncoder(BaseEncoder):
     def _get_all_utterances(self, routes: list[Route]) -> list[str]:
         utterances = []
         for route in routes:
-                for utterance in route.utterances:
-                    utterances.append(utterance)
+            for utterance in route.utterances:
+                utterances.append(utterance)
         return utterances
