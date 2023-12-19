@@ -86,18 +86,18 @@ async def extract_function_inputs(query: str, function_schema: dict[str, Any]) -
 
 def is_valid_inputs(inputs: dict[str, Any], function_schema: dict[str, Any]) -> bool:
     """Validate the extracted inputs against the function schema"""
-
-    print(f"Inputs: {inputs}")
-
-    print(f"Schema: {function_schema}")
-
     try:
-        for name, param in function_schema.items():
+        # Extract parameter names and types from the signature string
+        signature = function_schema["signature"]
+        param_info = [param.strip() for param in signature[1:-1].split(",")]
+        param_names = [info.split(":")[0].strip() for info in param_info]
+        param_types = [
+            info.split(":")[1].strip().split("=")[0].strip() for info in param_info
+        ]
+
+        for name, type_str in zip(param_names, param_types):
             if name not in inputs:
                 logger.error(f"Input {name} missing from query")
-                return False
-            if not isinstance(inputs[name], param["type"]):
-                logger.error(f"Input {name} is not of type {param['type']}")
                 return False
         return True
     except Exception as e:
@@ -117,7 +117,7 @@ async def route_and_execute(query: str, functions: list[Callable], route_layer):
     function_name = route_layer(query)
     if not function_name:
         logger.warning("No function found, calling LLM...")
-        return llm(query)
+        return await llm(query)
 
     for function in functions:
         if function.__name__ == function_name:

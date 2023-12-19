@@ -98,7 +98,7 @@ class Route(BaseModel):
         Only include the "name" and "utterances" keys in your answer.
         The "name" should match the function name and the "utterances"
         should comprise a list of 5 example phrases that could be used to invoke
-        the function.
+        the function. Use real values instead of placeholders.
 
         Input schema:
         {function_schema}
