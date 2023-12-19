@@ -4,7 +4,6 @@ from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
-    BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
     TfidfEncoder,

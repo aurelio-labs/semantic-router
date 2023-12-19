@@ -1,4 +1,3 @@
-from typing import Any
 from sklearn.feature_extraction.text import TfidfVectorizer
 from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import Route
