@@ -10,6 +10,7 @@ authors = [
     "Bogdan Buduroiu <bogdan@aurelio.ai>"
 ]
 readme = "README.md"
+packages = [{include = "semantic_router"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"

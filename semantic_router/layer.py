@@ -3,7 +3,6 @@ import json
 import numpy as np
 import yaml
 
-from semantic_router import Route
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
@@ -11,6 +10,8 @@ from semantic_router.encoders import (
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
+
+from .route import Route
 
 
 class RouteLayer:

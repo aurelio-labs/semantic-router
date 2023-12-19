@@ -1,13 +1,13 @@
-import inspect
 import json
 import os
 import re
 from typing import Any, Callable, Union
 
-import openai
 import yaml
 from pydantic import BaseModel
 
+from semantic_router.utils import function_call
+from semantic_router.utils.llm import llm
 from semantic_router.utils.logger import logger
 
 
@@ -59,41 +59,9 @@ class Route(BaseModel):
         """
         Generate a dynamic Route object from a function or Pydantic model using LLM
         """
-        schema = cls._get_schema(item=entity)
+        schema = function_call.get_schema(item=entity)
         dynamic_route = await cls._agenerate_dynamic_route(function_schema=schema)
         return dynamic_route
-
-    @classmethod
-    def _get_schema(cls, item: Union[BaseModel, Callable]) -> dict[str, Any]:
-        if isinstance(item, BaseModel):
-            signature_parts = []
-            for field_name, field_model in item.__annotations__.items():
-                field_info = item.__fields__[field_name]
-                default_value = field_info.default
-
-                if default_value:
-                    default_repr = repr(default_value)
-                    signature_part = (
-                        f"{field_name}: {field_model.__name__} = {default_repr}"
-                    )
-                else:
-                    signature_part = f"{field_name}: {field_model.__name__}"
-
-                signature_parts.append(signature_part)
-            signature = f"({', '.join(signature_parts)}) -> str"
-            schema = {
-                "name": item.__class__.__name__,
-                "description": item.__doc__,
-                "signature": signature,
-            }
-        else:
-            schema = {
-                "name": item.__name__,
-                "description": str(inspect.getdoc(item)),
-                "signature": str(inspect.signature(item)),
-                "output": str(inspect.signature(item).return_annotation),
-            }
-        return schema
 
     @classmethod
     def _parse_route_config(cls, config: str) -> str:
@@ -136,26 +104,10 @@ class Route(BaseModel):
         {function_schema}
         """
 
-        client = openai.AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-        )
-
-        completion = await client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-            temperature=0.01,
-            max_tokens=200,
-        )
-
-        output = completion.choices[0].message.content
+        output = await llm(prompt)
         if not output:
-            raise Exception("No output generated")
+            raise Exception("No output generated for dynamic route")
+
         route_config = cls._parse_route_config(config=output)
 
         logger.info(f"Generated route config:\n{route_config}")
