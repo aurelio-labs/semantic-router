@@ -2,13 +2,13 @@ import numpy as np
 from numpy.linalg import norm
 from tqdm.auto import tqdm
 
+from semantic_router import Route
 from semantic_router.encoders import (
     BaseEncoder,
     BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
 )
-from semantic_router.schema import Route
 from semantic_router.utils.logger import logger
 
 
