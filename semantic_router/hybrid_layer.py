@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.linalg import norm
-from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -35,8 +34,9 @@ class HybridRouteLayer:
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
-            for route in tqdm(routes):
-                self._add_route(route=route)
+            # for route in tqdm(routes):
+            #     self._add_route(route=route)
+            self._add_routes(routes)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -77,6 +77,38 @@ class HybridRouteLayer:
             self.sparse_index = sparse_embeds
         else:
             self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
+
+    def _add_routes(self, routes: list[Route]):
+        # create embeddings for all routes
+        logger.info("Creating embeddings for all routes...")
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
+        dense_embeds = np.array(self.encoder(all_utterances))
+        sparse_embeds = np.array(self.sparse_encoder(all_utterances))
+
+        # create route array
+        route_names = [route.name for route in routes for _ in route.utterances]
+        route_array = np.array(route_names)
+        self.categories = (
+            np.concatenate([self.categories, route_array])
+            if self.categories is not None
+            else route_array
+        )
+
+        # create utterance array (the dense index)
+        self.index = (
+            np.concatenate([self.index, dense_embeds])
+            if self.index is not None
+            else dense_embeds
+        )
+
+        # create sparse utterance array
+        self.sparse_index = (
+            np.concatenate([self.sparse_index, sparse_embeds])
+            if self.sparse_index is not None
+            else sparse_embeds
+        )
 
     def _query(self, text: str, top_k: int = 5):
         """Given some text, encodes and searches the index vector space to
