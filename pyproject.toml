@@ -42,5 +42,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff.per-file-ignores]
 "*.ipynb" = ["ALL"]
 
+[tool.ruff]
+line-length = 88
+
 [tool.mypy]
 ignore_missing_imports = true
