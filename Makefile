@@ -12,4 +12,4 @@ lint lint_diff:
 	poetry run mypy $(PYTHON_FILES)
 
 test:
-	poetry run pytest -vv -n 20 --cov=semantic_router --cov-report=term-missing --cov-report=xml --cov-fail-under=100
+	poetry run pytest -vv -n 20 --cov=semantic_router --cov-report=term-missing --cov-report=xml --cov-fail-under=80

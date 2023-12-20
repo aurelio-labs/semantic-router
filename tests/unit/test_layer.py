@@ -2,7 +2,7 @@ import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import RouteLayer
-from semantic_router.schema import Route
+from semantic_router.route import Route
 
 
 def mock_encoder_call(utterances):
@@ -65,20 +65,20 @@ class TestRouteLayer:
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
         route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
-        route_layer.add_route(route=route1)
+        route_layer.add(route=route1)
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 2
         assert len(set(route_layer.categories)) == 1
         assert set(route_layer.categories) == {"Route 1"}
 
-        route_layer.add_route(route=route2)
+        route_layer.add(route=route2)
         assert len(route_layer.index) == 4
         assert len(set(route_layer.categories)) == 2
         assert set(route_layer.categories) == {"Route 1", "Route 2"}
 
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
-        route_layer.add_routes(routes=routes)
+        route_layer._add_routes(routes=routes)
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2

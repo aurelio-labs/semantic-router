@@ -1,11 +1,11 @@
 import pytest
 
+from semantic_router.route import Route
 from semantic_router.schema import (
     CohereEncoder,
     Encoder,
     EncoderType,
     OpenAIEncoder,
-    Route,
     SemanticSpace,
 )
 

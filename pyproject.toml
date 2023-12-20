@@ -10,6 +10,7 @@ authors = [
     "Bogdan Buduroiu <bogdan@aurelio.ai>"
 ]
 readme = "README.md"
+packages = [{include = "semantic_router"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -19,6 +20,8 @@ cohere = "^4.32"
 numpy = "^1.25.2"
 pinecone-text = "^0.7.0"
 colorlog = "^6.8.0"
+pyyaml = "^6.0.1"
+pytest-asyncio = "^0.23.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -30,6 +33,7 @@ pytest-mock = "^3.12.0"
 pytest-cov = "^4.1.0"
 pytest-xdist = "^3.5.0"
 mypy = "^1.7.1"
+types-pyyaml = "^6.0.12.12"
 
 [build-system]
 requires = ["poetry-core"]
@@ -37,6 +41,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff.per-file-ignores]
 "*.ipynb" = ["ALL"]
+
+[tool.ruff]
+line-length = 88
 
 [tool.mypy]
 ignore_missing_imports = true

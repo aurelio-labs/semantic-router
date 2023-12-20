@@ -1,4 +1,7 @@
+import json
+
 import numpy as np
+import yaml
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -6,8 +9,9 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.schema import Route
 from semantic_router.utils.logger import logger
+
+from .route import Route
 
 
 class RouteLayer:
@@ -15,8 +19,9 @@ class RouteLayer:
     categories = None
     score_threshold = 0.82
 
-    def __init__(self, encoder: BaseEncoder, routes: list[Route] = []):
-        self.encoder = encoder
+    def __init__(self, encoder: BaseEncoder | None = None, routes: list[Route] = []):
+        self.encoder = encoder if encoder is not None else CohereEncoder()
+        self.routes: list[Route] = routes
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
             self.score_threshold = 0.82
@@ -27,7 +32,7 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
-            self.add_routes(routes=routes)
+            self._add_routes(routes=routes)
 
     def __call__(self, text: str) -> str | None:
         results = self._query(text)
@@ -38,7 +43,21 @@ class RouteLayer:
         else:
             return None
 
-    def add_route(self, route: Route):
+    @classmethod
+    def from_json(cls, file_path: str):
+        with open(file_path, "r") as f:
+            routes_data = json.load(f)
+        routes = [Route.from_dict(route_data) for route_data in routes_data]
+        return cls(routes=routes)
+
+    @classmethod
+    def from_yaml(cls, file_path: str):
+        with open(file_path, "r") as f:
+            routes_data = yaml.load(f, Loader=yaml.FullLoader)
+        routes = [Route.from_dict(route_data) for route_data in routes_data]
+        return cls(routes=routes)
+
+    def add(self, route: Route):
         # create embeddings
         embeds = self.encoder(route.utterances)
 
@@ -55,7 +74,7 @@ class RouteLayer:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
 
-    def add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: list[Route]):
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
@@ -124,3 +143,8 @@ class RouteLayer:
             return max(scores) > threshold
         else:
             return False
+
+    def to_json(self, file_path: str):
+        routes = [route.to_dict() for route in self.routes]
+        with open(file_path, "w") as f:
+            json.dump(routes, f, indent=4)

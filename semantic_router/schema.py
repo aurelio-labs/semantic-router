@@ -1,19 +1,13 @@
 from enum import Enum
 
-from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
+from semantic_router import Route
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     OpenAIEncoder,
 )
-
-
-class Route(BaseModel):
-    name: str
-    utterances: list[str]
-    description: str | None = None
 
 
 class EncoderType(Enum):
