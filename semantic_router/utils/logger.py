@@ -22,18 +22,9 @@ class CustomFormatter(colorlog.ColoredFormatter):
 
 def add_coloured_handler(logger):
     formatter = CustomFormatter()
-
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
-
-    logging.basicConfig(
-        datefmt="%Y-%m-%d %H:%M:%S",
-        format="%(log_color)s%(asctime)s %(levelname)s %(name)s %(message)s",
-        force=True,
-    )
-
     logger.addHandler(console_handler)
-
     return logger
 
 
