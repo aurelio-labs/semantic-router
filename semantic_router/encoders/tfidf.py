@@ -3,6 +3,7 @@ from collections import Counter
 from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import Route
 from numpy.linalg import norm
+import string
 
 
 class TfidfEncoder(BaseEncoder):
@@ -20,6 +21,7 @@ class TfidfEncoder(BaseEncoder):
         if len(docs) == 0:
             raise ValueError("No documents to encode.")
 
+        docs = [self._preprocess(doc) for doc in docs]
         tf = self._compute_tf(docs)
         tfidf = tf * self.idf
         return tfidf.tolist()
@@ -27,8 +29,8 @@ class TfidfEncoder(BaseEncoder):
     def fit(self, routes: list[Route]):
         docs = []
         for route in routes:
-            for utterance in route.utterances:
-                docs.append(utterance)
+            for doc in route.utterances:
+                docs.append(self._preprocess(doc))
         self.word_index = self._build_word_index(docs)
         self.idf = self._compute_idf(docs)
 
@@ -60,3 +62,10 @@ class TfidfEncoder(BaseEncoder):
                     idf[self.word_index[word]] += 1
         idf = np.log(len(docs) / (idf + 1))
         return idf
+
+    def _preprocess(self, doc: str) -> str:
+        lowercased_doc = doc.lower()
+        no_punctuation_doc = lowercased_doc.translate(
+            str.maketrans("", "", string.punctuation)
+        )
+        return no_punctuation_doc
