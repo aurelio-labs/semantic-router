@@ -19,9 +19,8 @@ class RouteLayer:
     categories = None
     score_threshold = 0.82
 
-    def __init__(
-        self, encoder: BaseEncoder = CohereEncoder(), routes: list[Route] = []
-    ):
+    def __init__(self, encoder: BaseEncoder | None = None, routes: list[Route] = []):
+        self.encoder = encoder if encoder is not None else CohereEncoder()
         self.routes: list[Route] = routes
         self.encoder = encoder
         # decide on default threshold based on encoder

@@ -170,11 +170,12 @@ class RouteConfig:
         self.routes.append(route)
         logger.info(f"Added route `{route.name}`")
 
-    def get(self, name: str):
+    def get(self, name: str) -> Route | None:
         for route in self.routes:
             if route.name == name:
                 return route
-        raise Exception(f"Route `{name}` not found")
+        logger.error(f"Route `{name}` not found")
+        return None
 
     def remove(self, name: str):
         if name not in [route.name for route in self.routes]:
