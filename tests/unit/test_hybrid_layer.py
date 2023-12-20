@@ -45,10 +45,12 @@ def bm25_encoder(mocker):
     mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
     return BM25Encoder(name="test-bm25-encoder")
 
+
 @pytest.fixture
 def tfidf_encoder(mocker):
     mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
     return TfidfEncoder(name="test-tfidf-encoder")
+
 
 @pytest.fixture
 def routes():
@@ -60,21 +62,31 @@ def routes():
 
 class TestHybridRouteLayer:
     def test_initialization(self, openai_encoder, bm25_encoder, routes):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes
+        )
         assert route_layer.index is not None and route_layer.categories is not None
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
 
-    def test_initialization_different_encoders(self, cohere_encoder, openai_encoder, bm25_encoder):
-        route_layer_cohere = HybridRouteLayer(dense_encoder=cohere_encoder, sparse_encoder=bm25_encoder)
+    def test_initialization_different_encoders(
+        self, cohere_encoder, openai_encoder, bm25_encoder
+    ):
+        route_layer_cohere = HybridRouteLayer(
+            dense_encoder=cohere_encoder, sparse_encoder=bm25_encoder
+        )
         assert route_layer_cohere.score_threshold == 0.3
 
-        route_layer_openai = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder)
+        route_layer_openai = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
+        )
         assert route_layer_openai.score_threshold == 0.82
 
     def test_add_route(self, openai_encoder, bm25_encoder):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
+        )
         route = Route(name="Route 3", utterances=["Yes", "No"])
         route_layer.add(route)
         assert route_layer.index is not None and route_layer.categories is not None
@@ -82,7 +94,9 @@ class TestHybridRouteLayer:
         assert len(set(route_layer.categories)) == 1
 
     def test_add_multiple_routes(self, openai_encoder, bm25_encoder, routes):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
+        )
         for route in routes:
             route_layer.add(route)
         assert route_layer.index is not None and route_layer.categories is not None
@@ -97,11 +111,15 @@ class TestHybridRouteLayer:
         assert query_result in ["Route 1", "Route 2"]
 
     def test_query_with_no_index(self, openai_encoder, bm25_encoder):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
+        )
         assert route_layer("Anything") is None
 
     def test_semantic_classify(self, openai_encoder, bm25_encoder, routes):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes
+        )
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -111,8 +129,12 @@ class TestHybridRouteLayer:
         assert classification == "Route 1"
         assert score == [0.9]
 
-    def test_semantic_classify_multiple_routes(self, openai_encoder, bm25_encoder, routes):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes)
+    def test_semantic_classify_multiple_routes(
+        self, openai_encoder, bm25_encoder, routes
+    ):
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes
+        )
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -124,12 +146,16 @@ class TestHybridRouteLayer:
         assert score == [0.9, 0.8]
 
     def test_pass_threshold(self, openai_encoder, bm25_encoder):
-        route_layer = HybridRouteLayer(dense_encoder=openai_encoder, sparse_encoder=bm25_encoder)
+        route_layer = HybridRouteLayer(
+            dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
+        )
         assert not route_layer._pass_threshold([], 0.5)
         assert route_layer._pass_threshold([0.6, 0.7], 0.5)
 
     def test_failover_score_threshold(self, base_encoder, bm25_encoder):
-        route_layer = HybridRouteLayer(dense_encoder=base_encoder, sparse_encoder=bm25_encoder)
+        route_layer = HybridRouteLayer(
+            dense_encoder=base_encoder, sparse_encoder=bm25_encoder
+        )
         assert route_layer.score_threshold == 0.82
 
 
