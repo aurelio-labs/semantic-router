@@ -47,9 +47,6 @@ class Route(BaseModel):
     def to_dict(self):
         return self.dict()
 
-    def to_yaml(self):
-        return yaml.dump(self.dict())
-
     @classmethod
     def from_dict(cls, data: dict):
         return cls(**data)
@@ -60,7 +57,7 @@ class Route(BaseModel):
         Generate a dynamic Route object from a function or Pydantic model using LLM
         """
         schema = function_call.get_schema(item=entity)
-        dynamic_route = await cls._agenerate_dynamic_route(function_schema=schema)
+        dynamic_route = await cls._generate_dynamic_route(function_schema=schema)
         return dynamic_route
 
     @classmethod
@@ -76,7 +73,7 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    async def _agenerate_dynamic_route(cls, function_schema: dict[str, Any]):
+    async def _generate_dynamic_route(cls, function_schema: dict[str, Any]):
         logger.info("Generating dynamic route...")
 
         prompt = f"""

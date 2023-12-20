@@ -22,7 +22,6 @@ class RouteLayer:
     def __init__(self, encoder: BaseEncoder | None = None, routes: list[Route] = []):
         self.encoder = encoder if encoder is not None else CohereEncoder()
         self.routes: list[Route] = routes
-        self.encoder = encoder
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
             self.score_threshold = 0.82
@@ -58,7 +57,7 @@ class RouteLayer:
         routes = [Route.from_dict(route_data) for route_data in routes_data]
         return cls(routes=routes)
 
-    def add_route(self, route: Route):
+    def add(self, route: Route):
         # create embeddings
         embeds = self.encoder(route.utterances)
 
