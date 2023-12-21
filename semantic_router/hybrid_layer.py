@@ -8,7 +8,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
     TfidfEncoder,
 )
-from semantic_router.schema import Route
+from semantic_router.schemas.route import Route
 from semantic_router.utils.logger import logger
 
 

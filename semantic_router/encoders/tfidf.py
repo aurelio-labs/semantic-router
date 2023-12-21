@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
 from semantic_router.encoders import BaseEncoder
-from semantic_router.schema import Route
+from semantic_router.schemas.route import Route
 from numpy.linalg import norm
 import string
 

@@ -6,7 +6,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.schema import Route
+from semantic_router.schemas.route import Route
 from semantic_router.utils.logger import logger
 
 

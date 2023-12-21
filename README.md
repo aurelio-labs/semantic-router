@@ -1,6 +1,7 @@
 [![Aurelio AI](https://pbs.twimg.com/profile_banners/1671498317455581184/1696285195/1500x500)](https://aurelio.ai)
 
 # Semantic Router
+
 <p>
 <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
 <img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
@@ -24,7 +25,7 @@ pip install -qU semantic-router
 We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple decisions for now — one for talk on _politics_ and another for _chitchat_:
 
 ```python
-from semantic_router.schema import Route
+from semantic_router.schemas.route import Route
 
 # we could use this as a guide for our chatbot to avoid political conversations
 politics = Route(
@@ -112,6 +113,6 @@ In this case, no decision could be made as we had no matches — so our decision
 
 ## 📚 Resources
 
-|                                                                                                                 |                            |
-| --------------------------------------------------------------------------------------------------------------- | -------------------------- |
+|                                                                                                                    |                            |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------- |
 | 🏃[Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |

@@ -1,6 +1,5 @@
 from enum import Enum
 
-from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 
 from semantic_router.encoders import (
@@ -8,12 +7,6 @@ from semantic_router.encoders import (
     CohereEncoder,
     OpenAIEncoder,
 )
-
-
-class Route(BaseModel):
-    name: str
-    utterances: list[str]
-    description: str | None = None
 
 
 class EncoderType(Enum):
@@ -40,17 +33,3 @@ class Encoder:
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)
-
-
-@dataclass
-class SemanticSpace:
-    id: str
-    routes: list[Route]
-    encoder: str = ""
-
-    def __init__(self, routes: list[Route] = []):
-        self.id = ""
-        self.routes = routes
-
-    def add(self, route: Route):
-        self.routes.append(route)
