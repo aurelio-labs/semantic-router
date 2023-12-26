@@ -16,17 +16,17 @@ from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 
 
-def is_valid(route_config: str) -> bool:
+def is_valid(layer_config: str) -> bool:
     try:
-        output_json = json.loads(route_config)
-        required_keys = ["name", "utterances"]
+        output_json = json.loads(layer_config)
+        required_keys = ["encoder_name", "encoder_type", "routes"]
 
         if isinstance(output_json, list):
             for item in output_json:
                 missing_keys = [key for key in required_keys if key not in item]
                 if missing_keys:
                     logger.warning(
-                        f"Missing keys in route config: {', '.join(missing_keys)}"
+                        f"Missing keys in layer config: {', '.join(missing_keys)}"
                     )
                     return False
             return True
@@ -34,7 +34,7 @@ def is_valid(route_config: str) -> bool:
             missing_keys = [key for key in required_keys if key not in output_json]
             if missing_keys:
                 logger.warning(
-                    f"Missing keys in route config: {', '.join(missing_keys)}"
+                    f"Missing keys in layer config: {', '.join(missing_keys)}"
                 )
                 return False
             else:
@@ -78,23 +78,33 @@ class LayerConfig:
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
             if ext == ".json":
-                routes = json.load(f)
+                layer = json.load(f)
             elif ext in [".yaml", ".yml"]:
-                routes = yaml.safe_load(f)
+                layer = yaml.safe_load(f)
             else:
                 raise ValueError(
                     "Unsupported file type. Only .json and .yaml are supported"
                 )
 
-            route_config_str = json.dumps(routes)
+            route_config_str = json.dumps(layer)
             if is_valid(route_config_str):
-                routes = [Route.from_dict(route) for route in routes]
-                return cls(routes=routes)
+                encoder_type = layer["encoder_type"]
+                encoder_name = layer["encoder_name"]
+                routes = [Route.from_dict(route) for route in layer["routes"]]
+                return cls(
+                    encoder_type=encoder_type,
+                    encoder_name=encoder_name,
+                    routes=routes
+                )
             else:
                 raise Exception("Invalid config JSON or YAML")
 
     def to_dict(self):
-        return [route.to_dict() for route in self.routes]
+        return {
+            "encoder_type": self.encoder_type,
+            "encoder_name": self.encoder_name,
+            "routes": [route.to_dict() for route in self.routes]
+        }
 
     def to_file(self, path: str):
         """Save the routes to a file in JSON or YAML format"""
@@ -102,7 +112,7 @@ class LayerConfig:
         _, ext = os.path.splitext(path)
         with open(path, "w") as f:
             if ext == ".json":
-                json.dump(self.to_dict(), f)
+                json.dump(self.to_dict(), f, indent=4)
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
             else:
@@ -160,13 +170,18 @@ class RouteLayer:
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
+        
+    def __str__(self):
+        return (f"RouteLayer(encoder={self.encoder}, "
+                f"score_threshold={self.score_threshold}, "
+                f"routes={self.routes})")
 
     @classmethod
     def from_json(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(
-            encoder_type=config.encoder_type,
-            encoder_name=config.encoder_name
+            type=config.encoder_type,
+            name=config.encoder_name
         )
         return cls(
             encoder=encoder,
@@ -177,8 +192,8 @@ class RouteLayer:
     def from_yaml(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(
-            encoder_type=config.encoder_type,
-            encoder_name=config.encoder_name
+            type=config.encoder_type,
+            name=config.encoder_name
         )
         return cls(
             encoder=encoder,
@@ -188,8 +203,8 @@ class RouteLayer:
     @classmethod
     def from_config(cls, config: LayerConfig):
         encoder = Encoder(
-            encoder_type=config.encoder_type,
-            encoder_name=config.encoder_name
+            type=config.encoder_type,
+            name=config.encoder_name
         )
         return cls(
             encoder=encoder,
@@ -284,8 +299,18 @@ class RouteLayer:
             return max(scores) > threshold
         else:
             return False
+        
+    def to_config(self) -> LayerConfig:
+        return LayerConfig(
+            encoder_type=self.encoder.type,
+            encoder_name=self.encoder.name,
+            routes=self.routes
+        )
 
     def to_json(self, file_path: str):
-        routes = [route.to_dict() for route in self.routes]
-        with open(file_path, "w") as f:
-            json.dump(routes, f, indent=4)
+        config = self.to_config()
+        config.to_file(file_path)
+
+    def to_yaml(self, file_path: str):
+        config = self.to_config()
+        config.to_file(file_path)

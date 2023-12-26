@@ -11,6 +11,7 @@ from semantic_router.utils.logger import logger
 
 class OpenAIEncoder(BaseEncoder):
     client: openai.Client | None
+    type: str = "openai"
 
     def __init__(
         self,

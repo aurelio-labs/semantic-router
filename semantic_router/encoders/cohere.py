@@ -7,6 +7,7 @@ from semantic_router.encoders import BaseEncoder
 
 class CohereEncoder(BaseEncoder):
     client: cohere.Client | None = None
+    type: str = "cohere"
 
     def __init__(
         self,

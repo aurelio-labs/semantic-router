@@ -10,6 +10,33 @@ from semantic_router.utils.logger import logger
 from semantic_router.schema import RouteChoice
 
 
+def is_valid(route_config: str) -> bool:
+    try:
+        output_json = json.loads(route_config)
+        required_keys = ["name", "utterances"]
+
+        if isinstance(output_json, list):
+            for item in output_json:
+                missing_keys = [key for key in required_keys if key not in item]
+                if missing_keys:
+                    logger.warning(
+                        f"Missing keys in route config: {', '.join(missing_keys)}"
+                    )
+                    return False
+            return True
+        else:
+            missing_keys = [key for key in required_keys if key not in output_json]
+            if missing_keys:
+                logger.warning(
+                    f"Missing keys in route config: {', '.join(missing_keys)}"
+                )
+                return False
+            else:
+                return True
+    except json.JSONDecodeError as e:
+        logger.error(e)
+        return False
+
 class Route(BaseModel):
     name: str
     utterances: list[str]
@@ -22,13 +49,13 @@ class Route(BaseModel):
             extracted_inputs = function_call.extract_function_inputs(
                 query=query, function_schema=self.function_schema
             )
-            function_call = extracted_inputs
+            func_call = extracted_inputs
         else:
             # otherwise we just pass None for the call
-            function_call = None
+            func_call = None
         return RouteChoice(
             name=self.name,
-            function_call=function_call
+            function_call=func_call
         )
 
     def to_dict(self):
