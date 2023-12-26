@@ -9,7 +9,7 @@ from semantic_router.encoders import (
 )
 from semantic_router.utils.logger import logger
 
-from .route import Route
+from semantic_router.route import Route
 
 
 class HybridRouteLayer:

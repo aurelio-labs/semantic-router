@@ -1,5 +1,5 @@
-from .hybrid_layer import HybridRouteLayer
-from .layer import RouteLayer
-from .route import Route, RouteConfig
+from semantic_router.hybrid_layer import HybridRouteLayer
+from semantic_router.layer import RouteLayer
+from semantic_router.route import Route, RouteConfig
 
 __all__ = ["RouteLayer", "HybridRouteLayer", "Route", "RouteConfig"]

@@ -1,4 +1,5 @@
 import json
+import os
 
 import numpy as np
 import yaml
@@ -11,7 +12,121 @@ from semantic_router.encoders import (
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
 
-from .route import Route
+from semantic_router.route import Route
+from semantic_router.schema import Encoder, EncoderType, RouteChoice
+
+
+def is_valid(route_config: str) -> bool:
+    try:
+        output_json = json.loads(route_config)
+        required_keys = ["name", "utterances"]
+
+        if isinstance(output_json, list):
+            for item in output_json:
+                missing_keys = [key for key in required_keys if key not in item]
+                if missing_keys:
+                    logger.warning(
+                        f"Missing keys in route config: {', '.join(missing_keys)}"
+                    )
+                    return False
+            return True
+        else:
+            missing_keys = [key for key in required_keys if key not in output_json]
+            if missing_keys:
+                logger.warning(
+                    f"Missing keys in route config: {', '.join(missing_keys)}"
+                )
+                return False
+            else:
+                return True
+    except json.JSONDecodeError as e:
+        logger.error(e)
+        return False
+
+
+class LayerConfig:
+    """
+    Generates a LayerConfig object that can be used for initializing a
+    RouteLayer.
+    """
+
+    routes: list[Route] = []
+
+    def __init__(
+        self,
+        routes: list[Route] = [],
+        encoder_type: EncoderType = "openai",
+        encoder_name: str | None = None,
+    ):
+        self.encoder_type = encoder_type
+        if encoder_name is None:
+            # if encoder_name is not provided, use the default encoder for type
+            if encoder_type == EncoderType.OPENAI:
+                encoder_name = "text-embedding-ada-002"
+            elif encoder_type == EncoderType.COHERE:
+                encoder_name = "embed-english-v3.0"
+            elif encoder_type == EncoderType.HUGGINGFACE:
+                raise NotImplementedError
+            logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
+        self.encoder_name = encoder_name
+        self.routes = routes
+
+    @classmethod
+    def from_file(cls, path: str):
+        """Load the routes from a file in JSON or YAML format"""
+        logger.info(f"Loading route config from {path}")
+        _, ext = os.path.splitext(path)
+        with open(path, "r") as f:
+            if ext == ".json":
+                routes = json.load(f)
+            elif ext in [".yaml", ".yml"]:
+                routes = yaml.safe_load(f)
+            else:
+                raise ValueError(
+                    "Unsupported file type. Only .json and .yaml are supported"
+                )
+
+            route_config_str = json.dumps(routes)
+            if is_valid(route_config_str):
+                routes = [Route.from_dict(route) for route in routes]
+                return cls(routes=routes)
+            else:
+                raise Exception("Invalid config JSON or YAML")
+
+    def to_dict(self):
+        return [route.to_dict() for route in self.routes]
+
+    def to_file(self, path: str):
+        """Save the routes to a file in JSON or YAML format"""
+        logger.info(f"Saving route config to {path}")
+        _, ext = os.path.splitext(path)
+        with open(path, "w") as f:
+            if ext == ".json":
+                json.dump(self.to_dict(), f)
+            elif ext in [".yaml", ".yml"]:
+                yaml.safe_dump(self.to_dict(), f)
+            else:
+                raise ValueError(
+                    "Unsupported file type. Only .json and .yaml are supported"
+                )
+
+    def add(self, route: Route):
+        self.routes.append(route)
+        logger.info(f"Added route `{route.name}`")
+
+    def get(self, name: str) -> Route | None:
+        for route in self.routes:
+            if route.name == name:
+                return route
+        logger.error(f"Route `{name}` not found")
+        return None
+
+    def remove(self, name: str):
+        if name not in [route.name for route in self.routes]:
+            logger.error(f"Route `{name}` not found")
+        else:
+            self.routes = [route for route in self.routes if route.name != name]
+            logger.info(f"Removed route `{name}`")
 
 
 class RouteLayer:
@@ -34,28 +149,52 @@ class RouteLayer:
             # initialize index now
             self._add_routes(routes=routes)
 
-    def __call__(self, text: str) -> str | None:
+    def __call__(self, text: str) -> RouteChoice:
         results = self._query(text)
         top_class, top_class_scores = self._semantic_classify(results)
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
-            return top_class
+            # get chosen route object
+            route = [route for route in self.routes if route.name == top_class][0]
+            return route(text)
         else:
-            return None
+            # if no route passes threshold, return empty route choice
+            return RouteChoice()
 
     @classmethod
     def from_json(cls, file_path: str):
-        with open(file_path, "r") as f:
-            routes_data = json.load(f)
-        routes = [Route.from_dict(route_data) for route_data in routes_data]
-        return cls(routes=routes)
+        config = LayerConfig.from_file(file_path)
+        encoder = Encoder(
+            encoder_type=config.encoder_type,
+            encoder_name=config.encoder_name
+        )
+        return cls(
+            encoder=encoder,
+            routes=config.routes
+        )
 
     @classmethod
     def from_yaml(cls, file_path: str):
-        with open(file_path, "r") as f:
-            routes_data = yaml.load(f, Loader=yaml.FullLoader)
-        routes = [Route.from_dict(route_data) for route_data in routes_data]
-        return cls(routes=routes)
+        config = LayerConfig.from_file(file_path)
+        encoder = Encoder(
+            encoder_type=config.encoder_type,
+            encoder_name=config.encoder_name
+        )
+        return cls(
+            encoder=encoder,
+            routes=config.routes
+        )
+    
+    @classmethod
+    def from_config(cls, config: LayerConfig):
+        encoder = Encoder(
+            encoder_type=config.encoder_type,
+            encoder_name=config.encoder_name
+        )
+        return cls(
+            encoder=encoder,
+            routes=config.routes
+        )
 
     def add(self, route: Route):
         # create embeddings
@@ -73,6 +212,8 @@ class RouteLayer:
         else:
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
+        # add route to routes list
+        self.routes.append(route)
 
     def _add_routes(self, routes: list[Route]):
         # create embeddings for all routes

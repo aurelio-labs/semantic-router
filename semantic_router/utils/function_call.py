@@ -40,7 +40,7 @@ def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
     return schema
 
 
-async def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
+def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
     logger.info("Extracting function input...")
 
     prompt = f"""
@@ -72,7 +72,7 @@ async def extract_function_inputs(query: str, function_schema: dict[str, Any]) -
     Result:
     """
 
-    output = await llm(prompt)
+    output = llm(prompt)
     if not output:
         raise Exception("No output generated for extract function input")
 
