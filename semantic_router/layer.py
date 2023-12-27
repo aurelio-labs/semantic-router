@@ -140,13 +140,20 @@ class LayerConfig:
 
 
 class RouteLayer:
-    index = None
-    categories = None
-    score_threshold = 0.82
+    index: np.ndarray | None = None
+    categories: np.ndarray | None = None
+    score_threshold: float = 0.82
 
-    def __init__(self, encoder: BaseEncoder | None = None, routes: list[Route] = []):
+    def __init__(
+        self,
+        encoder: BaseEncoder | None = None,
+        routes: list[Route] | None = None
+    ):
+        logger.info("Initializing RouteLayer")
+        self.index = None
+        self.categories = None
         self.encoder = encoder if encoder is not None else CohereEncoder()
-        self.routes: list[Route] = routes
+        self.routes: list[Route] = routes if routes is not None else []
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
             self.score_threshold = 0.82
@@ -155,9 +162,9 @@ class RouteLayer:
         else:
             self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
-        if routes:
+        if len(self.routes) > 0:
             # initialize index now
-            self._add_routes(routes=routes)
+            self._add_routes(routes=self.routes)
 
     def __call__(self, text: str) -> RouteChoice:
         results = self._query(text)
@@ -212,19 +219,24 @@ class RouteLayer:
         )
 
     def add(self, route: Route):
+        print(f"Adding route `{route.name}`")
         # create embeddings
         embeds = self.encoder(route.utterances)
 
         # create route array
         if self.categories is None:
+            print("Initializing categories array")
             self.categories = np.array([route.name] * len(embeds))
         else:
+            print("Adding route to categories")
             str_arr = np.array([route.name] * len(embeds))
             self.categories = np.concatenate([self.categories, str_arr])
         # create utterance array (the index)
         if self.index is None:
+            print("Initializing index array")
             self.index = np.array(embeds)
         else:
+            print("Adding route to index")
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
         # add route to routes list
