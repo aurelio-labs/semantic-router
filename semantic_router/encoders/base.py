@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BaseEncoder(BaseModel):
     name: str
-    type: str
+    type: str = Field(default="base")
 
     class Config:
         arbitrary_types_allowed = True
