@@ -23,12 +23,12 @@ class RouteChoice(BaseModel):
 
 @dataclass
 class Encoder:
-    type: str
+    type: EncoderType
     name: str | None
     model: BaseEncoder
 
     def __init__(self, type: str, name: str | None):
-        self.type = type
+        self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
             raise NotImplementedError
@@ -37,7 +37,7 @@ class Encoder:
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name)
         else:
-            raise NotImplementedError
+            raise ValueError
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)
