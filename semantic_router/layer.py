@@ -55,7 +55,7 @@ class LayerConfig:
     def __init__(
         self,
         routes: list[Route] = [],
-        encoder_type: EncoderType = "openai",
+        encoder_type: str = "openai",
         encoder_name: str | None = None,
     ):
         self.encoder_type = encoder_type
@@ -184,18 +184,18 @@ class RouteLayer:
     @classmethod
     def from_json(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_yaml(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_config(cls, config: LayerConfig):
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     def add(self, route: Route):

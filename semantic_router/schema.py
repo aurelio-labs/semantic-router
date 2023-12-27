@@ -23,12 +23,12 @@ class RouteChoice(BaseModel):
 
 @dataclass
 class Encoder:
-    type: EncoderType
-    name: str
+    type: str
+    name: str | None
     model: BaseEncoder
 
-    def __init__(self, type: str, name: str):
-        self.type = EncoderType(type)
+    def __init__(self, type: str, name: str | None):
+        self.type = type
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
             raise NotImplementedError
@@ -36,6 +36,8 @@ class Encoder:
             self.model = OpenAIEncoder(name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name)
+        else:
+            raise NotImplementedError
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)

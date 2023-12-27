@@ -117,11 +117,11 @@ async def route_and_execute(query: str, functions: list[Callable], route_layer):
     function_name = route_layer(query)
     if not function_name:
         logger.warning("No function found, calling LLM...")
-        return await llm(query)
+        return llm(query)
 
     for function in functions:
         if function.__name__ == function_name:
             print(f"Calling function: {function.__name__}")
             schema = get_schema(function)
-            inputs = await extract_function_inputs(query, schema)
+            inputs = extract_function_inputs(query, schema)
             call_function(function, inputs)

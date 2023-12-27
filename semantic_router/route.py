@@ -113,7 +113,7 @@ class Route(BaseModel):
         {function_schema}
         """
 
-        output = await llm(prompt)
+        output = llm(prompt)
         if not output:
             raise Exception("No output generated for dynamic route")
 
