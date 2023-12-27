@@ -37,6 +37,7 @@ def is_valid(route_config: str) -> bool:
         logger.error(e)
         return False
 
+
 class Route(BaseModel):
     name: str
     utterances: list[str]
@@ -53,10 +54,7 @@ class Route(BaseModel):
         else:
             # otherwise we just pass None for the call
             func_call = None
-        return RouteChoice(
-            name=self.name,
-            function_call=func_call
-        )
+        return RouteChoice(name=self.name, function_call=func_call)
 
     def to_dict(self):
         return self.dict()
@@ -126,5 +124,3 @@ class Route(BaseModel):
         if is_valid(route_config):
             return Route.from_dict(json.loads(route_config))
         raise Exception("No config generated")
-
-

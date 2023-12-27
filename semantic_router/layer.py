@@ -92,9 +92,7 @@ class LayerConfig:
                 encoder_name = layer["encoder_name"]
                 routes = [Route.from_dict(route) for route in layer["routes"]]
                 return cls(
-                    encoder_type=encoder_type,
-                    encoder_name=encoder_name,
-                    routes=routes
+                    encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
                 )
             else:
                 raise Exception("Invalid config JSON or YAML")
@@ -103,7 +101,7 @@ class LayerConfig:
         return {
             "encoder_type": self.encoder_type,
             "encoder_name": self.encoder_name,
-            "routes": [route.to_dict() for route in self.routes]
+            "routes": [route.to_dict() for route in self.routes],
         }
 
     def to_file(self, path: str):
@@ -145,9 +143,7 @@ class RouteLayer:
     score_threshold: float = 0.82
 
     def __init__(
-        self,
-        encoder: BaseEncoder | None = None,
-        routes: list[Route] | None = None
+        self, encoder: BaseEncoder | None = None, routes: list[Route] | None = None
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
@@ -177,46 +173,30 @@ class RouteLayer:
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
-        
+
     def __str__(self):
-        return (f"RouteLayer(encoder={self.encoder}, "
-                f"score_threshold={self.score_threshold}, "
-                f"routes={self.routes})")
+        return (
+            f"RouteLayer(encoder={self.encoder}, "
+            f"score_threshold={self.score_threshold}, "
+            f"routes={self.routes})"
+        )
 
     @classmethod
     def from_json(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(
-            type=config.encoder_type,
-            name=config.encoder_name
-        )
-        return cls(
-            encoder=encoder,
-            routes=config.routes
-        )
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_yaml(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(
-            type=config.encoder_type,
-            name=config.encoder_name
-        )
-        return cls(
-            encoder=encoder,
-            routes=config.routes
-        )
-    
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        return cls(encoder=encoder, routes=config.routes)
+
     @classmethod
     def from_config(cls, config: LayerConfig):
-        encoder = Encoder(
-            type=config.encoder_type,
-            name=config.encoder_name
-        )
-        return cls(
-            encoder=encoder,
-            routes=config.routes
-        )
+        encoder = Encoder(type=config.encoder_type, name=config.encoder_name)
+        return cls(encoder=encoder, routes=config.routes)
 
     def add(self, route: Route):
         print(f"Adding route `{route.name}`")
@@ -311,12 +291,12 @@ class RouteLayer:
             return max(scores) > threshold
         else:
             return False
-        
+
     def to_config(self) -> LayerConfig:
         return LayerConfig(
             encoder_type=self.encoder.type,
             encoder_name=self.encoder.name,
-            routes=self.routes
+            routes=self.routes,
         )
 
     def to_json(self, file_path: str):

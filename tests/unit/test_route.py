@@ -1,5 +1,4 @@
-import os
-from unittest.mock import AsyncMock, mock_open, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

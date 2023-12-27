@@ -45,6 +45,7 @@ def layer_json():
     ]
 }"""
 
+
 def layer_yaml():
     return """encoder_name: embed-english-v3.0
 encoder_type: cohere
@@ -62,6 +63,7 @@ routes:
   - how's the weather today?
   - how are things going?
     """
+
 
 @pytest.fixture
 def base_encoder():
