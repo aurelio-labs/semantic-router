@@ -33,6 +33,7 @@ def llm(prompt: str) -> str | None:
         logger.error(f"LLM error: {e}")
         raise Exception(f"LLM error: {e}")
 
+
 # TODO integrate async LLM function
 # async def allm(prompt: str) -> str | None:
 #     try:
