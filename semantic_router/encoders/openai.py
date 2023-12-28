@@ -38,7 +38,6 @@ class OpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(3):
             try:
-                logger.info(f"Encoding {len(docs)} documents...")
                 embeds = self.client.embeddings.create(input=docs, model=self.name)
                 if embeds.data:
                     break
