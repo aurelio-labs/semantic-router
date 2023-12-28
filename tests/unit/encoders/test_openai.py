@@ -20,7 +20,7 @@ class TestOpenAIEncoder:
 
     def test_openai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError) as _:
             OpenAIEncoder()
 
     def test_openai_encoder_call_uninitialized_client(self, openai_encoder):
