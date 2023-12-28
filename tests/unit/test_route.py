@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch
 
 import pytest
 
@@ -43,9 +43,8 @@ def test_is_valid_with_invalid_json():
 
 
 class TestRoute:
-    @pytest.mark.asyncio
-    @patch("semantic_router.route.llm", new_callable=AsyncMock)
-    async def test_generate_dynamic_route(self, mock_llm):
+    @patch("semantic_router.route.llm", new_callable=Mock)
+    def test_generate_dynamic_route(self, mock_llm):
         print(f"mock_llm: {mock_llm}")
         mock_llm.return_value = """
         <config>
@@ -61,7 +60,7 @@ class TestRoute:
         </config>
         """
         function_schema = {"name": "test_function", "type": "function"}
-        route = await Route._generate_dynamic_route(function_schema)
+        route = Route._generate_dynamic_route(function_schema)
         assert route.name == "test_function"
         assert route.utterances == [
             "example_utterance_1",
@@ -70,6 +69,35 @@ class TestRoute:
             "example_utterance_4",
             "example_utterance_5",
         ]
+
+    # TODO add async version
+    # @pytest.mark.asyncio
+    # @patch("semantic_router.route.allm", new_callable=Mock)
+    # async def test_generate_dynamic_route_async(self, mock_llm):
+    #     print(f"mock_llm: {mock_llm}")
+    #     mock_llm.return_value = """
+    #     <config>
+    #     {
+    #         "name": "test_function",
+    #         "utterances": [
+    #             "example_utterance_1",
+    #             "example_utterance_2",
+    #             "example_utterance_3",
+    #             "example_utterance_4",
+    #             "example_utterance_5"]
+    #     }
+    #     </config>
+    #     """
+    #     function_schema = {"name": "test_function", "type": "function"}
+    #     route = await Route._generate_dynamic_route(function_schema)
+    #     assert route.name == "test_function"
+    #     assert route.utterances == [
+    #         "example_utterance_1",
+    #         "example_utterance_2",
+    #         "example_utterance_3",
+    #         "example_utterance_4",
+    #         "example_utterance_5",
+    #     ]
 
     def test_to_dict(self):
         route = Route(name="test", utterances=["utterance"])
@@ -87,9 +115,8 @@ class TestRoute:
         assert route.name == "test"
         assert route.utterances == ["utterance"]
 
-    @pytest.mark.asyncio
-    @patch("semantic_router.route.llm", new_callable=AsyncMock)
-    async def test_from_dynamic_route(self, mock_llm):
+    @patch("semantic_router.route.llm", new_callable=Mock)
+    def test_from_dynamic_route(self, mock_llm):
         # Mock the llm function
         mock_llm.return_value = """
         <config>
@@ -109,7 +136,7 @@ class TestRoute:
             """Test function docstring"""
             pass
 
-        dynamic_route = await Route.from_dynamic_route(test_function)
+        dynamic_route = Route.from_dynamic_route(test_function)
 
         assert dynamic_route.name == "test_function"
         assert dynamic_route.utterances == [
@@ -119,6 +146,40 @@ class TestRoute:
             "example_utterance_4",
             "example_utterance_5",
         ]
+
+    # TODO add async functions
+    # @pytest.mark.asyncio
+    # @patch("semantic_router.route.allm", new_callable=AsyncMock)
+    # async def test_from_dynamic_route_async(self, mock_llm):
+    #     # Mock the llm function
+    #     mock_llm.return_value = """
+    #     <config>
+    #     {
+    #         "name": "test_function",
+    #         "utterances": [
+    #             "example_utterance_1",
+    #             "example_utterance_2",
+    #             "example_utterance_3",
+    #             "example_utterance_4",
+    #             "example_utterance_5"]
+    #     }
+    #     </config>
+    #     """
+
+    #     def test_function(input: str):
+    #         """Test function docstring"""
+    #         pass
+
+    #     dynamic_route = await Route.from_dynamic_route(test_function)
+
+    #     assert dynamic_route.name == "test_function"
+    #     assert dynamic_route.utterances == [
+    #         "example_utterance_1",
+    #         "example_utterance_2",
+    #         "example_utterance_3",
+    #         "example_utterance_4",
+    #         "example_utterance_5",
+    #     ]
 
     def test_parse_route_config(self):
         config = """
