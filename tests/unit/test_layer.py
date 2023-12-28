@@ -206,7 +206,9 @@ class TestRouteLayer:
             route_layer_from_config = RouteLayer.from_config(layer_config)
             assert (route_layer_from_config.index == route_layer.index).all()
             assert (route_layer_from_config.categories == route_layer.categories).all()
-            assert route_layer_from_config.score_threshold == route_layer.score_threshold
+            assert (
+                route_layer_from_config.score_threshold == route_layer.score_threshold
+            )
 
 
 # Add more tests for edge cases and error handling as needed.
