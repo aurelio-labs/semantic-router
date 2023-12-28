@@ -177,7 +177,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         route_layer.to_json("test_output.json")
         assert os.path.exists("test_output.json")
-        with patch("semantic_router.schema.Encoder", new_callable=Mock):
+        with patch("semantic_router.encoders.OpenAIEncoder", new_callable=Mock):
             route_layer_from_file = RouteLayer.from_json("test_output.json")
             assert (
                 route_layer_from_file.index is not None
@@ -189,7 +189,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         route_layer.to_yaml("test_output.yaml")
         assert os.path.exists("test_output.yaml")
-        with patch("semantic_router.schema.Encoder", new_callable=Mock):
+        with patch("semantic_router.encoders.OpenAIEncoder", new_callable=Mock):
             route_layer_from_file = RouteLayer.from_yaml("test_output.yaml")
             assert (
                 route_layer_from_file.index is not None
@@ -202,7 +202,7 @@ class TestRouteLayer:
         # confirm route creation functions as expected
         layer_config = route_layer.to_config()
         assert layer_config.routes == routes
-        with patch("semantic_router.schema.Encoder", new_callable=Mock):
+        with patch("semantic_router.encoders.OpenAIEncoder", new_callable=Mock):
             # now load from config and confirm it's the same
             route_layer_from_config = RouteLayer.from_config(layer_config)
             assert (route_layer_from_config.index == route_layer.index).all()
