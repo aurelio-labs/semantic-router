@@ -40,7 +40,7 @@ def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
     return schema
 
 
-async def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
+def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
     logger.info("Extracting function input...")
 
     prompt = f"""
@@ -72,7 +72,7 @@ async def extract_function_inputs(query: str, function_schema: dict[str, Any]) -
     Result:
     """
 
-    output = await llm(prompt)
+    output = llm(prompt)
     if not output:
         raise Exception("No output generated for extract function input")
 
@@ -117,11 +117,11 @@ async def route_and_execute(query: str, functions: list[Callable], route_layer):
     function_name = route_layer(query)
     if not function_name:
         logger.warning("No function found, calling LLM...")
-        return await llm(query)
+        return llm(query)
 
     for function in functions:
         if function.__name__ == function_name:
             print(f"Calling function: {function.__name__}")
             schema = get_schema(function)
-            inputs = await extract_function_inputs(query, schema)
+            inputs = extract_function_inputs(query, schema)
             call_function(function, inputs)

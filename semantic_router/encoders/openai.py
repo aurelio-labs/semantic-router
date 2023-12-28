@@ -11,12 +11,15 @@ from semantic_router.utils.logger import logger
 
 class OpenAIEncoder(BaseEncoder):
     client: openai.Client | None
+    type: str = "openai"
 
     def __init__(
         self,
-        name: str = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002"),
+        name: str | None = None,
         openai_api_key: str | None = None,
     ):
+        if name is None:
+            name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
         super().__init__(name=name)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key is None:

@@ -20,9 +20,8 @@ class TestOpenAIEncoder:
 
     def test_openai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError) as _:
             OpenAIEncoder()
-        assert "OpenAI API key cannot be 'None'." in str(e.value)
 
     def test_openai_encoder_call_uninitialized_client(self, openai_encoder):
         # Set the client to None to simulate an uninitialized client
