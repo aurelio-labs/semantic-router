@@ -174,27 +174,26 @@ class TestRouteLayer:
         assert route_layer.score_threshold == 0.82
 
     def test_json(self, openai_encoder, routes):
+        os.environ["OPENAI_API_KEY"] = "test_api_key"
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         route_layer.to_json("test_output.json")
         assert os.path.exists("test_output.json")
-        with patch("semantic_router.encoders.OpenAIEncoder", new_callable=Mock):
-            route_layer_from_file = RouteLayer.from_json("test_output.json")
-            assert (
-                route_layer_from_file.index is not None
-                and route_layer_from_file.categories is not None
-            )
+        route_layer_from_file = RouteLayer.from_json("test_output.json")
+        assert (
+            route_layer_from_file.index is not None
+            and route_layer_from_file.categories is not None
+        )
         os.remove("test_output.json")
 
     def test_yaml(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         route_layer.to_yaml("test_output.yaml")
         assert os.path.exists("test_output.yaml")
-        with patch("semantic_router.encoders.OpenAIEncoder", new_callable=Mock):
-            route_layer_from_file = RouteLayer.from_yaml("test_output.yaml")
-            assert (
-                route_layer_from_file.index is not None
-                and route_layer_from_file.categories is not None
-            )
+        route_layer_from_file = RouteLayer.from_yaml("test_output.yaml")
+        assert (
+            route_layer_from_file.index is not None
+            and route_layer_from_file.categories is not None
+        )
         os.remove("test_output.yaml")
 
     def test_config(self, openai_encoder, routes):
