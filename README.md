@@ -52,7 +52,7 @@ chitchat = Route(
 )
 
 # we place both of our decisions together into single list
-decisions = [politics, chitchat]
+routes = [politics, chitchat]
 ```
 
 We have our decisions ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
@@ -75,7 +75,7 @@ With our `decisions` and `encoder` defined we now create a `DecisionLayer`. The 
 ```python
 from semantic_router.layer import RouteLayer
 
-dl = RouteLayer(encoder=encoder, decisions=decisions)
+dl = RouteLayer(encoder=encoder, routes=routes)
 ```
 
 We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our decisions:
