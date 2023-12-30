@@ -110,8 +110,11 @@ dl("I'm interested in learning about llama 2").name
 
 In this case, no decision could be made as we had no matches — so our decision layer returned `None`!
 
-## 📚 Resources
+## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
 
-|                                                                                                                 |                            |
-| --------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| 🏃[Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |
+
+
+
+
+
+
