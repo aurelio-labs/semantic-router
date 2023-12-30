@@ -24,7 +24,7 @@ pip install -qU semantic-router
 We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple decisions for now — one for talk on _politics_ and another for _chitchat_:
 
 ```python
-from semantic_router.schema import Route
+from semantic_router import Route
 
 # we could use this as a guide for our chatbot to avoid political conversations
 politics = Route(
@@ -81,7 +81,7 @@ dl = RouteLayer(encoder=encoder, decisions=decisions)
 We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our decisions:
 
 ```python
-dl("don't you love politics?")
+dl("don't you love politics?").name
 ```
 
 ```
@@ -91,7 +91,7 @@ dl("don't you love politics?")
 Correct decision, let's try another:
 
 ```python
-dl("how's the weather today?")
+dl("how's the weather today?").name
 ```
 
 ```
@@ -101,7 +101,7 @@ dl("how's the weather today?")
 We get both decisions correct! Now lets try sending an unrelated query:
 
 ```python
-dl("I'm interested in learning about llama 2")
+dl("I'm interested in learning about llama 2").name
 ```
 
 ```
