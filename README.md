@@ -2,6 +2,7 @@
 
 # Semantic Router
 <p>
+<img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
 <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
 <img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
 <img alt="" src="https://img.shields.io/github/repo-size/aurelio-labs/semantic-router" />
