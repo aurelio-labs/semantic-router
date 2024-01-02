@@ -61,3 +61,20 @@ repos:
         stages:
           - post-commit
           - push
+
+  - repo: local
+    hooks:
+      - id: format
+        name: format
+        language: system
+        pass_filenames: false
+        entry: make format
+        types: [ python ]
+
+      - id: linter
+        name: linter
+        language: system
+        pass_filenames: false
+        stages: [ push ]
+        entry: make lint
+        types: [ python ]
