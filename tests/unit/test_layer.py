@@ -1,6 +1,7 @@
 import os
-import pytest
 from unittest.mock import mock_open, patch
+
+import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer

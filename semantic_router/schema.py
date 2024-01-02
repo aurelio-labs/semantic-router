@@ -1,7 +1,7 @@
 from enum import Enum
 
-from pydantic.dataclasses import dataclass
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 from semantic_router.encoders import (
     BaseEncoder,

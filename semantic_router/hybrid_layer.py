@@ -7,9 +7,8 @@ from semantic_router.encoders import (
     CohereEncoder,
     OpenAIEncoder,
 )
-from semantic_router.utils.logger import logger
-
 from semantic_router.route import Route
+from semantic_router.utils.logger import logger
 
 
 class HybridRouteLayer:

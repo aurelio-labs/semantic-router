@@ -1,7 +1,6 @@
 from unittest.mock import Mock, patch  # , AsyncMock
 
 # import pytest
-
 from semantic_router.route import Route, is_valid
 
 
