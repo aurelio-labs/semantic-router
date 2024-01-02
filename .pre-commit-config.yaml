@@ -83,6 +83,6 @@ repos:
         name: test
         language: system
         pass_filenames: false
-        stages: [ push ]
+        stages: [ pre-commit, push ]
         entry: make test
         types: [ python ]
