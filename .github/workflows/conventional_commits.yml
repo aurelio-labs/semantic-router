@@ -11,5 +11,3 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: webiny/action-conventional-commits@v1.1.0
-        with:
-          allowed-commit-types: "feat,fix"
