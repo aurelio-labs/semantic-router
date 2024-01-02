@@ -4,10 +4,10 @@ from typing import Any, Callable, Union
 
 from pydantic import BaseModel
 
+from semantic_router.schema import RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.llm import llm
 from semantic_router.utils.logger import logger
-from semantic_router.schema import RouteChoice
 
 
 def is_valid(route_config: str) -> bool:
