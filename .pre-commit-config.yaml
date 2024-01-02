@@ -75,7 +75,7 @@ repos:
         name: linter
         language: system
         pass_filenames: false
-        stages: [ push ]
+        # stages: [ push ]
         entry: make lint
         types: [ python ]
 
@@ -83,6 +83,6 @@ repos:
         name: test
         language: system
         pass_filenames: false
-        stages: [ pre-commit, push ]
+        # stages: [ pre-commit, push ]
         entry: make test
         types: [ python ]
