@@ -24,8 +24,15 @@ def mock_encoder_call(utterances):
 
 
 @pytest.fixture
-def base_encoder():
-    return BaseEncoder(name="test-encoder")
+def base_encoder(mocker):
+    mock_base_encoder = BaseEncoder(name="test-encoder")
+    mocker.patch.object(BaseEncoder, "__call__", return_value=[[0.1, 0.2, 0.3]])
+    return mock_base_encoder
+
+
+# @pytest.fixture
+# def base_encoder():
+#     return BaseEncoder(name="test-encoder")
 
 
 @pytest.fixture
