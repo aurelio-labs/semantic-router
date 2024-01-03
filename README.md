@@ -3,6 +3,7 @@
 # Semantic Router
 
 <p>
+<img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
 <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
 <img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
 <img alt="" src="https://img.shields.io/github/repo-size/aurelio-labs/semantic-router" />
@@ -25,7 +26,7 @@ pip install -qU semantic-router
 We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple decisions for now — one for talk on _politics_ and another for _chitchat_:
 
 ```python
-from semantic_router.schemas.route import Route
+from semantic_router import Route
 
 # we could use this as a guide for our chatbot to avoid political conversations
 politics = Route(
@@ -53,7 +54,7 @@ chitchat = Route(
 )
 
 # we place both of our decisions together into single list
-decisions = [politics, chitchat]
+routes = [politics, chitchat]
 ```
 
 We have our decisions ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
@@ -76,13 +77,13 @@ With our `decisions` and `encoder` defined we now create a `DecisionLayer`. The 
 ```python
 from semantic_router.layer import RouteLayer
 
-dl = RouteLayer(encoder=encoder, decisions=decisions)
+dl = RouteLayer(encoder=encoder, routes=routes)
 ```
 
 We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our decisions:
 
 ```python
-dl("don't you love politics?")
+dl("don't you love politics?").name
 ```
 
 ```
@@ -92,7 +93,7 @@ dl("don't you love politics?")
 Correct decision, let's try another:
 
 ```python
-dl("how's the weather today?")
+dl("how's the weather today?").name
 ```
 
 ```
@@ -102,7 +103,7 @@ dl("how's the weather today?")
 We get both decisions correct! Now lets try sending an unrelated query:
 
 ```python
-dl("I'm interested in learning about llama 2")
+dl("I'm interested in learning about llama 2").name
 ```
 
 ```
@@ -111,8 +112,11 @@ dl("I'm interested in learning about llama 2")
 
 In this case, no decision could be made as we had no matches — so our decision layer returned `None`!
 
-## 📚 Resources
+## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
 
-|                                                                                                                    |                            |
-| ------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| 🏃[Walkthrough](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/walkthrough.ipynb) | Quickstart Python notebook |
+
+
+
+
+
+

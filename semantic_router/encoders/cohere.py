@@ -7,12 +7,15 @@ from semantic_router.encoders import BaseEncoder
 
 class CohereEncoder(BaseEncoder):
     client: cohere.Client | None = None
+    type: str = "cohere"
 
     def __init__(
         self,
-        name: str = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0"),
+        name: str | None = None,
         cohere_api_key: str | None = None,
     ):
+        if name is None:
+            name = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0")
         super().__init__(name=name)
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:

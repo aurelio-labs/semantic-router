@@ -15,13 +15,18 @@ class EncoderType(Enum):
     COHERE = "cohere"
 
 
+class RouteChoice(BaseModel):
+    name: str | None = None
+    function_call: dict | None = None
+
+
 @dataclass
 class Encoder:
     type: EncoderType
-    name: str
+    name: str | None
     model: BaseEncoder
 
-    def __init__(self, type: str, name: str):
+    def __init__(self, type: str, name: str | None):
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
@@ -30,6 +35,8 @@ class Encoder:
             self.model = OpenAIEncoder(name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name)
+        else:
+            raise ValueError
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)

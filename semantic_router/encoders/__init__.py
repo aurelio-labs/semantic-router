@@ -1,8 +1,8 @@
-from .base import BaseEncoder
-from .bm25 import BM25Encoder
-from .cohere import CohereEncoder
-from .openai import OpenAIEncoder
-from .tfidf import TfidfEncoder
+from semantic_router.encoders.base import BaseEncoder
+from semantic_router.encoders.bm25 import BM25Encoder
+from semantic_router.encoders.cohere import CohereEncoder
+from semantic_router.encoders.openai import OpenAIEncoder
+from semantic_router.encoders.tfidf import TfidfEncoder
 
 __all__ = [
     "BaseEncoder",

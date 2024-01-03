@@ -7,14 +7,6 @@ from semantic_router.schemas.encoder import (
     OpenAIEncoder,
 )
 
-from semantic_router.schemas.route import (
-    Route,
-)
-
-from semantic_router.schemas.semantic_space import (
-    SemanticSpace,
-)
-
 
 class TestEncoderDataclass:
     def test_encoder_initialization_openai(self, mocker):
@@ -46,20 +38,3 @@ class TestEncoderDataclass:
         encoder = Encoder(type="openai", name="test-engine")
         result = encoder(["test"])
         assert result == [0.1, 0.2, 0.3]
-
-
-class TestSemanticSpaceDataclass:
-    def test_semanticspace_initialization(self):
-        semantic_space = SemanticSpace()
-        assert semantic_space.id == ""
-        assert semantic_space.routes == []
-
-    def test_semanticspace_add_route(self):
-        route = Route(name="test", utterances=["hello", "hi"], description="greeting")
-        semantic_space = SemanticSpace()
-        semantic_space.add(route)
-
-        assert len(semantic_space.routes) == 1
-        assert semantic_space.routes[0].name == "test"
-        assert semantic_space.routes[0].utterances == ["hello", "hi"]
-        assert semantic_space.routes[0].description == "greeting"

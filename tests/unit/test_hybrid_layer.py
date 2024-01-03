@@ -8,7 +8,7 @@ from semantic_router.encoders import (
     TfidfEncoder,
 )
 from semantic_router.hybrid_layer import HybridRouteLayer
-from semantic_router.schemas.route import Route
+from semantic_router.route import Route
 
 
 def mock_encoder_call(utterances):
@@ -88,7 +88,7 @@ class TestHybridRouteLayer:
             dense_encoder=openai_encoder, sparse_encoder=bm25_encoder
         )
         route = Route(name="Route 3", utterances=["Yes", "No"])
-        route_layer.add(route)
+        route_layer._add_routes([route])
         assert route_layer.index is not None and route_layer.categories is not None
         assert len(route_layer.index) == 2
         assert len(set(route_layer.categories)) == 1

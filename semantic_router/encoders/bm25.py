@@ -8,6 +8,7 @@ from semantic_router.encoders import BaseEncoder
 class BM25Encoder(BaseEncoder):
     model: Any | None = None
     idx_mapping: dict[int, int] | None = None
+    type: str = "sparse"
 
     def __init__(self, name: str = "bm25"):
         super().__init__(name=name)
