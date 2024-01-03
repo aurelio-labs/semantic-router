@@ -98,7 +98,7 @@ class HybridRouteLayer:
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        dense_embeds = np.array(self.encoder(all_utterances))
+        dense_embeds = np.array(self.dense_encoder(all_utterances))
         sparse_embeds = np.array(self.sparse_encoder(all_utterances))
 
         # create route array
