@@ -1,6 +1,6 @@
 import pytest
 
-from semantic_router.schemas.encoder import (
+from semantic_router.schema import (
     CohereEncoder,
     Encoder,
     EncoderType,
