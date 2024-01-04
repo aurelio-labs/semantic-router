@@ -9,6 +9,8 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 
+from semantic_router.utils.splitters import semantic_splitter
+
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
@@ -41,3 +43,23 @@ class Encoder:
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model(texts)
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class Conversation(BaseModel):
+    messages: list[Message]
+
+    def split_by_topic(
+        self,
+        encoder: BaseEncoder,
+        threshold: float = 0.5,
+        split_method: str = "consecutive_similarity_drop",
+    ):
+        docs = [f"{m.role}: {m.content}" for m in self.messages]
+        return semantic_splitter(
+            encoder=encoder, docs=docs, threshold=threshold, split_method=split_method
+        )
