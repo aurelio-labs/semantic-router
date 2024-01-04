@@ -36,7 +36,7 @@ class HybridRouteLayer:
         else:
             self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
-        if isinstance(sparse_encoder, TfidfEncoder):
+        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(self.sparse_encoder, 'fit'):
             self.sparse_encoder.fit(routes)
         if routes:
             # initialize index now
@@ -54,7 +54,7 @@ class HybridRouteLayer:
             return None
 
     def add(self, route: Route):
-        if isinstance(self.sparse_encoder, TfidfEncoder):
+        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(self.sparse_encoder, 'fit'):            
             self.sparse_encoder.fit(self.routes + [route])
             self.sparse_index = None
             for r in self.routes:
