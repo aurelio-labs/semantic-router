@@ -7,16 +7,16 @@ import string
 
 
 class TfidfEncoder(BaseEncoder):
-    idf: dict | None = None
-    word_index: dict | None = None
+    idf: np.ndarray
+    word_index: dict
 
     def __init__(self, name: str = "tfidf"):
         super().__init__(name=name)
-        self.word_index = None
-        self.idf = None
+        self.word_index = {}
+        self.idf = np.array([])
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
-        if self.word_index is None or self.idf is None:
+        if len(self.word_index) == 0 or self.idf.size == 0:
             raise ValueError("Vectorizer is not initialized.")
         if len(docs) == 0:
             raise ValueError("No documents to encode.")
@@ -43,6 +43,8 @@ class TfidfEncoder(BaseEncoder):
         return word_index
 
     def _compute_tf(self, docs: list[str]) -> np.ndarray:
+        if len(self.word_index) == 0:
+            raise ValueError("Word index is not initialized.")
         tf = np.zeros((len(docs), len(self.word_index)))
         for i, doc in enumerate(docs):
             word_counts = Counter(doc.split())
@@ -54,6 +56,8 @@ class TfidfEncoder(BaseEncoder):
         return tf
 
     def _compute_idf(self, docs: list[str]) -> np.ndarray:
+        if len(self.word_index) == 0:
+            raise ValueError("Word index is not initialized.")
         idf = np.zeros(len(self.word_index))
         for doc in docs:
             words = set(doc.split())
