@@ -61,3 +61,9 @@ repos:
         stages:
           - post-commit
           - push
+
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.11.0
+    hooks:
+        - id: commitlint
+          stages: [commit-msg]
