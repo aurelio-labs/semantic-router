@@ -70,6 +70,7 @@ class Route(BaseModel):
         """
         schema = function_call.get_schema(item=entity)
         dynamic_route = cls._generate_dynamic_route(function_schema=schema)
+        dynamic_route.function_schema = schema
         return dynamic_route
 
     @classmethod

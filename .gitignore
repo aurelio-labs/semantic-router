@@ -18,3 +18,4 @@ mac.env
 .coverage.*
 .pytest_cache
 test.py
+output

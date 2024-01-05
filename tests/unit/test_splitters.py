@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import Mock
-from semantic_router.utils.splitters import semantic_splitter
+
+import pytest
+
 from semantic_router.schema import Conversation, Message
+from semantic_router.utils.splitters import semantic_splitter
 
 
 def test_semantic_splitter_consecutive_similarity_drop():

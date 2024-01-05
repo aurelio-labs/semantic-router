@@ -55,7 +55,7 @@ class LayerConfig:
         self,
         routes: list[Route] = [],
         encoder_type: str = "openai",
-        encoder_name: str | None = None,
+        encoder_name: str | None = "text-embedding-ada-002",
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
@@ -107,15 +107,24 @@ class LayerConfig:
         """Save the routes to a file in JSON or YAML format"""
         logger.info(f"Saving route config to {path}")
         _, ext = os.path.splitext(path)
+
+        # Check file extension before creating directories or files
+        if ext not in [".json", ".yaml", ".yml"]:
+            raise ValueError(
+                "Unsupported file type. Only .json and .yaml are supported"
+            )
+
+        dir_name = os.path.dirname(path)
+
+        # Create the directory if it doesn't exist and dir_name is not an empty string
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
         with open(path, "w") as f:
             if ext == ".json":
                 json.dump(self.to_dict(), f, indent=4)
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
-            else:
-                raise ValueError(
-                    "Unsupported file type. Only .json and .yaml are supported"
-                )
 
     def add(self, route: Route):
         self.routes.append(route)
