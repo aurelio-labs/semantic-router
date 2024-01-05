@@ -1,6 +1,7 @@
 import pytest
 from semantic_router.encoders import TfidfEncoder
 from semantic_router.route import Route
+import numpy as np
 
 
 @pytest.fixture
@@ -10,8 +11,8 @@ def tfidf_encoder():
 
 class TestTfidfEncoder:
     def test_initialization(self, tfidf_encoder):
-        assert tfidf_encoder.word_index is None
-        assert tfidf_encoder.idf is None
+        assert tfidf_encoder.word_index == {}
+        assert (tfidf_encoder.idf == np.array([])).all()
 
     def test_fit(self, tfidf_encoder):
         routes = [
@@ -21,8 +22,8 @@ class TestTfidfEncoder:
             )
         ]
         tfidf_encoder.fit(routes)
-        assert tfidf_encoder.word_index is not None
-        assert tfidf_encoder.idf is not None
+        assert tfidf_encoder.word_index != {}
+        assert not np.array_equal(tfidf_encoder.idf, np.array([]))
 
     def test_call_method(self, tfidf_encoder):
         routes = [
