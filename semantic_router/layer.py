@@ -55,7 +55,7 @@ class LayerConfig:
         self,
         routes: list[Route] = [],
         encoder_type: str = "openai",
-        encoder_name: str | None = "text-embedding-ada-002",
+        encoder_name: str | None = None,
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
