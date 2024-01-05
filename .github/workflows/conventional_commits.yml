@@ -10,7 +10,6 @@ jobs:
     if: "${{ !contains(github.event.pull_request.title, 'chore(main): release') }}"
     name: Lint PR
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ fromJSON(vars.DEFAULT_JOB_TIMEOUT_MINUTES) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
