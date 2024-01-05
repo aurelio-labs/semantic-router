@@ -4,11 +4,13 @@ from semantic_router.encoders import BaseEncoder
 from semantic_router.route import Route
 from numpy.linalg import norm
 import string
+from typing import Dict
+from numpy import ndarray
 
 
 class TfidfEncoder(BaseEncoder):
-    idf: np.ndarray
-    word_index: dict
+    idf: ndarray = np.array([])
+    word_index: Dict = {}
 
     def __init__(self, name: str = "tfidf"):
         super().__init__(name=name)
