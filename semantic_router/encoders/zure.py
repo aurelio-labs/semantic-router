@@ -71,7 +71,7 @@ class AzureOpenAIEncoder(BaseEncoder):
                 api_key=str(api_key),
                 azure_endpoint=str(azure_endpoint),
                 api_version=str(api_version),
-                _strict_response_validation=True,
+                # _strict_response_validation=True,
             )
         except Exception as e:
             raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
@@ -91,6 +91,10 @@ class AzureOpenAIEncoder(BaseEncoder):
                 if embeds.data:
                     break
             except OpenAIError as e:
+                # print full traceback
+                import traceback
+
+                traceback.print_exc()
                 sleep(2**j)
                 error_message = str(e)
                 logger.warning(f"Retrying in {2**j} seconds...")
