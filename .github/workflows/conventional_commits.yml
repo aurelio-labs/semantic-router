@@ -1,13 +1,25 @@
+# Enforces conventional commits on pull requests
+# Ref: https://github.com/marketplace/actions/conventional-pull-request
+
 name: Conventional Commits
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, edited, synchronize]
 
 jobs:
   build:
+    if: "${{ !contains(github.event.pull_request.title, 'chore(main): release') }}"
     name: Conventional Commits
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: webiny/action-conventional-commits@v1.1.0
+      - name: Validate
+        uses: CondeNast/conventional-pull-request-action@v0.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commitlintRulesPath: "./commitlint.config.js"
+          commitTitleMatch: "false"
+          ignoreCommits: "false"
