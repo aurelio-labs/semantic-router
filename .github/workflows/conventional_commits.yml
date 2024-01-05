@@ -1,13 +1,26 @@
-name: Conventional Commits
-
+# Enforces conventional commits on pull requests
+# Ref: https://github.com/marketplace/actions/conventional-pull-request
+name: Conventional commits pull request
 on:
   pull_request:
     branches: [main]
-
+    types: [opened, edited, synchronize]
 jobs:
-  build:
-    name: Conventional Commits
+  lint-pr:
+    if: "${{ !contains(github.event.pull_request.title, 'chore(main): release') }}"
+    name: Lint PR
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: webiny/action-conventional-commits@v1.1.0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate
+        uses: CondeNast/conventional-pull-request-action@v0.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commitlintRulesPath: "./commitlint.config.js"
+          # if the PR contains a single commit, fail if the commit message and the PR title do not match
+          commitTitleMatch: "false" # default: 'true'
+          # if you squash merge PRs and enabled "Default to PR title for squash merge commits", you can disable all linting of commits
+          ignoreCommits: "false" # default: 'false'
