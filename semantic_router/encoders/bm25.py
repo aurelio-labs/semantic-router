@@ -1,7 +1,5 @@
 from typing import Any
 
-from pinecone_text.sparse import BM25Encoder as encoder
-
 from semantic_router.encoders import BaseEncoder
 
 
@@ -12,6 +10,13 @@ class BM25Encoder(BaseEncoder):
 
     def __init__(self, name: str = "bm25"):
         super().__init__(name=name)
+        try:
+            from pinecone_text.sparse import BM25Encoder as encoder
+        except ImportError:
+            raise ImportError(
+                "Please install pinecone-text to use BM25Encoder. "
+                "You can install it with: `pip install semantic-router[hybrid]`"
+            )
         self.model = encoder.default()
 
         params = self.model.get_params()

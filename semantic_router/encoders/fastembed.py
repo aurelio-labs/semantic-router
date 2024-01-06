@@ -21,8 +21,9 @@ class FastEmbedEncoder(BaseModel):
             from fastembed.embedding import FlagEmbedding as Embedding
         except ImportError:
             raise ImportError(
-                "Please install fastembed to use FastEmbedEncoder"
-                "You can install it with: `pip install fastembed`"
+                "Please install fastembed to use FastEmbedEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[fastembed]`"
             )
 
         embedding_args = {
