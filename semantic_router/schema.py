@@ -36,11 +36,11 @@ class Encoder:
         if self.type == EncoderType.HUGGINGFACE:
             raise NotImplementedError
         elif self.type == EncoderType.FASTEMBED:
-            self.model = FastEmbedEncoder(name)
+            self.model = FastEmbedEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
-            self.model = OpenAIEncoder(name)
+            self.model = OpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
-            self.model = CohereEncoder(name)
+            self.model = CohereEncoder(name=name)
         else:
             raise ValueError
 

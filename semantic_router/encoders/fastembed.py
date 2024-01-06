@@ -1,12 +1,14 @@
 from typing import Any, List, Optional
 
 import numpy as np
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
+
+from semantic_router.encoders import BaseEncoder
 
 
-class FastEmbedEncoder(BaseModel):
+class FastEmbedEncoder(BaseEncoder):
     type: str = "fastembed"
-    model_name: str = "BAAI/bge-small-en-v1.5"
+    name: str = "BAAI/bge-small-en-v1.5"
     max_length: int = 512
     cache_dir: Optional[str] = None
     threads: Optional[int] = None
@@ -27,7 +29,7 @@ class FastEmbedEncoder(BaseModel):
             )
 
         embedding_args = {
-            "model_name": self.model_name,
+            "model_name": self.name,
             "max_length": self.max_length,
             "cache_dir": self.cache_dir,
             "threads": self.threads,
