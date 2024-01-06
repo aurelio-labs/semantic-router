@@ -49,6 +49,14 @@ class Message(BaseModel):
     role: str
     content: str
 
+    def to_openai(self):
+        if self.role.lower() not in ["user", "assistant", "system"]:
+            raise ValueError("Role must be either 'user', 'assistant' or 'system'")
+        return {"role": self.role, "content": self.content}
+
+    def to_cohere(self):
+        return {"role": self.role, "message": self.content}
+
 
 class Conversation(BaseModel):
     messages: list[Message]

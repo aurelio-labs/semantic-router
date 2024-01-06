@@ -9,6 +9,7 @@ from semantic_router.encoders import (
     CohereEncoder,
     OpenAIEncoder,
 )
+from semantic_router.llms import BaseLLM
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
@@ -142,12 +143,16 @@ class RouteLayer:
     score_threshold: float = 0.82
 
     def __init__(
-        self, encoder: BaseEncoder | None = None, routes: list[Route] | None = None
+        self,
+        encoder: BaseEncoder | None = None,
+        llm: BaseLLM | None = None,
+        routes: list[Route] | None = None,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
         self.categories = None
         self.encoder = encoder if encoder is not None else CohereEncoder()
+        self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         # decide on default threshold based on encoder
         if isinstance(encoder, OpenAIEncoder):
@@ -168,6 +173,13 @@ class RouteLayer:
         if passed:
             # get chosen route object
             route = [route for route in self.routes if route.name == top_class][0]
+            if route.function_schema and not isinstance(route.llm, BaseLLM):
+                if not self.llm:
+                    raise ValueError(
+                        "LLM is required for dynamic routes. Please ensure the 'llm' is set."
+                    )
+                else:
+                    route.llm = self.llm
             return route(text)
         else:
             # if no route passes threshold, return empty route choice
