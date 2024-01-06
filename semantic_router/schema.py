@@ -7,12 +7,14 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     OpenAIEncoder,
+    FastEmbedEncoder,
 )
 from semantic_router.utils.splitters import semantic_splitter
 
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
+    FASTEMBED = "fastembed"
     OPENAI = "openai"
     COHERE = "cohere"
 
@@ -33,10 +35,12 @@ class Encoder:
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
             raise NotImplementedError
+        elif self.type == EncoderType.FASTEMBED:
+            self.model = FastEmbedEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
-            self.model = OpenAIEncoder(name)
+            self.model = OpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
-            self.model = CohereEncoder(name)
+            self.model = CohereEncoder(name=name)
         else:
             raise ValueError
 

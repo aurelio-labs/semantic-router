@@ -8,6 +8,7 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     OpenAIEncoder,
+    FastEmbedEncoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.route import Route
@@ -60,10 +61,14 @@ class LayerConfig:
         self.encoder_type = encoder_type
         if encoder_name is None:
             # if encoder_name is not provided, use the default encoder for type
+            # TODO base these values on default values in encoders themselves..
+            # TODO without initializing them (as this is just config)
             if encoder_type == EncoderType.OPENAI:
                 encoder_name = "text-embedding-ada-002"
             elif encoder_type == EncoderType.COHERE:
                 encoder_name = "embed-english-v3.0"
+            elif encoder_type == EncoderType.FASTEMBED:
+                encoder_name = "BAAI/bge-small-en-v1.5"
             elif encoder_type == EncoderType.HUGGINGFACE:
                 raise NotImplementedError
             logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
@@ -159,10 +164,14 @@ class RouteLayer:
         self.encoder = encoder if encoder is not None else CohereEncoder()
         self.routes: list[Route] = routes if routes is not None else []
         # decide on default threshold based on encoder
+        # TODO move defaults to the encoder objects and extract from there
         if isinstance(encoder, OpenAIEncoder):
             self.score_threshold = 0.82
         elif isinstance(encoder, CohereEncoder):
             self.score_threshold = 0.3
+        elif isinstance(encoder, FastEmbedEncoder):
+            # TODO default not thoroughly tested, should optimize
+            self.score_threshold = 0.5
         else:
             self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
