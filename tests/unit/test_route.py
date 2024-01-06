@@ -1,6 +1,7 @@
-from unittest.mock import Mock, patch  # , AsyncMock
+from unittest.mock import patch  # , AsyncMock
 
 # import pytest
+from semantic_router.llms import BaseLLM
 from semantic_router.route import Route, is_valid
 
 
@@ -41,11 +42,9 @@ def test_is_valid_with_invalid_json():
         mock_logger.error.assert_called_once()
 
 
-class TestRoute:
-    @patch("semantic_router.route.llm", new_callable=Mock)
-    def test_generate_dynamic_route(self, mock_llm):
-        print(f"mock_llm: {mock_llm}")
-        mock_llm.return_value = """
+class MockLLM(BaseLLM):
+    def __call__(self, prompt):
+        llm_output = """
         <config>
         {
             "name": "test_function",
@@ -58,8 +57,16 @@ class TestRoute:
         }
         </config>
         """
+        return llm_output
+
+
+class TestRoute:
+    def test_generate_dynamic_route(self):
+        mock_llm = MockLLM(name="test")
         function_schema = {"name": "test_function", "type": "function"}
-        route = Route._generate_dynamic_route(function_schema)
+        route = Route._generate_dynamic_route(
+            llm=mock_llm, function_schema=function_schema
+        )
         assert route.name == "test_function"
         assert route.utterances == [
             "example_utterance_1",
@@ -105,6 +112,7 @@ class TestRoute:
             "utterances": ["utterance"],
             "description": None,
             "function_schema": None,
+            "llm": None,
         }
         assert route.to_dict() == expected_dict
 
@@ -114,28 +122,15 @@ class TestRoute:
         assert route.name == "test"
         assert route.utterances == ["utterance"]
 
-    @patch("semantic_router.route.llm", new_callable=Mock)
-    def test_from_dynamic_route(self, mock_llm):
+    def test_from_dynamic_route(self):
         # Mock the llm function
-        mock_llm.return_value = """
-        <config>
-        {
-            "name": "test_function",
-            "utterances": [
-                "example_utterance_1",
-                "example_utterance_2",
-                "example_utterance_3",
-                "example_utterance_4",
-                "example_utterance_5"]
-        }
-        </config>
-        """
+        mock_llm = MockLLM(name="test")
 
         def test_function(input: str):
             """Test function docstring"""
             pass
 
-        dynamic_route = Route.from_dynamic_route(test_function)
+        dynamic_route = Route.from_dynamic_route(llm=mock_llm, entity=test_function)
 
         assert dynamic_route.name == "test_function"
         assert dynamic_route.utterances == [
