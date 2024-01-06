@@ -1,4 +1,5 @@
 import numpy as np
+
 from semantic_router.encoders import BaseEncoder
 
 
@@ -13,13 +14,15 @@ def semantic_splitter(
 
     Method 1: "consecutive_similarity_drop" - This method splits documents based on
     the changes in similarity scores between consecutive documents.
-    Method 2: "cumulative_similarity_drop" - This method segments the documents based on the
-    changes in cumulative similarity score of the documents within the same split.
+    Method 2: "cumulative_similarity_drop" - This method segments the documents based
+    on the changes in cumulative similarity score of the documents within the same
+    split.
 
     Args:
         encoder (BaseEncoder): Encoder for document embeddings.
         docs (list[str]): Documents to split.
-        threshold (float): The similarity drop value that will trigger a new document split.
+        threshold (float): The similarity drop value that will trigger a new document
+        split.
         split_method (str): The method to use for splitting.
 
     Returns:
@@ -64,7 +67,8 @@ def semantic_splitter(
 
     else:
         raise ValueError(
-            "Invalid 'split_method'. Choose either 'consecutive_similarity_drop' or 'cumulative_similarity_drop'."
+            "Invalid 'split_method'. Choose either 'consecutive_similarity_drop' or"
+            " 'cumulative_similarity_drop'."
         )
 
     splits[f"split {curr_split_num}"] = docs[curr_split_start_idx:]
