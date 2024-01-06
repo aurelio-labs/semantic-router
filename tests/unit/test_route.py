@@ -1,6 +1,6 @@
 from unittest.mock import patch  # , AsyncMock
 
-# import pytest
+import pytest
 from semantic_router.llms import BaseLLM
 from semantic_router.route import Route, is_valid
 
@@ -61,6 +61,21 @@ class MockLLM(BaseLLM):
 
 
 class TestRoute:
+    def test_value_error_in_route_call(self):
+        function_schema = {"name": "test_function", "type": "function"}
+
+        route = Route(
+            name="test_function",
+            utterances=["utterance1", "utterance2"],
+            function_schema=function_schema,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="LLM is required for dynamic routes. Please ensure the 'llm' is set.",
+        ):
+            route("test_query")
+
     def test_generate_dynamic_route(self):
         mock_llm = MockLLM(name="test")
         function_schema = {"name": "test_function", "type": "function"}
