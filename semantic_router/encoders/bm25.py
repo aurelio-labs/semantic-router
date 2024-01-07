@@ -19,7 +19,11 @@ class BM25Encoder(BaseEncoder):
                 "You can install it with: `pip install semantic-router[hybrid]`"
             )
         logger.info("Downloading and initializing BM25 model parameters.")
-        self.model = encoder.default()
+        # self.model = encoder.default()
+        self.model = encoder()
+        self.model.fit(
+            corpus=["test test", "this is another message", "hello how are you"]
+        )
 
         params = self.model.get_params()
         doc_freq = params["doc_freq"]
