@@ -5,11 +5,9 @@ from typing import Any, Callable, Union
 from pydantic import BaseModel
 
 from semantic_router.llms import BaseLLM
-from semantic_router.schema import RouteChoice
+from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
-
-from semantic_router.schema import Message
 
 
 def is_valid(route_config: str) -> bool:
@@ -51,7 +49,8 @@ class Route(BaseModel):
         if self.function_schema:
             if not self.llm:
                 raise ValueError(
-                    "LLM is required for dynamic routes. Please ensure the 'llm' is set."
+                    "LLM is required for dynamic routes. Please ensure the `llm` "
+                    "attribute is set."
                 )
             # if a function schema is provided we generate the inputs
             extracted_inputs = function_call.extract_function_inputs(

@@ -5,7 +5,7 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 
 
-class OpenAI(BaseLLM):
+class OpenAILLM(BaseLLM):
     client: openai.OpenAI | None
     temperature: float | None
     max_tokens: int | None

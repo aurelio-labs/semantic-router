@@ -4,7 +4,7 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 
 
-class Cohere(BaseLLM):
+class CohereLLM(BaseLLM):
     client: cohere.Client | None = None
 
     def __init__(
