@@ -119,6 +119,10 @@ class TestRouteLayer:
         route_layer_openai = RouteLayer(encoder=openai_encoder)
         assert route_layer_openai.score_threshold == 0.82
 
+    def test_initialization_no_encoder(self, openai_encoder):
+        route_layer_none = RouteLayer(encoder=None)
+        assert route_layer_none.score_threshold == openai_encoder.score_threshold
+
     def test_initialization_dynamic_route(self, cohere_encoder, openai_encoder):
         route_layer_cohere = RouteLayer(encoder=cohere_encoder)
         assert route_layer_cohere.score_threshold == 0.3
