@@ -135,13 +135,17 @@ class HybridRouteLayer:
             logger.warning("No index found. Please add routes to the layer.")
             return []
 
-    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _convex_scaling(
+        self, dense: np.ndarray, sparse: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         # scale sparse and dense vecs
         dense = np.array(dense) * self.alpha
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
-    def _semantic_classify(self, query_results: list[dict[str, str | float]]) -> tuple[str, list[float]]:
+    def _semantic_classify(
+        self, query_results: list[dict[str, str | float]]
+    ) -> tuple[str, list[float]]:
         scores_by_class: dict[str, list[float]] = {}
         for result in query_results:
             score = result["score"]

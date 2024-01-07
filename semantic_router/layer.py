@@ -73,7 +73,7 @@ class LayerConfig:
         self.routes = routes
 
     @classmethod
-    def from_file(cls, path: str) -> 'LayerConfig':
+    def from_file(cls, path: str) -> "LayerConfig":
         """Load the routes from a file in JSON or YAML format"""
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
@@ -209,19 +209,19 @@ class RouteLayer:
         )
 
     @classmethod
-    def from_json(cls, file_path: str) -> 'RouteLayer':
+    def from_json(cls, file_path: str) -> "RouteLayer":
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_yaml(cls, file_path: str) -> 'RouteLayer':
+    def from_yaml(cls, file_path: str) -> "RouteLayer":
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig) -> 'RouteLayer':
+    def from_config(cls, config: LayerConfig) -> "RouteLayer":
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
