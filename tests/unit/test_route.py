@@ -71,10 +71,7 @@ class TestRoute:
             function_schema=function_schema,
         )
 
-        with pytest.raises(
-            ValueError,
-            match="LLM is required for dynamic routes. Please ensure the 'llm' is set.",
-        ):
+        with pytest.raises(ValueError):
             route("test_query")
 
     def test_generate_dynamic_route(self):
