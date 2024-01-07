@@ -4,8 +4,6 @@ from numpy.linalg import norm
 from semantic_router.encoders import (
     BaseEncoder,
     BM25Encoder,
-    CohereEncoder,
-    OpenAIEncoder,
 )
 from semantic_router.route import Route
 from semantic_router.utils.logger import logger
@@ -15,21 +13,15 @@ class HybridRouteLayer:
     index = None
     sparse_index = None
     categories = None
-    score_threshold = 0.82
+    score_threshold: float
 
     def __init__(
         self, encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
     ):
         self.encoder = encoder
+        self.score_threshold = self.encoder.score_threshold
         self.sparse_encoder = BM25Encoder()
         self.alpha = alpha
-        # decide on default threshold based on encoder
-        if isinstance(encoder, OpenAIEncoder):
-            self.score_threshold = 0.82
-        elif isinstance(encoder, CohereEncoder):
-            self.score_threshold = 0.3
-        else:
-            self.score_threshold = 0.82
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now

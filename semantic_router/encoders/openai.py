@@ -17,10 +17,11 @@ class OpenAIEncoder(BaseEncoder):
         self,
         name: str | None = None,
         openai_api_key: str | None = None,
+        score_threshold: float = 0.82,
     ):
         if name is None:
             name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
-        super().__init__(name=name)
+        super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")

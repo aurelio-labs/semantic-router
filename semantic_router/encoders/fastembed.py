@@ -14,8 +14,10 @@ class FastEmbedEncoder(BaseEncoder):
     threads: Optional[int] = None
     _client: Any = PrivateAttr()
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    def __init__(
+        self, score_threshold: float = 0.5, **data
+    ):  # TODO default score_threshold not thoroughly tested, should optimize
+        super().__init__(score_threshold=score_threshold, **data)
         self._client = self._initialize_client()
 
     def _initialize_client(self):
