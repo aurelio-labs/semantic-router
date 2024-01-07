@@ -92,6 +92,14 @@ def routes():
     ]
 
 
+@pytest.fixture
+def dynamic_routes():
+    return [
+        Route(name="Route 1", utterances=["Hello", "Hi"], function_schema="test"),
+        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
+    ]
+
+
 class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -106,7 +114,12 @@ class TestRouteLayer:
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
         route_layer_cohere = RouteLayer(encoder=cohere_encoder)
         assert route_layer_cohere.score_threshold == 0.3
+        route_layer_openai = RouteLayer(encoder=openai_encoder)
+        assert route_layer_openai.score_threshold == 0.82
 
+    def test_initialization_dynamic_route(self, cohere_encoder, openai_encoder):
+        route_layer_cohere = RouteLayer(encoder=cohere_encoder)
+        assert route_layer_cohere.score_threshold == 0.3
         route_layer_openai = RouteLayer(encoder=openai_encoder)
         assert route_layer_openai.score_threshold == 0.82
 

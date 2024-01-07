@@ -4,8 +4,8 @@ from typing import Any, Callable, Union
 
 from pydantic import BaseModel
 
-from semantic_router.schema import RouteChoice
-from semantic_router.utils.llm import llm
+from semantic_router.llms import BaseLLM
+from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
 
@@ -41,7 +41,9 @@ def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
     return schema
 
 
-def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
+def extract_function_inputs(
+    query: str, llm: BaseLLM, function_schema: dict[str, Any]
+) -> dict:
     logger.info("Extracting function input...")
 
     prompt = f"""
@@ -72,8 +74,8 @@ def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict
     schema: {function_schema}
     Result:
     """
-
-    output = llm(prompt)
+    llm_input = [Message(role="user", content=prompt)]
+    output = llm(llm_input)
     if not output:
         raise Exception("No output generated for extract function input")
 
@@ -107,7 +109,9 @@ def is_valid_inputs(inputs: dict[str, Any], function_schema: dict[str, Any]) -> 
 
 
 # TODO: Add route layer object to the input, solve circular import issue
-async def route_and_execute(query: str, functions: list[Callable], layer) -> Any:
+async def route_and_execute(
+    query: str, llm: BaseLLM, functions: list[Callable], layer
+) -> Any:
     route_choice: RouteChoice = layer(query)
 
     for function in functions:
@@ -116,4 +120,5 @@ async def route_and_execute(query: str, functions: list[Callable], layer) -> Any
                 return function(**route_choice.function_call)
 
     logger.warning("No function found, calling LLM.")
-    return llm(query)
+    llm_input = [Message(role="user", content=query)]
+    return llm(llm_input)
