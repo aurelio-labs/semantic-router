@@ -120,9 +120,9 @@ class TestRouteLayer:
         assert route_layer_openai.score_threshold == 0.82
 
     def test_initialization_no_encoder(self, openai_encoder):
-        with patch("semantic_router.encoders.OpenAIEncoder") as _:
-            route_layer_none = RouteLayer(encoder=None)
-            assert route_layer_none.score_threshold == openai_encoder.score_threshold
+        os.environ["OPENAI_API_KEY"] = "test_api_key"
+        route_layer_none = RouteLayer(encoder=None)
+        assert route_layer_none.score_threshold == openai_encoder.score_threshold
 
     def test_initialization_dynamic_route(self, cohere_encoder, openai_encoder):
         route_layer_cohere = RouteLayer(encoder=cohere_encoder)
