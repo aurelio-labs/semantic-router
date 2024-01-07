@@ -4,12 +4,7 @@ import os
 import numpy as np
 import yaml
 
-from semantic_router.encoders import (
-    BaseEncoder,
-    CohereEncoder,
-    FastEmbedEncoder,
-    OpenAIEncoder,
-)
+from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
@@ -154,7 +149,8 @@ class LayerConfig:
 class RouteLayer:
     index: np.ndarray | None = None
     categories: np.ndarray | None = None
-    score_threshold: float = 0.82
+    score_threshold: float
+    encoder: BaseEncoder
 
     def __init__(
         self,
@@ -165,20 +161,17 @@ class RouteLayer:
         logger.info("Initializing RouteLayer")
         self.index = None
         self.categories = None
-        self.encoder = encoder if encoder is not None else CohereEncoder()
+        if encoder is None:
+            logger.warning(
+                "No encoder provided. Using default OpenAIEncoder. Ensure "
+                "that you have set OPENAI_API_KEY in your environment."
+            )
+            self.encoder = OpenAIEncoder()
+        else:
+            self.encoder = encoder
         self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
-        # decide on default threshold based on encoder
-        # TODO move defaults to the encoder objects and extract from there
-        if isinstance(encoder, OpenAIEncoder):
-            self.score_threshold = 0.82
-        elif isinstance(encoder, CohereEncoder):
-            self.score_threshold = 0.3
-        elif isinstance(encoder, FastEmbedEncoder):
-            # TODO default not thoroughly tested, should optimize
-            self.score_threshold = 0.5
-        else:
-            self.score_threshold = 0.82
+        self.score_threshold = self.encoder.score_threshold
         # if routes list has been passed, we initialize index now
         if len(self.routes) > 0:
             # initialize index now
