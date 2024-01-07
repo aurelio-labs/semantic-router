@@ -6,9 +6,10 @@ import yaml
 
 from semantic_router.encoders import (
     BaseEncoder,
-    CohereEncoder,
+    OpenAIEncoder
 )
 from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
@@ -156,12 +157,21 @@ class RouteLayer:
     def __init__(
         self,
         encoder: BaseEncoder | None = None,
+        llm: BaseLLM | None = None,
         routes: list[Route] | None = None,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
         self.categories = None
-        self.encoder = encoder if encoder is not None else CohereEncoder()
+        if encoder is None:
+            logger.warning(
+                "No encoder provided. Using default OpenAIEncoder. Ensure "
+                "that you have set OPENAI_API_KEY in your environment."
+            )
+            self.encoder = OpenAIEncoder()
+        else:
+            self.encoder = encoder
+        self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
         # if routes list has been passed, we initialize index now
@@ -176,6 +186,17 @@ class RouteLayer:
         if passed:
             # get chosen route object
             route = [route for route in self.routes if route.name == top_class][0]
+            if route.function_schema and not isinstance(route.llm, BaseLLM):
+                if not self.llm:
+                    logger.warning(
+                        "No LLM provided for dynamic route, will use OpenAI LLM "
+                        "default. Ensure API key is set in OPENAI_API_KEY environment "
+                        "variable."
+                    )
+                    self.llm = OpenAILLM()
+                    route.llm = self.llm
+                else:
+                    route.llm = self.llm
             return route(text)
         else:
             # if no route passes threshold, return empty route choice
@@ -206,24 +227,20 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
 
     def add(self, route: Route):
-        print(f"Adding route `{route.name}`")
+        logger.info(f"Adding `{route.name}` route")
         # create embeddings
         embeds = self.encoder(route.utterances)
 
         # create route array
         if self.categories is None:
-            print("Initializing categories array")
             self.categories = np.array([route.name] * len(embeds))
         else:
-            print("Adding route to categories")
             str_arr = np.array([route.name] * len(embeds))
             self.categories = np.concatenate([self.categories, str_arr])
         # create utterance array (the index)
         if self.index is None:
-            print("Initializing index array")
             self.index = np.array(embeds)
         else:
-            print("Adding route to index")
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
         # add route to routes list
