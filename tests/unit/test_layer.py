@@ -91,6 +91,7 @@ def routes():
         Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
     ]
 
+
 @pytest.fixture
 def dynamic_routes():
     return [
