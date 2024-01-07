@@ -6,8 +6,8 @@ from pydantic.dataclasses import dataclass
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
-    OpenAIEncoder,
     FastEmbedEncoder,
+    OpenAIEncoder,
 )
 from semantic_router.utils.splitters import semantic_splitter
 
@@ -51,6 +51,14 @@ class Encoder:
 class Message(BaseModel):
     role: str
     content: str
+
+    def to_openai(self):
+        if self.role.lower() not in ["user", "assistant", "system"]:
+            raise ValueError("Role must be either 'user', 'assistant' or 'system'")
+        return {"role": self.role, "content": self.content}
+
+    def to_cohere(self):
+        return {"role": self.role, "message": self.content}
 
 
 class Conversation(BaseModel):
