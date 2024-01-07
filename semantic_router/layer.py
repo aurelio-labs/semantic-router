@@ -4,10 +4,7 @@ import os
 import numpy as np
 import yaml
 
-from semantic_router.encoders import (
-    BaseEncoder,
-    OpenAIEncoder
-)
+from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
@@ -153,6 +150,7 @@ class RouteLayer:
     index: np.ndarray | None = None
     categories: np.ndarray | None = None
     score_threshold: float
+    encoder: BaseEncoder
 
     def __init__(
         self,
