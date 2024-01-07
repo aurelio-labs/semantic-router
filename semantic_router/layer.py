@@ -7,8 +7,6 @@ import yaml
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
-    OpenAIEncoder,
-    FastEmbedEncoder,
 )
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.route import Route
@@ -153,27 +151,19 @@ class LayerConfig:
 class RouteLayer:
     index: np.ndarray | None = None
     categories: np.ndarray | None = None
-    score_threshold: float = 0.82
+    score_threshold: float
 
     def __init__(
-        self, encoder: BaseEncoder | None = None, routes: list[Route] | None = None
+        self,
+        encoder: BaseEncoder | None = None,
+        routes: list[Route] | None = None,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
         self.categories = None
         self.encoder = encoder if encoder is not None else CohereEncoder()
         self.routes: list[Route] = routes if routes is not None else []
-        # decide on default threshold based on encoder
-        # TODO move defaults to the encoder objects and extract from there
-        if isinstance(encoder, OpenAIEncoder):
-            self.score_threshold = 0.82
-        elif isinstance(encoder, CohereEncoder):
-            self.score_threshold = 0.3
-        elif isinstance(encoder, FastEmbedEncoder):
-            # TODO default not thoroughly tested, should optimize
-            self.score_threshold = 0.5
-        else:
-            self.score_threshold = 0.82
+        self.score_threshold = self.encoder.score_threshold
         # if routes list has been passed, we initialize index now
         if len(self.routes) > 0:
             # initialize index now

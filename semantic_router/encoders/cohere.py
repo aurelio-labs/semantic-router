@@ -13,10 +13,11 @@ class CohereEncoder(BaseEncoder):
         self,
         name: str | None = None,
         cohere_api_key: str | None = None,
+        score_threshold: float = 0.3,
     ):
         if name is None:
             name = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0")
-        super().__init__(name=name)
+        super().__init__(name=name, score_threshold=score_threshold)
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:
             raise ValueError("Cohere API key cannot be 'None'.")
