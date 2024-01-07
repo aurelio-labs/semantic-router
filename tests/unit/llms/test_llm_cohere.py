@@ -1,13 +1,13 @@
 import pytest
 
-from semantic_router.llms import Cohere
+from semantic_router.llms import CohereLLM
 from semantic_router.schema import Message
 
 
 @pytest.fixture
 def cohere_llm(mocker):
     mocker.patch("cohere.Client")
-    return Cohere(cohere_api_key="test_api_key")
+    return CohereLLM(cohere_api_key="test_api_key")
 
 
 class TestCohereLLM:
@@ -19,7 +19,7 @@ class TestCohereLLM:
         monkeypatch.delenv("COHERE_API_KEY", raising=False)
         mocker.patch("cohere.Client")
         with pytest.raises(ValueError):
-            Cohere()
+            CohereLLM()
 
     def test_call_method(self, cohere_llm, mocker):
         mock_llm = mocker.MagicMock()
@@ -36,11 +36,11 @@ class TestCohereLLM:
             "cohere.Client", side_effect=Exception("Failed to initialize client")
         )
         with pytest.raises(ValueError):
-            Cohere(cohere_api_key="test_api_key")
+            CohereLLM(cohere_api_key="test_api_key")
 
     def test_raises_value_error_if_cohere_client_is_not_initialized(self, mocker):
         mocker.patch("cohere.Client", return_value=None)
-        llm = Cohere(cohere_api_key="test_api_key")
+        llm = CohereLLM(cohere_api_key="test_api_key")
         with pytest.raises(ValueError):
             llm("test")
 

@@ -5,8 +5,7 @@ from typing import Any, Callable, Union
 from pydantic import BaseModel
 
 from semantic_router.llms import BaseLLM
-from semantic_router.schema import Message
-from semantic_router.schema import RouteChoice
+from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
 

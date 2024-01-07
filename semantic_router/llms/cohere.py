@@ -1,5 +1,7 @@
 import os
+
 import cohere
+
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 

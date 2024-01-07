@@ -6,8 +6,8 @@ from pydantic.dataclasses import dataclass
 from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
-    OpenAIEncoder,
     FastEmbedEncoder,
+    OpenAIEncoder,
 )
 from semantic_router.utils.splitters import semantic_splitter
 

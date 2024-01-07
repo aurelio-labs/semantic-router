@@ -1,12 +1,13 @@
 import pytest
-from semantic_router.llms import OpenAI
+
+from semantic_router.llms import OpenAILLM
 from semantic_router.schema import Message
 
 
 @pytest.fixture
 def openai_llm(mocker):
     mocker.patch("openai.Client")
-    return OpenAI(openai_api_key="test_api_key")
+    return OpenAILLM(openai_api_key="test_api_key")
 
 
 class TestOpenAILLM:
@@ -16,13 +17,13 @@ class TestOpenAILLM:
 
     def test_openai_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
-        llm = OpenAI()
+        llm = OpenAILLM()
         assert llm.client is not None
 
     def test_openai_llm_init_without_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
         with pytest.raises(ValueError) as _:
-            OpenAI()
+            OpenAILLM()
 
     def test_openai_llm_call_uninitialized_client(self, openai_llm):
         # Set the client to None to simulate an uninitialized client
@@ -36,7 +37,7 @@ class TestOpenAILLM:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("openai.OpenAI", side_effect=Exception("Initialization error"))
         with pytest.raises(ValueError) as e:
-            OpenAI()
+            OpenAILLM()
         assert (
             "OpenAI API client failed to initialize. Error: Initialization error"
             in str(e.value)

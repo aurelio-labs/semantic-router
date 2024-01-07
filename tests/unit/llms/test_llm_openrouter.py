@@ -1,12 +1,13 @@
 import pytest
-from semantic_router.llms import OpenRouter
+
+from semantic_router.llms import OpenRouterLLM
 from semantic_router.schema import Message
 
 
 @pytest.fixture
 def openrouter_llm(mocker):
     mocker.patch("openai.Client")
-    return OpenRouter(openrouter_api_key="test_api_key")
+    return OpenRouterLLM(openrouter_api_key="test_api_key")
 
 
 class TestOpenRouterLLM:
@@ -18,13 +19,13 @@ class TestOpenRouterLLM:
 
     def test_openrouter_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
-        llm = OpenRouter()
+        llm = OpenRouterLLM()
         assert llm.client is not None
 
     def test_openrouter_llm_init_without_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
         with pytest.raises(ValueError) as _:
-            OpenRouter()
+            OpenRouterLLM()
 
     def test_openrouter_llm_call_uninitialized_client(self, openrouter_llm):
         # Set the client to None to simulate an uninitialized client
@@ -38,7 +39,7 @@ class TestOpenRouterLLM:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("openai.OpenAI", side_effect=Exception("Initialization error"))
         with pytest.raises(ValueError) as e:
-            OpenRouter()
+            OpenRouterLLM()
         assert (
             "OpenRouter API client failed to initialize. Error: Initialization error"
             in str(e.value)

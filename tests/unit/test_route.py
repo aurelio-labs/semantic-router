@@ -1,6 +1,7 @@
 from unittest.mock import patch  # , AsyncMock
 
 import pytest
+
 from semantic_router.llms import BaseLLM
 from semantic_router.route import Route, is_valid
 

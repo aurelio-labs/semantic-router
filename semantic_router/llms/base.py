@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+
 from semantic_router.schema import Message
 
 
