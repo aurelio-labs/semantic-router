@@ -1,5 +1,5 @@
 import logging
-
+from logging import Logger
 import colorlog
 
 
@@ -20,7 +20,7 @@ class CustomFormatter(colorlog.ColoredFormatter):
         )
 
 
-def add_coloured_handler(logger):
+def add_coloured_handler(logger: Logger) -> Logger:
     formatter = CustomFormatter()
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
@@ -28,7 +28,7 @@ def add_coloured_handler(logger):
     return logger
 
 
-def setup_custom_logger(name):
+def setup_custom_logger(name: str) -> Logger:
     logger = logging.getLogger(name)
     logger.handlers = []
 

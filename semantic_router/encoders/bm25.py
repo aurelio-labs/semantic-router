@@ -47,7 +47,7 @@ class BM25Encoder(BaseEncoder):
                     embeds[i][position] = val
         return embeds
 
-    def fit(self, docs: list[str]):
+    def fit(self, docs: list[str]) -> None:
         if self.model is None:
             raise ValueError("Model is not initialized.")
         self.model.fit(docs)

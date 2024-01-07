@@ -61,7 +61,7 @@ class Conversation(BaseModel):
         encoder: BaseEncoder,
         threshold: float = 0.5,
         split_method: str = "consecutive_similarity_drop",
-    ):
+    ) -> dict[str, list[str]]:
         docs = [f"{m.role}: {m.content}" for m in self.messages]
         return semantic_splitter(
             encoder=encoder, docs=docs, threshold=threshold, split_method=split_method

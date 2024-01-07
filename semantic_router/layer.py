@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 import numpy as np
 import yaml
@@ -76,7 +77,7 @@ class LayerConfig:
         self.routes = routes
 
     @classmethod
-    def from_file(cls, path: str):
+    def from_file(cls, path: str) -> 'LayerConfig':
         """Load the routes from a file in JSON or YAML format"""
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
@@ -101,14 +102,14 @@ class LayerConfig:
             else:
                 raise Exception("Invalid config JSON or YAML")
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "encoder_type": self.encoder_type,
             "encoder_name": self.encoder_name,
             "routes": [route.to_dict() for route in self.routes],
         }
 
-    def to_file(self, path: str):
+    def to_file(self, path: str) -> None:
         """Save the routes to a file in JSON or YAML format"""
         logger.info(f"Saving route config to {path}")
         _, ext = os.path.splitext(path)
@@ -142,7 +143,7 @@ class LayerConfig:
         logger.error(f"Route `{name}` not found")
         return None
 
-    def remove(self, name: str):
+    def remove(self, name: str) -> None:
         if name not in [route.name for route in self.routes]:
             logger.error(f"Route `{name}` not found")
         else:
@@ -191,7 +192,7 @@ class RouteLayer:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"RouteLayer(encoder={self.encoder}, "
             f"score_threshold={self.score_threshold}, "
@@ -199,23 +200,23 @@ class RouteLayer:
         )
 
     @classmethod
-    def from_json(cls, file_path: str):
+    def from_json(cls, file_path: str) -> 'RouteLayer':
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_yaml(cls, file_path: str):
+    def from_yaml(cls, file_path: str) -> 'RouteLayer':
         config = LayerConfig.from_file(file_path)
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig):
+    def from_config(cls, config: LayerConfig) -> 'RouteLayer':
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
-    def add(self, route: Route):
+    def add(self, route: Route) -> None:
         print(f"Adding route `{route.name}`")
         # create embeddings
         embeds = self.encoder(route.utterances)
@@ -239,7 +240,7 @@ class RouteLayer:
         # add route to routes list
         self.routes.append(route)
 
-    def _add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: list[Route]) -> None:
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
@@ -263,7 +264,7 @@ class RouteLayer:
             else embed_utterance_arr
         )
 
-    def _query(self, text: str, top_k: int = 5):
+    def _query(self, text: str, top_k: int = 5) -> list[dict[str, str | float]]:
         """Given some text, encodes and searches the index vector space to
         retrieve the top_k most similar records.
         """
@@ -316,10 +317,10 @@ class RouteLayer:
             routes=self.routes,
         )
 
-    def to_json(self, file_path: str):
+    def to_json(self, file_path: str) -> None:
         config = self.to_config()
         config.to_file(file_path)
 
-    def to_yaml(self, file_path: str):
+    def to_yaml(self, file_path: str) -> None:
         config = self.to_config()
         config.to_file(file_path)

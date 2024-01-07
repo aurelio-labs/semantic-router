@@ -46,10 +46,10 @@ class HybridRouteLayer:
         else:
             return None
 
-    def add(self, route: Route):
+    def add(self, route: Route) -> None:
         self._add_route(route=route)
 
-    def _add_route(self, route: Route):
+    def _add_route(self, route: Route) -> None:
         # create embeddings
         dense_embeds = np.array(self.encoder(route.utterances))  # * self.alpha
         sparse_embeds = np.array(
@@ -77,7 +77,7 @@ class HybridRouteLayer:
         else:
             self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
 
-    def _add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: list[Route]) -> None:
         # create embeddings for all routes
         logger.info("Creating embeddings for all routes...")
         all_utterances = [
@@ -109,7 +109,7 @@ class HybridRouteLayer:
             else sparse_embeds
         )
 
-    def _query(self, text: str, top_k: int = 5):
+    def _query(self, text: str, top_k: int = 5) -> list[dict[str, str | float]]:
         """Given some text, encodes and searches the index vector space to
         retrieve the top_k most similar records.
         """
@@ -143,13 +143,13 @@ class HybridRouteLayer:
             logger.warning("No index found. Please add routes to the layer.")
             return []
 
-    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray):
+    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         # scale sparse and dense vecs
         dense = np.array(dense) * self.alpha
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
-    def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
+    def _semantic_classify(self, query_results: list[dict[str, str | float]]) -> tuple[str, list[float]]:
         scores_by_class: dict[str, list[float]] = {}
         for result in query_results:
             score = result["score"]
