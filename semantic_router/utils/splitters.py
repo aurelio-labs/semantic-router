@@ -1,4 +1,5 @@
 import numpy as np
+
 from semantic_router.encoders import BaseEncoder
 
 

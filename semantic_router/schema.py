@@ -8,7 +8,6 @@ from semantic_router.encoders import (
     CohereEncoder,
     OpenAIEncoder,
 )
-
 from semantic_router.utils.splitters import semantic_splitter
 
 

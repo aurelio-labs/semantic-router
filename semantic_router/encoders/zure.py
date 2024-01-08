@@ -43,8 +43,7 @@ class AzureOpenAIEncoder(BaseEncoder):
             self.deployment_name = os.getenv(
                 "AZURE_OPENAI_DEPLOYMENT_NAME", "text-embedding-ada-002"
             )
-            if self.deployment_name is None:
-                raise ValueError("No Azure OpenAI deployment name provided.")
+        # deployment_name may still be None, but it is optional in the API
         if self.azure_endpoint is None:
             self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
             if self.azure_endpoint is None:
@@ -59,7 +58,6 @@ class AzureOpenAIEncoder(BaseEncoder):
                 raise ValueError("No Azure OpenAI model provided.")
         assert (
             self.api_key is not None
-            and self.deployment_name is not None
             and self.azure_endpoint is not None
             and self.api_version is not None
             and self.model is not None
@@ -67,7 +65,7 @@ class AzureOpenAIEncoder(BaseEncoder):
 
         try:
             self.client = openai.AzureOpenAI(
-                azure_deployment=str(deployment_name),
+                azure_deployment=str(deployment_name) if deployment_name else None,
                 api_key=str(api_key),
                 azure_endpoint=str(azure_endpoint),
                 api_version=str(api_version),
