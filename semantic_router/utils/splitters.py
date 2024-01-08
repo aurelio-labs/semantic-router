@@ -26,7 +26,7 @@ def semantic_splitter(
         split_method (str): The method to use for splitting.
 
     Returns:
-        Dict[str, list[str]]: Splits with corresponding documents.
+        dict[str, list[str]]: Splits with corresponding documents.
     """
     total_docs = len(docs)
     splits = {}

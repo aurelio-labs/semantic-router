@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 from numpy.linalg import norm
 
@@ -21,7 +19,7 @@ def similarity_matrix(xq: np.ndarray, index: np.ndarray) -> np.ndarray:
     return sim
 
 
-def top_scores(sim: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+def top_scores(sim: np.ndarray, top_k: int = 5) -> tuple[np.ndarray, np.ndarray]:
     # get indices of top_k records
     top_k = min(top_k, sim.shape[0])
     idx = np.argpartition(sim, -top_k)[-top_k:]
