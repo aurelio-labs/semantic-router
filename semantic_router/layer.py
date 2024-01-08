@@ -4,12 +4,9 @@ import os
 import numpy as np
 import yaml
 
-from semantic_router.encoders import (
-    BaseEncoder,
-    CohereEncoder,
-    OpenAIEncoder,
-)
+from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
@@ -60,10 +57,14 @@ class LayerConfig:
         self.encoder_type = encoder_type
         if encoder_name is None:
             # if encoder_name is not provided, use the default encoder for type
+            # TODO base these values on default values in encoders themselves..
+            # TODO without initializing them (as this is just config)
             if encoder_type == EncoderType.OPENAI:
                 encoder_name = "text-embedding-ada-002"
             elif encoder_type == EncoderType.COHERE:
                 encoder_name = "embed-english-v3.0"
+            elif encoder_type == EncoderType.FASTEMBED:
+                encoder_name = "BAAI/bge-small-en-v1.5"
             elif encoder_type == EncoderType.HUGGINGFACE:
                 raise NotImplementedError
             logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
@@ -107,15 +108,24 @@ class LayerConfig:
         """Save the routes to a file in JSON or YAML format"""
         logger.info(f"Saving route config to {path}")
         _, ext = os.path.splitext(path)
+
+        # Check file extension before creating directories or files
+        if ext not in [".json", ".yaml", ".yml"]:
+            raise ValueError(
+                "Unsupported file type. Only .json and .yaml are supported"
+            )
+
+        dir_name = os.path.dirname(path)
+
+        # Create the directory if it doesn't exist and dir_name is not an empty string
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
         with open(path, "w") as f:
             if ext == ".json":
                 json.dump(self.to_dict(), f, indent=4)
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
-            else:
-                raise ValueError(
-                    "Unsupported file type. Only .json and .yaml are supported"
-                )
 
     def add(self, route: Route):
         self.routes.append(route)
@@ -139,23 +149,29 @@ class LayerConfig:
 class RouteLayer:
     index: np.ndarray | None = None
     categories: np.ndarray | None = None
-    score_threshold: float = 0.82
+    score_threshold: float
+    encoder: BaseEncoder
 
     def __init__(
-        self, encoder: BaseEncoder | None = None, routes: list[Route] | None = None
+        self,
+        encoder: BaseEncoder | None = None,
+        llm: BaseLLM | None = None,
+        routes: list[Route] | None = None,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
         self.categories = None
-        self.encoder = encoder if encoder is not None else CohereEncoder()
-        self.routes: list[Route] = routes if routes is not None else []
-        # decide on default threshold based on encoder
-        if isinstance(encoder, OpenAIEncoder):
-            self.score_threshold = 0.82
-        elif isinstance(encoder, CohereEncoder):
-            self.score_threshold = 0.3
+        if encoder is None:
+            logger.warning(
+                "No encoder provided. Using default OpenAIEncoder. Ensure "
+                "that you have set OPENAI_API_KEY in your environment."
+            )
+            self.encoder = OpenAIEncoder()
         else:
-            self.score_threshold = 0.82
+            self.encoder = encoder
+        self.llm = llm
+        self.routes: list[Route] = routes if routes is not None else []
+        self.score_threshold = self.encoder.score_threshold
         # if routes list has been passed, we initialize index now
         if len(self.routes) > 0:
             # initialize index now
@@ -168,6 +184,17 @@ class RouteLayer:
         if passed:
             # get chosen route object
             route = [route for route in self.routes if route.name == top_class][0]
+            if route.function_schema and not isinstance(route.llm, BaseLLM):
+                if not self.llm:
+                    logger.warning(
+                        "No LLM provided for dynamic route, will use OpenAI LLM "
+                        "default. Ensure API key is set in OPENAI_API_KEY environment "
+                        "variable."
+                    )
+                    self.llm = OpenAILLM()
+                    route.llm = self.llm
+                else:
+                    route.llm = self.llm
             return route(text)
         else:
             # if no route passes threshold, return empty route choice
@@ -198,24 +225,20 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
 
     def add(self, route: Route):
-        print(f"Adding route `{route.name}`")
+        logger.info(f"Adding `{route.name}` route")
         # create embeddings
         embeds = self.encoder(route.utterances)
 
         # create route array
         if self.categories is None:
-            print("Initializing categories array")
             self.categories = np.array([route.name] * len(embeds))
         else:
-            print("Adding route to categories")
             str_arr = np.array([route.name] * len(embeds))
             self.categories = np.concatenate([self.categories, str_arr])
         # create utterance array (the index)
         if self.index is None:
-            print("Initializing index array")
             self.index = np.array(embeds)
         else:
-            print("Adding route to index")
             embed_arr = np.array(embeds)
             self.index = np.concatenate([self.index, embed_arr])
         # add route to routes list

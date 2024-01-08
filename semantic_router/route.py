@@ -4,9 +4,9 @@ from typing import Any, Callable, Union
 
 from pydantic import BaseModel
 
-from semantic_router.schema import RouteChoice
+from semantic_router.llms import BaseLLM
+from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
-from semantic_router.utils.llm import llm
 from semantic_router.utils.logger import logger
 
 
@@ -43,12 +43,18 @@ class Route(BaseModel):
     utterances: list[str]
     description: str | None = None
     function_schema: dict[str, Any] | None = None
+    llm: BaseLLM | None = None
 
     def __call__(self, query: str) -> RouteChoice:
         if self.function_schema:
+            if not self.llm:
+                raise ValueError(
+                    "LLM is required for dynamic routes. Please ensure the `llm` "
+                    "attribute is set."
+                )
             # if a function schema is provided we generate the inputs
             extracted_inputs = function_call.extract_function_inputs(
-                query=query, function_schema=self.function_schema
+                query=query, llm=self.llm, function_schema=self.function_schema
             )
             func_call = extracted_inputs
         else:
@@ -60,16 +66,17 @@ class Route(BaseModel):
         return self.dict()
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict[str, Any]):
         return cls(**data)
 
     @classmethod
-    def from_dynamic_route(cls, entity: Union[BaseModel, Callable]):
+    def from_dynamic_route(cls, llm: BaseLLM, entity: Union[BaseModel, Callable]):
         """
         Generate a dynamic Route object from a function or Pydantic model using LLM
         """
         schema = function_call.get_schema(item=entity)
-        dynamic_route = cls._generate_dynamic_route(function_schema=schema)
+        dynamic_route = cls._generate_dynamic_route(llm=llm, function_schema=schema)
+        dynamic_route.function_schema = schema
         return dynamic_route
 
     @classmethod
@@ -85,7 +92,7 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    def _generate_dynamic_route(cls, function_schema: dict[str, Any]):
+    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: dict[str, Any]):
         logger.info("Generating dynamic route...")
 
         prompt = f"""
@@ -113,7 +120,8 @@ class Route(BaseModel):
         {function_schema}
         """
 
-        output = llm(prompt)
+        llm_input = [Message(role="user", content=prompt)]
+        output = llm(llm_input)
         if not output:
             raise Exception("No output generated for dynamic route")
 
@@ -122,5 +130,7 @@ class Route(BaseModel):
         logger.info(f"Generated route config:\n{route_config}")
 
         if is_valid(route_config):
-            return Route.from_dict(json.loads(route_config))
+            route_config_dict = json.loads(route_config)
+            route_config_dict["llm"] = llm
+            return Route.from_dict(route_config_dict)
         raise Exception("No config generated")

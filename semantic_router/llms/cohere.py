@@ -2,22 +2,21 @@ import os
 
 import cohere
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.llms import BaseLLM
+from semantic_router.schema import Message
 
 
-class CohereEncoder(BaseEncoder):
+class CohereLLM(BaseLLM):
     client: cohere.Client | None = None
-    type: str = "cohere"
 
     def __init__(
         self,
         name: str | None = None,
         cohere_api_key: str | None = None,
-        score_threshold: float = 0.3,
     ):
         if name is None:
-            name = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0")
-        super().__init__(name=name, score_threshold=score_threshold)
+            name = os.getenv("COHERE_CHAT_MODEL_NAME", "command")
+        super().__init__(name=name)
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:
             raise ValueError("Cohere API key cannot be 'None'.")
@@ -26,11 +25,21 @@ class CohereEncoder(BaseEncoder):
         except Exception as e:
             raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, messages: list[Message]) -> str:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
         try:
-            embeds = self.client.embed(docs, input_type="search_query", model=self.name)
-            return embeds.embeddings
+            completion = self.client.chat(
+                model=self.name,
+                chat_history=[m.to_cohere() for m in messages[:-1]],
+                message=messages[-1].content,
+            )
+
+            output = completion.text
+
+            if not output:
+                raise Exception("No output generated")
+            return output
+
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}")

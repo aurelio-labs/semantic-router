@@ -1,4 +1,5 @@
 import os
+import tempfile
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -68,7 +69,7 @@ routes:
 
 @pytest.fixture
 def base_encoder():
-    return BaseEncoder(name="test-encoder")
+    return BaseEncoder(name="test-encoder", score_threshold=0.5)
 
 
 @pytest.fixture
@@ -91,9 +92,18 @@ def routes():
     ]
 
 
+@pytest.fixture
+def dynamic_routes():
+    return [
+        Route(name="Route 1", utterances=["Hello", "Hi"], function_schema="test"),
+        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
+    ]
+
+
 class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
@@ -104,9 +114,21 @@ class TestRouteLayer:
 
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
         route_layer_cohere = RouteLayer(encoder=cohere_encoder)
+        assert cohere_encoder.score_threshold == 0.3
         assert route_layer_cohere.score_threshold == 0.3
-
         route_layer_openai = RouteLayer(encoder=openai_encoder)
+        assert route_layer_openai.score_threshold == 0.82
+
+    def test_initialization_no_encoder(self, openai_encoder):
+        os.environ["OPENAI_API_KEY"] = "test_api_key"
+        route_layer_none = RouteLayer(encoder=None)
+        assert route_layer_none.score_threshold == openai_encoder.score_threshold
+
+    def test_initialization_dynamic_route(self, cohere_encoder, openai_encoder):
+        route_layer_cohere = RouteLayer(encoder=cohere_encoder)
+        assert route_layer_cohere.score_threshold == 0.3
+        route_layer_openai = RouteLayer(encoder=openai_encoder)
+        assert openai_encoder.score_threshold == 0.82
         assert route_layer_openai.score_threshold == 0.82
 
     def test_add_route(self, openai_encoder):
@@ -172,31 +194,33 @@ class TestRouteLayer:
 
     def test_failover_score_threshold(self, base_encoder):
         route_layer = RouteLayer(encoder=base_encoder)
-        assert route_layer.score_threshold == 0.82
+        assert route_layer.score_threshold == 0.5
 
     def test_json(self, openai_encoder, routes):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        route_layer.to_json("test_output.json")
-        assert os.path.exists("test_output.json")
-        route_layer_from_file = RouteLayer.from_json("test_output.json")
-        assert (
-            route_layer_from_file.index is not None
-            and route_layer_from_file.categories is not None
-        )
-        os.remove("test_output.json")
+        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as temp:
+            os.environ["OPENAI_API_KEY"] = "test_api_key"
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+            route_layer.to_json(temp.name)
+            assert os.path.exists(temp.name)
+            route_layer_from_file = RouteLayer.from_json(temp.name)
+            assert (
+                route_layer_from_file.index is not None
+                and route_layer_from_file.categories is not None
+            )
+            os.remove(temp.name)
 
     def test_yaml(self, openai_encoder, routes):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        route_layer.to_yaml("test_output.yaml")
-        assert os.path.exists("test_output.yaml")
-        route_layer_from_file = RouteLayer.from_yaml("test_output.yaml")
-        assert (
-            route_layer_from_file.index is not None
-            and route_layer_from_file.categories is not None
-        )
-        os.remove("test_output.yaml")
+        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as temp:
+            os.environ["OPENAI_API_KEY"] = "test_api_key"
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+            route_layer.to_yaml(temp.name)
+            assert os.path.exists(temp.name)
+            route_layer_from_file = RouteLayer.from_yaml(temp.name)
+            assert (
+                route_layer_from_file.index is not None
+                and route_layer_from_file.categories is not None
+            )
+            os.remove(temp.name)
 
     def test_config(self, openai_encoder, routes):
         os.environ["OPENAI_API_KEY"] = "test_api_key"

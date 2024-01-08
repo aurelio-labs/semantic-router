@@ -24,7 +24,7 @@ def mock_encoder_call(utterances):
 
 @pytest.fixture
 def base_encoder():
-    return BaseEncoder(name="test-encoder")
+    return BaseEncoder(name="test-encoder", score_threshold=0.5)
 
 
 @pytest.fixture
@@ -63,6 +63,7 @@ class TestHybridRouteLayer:
     def test_initialization(self, openai_encoder, routes):
         route_layer = HybridRouteLayer(encoder=openai_encoder, routes=routes)
         assert route_layer.index is not None and route_layer.categories is not None
+        assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
@@ -129,7 +130,8 @@ class TestHybridRouteLayer:
 
     def test_failover_score_threshold(self, base_encoder):
         route_layer = HybridRouteLayer(encoder=base_encoder)
-        assert route_layer.score_threshold == 0.82
+        assert base_encoder.score_threshold == 0.50
+        assert route_layer.score_threshold == 0.50
 
 
 # Add more tests for edge cases and error handling as needed.
