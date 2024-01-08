@@ -39,7 +39,7 @@ class TestTfidfEncoder:
             isinstance(sublist, list) for sublist in result
         ), "Each item in result should be a list"
 
-    def test_call_method_no_docs(self, tfidf_encoder):
+    def test_call_method_no_docs_tfidf(self, tfidf_encoder):
         with pytest.raises(ValueError):
             tfidf_encoder([])
 
@@ -60,3 +60,26 @@ class TestTfidfEncoder:
     def test_call_method_with_uninitialized_model(self, tfidf_encoder):
         with pytest.raises(ValueError):
             tfidf_encoder(["test"])
+
+    def test_call_method_no_docs(self, tfidf_encoder):
+        with pytest.raises(ValueError, match="No documents to encode."):
+            tfidf_encoder([])
+
+    def test_compute_tf_no_word_index(self, tfidf_encoder):
+        with pytest.raises(ValueError, match="Word index is not initialized."):
+            tfidf_encoder._compute_tf(["some docs"])
+
+    def test_compute_tf_with_word_in_word_index(self, tfidf_encoder):
+        routes = [
+            Route(
+                name="test_route",
+                utterances=["some docs", "and more docs", "and even more docs"],
+            )
+        ]
+        tfidf_encoder.fit(routes)
+        tf = tfidf_encoder._compute_tf(["some docs"])
+        assert tf.shape == (1, len(tfidf_encoder.word_index))
+
+    def test_compute_idf_no_word_index(self, tfidf_encoder):
+        with pytest.raises(ValueError, match="Word index is not initialized."):
+            tfidf_encoder._compute_idf(["some docs"])
