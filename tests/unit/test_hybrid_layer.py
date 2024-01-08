@@ -1,6 +1,11 @@
 import pytest
 
-from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.encoders import (
+    AzureOpenAIEncoder,
+    BaseEncoder,
+    CohereEncoder,
+    OpenAIEncoder,
+)
 from semantic_router.hybrid_layer import HybridRouteLayer
 from semantic_router.route import Route
 
@@ -32,6 +37,18 @@ def cohere_encoder(mocker):
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
     return OpenAIEncoder(name="test-openai-encoder", openai_api_key="test_api_key")
+
+
+@pytest.fixture
+def azure_encoder(mocker):
+    mocker.patch.object(AzureOpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+    return AzureOpenAIEncoder(
+        deployment_name="test-deployment",
+        azure_endpoint="test_endpoint",
+        api_key="test_api_key",
+        api_version="test_version",
+        model="test_model",
+    )
 
 
 @pytest.fixture
