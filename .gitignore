@@ -5,6 +5,7 @@ __pycache__
 venv/
 /.vscode
 .vscode
+.idea
 **/__pycache__
 **/*.py[cod]
 
@@ -18,3 +19,4 @@ mac.env
 .coverage.*
 .pytest_cache
 test.py
+output

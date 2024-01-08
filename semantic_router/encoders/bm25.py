@@ -1,8 +1,7 @@
 from typing import Any
 
-from pinecone_text.sparse import BM25Encoder as encoder
-
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.logger import logger
 
 
 class BM25Encoder(BaseEncoder):
@@ -10,8 +9,16 @@ class BM25Encoder(BaseEncoder):
     idx_mapping: dict[int, int] | None = None
     type: str = "sparse"
 
-    def __init__(self, name: str = "bm25"):
-        super().__init__(name=name)
+    def __init__(self, name: str = "bm25", score_threshold: float = 0.82):
+        super().__init__(name=name, score_threshold=score_threshold)
+        try:
+            from pinecone_text.sparse import BM25Encoder as encoder
+        except ImportError:
+            raise ImportError(
+                "Please install pinecone-text to use BM25Encoder. "
+                "You can install it with: `pip install semantic-router[hybrid]`"
+            )
+        logger.info("Downloading and initializing BM25 model parameters.")
         self.model = encoder.default()
 
         params = self.model.get_params()

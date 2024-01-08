@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class BaseEncoder(BaseModel):
     name: str
+    score_threshold: float
     type: str = Field(default="base")
 
     class Config:

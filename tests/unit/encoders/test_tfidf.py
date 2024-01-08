@@ -39,7 +39,7 @@ class TestTfidfEncoder:
             isinstance(sublist, list) for sublist in result
         ), "Each item in result should be a list"
 
-    def test_call_method_no_docs_tfidf(self, tfidf_encoder):
+    def test_call_method_no_docs_tfidf_encoder(self, tfidf_encoder):
         with pytest.raises(ValueError):
             tfidf_encoder([])
 
@@ -60,10 +60,6 @@ class TestTfidfEncoder:
     def test_call_method_with_uninitialized_model(self, tfidf_encoder):
         with pytest.raises(ValueError):
             tfidf_encoder(["test"])
-
-    def test_call_method_no_docs(self, tfidf_encoder):
-        with pytest.raises(ValueError, match="No documents to encode."):
-            tfidf_encoder([])
 
     def test_compute_tf_no_word_index(self, tfidf_encoder):
         with pytest.raises(ValueError, match="Word index is not initialized."):

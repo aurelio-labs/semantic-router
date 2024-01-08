@@ -1,18 +1,23 @@
 from typing import Any, List, Optional
+
 import numpy as np
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
+
+from semantic_router.encoders import BaseEncoder
 
 
-class FastEmbedEncoder(BaseModel):
+class FastEmbedEncoder(BaseEncoder):
     type: str = "fastembed"
-    model_name: str = "BAAI/bge-small-en-v1.5"
+    name: str = "BAAI/bge-small-en-v1.5"
     max_length: int = 512
     cache_dir: Optional[str] = None
     threads: Optional[int] = None
     _client: Any = PrivateAttr()
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    def __init__(
+        self, score_threshold: float = 0.5, **data
+    ):  # TODO default score_threshold not thoroughly tested, should optimize
+        super().__init__(score_threshold=score_threshold, **data)
         self._client = self._initialize_client()
 
     def _initialize_client(self):
@@ -20,12 +25,13 @@ class FastEmbedEncoder(BaseModel):
             from fastembed.embedding import FlagEmbedding as Embedding
         except ImportError:
             raise ImportError(
-                "Please install fastembed to use FastEmbedEncoder"
-                "You can install it with: `pip install fastembed`"
+                "Please install fastembed to use FastEmbedEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[fastembed]`"
             )
 
         embedding_args = {
-            "model_name": self.model_name,
+            "model_name": self.name,
             "max_length": self.max_length,
             "cache_dir": self.cache_dir,
             "threads": self.threads,

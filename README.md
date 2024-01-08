@@ -13,7 +13,7 @@
 <img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </p>
 
-Semantic Router is a superfast decision layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
+Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
 ## Quickstart
 
@@ -23,7 +23,9 @@ To get started with _semantic-router_ we install it like so:
 pip install -qU semantic-router
 ```
 
-We begin by defining a set of `Decision` objects. These are the decision paths that the semantic router can decide to use, let's try two simple decisions for now — one for talk on _politics_ and another for _chitchat_:
+❗️ _If wanting to use local embeddings you can use `FastEmbedEncoder` (`pip install -qU semantic-router[fastembed]`). To use the `HybridRouteLayer` you must `pip install -qU semantic-router[hybrid]`._
+
+We begin by defining a set of `Route` objects. These are the decision paths that the semantic router can decide to use, let's try two simple routes for now — one for talk on _politics_ and another for _chitchat_:
 
 ```python
 from semantic_router import Route
@@ -57,7 +59,7 @@ chitchat = Route(
 routes = [politics, chitchat]
 ```
 
-We have our decisions ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
+We have our routes ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
 
 ```python
 import os
@@ -72,18 +74,18 @@ os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
 encoder = OpenAIEncoder()
 ```
 
-With our `decisions` and `encoder` defined we now create a `DecisionLayer`. The decision layer handles our semantic decision making.
+With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
 
 ```python
 from semantic_router.layer import RouteLayer
 
-dl = RouteLayer(encoder=encoder, routes=routes)
+rl = RouteLayer(encoder=encoder, routes=routes)
 ```
 
-We can now use our decision layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our decisions:
+We can now use our route layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our route decisions:
 
 ```python
-dl("don't you love politics?").name
+rl("don't you love politics?").name
 ```
 
 ```
@@ -93,7 +95,7 @@ dl("don't you love politics?").name
 Correct decision, let's try another:
 
 ```python
-dl("how's the weather today?").name
+rl("how's the weather today?").name
 ```
 
 ```
@@ -103,20 +105,13 @@ dl("how's the weather today?").name
 We get both decisions correct! Now lets try sending an unrelated query:
 
 ```python
-dl("I'm interested in learning about llama 2").name
+rl("I'm interested in learning about llama 2").name
 ```
 
 ```
 [Out]:
 ```
 
-In this case, no decision could be made as we had no matches — so our decision layer returned `None`!
+In this case, no decision could be made as we had no matches — so our route layer returned `None`!
 
 ## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
-
-
-
-
-
-
-

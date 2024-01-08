@@ -4,7 +4,8 @@ from typing import Any, Callable, Union
 
 from pydantic import BaseModel
 
-from semantic_router.utils.llm import llm
+from semantic_router.llms import BaseLLM
+from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
 
@@ -40,7 +41,9 @@ def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
     return schema
 
 
-def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict:
+def extract_function_inputs(
+    query: str, llm: BaseLLM, function_schema: dict[str, Any]
+) -> dict:
     logger.info("Extracting function input...")
 
     prompt = f"""
@@ -71,8 +74,8 @@ def extract_function_inputs(query: str, function_schema: dict[str, Any]) -> dict
     schema: {function_schema}
     Result:
     """
-
-    output = llm(prompt)
+    llm_input = [Message(role="user", content=prompt)]
+    output = llm(llm_input)
     if not output:
         raise Exception("No output generated for extract function input")
 
@@ -105,23 +108,17 @@ def is_valid_inputs(inputs: dict[str, Any], function_schema: dict[str, Any]) -> 
         return False
 
 
-def call_function(function: Callable, inputs: dict[str, str]):
-    try:
-        return function(**inputs)
-    except TypeError as e:
-        logger.error(f"Error calling function: {e}")
-
-
 # TODO: Add route layer object to the input, solve circular import issue
-async def route_and_execute(query: str, functions: list[Callable], route_layer):
-    function_name = route_layer(query)
-    if not function_name:
-        logger.warning("No function found, calling LLM...")
-        return llm(query)
+async def route_and_execute(
+    query: str, llm: BaseLLM, functions: list[Callable], layer
+) -> Any:
+    route_choice: RouteChoice = layer(query)
 
     for function in functions:
-        if function.__name__ == function_name:
-            print(f"Calling function: {function.__name__}")
-            schema = get_schema(function)
-            inputs = extract_function_inputs(query, schema)
-            call_function(function, inputs)
+        if function.__name__ == route_choice.name:
+            if route_choice.function_call:
+                return function(**route_choice.function_call)
+
+    logger.warning("No function found, calling LLM.")
+    llm_input = [Message(role="user", content=query)]
+    return llm(llm_input)

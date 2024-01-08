@@ -25,7 +25,7 @@ def mock_encoder_call(utterances):
 
 @pytest.fixture
 def base_encoder(mocker):
-    mock_base_encoder = BaseEncoder(name="test-encoder")
+    mock_base_encoder = BaseEncoder(name="test-encoder", score_threshold=0.5)
     mocker.patch.object(BaseEncoder, "__call__", return_value=[[0.1, 0.2, 0.3]])
     return mock_base_encoder
 
@@ -68,6 +68,7 @@ class TestHybridRouteLayer:
             dense_encoder=openai_encoder, sparse_encoder=bm25_encoder, routes=routes
         )
         assert route_layer.index is not None and route_layer.categories is not None
+        assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) == 5
         assert len(set(route_layer.categories)) == 2
@@ -154,11 +155,12 @@ class TestHybridRouteLayer:
         assert not route_layer._pass_threshold([], 0.5)
         assert route_layer._pass_threshold([0.6, 0.7], 0.5)
 
-    def test_failover_score_threshold(self, base_encoder, bm25_encoder):
+    def test_failover_score_threshold(self, base_encoder):
         route_layer = HybridRouteLayer(
-            dense_encoder=base_encoder, sparse_encoder=bm25_encoder
+            dense_encoder=base_encoder, sparse_encoder=base_encoder
         )
-        assert route_layer.score_threshold == 0.82
+        assert base_encoder.score_threshold == 0.50
+        assert route_layer.score_threshold == 0.50
 
     def test_add_route_tfidf(self, cohere_encoder, tfidf_encoder, routes):
         hybrid_route_layer = HybridRouteLayer(

@@ -3,8 +3,6 @@ from numpy.linalg import norm
 
 from semantic_router.encoders import (
     BaseEncoder,
-    CohereEncoder,
-    OpenAIEncoder,
     TfidfEncoder,
 )
 from semantic_router.route import Route
@@ -15,7 +13,7 @@ class HybridRouteLayer:
     index = None
     sparse_index = None
     categories = None
-    score_threshold = 0.82
+    score_threshold: float
 
     def __init__(
         self,
@@ -24,22 +22,16 @@ class HybridRouteLayer:
         routes: list[Route] = [],
         alpha: float = 0.3,
     ):
-        self.dense_encoder = dense_encoder
+        self.encoder = dense_encoder
+        self.score_threshold = self.encoder.score_threshold
         self.sparse_encoder = sparse_encoder
         self.alpha = alpha
         self.routes = routes
-        # decide on default threshold based on encoder
-        if isinstance(dense_encoder, OpenAIEncoder):
-            self.score_threshold = 0.82
-        elif isinstance(dense_encoder, CohereEncoder):
-            self.score_threshold = 0.3
-        else:
-            self.score_threshold = 0.82
-        # if routes list has been passed, we initialize index now
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
         ):
             self.sparse_encoder.fit(routes)
+        # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
             # for route in tqdm(routes):
@@ -103,7 +95,7 @@ class HybridRouteLayer:
         )
 
     def update_dense_embeddings_index(self, utterances: list):
-        dense_embeds = np.array(self.dense_encoder(utterances))
+        dense_embeds = np.array(self.encoder(utterances))
         # create utterance array (the dense index)
         self.index = (
             np.concatenate([self.index, dense_embeds])
@@ -125,7 +117,7 @@ class HybridRouteLayer:
         retrieve the top_k most similar records.
         """
         # create dense query vector
-        xq_d = np.array(self.dense_encoder([text]))
+        xq_d = np.array(self.encoder([text]))
         xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
         # create sparse query vector
         xq_s = np.array(self.sparse_encoder([text]))

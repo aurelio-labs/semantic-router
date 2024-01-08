@@ -35,7 +35,7 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: |
-          poetry install
+          poetry install --all-extras
       - name: Install nltk
         run: |
           pip install nltk

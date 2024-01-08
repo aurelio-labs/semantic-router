@@ -12,8 +12,9 @@ class TfidfEncoder(BaseEncoder):
     idf: ndarray = np.array([])
     word_index: Dict = {}
 
-    def __init__(self, name: str = "tfidf"):
-        super().__init__(name=name)
+    def __init__(self, name: str = "tfidf", score_threshold: float = 0.82):
+        # TODO default score_threshold not thoroughly tested, should optimize
+        super().__init__(name=name, score_threshold=score_threshold)
         self.word_index = {}
         self.idf = np.array([])
 
