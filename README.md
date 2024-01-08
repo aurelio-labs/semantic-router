@@ -1,6 +1,7 @@
 [![Aurelio AI](https://pbs.twimg.com/profile_banners/1671498317455581184/1696285195/1500x500)](https://aurelio.ai)
 
 # Semantic Router
+
 <p>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
 <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
@@ -114,10 +115,3 @@ rl("I'm interested in learning about llama 2").name
 In this case, no decision could be made as we had no matches — so our route layer returned `None`!
 
 ## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
-
-
-
-
-
-
-
