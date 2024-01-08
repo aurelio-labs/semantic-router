@@ -30,11 +30,6 @@ def base_encoder(mocker):
     return mock_base_encoder
 
 
-# @pytest.fixture
-# def base_encoder():
-#     return BaseEncoder(name="test-encoder")
-
-
 @pytest.fixture
 def cohere_encoder(mocker):
     mocker.patch.object(CohereEncoder, "__call__", side_effect=mock_encoder_call)
@@ -164,6 +159,19 @@ class TestHybridRouteLayer:
             dense_encoder=base_encoder, sparse_encoder=bm25_encoder
         )
         assert route_layer.score_threshold == 0.82
+
+    def test_add_route_tfidf(self, cohere_encoder, tfidf_encoder, routes):
+        hybrid_route_layer = HybridRouteLayer(
+            dense_encoder=cohere_encoder,
+            sparse_encoder=tfidf_encoder,
+            routes=routes[:-1],
+        )
+        hybrid_route_layer.add(routes[-1])
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
+        assert hybrid_route_layer.sparse_index is not None
+        assert len(hybrid_route_layer.sparse_index) == len(all_utterances)
 
 
 # Add more tests for edge cases and error handling as needed.
