@@ -5,7 +5,11 @@ from semantic_router.encoders import BM25Encoder
 
 @pytest.fixture
 def bm25_encoder():
-    return BM25Encoder()
+    sparse_encoder = BM25Encoder(use_default_params=False)
+    sparse_encoder.fit(
+        ["The quick brown fox", "jumps over the lazy dog", "Hello, world!"]
+    )
+    return sparse_encoder
 
 
 class TestBM25Encoder:

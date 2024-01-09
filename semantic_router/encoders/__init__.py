@@ -4,6 +4,7 @@ from semantic_router.encoders.cohere import CohereEncoder
 from semantic_router.encoders.fastembed import FastEmbedEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
+from semantic_router.encoders.huggingface import HuggingFaceEncoder
 
 __all__ = [
     "BaseEncoder",
@@ -12,4 +13,5 @@ __all__ = [
     "OpenAIEncoder",
     "BM25Encoder",
     "FastEmbedEncoder",
+    "HuggingFaceEncoder",
 ]
