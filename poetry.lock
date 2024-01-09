@@ -2696,4 +2696,4 @@ hybrid = ["pinecone-text"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "aaccb399ef67ee627b0bca661f624af24b0fafe9c83dee51297bec5868573ad8"
+content-hash = "bd435dd14b07738872f14483a7a781ea4a16394c4739917e487acde26235cfae"
