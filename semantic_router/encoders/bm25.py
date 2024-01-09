@@ -16,7 +16,7 @@ class BM25Encoder(BaseEncoder):
         except ImportError:
             raise ImportError(
                 "Please install pinecone-text to use BM25Encoder. "
-                "You can install it with: `pip install semantic-router[hybrid]`"
+                "You can install it with: `pip install 'semantic-router[hybrid]'`"
             )
         logger.info("Downloading and initializing BM25 model parameters.")
         self.model = encoder.default()
