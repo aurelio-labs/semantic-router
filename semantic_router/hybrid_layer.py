@@ -16,11 +16,21 @@ class HybridRouteLayer:
     score_threshold: float
 
     def __init__(
-        self, encoder: BaseEncoder, routes: list[Route] = [], alpha: float = 0.3
+        self,
+        encoder: BaseEncoder,
+        sparse_encoder: BM25Encoder | None = None,
+        routes: list[Route] = [],
+        alpha: float = 0.3,
     ):
         self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
-        self.sparse_encoder = BM25Encoder()
+
+        if sparse_encoder is None:
+            logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
+            self.sparse_encoder = BM25Encoder()
+        else:
+            self.sparse_encoder = sparse_encoder
+
         self.alpha = alpha
         # if routes list has been passed, we initialize index now
         if routes:
