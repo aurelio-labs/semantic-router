@@ -25,11 +25,12 @@ class AzureOpenAIEncoder(BaseEncoder):
         azure_endpoint: str | None = None,
         api_version: str | None = None,
         model: str | None = None,
+        score_threshold: float = 0.82,
     ):
         name = deployment_name
         if name is None:
             name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "text-embedding-ada-002")
-        super().__init__(name=name)
+        super().__init__(name=name, score_threshold=score_threshold)
         self.api_key = api_key
         self.deployment_name = deployment_name
         self.azure_endpoint = azure_endpoint
