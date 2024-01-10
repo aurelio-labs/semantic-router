@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
 from pydantic import BaseModel
 
@@ -41,9 +41,9 @@ def is_valid(route_config: str) -> bool:
 class Route(BaseModel):
     name: str
     utterances: list[str]
-    description: str | None = None
-    function_schema: dict[str, Any] | None = None
-    llm: BaseLLM | None = None
+    description: Optional[str] = None
+    function_schema: Optional[dict[str, Any]] = None
+    llm: Optional[BaseLLM] = None
 
     def __call__(self, query: str) -> RouteChoice:
         if self.function_schema:

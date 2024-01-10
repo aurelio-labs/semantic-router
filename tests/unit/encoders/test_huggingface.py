@@ -1,8 +1,9 @@
-import pytest
-import numpy as np
 from unittest.mock import patch
-from semantic_router.encoders.huggingface import HuggingFaceEncoder
 
+import numpy as np
+import pytest
+
+from semantic_router.encoders.huggingface import HuggingFaceEncoder
 
 encoder = HuggingFaceEncoder()
 

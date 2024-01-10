@@ -1,5 +1,7 @@
-from typing import Any
+from typing import Any, Optional
+
 from pydantic import PrivateAttr
+
 from semantic_router.encoders import BaseEncoder
 
 
@@ -9,7 +11,7 @@ class HuggingFaceEncoder(BaseEncoder):
     score_threshold: float = 0.5
     tokenizer_kwargs: dict = {}
     model_kwargs: dict = {}
-    device: str | None = None
+    device: Optional[str] = None
     _tokenizer: Any = PrivateAttr()
     _model: Any = PrivateAttr()
     _torch: Any = PrivateAttr()
@@ -20,7 +22,7 @@ class HuggingFaceEncoder(BaseEncoder):
 
     def _initialize_hf_model(self):
         try:
-            from transformers import AutoTokenizer, AutoModel
+            from transformers import AutoModel, AutoTokenizer
         except ImportError:
             raise ImportError(
                 "Please install transformers to use HuggingFaceEncoder. "
