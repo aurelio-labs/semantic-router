@@ -19,10 +19,11 @@ mac.env
 .coverage
 .coverage.*
 .pytest_cache
+coverage.xml
 test.py
 output
-
 node_modules
 package-lock.json
 package.json
+
 ```
