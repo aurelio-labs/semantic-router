@@ -5,17 +5,18 @@ import openai
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
+from typing import Optional
 
 
 class OpenAILLM(BaseLLM):
-    client: openai.OpenAI | None
-    temperature: float | None
-    max_tokens: int | None
+    client: Optional[openai.OpenAI]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
 
     def __init__(
         self,
-        name: str | None = None,
-        openai_api_key: str | None = None,
+        name: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
         temperature: float = 0.01,
         max_tokens: int = 200,
     ):

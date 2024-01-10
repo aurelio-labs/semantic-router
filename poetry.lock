@@ -440,13 +440,13 @@ colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
 name = "cohere"
-version = "4.40"
+version = "4.41"
 description = "Python SDK for the Cohere API"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "cohere-4.40-py3-none-any.whl", hash = "sha256:75dac8369d97fadc05901352d9db64a0ca6cd40c08423f3c4691f57eb7b131e7"},
-    {file = "cohere-4.40.tar.gz", hash = "sha256:d9e5c1fa7f80a193c03330a634954b927bf188ead7dcfdb51865480f73aebda8"},
+    {file = "cohere-4.41-py3-none-any.whl", hash = "sha256:39470cc412fa96a1c612f522d48d7d86b34b3163a04030cff83ec48ebbaff32f"},
+    {file = "cohere-4.41.tar.gz", hash = "sha256:8509ca196dc038eca81e474d3cd5896da2ea168a4d3c578b4cb6969994be34ef"},
 ]
 
 [package.dependencies]
@@ -2696,4 +2696,4 @@ hybrid = ["pinecone-text"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "bd435dd14b07738872f14483a7a781ea4a16394c4739917e487acde26235cfae"
+content-hash = "3e3b13e2493e7bef6ef1d9487d4618f834f3387a55379edf63d00f76fe4def0a"

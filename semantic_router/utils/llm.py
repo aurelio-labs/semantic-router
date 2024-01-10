@@ -3,9 +3,10 @@ import os
 import openai
 
 from semantic_router.utils.logger import logger
+from typing import Optional
 
 
-def llm(prompt: str) -> str | None:
+def llm(prompt: str) -> Optional[str]:
     try:
         client = openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -35,7 +36,7 @@ def llm(prompt: str) -> str | None:
 
 
 # TODO integrate async LLM function
-# async def allm(prompt: str) -> str | None:
+# async def allm(prompt: str) -> Optional[str]:
 #     try:
 #         client = openai.AsyncOpenAI(
 #             base_url="https://openrouter.ai/api/v1",

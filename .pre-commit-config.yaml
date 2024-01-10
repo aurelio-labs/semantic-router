@@ -1,5 +1,5 @@
 default_language_version:
-  python: python3.12
+  python: python3.9
 repos:
   - repo: meta
     hooks:
@@ -17,14 +17,12 @@ repos:
       - id: blacken-docs
         additional_dependencies: [black==22.10.0]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.290
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.11.0
     hooks:
-      - id: ruff
-        types_or: [ python, pyi, jupyter ]
-        args: [ --fix ]
-      - id: ruff-format
-        types_or: [ python, pyi, jupyter ]
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ['@commitlint/config-conventional']
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.4

@@ -8,6 +8,9 @@ venv/
 .idea
 **/__pycache__
 **/*.py[cod]
+node_modules
+package-lock.json
+package.json
 
 # local env files
 .env*.local

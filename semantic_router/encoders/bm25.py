@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Optional
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
 
 
 class BM25Encoder(BaseEncoder):
-    model: Any | None = None
+    model: Optional[Any] = None
     idx_mapping: dict[int, int] | None = None
     type: str = "sparse"
 

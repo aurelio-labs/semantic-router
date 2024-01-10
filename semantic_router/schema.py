@@ -10,6 +10,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 from semantic_router.utils.splitters import semantic_splitter
+from typing import Optional
 
 
 class EncoderType(Enum):
@@ -20,17 +21,17 @@ class EncoderType(Enum):
 
 
 class RouteChoice(BaseModel):
-    name: str | None = None
-    function_call: dict | None = None
+    name: Optional[str] = None
+    function_call: Optional[dict] = None
 
 
 @dataclass
 class Encoder:
     type: EncoderType
-    name: str | None
+    name: Optional[str]
     model: BaseEncoder
 
-    def __init__(self, type: str, name: str | None):
+    def __init__(self, type: str, name: Optional[str]):
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
