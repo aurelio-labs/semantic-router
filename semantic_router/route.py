@@ -19,17 +19,13 @@ def is_valid(route_config: str) -> bool:
             for item in output_json:
                 missing_keys = [key for key in required_keys if key not in item]
                 if missing_keys:
-                    logger.warning(
-                        f"Missing keys in route config: {', '.join(missing_keys)}"
-                    )
+                    logger.warning(f"Missing keys in route config: {', '.join(missing_keys)}")
                     return False
             return True
         else:
             missing_keys = [key for key in required_keys if key not in output_json]
             if missing_keys:
-                logger.warning(
-                    f"Missing keys in route config: {', '.join(missing_keys)}"
-                )
+                logger.warning(f"Missing keys in route config: {', '.join(missing_keys)}")
                 return False
             else:
                 return True
@@ -48,14 +44,9 @@ class Route(BaseModel):
     def __call__(self, query: str) -> RouteChoice:
         if self.function_schema:
             if not self.llm:
-                raise ValueError(
-                    "LLM is required for dynamic routes. Please ensure the `llm` "
-                    "attribute is set."
-                )
+                raise ValueError("LLM is required for dynamic routes. Please ensure the `llm` " "attribute is set.")
             # if a function schema is provided we generate the inputs
-            extracted_inputs = function_call.extract_function_inputs(
-                query=query, llm=self.llm, function_schema=self.function_schema
-            )
+            extracted_inputs = self.llm.extract_function_inputs(query=query, function_schema=self.function_schema)
             func_call = extracted_inputs
         else:
             # otherwise we just pass None for the call
