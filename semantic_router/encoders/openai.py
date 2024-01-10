@@ -1,5 +1,6 @@
 import os
 from time import sleep
+from typing import Optional
 
 import openai
 from openai import OpenAIError
@@ -7,7 +8,6 @@ from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
-from typing import Optional
 
 
 class OpenAIEncoder(BaseEncoder):

@@ -1,9 +1,9 @@
 import os
+from typing import Optional
 
 import openai
 
 from semantic_router.utils.logger import logger
-from typing import Optional
 
 
 def llm(prompt: str) -> Optional[str]:

@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
 from pydantic import BaseModel
 
@@ -8,7 +8,6 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
-from typing import Optional
 
 
 def is_valid(route_config: str) -> bool:
@@ -43,7 +42,7 @@ class Route(BaseModel):
     name: str
     utterances: list[str]
     description: Optional[str] = None
-    function_schema: dict[str, Any] | None = None
+    function_schema: Optional[dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
 
     def __call__(self, query: str) -> RouteChoice:

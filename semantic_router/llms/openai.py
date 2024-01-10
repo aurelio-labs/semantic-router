@@ -1,11 +1,11 @@
 import os
+from typing import Optional
 
 import openai
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
-from typing import Optional
 
 
 class OpenAILLM(BaseLLM):

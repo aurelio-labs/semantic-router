@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
@@ -10,7 +11,6 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 from semantic_router.utils.splitters import semantic_splitter
-from typing import Optional
 
 
 class EncoderType(Enum):

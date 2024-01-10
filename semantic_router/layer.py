@@ -157,7 +157,7 @@ class RouteLayer:
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: list[Route] | None = None,
+        routes: Optional[list[Route]] = None,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
