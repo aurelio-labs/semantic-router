@@ -8,9 +8,7 @@ venv/
 .idea
 **/__pycache__
 **/*.py[cod]
-node_modules
-package-lock.json
-package.json
+
 
 # local env files
 .env*.local
@@ -23,3 +21,8 @@ mac.env
 .pytest_cache
 test.py
 output
+
+node_modules
+package-lock.json
+package.json
+```
