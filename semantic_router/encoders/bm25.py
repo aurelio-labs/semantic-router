@@ -6,7 +6,7 @@ from semantic_router.utils.logger import logger
 
 class BM25Encoder(BaseEncoder):
     model: Optional[Any] = None
-    idx_mapping: Optional[dict[int, int]] = None
+    idx_mapping: dict[int, int] | None = None
     type: str = "sparse"
 
     def __init__(

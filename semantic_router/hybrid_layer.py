@@ -20,7 +20,7 @@ class HybridRouteLayer:
     def __init__(
         self,
         encoder: BaseEncoder,
-        sparse_encoder: Optional[BaseEncoder] = None,
+        sparse_encoder: Optional[BM25Encoder] = None,
         routes: list[Route] = [],
         alpha: float = 0.3,
     ):

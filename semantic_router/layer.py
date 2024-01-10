@@ -158,6 +158,7 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[list[Route]] = None,
+        top_k_routes: int = 3,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
