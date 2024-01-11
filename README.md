@@ -1,6 +1,7 @@
 [![Aurelio AI](https://pbs.twimg.com/profile_banners/1671498317455581184/1696285195/1500x500)](https://aurelio.ai)
 
 # Semantic Router
+
 <p>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
 <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
@@ -22,7 +23,7 @@ To get started with _semantic-router_ we install it like so:
 pip install -qU semantic-router
 ```
 
-❗️ _If wanting to use local embeddings you can use `FastEmbedEncoder` (`pip install -qU semantic-router[fastembed]`). To use the `HybridRouteLayer` you must `pip install -qU semantic-router[hybrid]`._
+❗️ _If wanting to use local embeddings you can use `FastEmbedEncoder` (`pip install -qU "semantic-router[fastembed]`"). To use the `HybridRouteLayer` you must `pip install -qU "semantic-router[hybrid]"`._
 
 We begin by defining a set of `Route` objects. These are the decision paths that the semantic router can decide to use, let's try two simple routes for now — one for talk on _politics_ and another for _chitchat_:
 
@@ -114,10 +115,3 @@ rl("I'm interested in learning about llama 2").name
 In this case, no decision could be made as we had no matches — so our route layer returned `None`!
 
 ## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
-
-
-
-
-
-
-

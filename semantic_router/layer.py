@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Optional
 
 import numpy as np
 import yaml
@@ -52,7 +53,7 @@ class LayerConfig:
         self,
         routes: list[Route] = [],
         encoder_type: str = "openai",
-        encoder_name: str | None = None,
+        encoder_name: Optional[str] = None,
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
@@ -131,7 +132,7 @@ class LayerConfig:
         self.routes.append(route)
         logger.info(f"Added route `{route.name}`")
 
-    def get(self, name: str) -> Route | None:
+    def get(self, name: str) -> Optional[Route]:
         for route in self.routes:
             if route.name == name:
                 return route
@@ -147,16 +148,17 @@ class LayerConfig:
 
 
 class RouteLayer:
-    index: np.ndarray | None = None
-    categories: np.ndarray | None = None
+    index: Optional[np.ndarray] = None
+    categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
 
     def __init__(
         self,
-        encoder: BaseEncoder | None = None,
-        llm: BaseLLM | None = None,
-        routes: list[Route] | None = None,
+        encoder: Optional[BaseEncoder] = None,
+        llm: Optional[BaseLLM] = None,
+        routes: Optional[list[Route]] = None,
+        top_k_routes: int = 3,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
