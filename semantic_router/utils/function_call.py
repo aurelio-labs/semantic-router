@@ -64,15 +64,17 @@ schema:
     "output": "<class 'float'>",
 }}
 
-
-Result: {{
+Result:
+{{
     "location": "Hawaii",
     "degree": "Kelvin",
 }}
 
 Input:
-query: {query}
-schema: {function_schema}
+query: \"{query}\"
+schema:
+{json.dumps(function_schema, indent=4)}
+
 Result:
 """
     llm_input = [Message(role="user", content=prompt)]
