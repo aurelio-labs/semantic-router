@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
@@ -55,12 +55,12 @@ class Message(BaseModel):
     role: str
     content: str
 
-    def to_openai(self):
+    def to_openai(self) -> dict[str, str]:
         if self.role.lower() not in ["user", "assistant", "system"]:
             raise ValueError("Role must be either 'user', 'assistant' or 'system'")
         return {"role": self.role, "content": self.content}
 
-    def to_cohere(self):
+    def to_cohere(self) -> dict[str, str]:
         return {"role": self.role, "message": self.content}
 
 
@@ -68,11 +68,13 @@ class Conversation(BaseModel):
     messages: list[Message]
 
     def split_by_topic(
-        self,
-        encoder: BaseEncoder,
-        threshold: float = 0.5,
-        split_method: str = "consecutive_similarity_drop",
-    ):
+            self,
+            encoder: BaseEncoder,
+            threshold: float = 0.5,
+            split_method: Literal[
+                "consecutive_similarity_drop", "cumulative_similarity_drop"
+            ] = "consecutive_similarity_drop",
+    ) -> dict[str, list[str]]:
         docs = [f"{m.role}: {m.content}" for m in self.messages]
         return semantic_splitter(
             encoder=encoder, docs=docs, threshold=threshold, split_method=split_method

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 import yaml
@@ -14,6 +14,7 @@ from semantic_router.utils.logger import logger
 
 
 def is_valid(layer_config: str) -> bool:
+    """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
     try:
         output_json = json.loads(layer_config)
         required_keys = ["encoder_name", "encoder_type", "routes"]
@@ -73,7 +74,7 @@ class LayerConfig:
         self.routes = routes
 
     @classmethod
-    def from_file(cls, path: str):
+    def from_file(cls, path: str) -> "LayerConfig":
         """Load the routes from a file in JSON or YAML format"""
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
@@ -98,7 +99,7 @@ class LayerConfig:
             else:
                 raise Exception("Invalid config JSON or YAML")
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "encoder_type": self.encoder_type,
             "encoder_name": self.encoder_name,

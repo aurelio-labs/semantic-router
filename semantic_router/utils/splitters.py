@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Literal
 
 from semantic_router.encoders import BaseEncoder
 
@@ -7,7 +8,9 @@ def semantic_splitter(
     encoder: BaseEncoder,
     docs: list[str],
     threshold: float,
-    split_method: str = "consecutive_similarity_drop",
+    split_method: Literal[
+        "consecutive_similarity_drop", "cumulative_similarity_drop"
+    ] = "consecutive_similarity_drop",
 ) -> dict[str, list[str]]:
     """
     Splits a list of documents base on semantic similarity changes.

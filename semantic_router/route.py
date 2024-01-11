@@ -62,7 +62,7 @@ class Route(BaseModel):
             func_call = None
         return RouteChoice(name=self.name, function_call=func_call)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return self.dict()
 
     @classmethod
