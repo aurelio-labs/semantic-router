@@ -60,15 +60,16 @@ def extract_function_inputs(
     {{
         "name": "get_weather",
         "description": "Useful to get the weather in a specific location",
-        "signature": "(location: str, degree: str) -> str",
-        "output": "<class 'str'>",
+        "signature": "(location: str, degree: str) -> float",
+        "output": "<class 'float'>",
     }}
-
+    
+    
     Result: {{
-        "location": "London",
-        "degree": "Celsius",
+        "location": "Hawaii",
+        "degree": "Kelvin",
     }}
-
+    
     Input:
     query: {query}
     schema: {function_schema}
