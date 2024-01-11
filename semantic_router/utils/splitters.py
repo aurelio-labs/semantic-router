@@ -1,12 +1,13 @@
 import numpy as np
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders.cohere import CohereEncoder
 
 
 def semantic_splitter(
-    encoder: BaseEncoder,
     docs: list[str],
-    threshold: float,
+    encoder: BaseEncoder = CohereEncoder(),
+    threshold: float = 0.5,
     split_method: str = "consecutive_similarity_drop",
 ) -> dict[str, list[str]]:
     """
@@ -73,3 +74,28 @@ def semantic_splitter(
 
     splits[f"split {curr_split_num}"] = docs[curr_split_start_idx:]
     return splits
+
+
+def colorize_splits(splits):
+    colors = ["red", "blue", "green", "purple", "orange"]
+    colorized_splits = {}
+    for i, (split, text) in enumerate(splits.items()):
+        color = colors[i % len(colors)]
+        # Join the list of strings into a single string
+        colorized_text = "".join(
+            [f'<p style="color: {color};">{line}</p>' for line in text]
+        )
+        colorized_splits[split] = colorized_text
+    return colorized_splits
+
+
+def colorize_and_concatenate_splits(splits):
+    colors = ["red", "blue", "green", "purple", "orange"]
+    colorized_full_text = ""
+    for i, (split, text) in enumerate(splits.items()):
+        color = colors[i % len(colors)]
+        # Join the list of strings into a single string and concatenate to the full text
+        colorized_full_text += "".join(
+            [f'<p style="color: {color};">{line}</p>' for line in text]
+        )
+    return colorized_full_text
