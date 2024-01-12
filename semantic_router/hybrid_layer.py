@@ -5,6 +5,7 @@ from numpy.linalg import norm
 
 from semantic_router.encoders import (
     BaseEncoder,
+    BM25Encoder,
     TfidfEncoder,
 )
 from semantic_router.route import Route
@@ -24,7 +25,7 @@ class HybridRouteLayer:
         routes: list[Route] = [],
         alpha: float = 0.3,
     ):
-        self.encoder = dense_encoder
+        self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
         
         if sparse_encoder is None:

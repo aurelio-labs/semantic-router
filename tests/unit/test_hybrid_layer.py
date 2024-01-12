@@ -164,7 +164,7 @@ class TestHybridRouteLayer:
 
     def test_add_route_tfidf(self, cohere_encoder, tfidf_encoder, routes):
         hybrid_route_layer = HybridRouteLayer(
-            dense_encoder=cohere_encoder,
+            encoder=cohere_encoder,
             sparse_encoder=tfidf_encoder,
             routes=routes[:-1],
         )
