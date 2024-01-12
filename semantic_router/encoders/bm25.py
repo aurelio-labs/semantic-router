@@ -1,26 +1,37 @@
-from typing import Any
+from typing import Any, Optional
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
 
 
 class BM25Encoder(BaseEncoder):
-    model: Any | None = None
-    idx_mapping: dict[int, int] | None = None
+    model: Optional[Any] = None
+    idx_mapping: Optional[dict[int, int]] = None
     type: str = "sparse"
 
-    def __init__(self, name: str = "bm25", score_threshold: float = 0.82):
+    def __init__(
+        self,
+        name: str = "bm25",
+        score_threshold: float = 0.82,
+        use_default_params: bool = True,
+    ):
         super().__init__(name=name, score_threshold=score_threshold)
         try:
             from pinecone_text.sparse import BM25Encoder as encoder
         except ImportError:
             raise ImportError(
                 "Please install pinecone-text to use BM25Encoder. "
-                "You can install it with: `pip install semantic-router[hybrid]`"
+                "You can install it with: `pip install 'semantic-router[hybrid]'`"
             )
-        logger.info("Downloading and initializing BM25 model parameters.")
-        self.model = encoder.default()
 
+        self.model = encoder()
+
+        if use_default_params:
+            logger.info("Downloading and initializing default sBM25 model parameters.")
+            self.model = encoder.default()
+            self._set_idx_mapping()
+
+    def _set_idx_mapping(self):
         params = self.model.get_params()
         doc_freq = params["doc_freq"]
         if isinstance(doc_freq, dict):
@@ -53,3 +64,4 @@ class BM25Encoder(BaseEncoder):
         if self.model is None:
             raise ValueError("Model is not initialized.")
         self.model.fit(docs)
+        self._set_idx_mapping()

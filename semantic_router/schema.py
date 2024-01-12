@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
@@ -20,17 +21,19 @@ class EncoderType(Enum):
 
 
 class RouteChoice(BaseModel):
-    name: str | None = None
-    function_call: dict | None = None
+    name: Optional[str] = None
+    function_call: Optional[dict] = None
+    similarity_score: Optional[float] = None
+    trigger: Optional[bool] = None
 
 
 @dataclass
 class Encoder:
     type: EncoderType
-    name: str | None
+    name: Optional[str]
     model: BaseEncoder
 
-    def __init__(self, type: str, name: str | None):
+    def __init__(self, type: str, name: Optional[str]):
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:

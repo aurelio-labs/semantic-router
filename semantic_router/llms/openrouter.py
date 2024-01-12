@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import openai
 
@@ -8,15 +9,15 @@ from semantic_router.utils.logger import logger
 
 
 class OpenRouterLLM(BaseLLM):
-    client: openai.OpenAI | None
-    base_url: str | None
-    temperature: float | None
-    max_tokens: int | None
+    client: Optional[openai.OpenAI]
+    base_url: Optional[str]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
 
     def __init__(
         self,
-        name: str | None = None,
-        openrouter_api_key: str | None = None,
+        name: Optional[str] = None,
+        openrouter_api_key: Optional[str] = None,
         base_url: str = "https://openrouter.ai/api/v1",
         temperature: float = 0.01,
         max_tokens: int = 200,

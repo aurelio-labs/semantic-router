@@ -47,33 +47,36 @@ def extract_function_inputs(
     logger.info("Extracting function input...")
 
     prompt = f"""
-    You are a helpful assistant designed to output JSON.
-    Given the following function schema
-    << {function_schema} >>
-    and query
-    << {query} >>
-    extract the parameters values from the query, in a valid JSON format.
-    Example:
-    Input:
-    query: "How is the weather in Hawaii right now in International units?"
-    schema:
-    {{
-        "name": "get_weather",
-        "description": "Useful to get the weather in a specific location",
-        "signature": "(location: str, degree: str) -> str",
-        "output": "<class 'str'>",
-    }}
+You are a helpful assistant designed to output JSON.
+Given the following function schema
+<< {function_schema} >>
+and query
+<< {query} >>
+extract the parameters values from the query, in a valid JSON format.
+Example:
+Input:
+query: "How is the weather in Hawaii right now in International units?"
+schema:
+{{
+    "name": "get_weather",
+    "description": "Useful to get the weather in a specific location",
+    "signature": "(location: str, degree: str) -> float",
+    "output": "<class 'float'>",
+}}
 
-    Result: {{
-        "location": "London",
-        "degree": "Celsius",
-    }}
+Result:
+{{
+    "location": "Hawaii",
+    "degree": "Kelvin",
+}}
 
-    Input:
-    query: {query}
-    schema: {function_schema}
-    Result:
-    """
+Input:
+query: \"{query}\"
+schema:
+{json.dumps(function_schema, indent=4)}
+
+Result:
+"""
     llm_input = [Message(role="user", content=prompt)]
     output = llm(llm_input)
     if not output:
