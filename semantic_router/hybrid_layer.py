@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 from numpy.linalg import norm
@@ -21,7 +21,7 @@ class HybridRouteLayer:
         self,
         encoder: BaseEncoder,
         sparse_encoder: Optional[BM25Encoder] = None,
-        routes: list[Route] = [],
+        routes: List[Route] = [],
         alpha: float = 0.3,
     ):
         self.encoder = encoder
@@ -81,7 +81,7 @@ class HybridRouteLayer:
         else:
             self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
 
-    def _add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
         logger.info("Creating embeddings for all routes...")
         all_utterances = [
@@ -153,8 +153,8 @@ class HybridRouteLayer:
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
-    def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
-        scores_by_class: dict[str, list[float]] = {}
+    def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
+        scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
             route = result["route"]
@@ -174,7 +174,7 @@ class HybridRouteLayer:
             logger.warning("No classification found for semantic classifier.")
             return "", []
 
-    def _pass_threshold(self, scores: list[float], threshold: float) -> bool:
+    def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
             return max(scores) > threshold
         else:

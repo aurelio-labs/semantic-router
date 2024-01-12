@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict, Tuple
 
 import numpy as np
 import yaml
@@ -48,11 +48,11 @@ class LayerConfig:
     RouteLayer.
     """
 
-    routes: list[Route] = []
+    routes: List[Route] = []
 
     def __init__(
         self,
-        routes: list[Route] = [],
+        routes: List[Route] = [],
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
@@ -99,7 +99,7 @@ class LayerConfig:
             else:
                 raise Exception("Invalid config JSON or YAML")
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "encoder_type": self.encoder_type,
             "encoder_name": self.encoder_name,
@@ -158,7 +158,7 @@ class RouteLayer:
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: Optional[list[Route]] = None,
+        routes: Optional[List[Route]] = None,
         top_k_routes: int = 3,
     ):
         logger.info("Initializing RouteLayer")
@@ -247,7 +247,7 @@ class RouteLayer:
         # add route to routes list
         self.routes.append(route)
 
-    def _add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
@@ -290,8 +290,8 @@ class RouteLayer:
             logger.warning("No index found for route layer.")
             return []
 
-    def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
-        scores_by_class: dict[str, list[float]] = {}
+    def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
+        scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
             route = result["route"]
@@ -311,7 +311,7 @@ class RouteLayer:
             logger.warning("No classification found for semantic classifier.")
             return "", []
 
-    def _pass_threshold(self, scores: list[float], threshold: float) -> bool:
+    def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
             return max(scores) > threshold
         else:

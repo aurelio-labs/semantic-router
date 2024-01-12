@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 import numpy as np
 from pydantic import PrivateAttr
@@ -42,10 +42,10 @@ class FastEmbedEncoder(BaseEncoder):
         embedding = Embedding(**embedding_args)
         return embedding
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: List[str]) -> List[List[float]]:
         try:
-            embeds: list[np.ndarray] = list(self._client.embed(docs))
-            embeddings: list[list[float]] = [e.tolist() for e in embeds]
+            embeds: List[np.ndarray] = list(self._client.embed(docs))
+            embeddings: List[List[float]] = [e.tolist() for e in embeds]
             return embeddings
         except Exception as e:
             raise ValueError(f"FastEmbed embed failed. Error: {e}")
