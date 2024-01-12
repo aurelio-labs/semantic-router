@@ -4,12 +4,14 @@ from semantic_router.encoders.cohere import CohereEncoder
 from semantic_router.encoders.fastembed import FastEmbedEncoder
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
+from semantic_router.encoders.tfidf import TfidfEncoder
 
 __all__ = [
     "BaseEncoder",
     "CohereEncoder",
     "OpenAIEncoder",
     "BM25Encoder",
+    "TfidfEncoder",
     "FastEmbedEncoder",
     "HuggingFaceEncoder",
 ]
