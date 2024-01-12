@@ -1,7 +1,8 @@
+import numpy as np
 import pytest
+
 from semantic_router.encoders import TfidfEncoder
 from semantic_router.route import Route
-import numpy as np
 
 
 @pytest.fixture

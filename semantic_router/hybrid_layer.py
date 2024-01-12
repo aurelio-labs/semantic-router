@@ -27,13 +27,13 @@ class HybridRouteLayer:
     ):
         self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
-        
+
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             self.sparse_encoder = BM25Encoder()
         else:
             self.sparse_encoder = sparse_encoder
-            
+
         self.alpha = alpha
         self.routes = routes
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(

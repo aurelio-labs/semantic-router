@@ -1,11 +1,13 @@
-import numpy as np
+import string
 from collections import Counter
+from typing import Dict
+
+import numpy as np
+from numpy import ndarray
+from numpy.linalg import norm
+
 from semantic_router.encoders import BaseEncoder
 from semantic_router.route import Route
-from numpy.linalg import norm
-import string
-from typing import Dict
-from numpy import ndarray
 
 
 class TfidfEncoder(BaseEncoder):
