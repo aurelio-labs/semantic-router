@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import cohere
 
@@ -7,12 +8,12 @@ from semantic_router.schema import Message
 
 
 class CohereLLM(BaseLLM):
-    client: cohere.Client | None = None
+    client: Optional[cohere.Client] = None
 
     def __init__(
         self,
-        name: str | None = None,
-        cohere_api_key: str | None = None,
+        name: Optional[str] = None,
+        cohere_api_key: Optional[str] = None,
     ):
         if name is None:
             name = os.getenv("COHERE_CHAT_MODEL_NAME", "command")

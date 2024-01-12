@@ -1,5 +1,6 @@
 import os
 from time import sleep
+from typing import Optional
 
 import openai
 from openai import OpenAIError
@@ -10,13 +11,13 @@ from semantic_router.utils.logger import logger
 
 
 class OpenAIEncoder(BaseEncoder):
-    client: openai.Client | None
+    client: Optional[openai.Client]
     type: str = "openai"
 
     def __init__(
         self,
-        name: str | None = None,
-        openai_api_key: str | None = None,
+        name: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
     ):
         if name is None:

@@ -27,7 +27,7 @@ class FastEmbedEncoder(BaseEncoder):
             raise ImportError(
                 "Please install fastembed to use FastEmbedEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[fastembed]`"
+                "`pip install 'semantic-router[fastembed]'`"
             )
 
         embedding_args = {

@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import cohere
 
@@ -6,13 +7,13 @@ from semantic_router.encoders import BaseEncoder
 
 
 class CohereEncoder(BaseEncoder):
-    client: cohere.Client | None = None
+    client: Optional[cohere.Client] = None
     type: str = "cohere"
 
     def __init__(
         self,
-        name: str | None = None,
-        cohere_api_key: str | None = None,
+        name: Optional[str] = None,
+        cohere_api_key: Optional[str] = None,
         score_threshold: float = 0.3,
     ):
         if name is None:

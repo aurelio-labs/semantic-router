@@ -1,12 +1,12 @@
-from typing import Any
+from typing import Any, Optional
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
 
 
 class BM25Encoder(BaseEncoder):
-    model: Any | None = None
-    idx_mapping: dict[int, int] | None = None
+    model: Optional[Any] = None
+    idx_mapping: Optional[dict[int, int]] = None
     type: str = "sparse"
 
     def __init__(
@@ -21,7 +21,7 @@ class BM25Encoder(BaseEncoder):
         except ImportError:
             raise ImportError(
                 "Please install pinecone-text to use BM25Encoder. "
-                "You can install it with: `pip install semantic-router[hybrid]`"
+                "You can install it with: `pip install 'semantic-router[hybrid]'`"
             )
 
         self.model = encoder()

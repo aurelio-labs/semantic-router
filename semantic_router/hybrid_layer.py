@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from numpy.linalg import norm
 
@@ -18,7 +20,7 @@ class HybridRouteLayer:
     def __init__(
         self,
         encoder: BaseEncoder,
-        sparse_encoder: BM25Encoder | None = None,
+        sparse_encoder: Optional[BM25Encoder] = None,
         routes: list[Route] = [],
         alpha: float = 0.3,
     ):
@@ -39,7 +41,7 @@ class HybridRouteLayer:
             #     self._add_route(route=route)
             self._add_routes(routes)
 
-    def __call__(self, text: str) -> str | None:
+    def __call__(self, text: str) -> Optional[str]:
         results = self._query(text)
         top_class, top_class_scores = self._semantic_classify(results)
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
