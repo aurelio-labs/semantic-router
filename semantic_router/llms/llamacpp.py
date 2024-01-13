@@ -10,9 +10,9 @@ from semantic_router.utils.logger import logger
 
 
 class LlamaCppLLM(BaseLLM):
-    llm: Optional[Llama] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
+    llm: Llama
+    temperature: float
+    max_tokens: int
     grammar: Optional[LlamaGrammar] = None
 
     def __init__(
@@ -24,7 +24,7 @@ class LlamaCppLLM(BaseLLM):
     ):
         if not llm:
             raise ValueError("`llama_cpp.Llama` llm is required")
-        super().__init__(name=name)
+        super().__init__(name=name, llm=llm, temperature=temperature, max_tokens=max_tokens)
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens

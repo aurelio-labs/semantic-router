@@ -3,10 +3,13 @@ import pytest
 from semantic_router.llms import LlamaCppLLM
 from semantic_router.schema import Message
 
+from llama_cpp import Llama
+
 
 @pytest.fixture
 def llamacpp_llm(mocker):
-    llm = mocker.Mock()
+    mock_llama = mocker.patch("llama_cpp.Llama", spec=Llama)
+    llm = mock_llama.return_value
     return LlamaCppLLM(llm=llm)
 
 
