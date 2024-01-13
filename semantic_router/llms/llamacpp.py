@@ -1,6 +1,6 @@
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from contextlib import contextmanager
 
 from llama_cpp import Llama, LlamaGrammar
 
@@ -22,6 +22,8 @@ class LlamaCppLLM(BaseLLM):
         temperature: float = 0.2,
         max_tokens: int = 200,
     ):
+        if not llm:
+            raise ValueError("`llama_cpp.Llama` llm is required")
         super().__init__(name=name)
         self.llm = llm
         self.temperature = temperature
@@ -37,6 +39,7 @@ class LlamaCppLLM(BaseLLM):
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 grammar=self.grammar,
+                stream=False,
             )
 
             output = completion["choices"][0]["message"]["content"]
@@ -58,6 +61,10 @@ class LlamaCppLLM(BaseLLM):
         finally:
             self.grammar = None
 
-    def extract_function_inputs(self, query: str, function_schema: dict[str, Any]) -> dict:
+    def extract_function_inputs(
+        self, query: str, function_schema: dict[str, Any]
+    ) -> dict:
         with self._grammar():
-            return super().extract_function_inputs(query=query, function_schema=function_schema)
+            return super().extract_function_inputs(
+                query=query, function_schema=function_schema
+            )

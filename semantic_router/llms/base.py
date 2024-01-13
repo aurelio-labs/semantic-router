@@ -16,14 +16,18 @@ class BaseLLM(BaseModel):
     def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def _is_valid_inputs(self, inputs: dict[str, Any], function_schema: dict[str, Any]) -> bool:
+    def _is_valid_inputs(
+        self, inputs: dict[str, Any], function_schema: dict[str, Any]
+    ) -> bool:
         """Validate the extracted inputs against the function schema"""
         try:
             # Extract parameter names and types from the signature string
             signature = function_schema["signature"]
             param_info = [param.strip() for param in signature[1:-1].split(",")]
             param_names = [info.split(":")[0].strip() for info in param_info]
-            param_types = [info.split(":")[1].strip().split("=")[0].strip() for info in param_info]
+            param_types = [
+                info.split(":")[1].strip().split("=")[0].strip() for info in param_info
+            ]
 
             for name, type_str in zip(param_names, param_types):
                 if name not in inputs:
@@ -34,7 +38,9 @@ class BaseLLM(BaseModel):
             logger.error(f"Input validation error: {str(e)}")
             return False
 
-    def extract_function_inputs(self, query: str, function_schema: dict[str, Any]) -> dict:
+    def extract_function_inputs(
+        self, query: str, function_schema: dict[str, Any]
+    ) -> dict:
         logger.info("Extracting function input...")
 
         prompt = f"""

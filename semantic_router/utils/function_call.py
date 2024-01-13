@@ -1,11 +1,9 @@
 import inspect
-import json
 from typing import Any, Callable, Dict, List, Union
 
 from pydantic import BaseModel
 
 from semantic_router.llms import BaseLLM
-from semantic_router.llms.llamacpp import LlamaCppLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
