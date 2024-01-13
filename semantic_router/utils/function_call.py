@@ -17,7 +17,9 @@ def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
 
             if default_value:
                 default_repr = repr(default_value)
-                signature_part = f"{field_name}: {field_model.__name__} = {default_repr}"
+                signature_part = (
+                    f"{field_name}: {field_model.__name__} = {default_repr}"
+                )
             else:
                 signature_part = f"{field_name}: {field_model.__name__}"
 
@@ -39,7 +41,9 @@ def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
 
 
 # TODO: Add route layer object to the input, solve circular import issue
-async def route_and_execute(query: str, llm: BaseLLM, functions: List[Callable], layer) -> Any:
+async def route_and_execute(
+    query: str, llm: BaseLLM, functions: List[Callable], layer
+) -> Any:
     route_choice: RouteChoice = layer(query)
 
     for function in functions:
