@@ -27,3 +27,6 @@ class TestLlamaCppLLM:
         llm_input = [Message(role="user", content="test")]
         output = llamacpp_llm(llm_input)
         assert output == "test"
+
+    def test_llamacpp_llm_grammar(self, llamacpp_llm):
+        llamacpp_llm._grammar()
