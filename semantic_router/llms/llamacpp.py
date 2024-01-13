@@ -31,8 +31,6 @@ class LlamaCppLLM(BaseLLM):
         max_tokens: Optional[int] = 200,
         grammar: Optional[LlamaGrammar] = None,
     ):
-        if not llm:
-            raise ValueError("`llama_cpp.Llama` llm is required")
         super().__init__(
             name=name,
             llm=llm,
