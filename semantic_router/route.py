@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Optional, Union, List, Dict
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 

@@ -1,4 +1,4 @@
-from typing import Any, Optional, List, Dict
+from typing import Any, Dict, List, Optional
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger

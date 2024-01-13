@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.linalg import norm

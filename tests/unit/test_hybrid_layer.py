@@ -1,6 +1,7 @@
 import pytest
 
 from semantic_router.encoders import (
+    AzureOpenAIEncoder,
     BaseEncoder,
     BM25Encoder,
     CohereEncoder,
@@ -43,6 +44,17 @@ def openai_encoder(mocker):
 
 
 @pytest.fixture
+def azure_encoder(mocker):
+    mocker.patch.object(AzureOpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+    return AzureOpenAIEncoder(
+        deployment_name="test-deployment",
+        azure_endpoint="test_endpoint",
+        api_key="test_api_key",
+        api_version="test_version",
+        model="test_model",
+    )
+
+
 def bm25_encoder(mocker):
     mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
     return BM25Encoder(name="test-bm25-encoder")

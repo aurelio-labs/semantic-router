@@ -1,6 +1,6 @@
 import os
 from time import sleep
-from typing import Optional, List
+from typing import List, Optional
 
 import openai
 from openai import OpenAIError
