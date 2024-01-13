@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from llama_cpp import Llama, LlamaGrammar, CreateChatCompletionResponse
+from llama_cpp import Llama, LlamaGrammar
 
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
@@ -57,7 +57,7 @@ class LlamaCppLLM(BaseLLM):
                 grammar=self.grammar,
                 stream=False,
             )
-            assert type(completion) is CreateChatCompletionResponse
+            assert isinstance(completion, dict)  # keep mypy happy
             output = completion["choices"][0]["message"]["content"]
 
             if not output:
