@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Optional, Any, List, Dict, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import yaml

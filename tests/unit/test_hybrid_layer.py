@@ -44,7 +44,6 @@ def openai_encoder(mocker):
 
 
 @pytest.fixture
-
 def azure_encoder(mocker):
     mocker.patch.object(AzureOpenAIEncoder, "__call__", side_effect=mock_encoder_call)
     return AzureOpenAIEncoder(
@@ -55,15 +54,16 @@ def azure_encoder(mocker):
         model="test_model",
     )
 
+
 def bm25_encoder(mocker):
     mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
     return BM25Encoder(name="test-bm25-encoder")
+
 
 @pytest.fixture
 def tfidf_encoder(mocker):
     mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
     return TfidfEncoder(name="test-tfidf-encoder")
-
 
 
 @pytest.fixture

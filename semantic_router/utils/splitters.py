@@ -1,5 +1,6 @@
+from typing import Dict, List, Literal
+
 import numpy as np
-from typing import List, Dict, Literal
 
 from semantic_router.encoders import BaseEncoder
 
