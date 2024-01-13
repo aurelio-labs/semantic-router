@@ -9,14 +9,6 @@ from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
 
-class LlamaCppBaseLLM(BaseLLM):
-    def __init__(self, name: str, llm: Llama, temperature: float, max_tokens: int):
-        super().__init__(name)
-        self.llm = llm
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-
-
 class LlamaCppLLM(BaseLLM):
     llm: Llama
     temperature: float
