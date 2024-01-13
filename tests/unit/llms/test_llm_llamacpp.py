@@ -33,7 +33,11 @@ class TestLlamaCppLLM:
 
     def test_llamacpp_extract_function_inputs(self, llamacpp_llm, mocker):
         llamacpp_llm.llm.create_chat_completion = mocker.Mock(
-            return_value={"choices": [{"message": {"content": "{'timezone': 'America/New_York'}"}}]}
+            return_value={
+                "choices": [
+                    {"message": {"content": "{'timezone': 'America/New_York'}"}}
+                ]
+            }
         )
         test_schema = {
             "name": "get_time",
@@ -50,7 +54,11 @@ class TestLlamaCppLLM:
     def test_llamacpp_extract_function_inputs_invalid(self, llamacpp_llm, mocker):
         with pytest.raises(ValueError):
             llamacpp_llm.llm.create_chat_completion = mocker.Mock(
-                return_value={"choices": [{"message": {"content": "{'time': 'America/New_York'}"}}]}
+                return_value={
+                    "choices": [
+                        {"message": {"content": "{'time': 'America/New_York'}"}}
+                    ]
+                }
             )
             test_schema = {
                 "name": "get_time",
