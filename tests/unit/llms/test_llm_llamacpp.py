@@ -30,3 +30,19 @@ class TestLlamaCppLLM:
 
     def test_llamacpp_llm_grammar(self, llamacpp_llm):
         llamacpp_llm._grammar()
+
+    def test_llamacpp_extract_function_inputs(self, llamacpp_llm, mocker):
+        llamacpp_llm.llm.create_chat_completion = mocker.Mock(
+            return_value={"choices": [{"message": {"content": "{'timezone': 'America/New_York'}"}}]}
+        )
+        test_schema = {
+            "name": "get_time",
+            "description": 'Finds the current time in a specific timezone.\n\n:param timezone: The timezone to find the current time in, should\n    be a valid timezone from the IANA Time Zone Database like\n    "America/New_York" or "Europe/London". Do NOT put the place\n    name itself like "rome", or "new york", you must provide\n    the IANA format.\n:type timezone: str\n:return: The current time in the specified timezone.',
+            "signature": "(timezone: str) -> str",
+            "output": "<class 'str'>",
+        }
+        test_query = "What time is it in America/New_York?"
+
+        llamacpp_llm.extract_function_inputs(
+            query=test_query, function_schema=test_schema
+        )
