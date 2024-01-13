@@ -63,6 +63,9 @@ class Message(BaseModel):
     def to_cohere(self):
         return {"role": self.role, "message": self.content}
 
+    def to_llamacpp(self):
+        return {"role": self.role, "content": self.content}
+
 
 class Conversation(BaseModel):
     messages: List[Message]

@@ -53,8 +53,8 @@ class Route(BaseModel):
                     "attribute is set."
                 )
             # if a function schema is provided we generate the inputs
-            extracted_inputs = function_call.extract_function_inputs(
-                query=query, llm=self.llm, function_schema=self.function_schema
+            extracted_inputs = self.llm.extract_function_inputs(
+                query=query, function_schema=self.function_schema
             )
             func_call = extracted_inputs
         else:
