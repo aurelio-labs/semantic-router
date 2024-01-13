@@ -13,6 +13,9 @@ class BaseLLM(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def __init__(self, name: str, **kwargs):
+        super().__init__(name=name, **kwargs)
+
     def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
 

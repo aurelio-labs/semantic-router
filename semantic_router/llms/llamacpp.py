@@ -2,17 +2,25 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from llama_cpp import Llama, LlamaGrammar
+from llama_cpp import Llama, LlamaGrammar, CreateChatCompletionResponse
 
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
 
+class LlamaCppBaseLLM(BaseLLM):
+    def __init__(self, name: str, llm: Llama, temperature: float, max_tokens: int):
+        super().__init__(name)
+        self.llm = llm
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+
 class LlamaCppLLM(BaseLLM):
     llm: Llama
     temperature: float
-    max_tokens: int
+    max_tokens: Optional[int] = 200
     grammar: Optional[LlamaGrammar] = None
 
     def __init__(
@@ -20,14 +28,22 @@ class LlamaCppLLM(BaseLLM):
         llm: Llama,
         name: str = "llama.cpp",
         temperature: float = 0.2,
-        max_tokens: int = 200,
+        max_tokens: Optional[int] = 200,
+        grammar: Optional[LlamaGrammar] = None,
     ):
         if not llm:
             raise ValueError("`llama_cpp.Llama` llm is required")
-        super().__init__(name=name, llm=llm, temperature=temperature, max_tokens=max_tokens)
+        super().__init__(
+            name=name,
+            llm=llm,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            grammar=grammar,
+        )
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.grammar = grammar
 
     def __call__(
         self,
@@ -41,7 +57,7 @@ class LlamaCppLLM(BaseLLM):
                 grammar=self.grammar,
                 stream=False,
             )
-
+            assert type(completion) is CreateChatCompletionResponse
             output = completion["choices"][0]["message"]["content"]
 
             if not output:
