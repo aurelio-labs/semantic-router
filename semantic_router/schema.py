@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Literal, List, Dict
 
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
@@ -47,7 +47,7 @@ class Encoder:
         else:
             raise ValueError
 
-    def __call__(self, texts: list[str]) -> list[list[float]]:
+    def __call__(self, texts: List[str]) -> List[List[float]]:
         return self.model(texts)
 
 
@@ -65,14 +65,16 @@ class Message(BaseModel):
 
 
 class Conversation(BaseModel):
-    messages: list[Message]
+    messages: List[Message]
 
     def split_by_topic(
         self,
         encoder: BaseEncoder,
         threshold: float = 0.5,
-        split_method: str = "consecutive_similarity_drop",
-    ):
+        split_method: Literal[
+            "consecutive_similarity_drop", "cumulative_similarity_drop"
+        ] = "consecutive_similarity_drop",
+    ) -> Dict[str, List[str]]:
         docs = [f"{m.role}: {m.content}" for m in self.messages]
         return semantic_splitter(
             encoder=encoder, docs=docs, threshold=threshold, split_method=split_method

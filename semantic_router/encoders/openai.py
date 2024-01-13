@@ -1,6 +1,6 @@
 import os
 from time import sleep
-from typing import Optional
+from typing import Optional, List
 
 import openai
 from openai import OpenAIError
@@ -31,7 +31,7 @@ class OpenAIEncoder(BaseEncoder):
         except Exception as e:
             raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None

@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 
 import openai
 
@@ -38,7 +38,7 @@ class OpenRouterLLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def __call__(self, messages: list[Message]) -> str:
+    def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
             raise ValueError("OpenRouter client is not initialized.")
         try:

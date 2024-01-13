@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -11,5 +11,5 @@ class BaseLLM(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __call__(self, messages: list[Message]) -> Optional[str]:
+    def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
