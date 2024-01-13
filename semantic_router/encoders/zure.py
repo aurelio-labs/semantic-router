@@ -1,5 +1,6 @@
 import os
 from time import sleep
+from typing import List, Optional
 
 import openai
 from openai import OpenAIError
@@ -10,21 +11,21 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAIEncoder(BaseEncoder):
-    client: openai.AzureOpenAI | None = None
+    client: Optional[openai.AzureOpenAI] = None
     type: str = "azure"
-    api_key: str | None = None
-    deployment_name: str | None = None
-    azure_endpoint: str | None = None
-    api_version: str | None = None
-    model: str | None = None
+    api_key: Optional[str] = None
+    deployment_name: Optional[str] = None
+    azure_endpoint: Optional[str] = None
+    api_version: Optional[str] = None
+    model: Optional[str] = None
 
     def __init__(
         self,
-        api_key: str | None = None,
-        deployment_name: str | None = None,
-        azure_endpoint: str | None = None,
-        api_version: str | None = None,
-        model: str | None = None,
+        api_key: Optional[str] = None,
+        deployment_name: Optional[str] = None,
+        azure_endpoint: Optional[str] = None,
+        api_version: Optional[str] = None,
+        model: Optional[str] = None,
         score_threshold: float = 0.82,
     ):
         name = deployment_name
@@ -75,7 +76,7 @@ class AzureOpenAIEncoder(BaseEncoder):
         except Exception as e:
             raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None
