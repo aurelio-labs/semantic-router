@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, List, Dict
 
 from pydantic import BaseModel
 
@@ -40,9 +40,9 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: list[str]
+    utterances: List[str]
     description: Optional[str] = None
-    function_schema: Optional[dict[str, Any]] = None
+    function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
 
     def __call__(self, query: str) -> RouteChoice:
@@ -62,11 +62,11 @@ class Route(BaseModel):
             func_call = None
         return RouteChoice(name=self.name, function_call=func_call)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return self.dict()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]):
+    def from_dict(cls, data: Dict[str, Any]):
         return cls(**data)
 
     @classmethod
@@ -92,7 +92,7 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: dict[str, Any]):
+    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: Dict[str, Any]):
         logger.info("Generating dynamic route...")
 
         prompt = f"""

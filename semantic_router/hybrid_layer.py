@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 from numpy.linalg import norm
@@ -6,6 +6,7 @@ from numpy.linalg import norm
 from semantic_router.encoders import (
     BaseEncoder,
     BM25Encoder,
+    TfidfEncoder,
 )
 from semantic_router.route import Route
 from semantic_router.utils.logger import logger
@@ -21,7 +22,7 @@ class HybridRouteLayer:
         self,
         encoder: BaseEncoder,
         sparse_encoder: Optional[BM25Encoder] = None,
-        routes: list[Route] = [],
+        routes: List[Route] = [],
         alpha: float = 0.3,
     ):
         self.encoder = encoder
@@ -34,6 +35,11 @@ class HybridRouteLayer:
             self.sparse_encoder = sparse_encoder
 
         self.alpha = alpha
+        self.routes = routes
+        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
+            self.sparse_encoder, "fit"
+        ):
+            self.sparse_encoder.fit(routes)
         # if routes list has been passed, we initialize index now
         if routes:
             # initialize index now
@@ -54,41 +60,39 @@ class HybridRouteLayer:
         self._add_route(route=route)
 
     def _add_route(self, route: Route):
-        # create embeddings
-        dense_embeds = np.array(self.encoder(route.utterances))  # * self.alpha
-        sparse_embeds = np.array(
-            self.sparse_encoder(route.utterances)
-        )  # * (1 - self.alpha)
+        self.routes += [route]
+
+        self.update_dense_embeddings_index(route.utterances)
+
+        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
+            self.sparse_encoder, "fit"
+        ):
+            self.sparse_encoder.fit(self.routes)
+            # re-build index
+            self.sparse_index = None
+            all_utterances = [
+                utterance for route in self.routes for utterance in route.utterances
+            ]
+            self.update_sparse_embeddings_index(all_utterances)
+        else:
+            self.update_sparse_embeddings_index(route.utterances)
 
         # create route array
         if self.categories is None:
             self.categories = np.array([route.name] * len(route.utterances))
-            self.utterances = np.array(route.utterances)
         else:
             str_arr = np.array([route.name] * len(route.utterances))
             self.categories = np.concatenate([self.categories, str_arr])
-            self.utterances = np.concatenate(
-                [self.utterances, np.array(route.utterances)]
-            )
-        # create utterance array (the dense index)
-        if self.index is None:
-            self.index = dense_embeds
-        else:
-            self.index = np.concatenate([self.index, dense_embeds])
-        # create sparse utterance array
-        if self.sparse_index is None:
-            self.sparse_index = sparse_embeds
-        else:
-            self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
+        self.routes.append(route)
 
-    def _add_routes(self, routes: list[Route]):
+    def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
         logger.info("Creating embeddings for all routes...")
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        dense_embeds = np.array(self.encoder(all_utterances))
-        sparse_embeds = np.array(self.sparse_encoder(all_utterances))
+        self.update_dense_embeddings_index(all_utterances)
+        self.update_sparse_embeddings_index(all_utterances)
 
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
@@ -99,6 +103,8 @@ class HybridRouteLayer:
             else route_array
         )
 
+    def update_dense_embeddings_index(self, utterances: list):
+        dense_embeds = np.array(self.encoder(utterances))
         # create utterance array (the dense index)
         self.index = (
             np.concatenate([self.index, dense_embeds])
@@ -106,6 +112,8 @@ class HybridRouteLayer:
             else dense_embeds
         )
 
+    def update_sparse_embeddings_index(self, utterances: list):
+        sparse_embeds = np.array(self.sparse_encoder(utterances))
         # create sparse utterance array
         self.sparse_index = (
             np.concatenate([self.sparse_index, sparse_embeds])
@@ -153,8 +161,8 @@ class HybridRouteLayer:
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
-    def _semantic_classify(self, query_results: list[dict]) -> tuple[str, list[float]]:
-        scores_by_class: dict[str, list[float]] = {}
+    def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
+        scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
             route = result["route"]
@@ -174,7 +182,7 @@ class HybridRouteLayer:
             logger.warning("No classification found for semantic classifier.")
             return "", []
 
-    def _pass_threshold(self, scores: list[float], threshold: float) -> bool:
+    def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
             return max(scores) > threshold
         else:

@@ -5,6 +5,7 @@ from semantic_router.encoders.fastembed import FastEmbedEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
+from semantic_router.encoders.tfidf import TfidfEncoder
 
 __all__ = [
     "BaseEncoder",
@@ -12,6 +13,7 @@ __all__ = [
     "CohereEncoder",
     "OpenAIEncoder",
     "BM25Encoder",
+    "TfidfEncoder",
     "FastEmbedEncoder",
     "HuggingFaceEncoder",
 ]

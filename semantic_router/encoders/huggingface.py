@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from pydantic import PrivateAttr
 
@@ -60,11 +60,11 @@ class HuggingFaceEncoder(BaseEncoder):
 
     def __call__(
         self,
-        docs: list[str],
+        docs: List[str],
         batch_size: int = 32,
         normalize_embeddings: bool = True,
         pooling_strategy: str = "mean",
-    ) -> list[list[float]]:
+    ) -> List[List[float]]:
         all_embeddings = []
         for i in range(0, len(docs), batch_size):
             batch_docs = docs[i : i + batch_size]

@@ -27,7 +27,7 @@ class TestBM25Encoder:
             isinstance(sublist, list) for sublist in result
         ), "Each item in result should be a list"
 
-    def test_call_method_no_docs(self, bm25_encoder):
+    def test_call_method_no_docs_bm25_encoder(self, bm25_encoder):
         with pytest.raises(ValueError):
             bm25_encoder([])
 

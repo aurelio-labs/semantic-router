@@ -1,6 +1,6 @@
 import inspect
 import json
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, Dict, List
 
 from pydantic import BaseModel
 
@@ -9,7 +9,7 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
 
-def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
+def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
     if isinstance(item, BaseModel):
         signature_parts = []
         for field_name, field_model in item.__annotations__.items():
@@ -42,8 +42,8 @@ def get_schema(item: Union[BaseModel, Callable]) -> dict[str, Any]:
 
 
 def extract_function_inputs(
-    query: str, llm: BaseLLM, function_schema: dict[str, Any]
-) -> dict:
+    query: str, llm: BaseLLM, function_schema: Dict[str, Any]
+) -> Dict[str, Any]:
     logger.info("Extracting function input...")
 
     prompt = f"""
@@ -90,7 +90,7 @@ Result:
     return function_inputs
 
 
-def is_valid_inputs(inputs: dict[str, Any], function_schema: dict[str, Any]) -> bool:
+def is_valid_inputs(inputs: Dict[str, Any], function_schema: Dict[str, Any]) -> bool:
     """Validate the extracted inputs against the function schema"""
     try:
         # Extract parameter names and types from the signature string
@@ -113,7 +113,7 @@ def is_valid_inputs(inputs: dict[str, Any], function_schema: dict[str, Any]) -> 
 
 # TODO: Add route layer object to the input, solve circular import issue
 async def route_and_execute(
-    query: str, llm: BaseLLM, functions: list[Callable], layer
+    query: str, llm: BaseLLM, functions: List[Callable], layer
 ) -> Any:
     route_choice: RouteChoice = layer(query)
 
