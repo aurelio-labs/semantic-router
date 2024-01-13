@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from llama_cpp import Llama, LlamaGrammar
 
@@ -10,10 +10,10 @@ from semantic_router.utils.logger import logger
 
 
 class LlamaCppLLM(BaseLLM):
-    llm: Llama | None
-    temperature: float | None
-    max_tokens: int | None
-    grammar: LlamaGrammar | None
+    llm: Optional[Llama] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    grammar: Optional[LlamaGrammar] = None
 
     def __init__(
         self,
