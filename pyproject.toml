@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.15"
+version = "0.0.16"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -8,7 +8,8 @@ authors = [
     "Simonas Jakubonis <simonas@aurelio.ai>",
     "Luca Mannini <luca@aurelio.ai>",
     "Bogdan Buduroiu <bogdan@aurelio.ai>",
-    "Ismail Ashraq <ashraq@aurelio.ai>"
+    "Ismail Ashraq <ashraq@aurelio.ai>",
+    "Daniel Griffin <daniel@aurelio.ai>"
 ]
 readme = "README.md"
 packages = [{include = "semantic_router"}]
