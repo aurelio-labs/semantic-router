@@ -25,9 +25,10 @@ class AzureOpenAILLM(BaseLLM):
         if name is None:
             name = os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-35-turbo")
         super().__init__(name=name)
-        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        api_key = openai_api_key or os.getenv("AZURE_OPENAI_API_KEY")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
+        azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         if azure_endpoint is None:
             raise ValueError("Azure endpoint API key cannot be 'None'.")
         try:
