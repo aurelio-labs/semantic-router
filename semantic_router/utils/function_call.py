@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Callable, Dict, List, Union
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice

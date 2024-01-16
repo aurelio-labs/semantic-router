@@ -16,7 +16,7 @@ packages = [{include = "semantic_router"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pydantic = "^1.8.2"
+pydantic = "^2.5.3"
 openai = "^1.3.9"
 cohere = "^4.32"
 numpy = "^1.25.2"
