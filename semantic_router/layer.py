@@ -7,7 +7,7 @@ import yaml
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.llms import BaseLLM, OpenAILLM
+from semantic_router.llms import BaseLLM, OpenAILLM, AzureOpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
@@ -194,10 +194,12 @@ class RouteLayer:
                         "default. Ensure API key is set in OPENAI_API_KEY environment "
                         "variable."
                     )
+
                     self.llm = OpenAILLM()
                     route.llm = self.llm
                 else:
                     route.llm = self.llm
+            logger.info(f"LLM  `{route.llm}` is chosen")
             return route(text)
         else:
             # if no route passes threshold, return empty route choice
