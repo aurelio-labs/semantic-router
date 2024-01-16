@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.15"
+version = "0.0.16"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -21,7 +21,7 @@ cohere = "^4.32"
 numpy = "^1.25.2"
 colorlog = "^6.8.0"
 pyyaml = "^6.0.1"
-pinecone-text = {version = "^0.7.1", optional = true}
+pinecone-text = {version = "^0.7.2", optional = true}
 fastembed = {version = "^0.1.3", optional = true, python = "<3.12"}
 torch = {version = "^2.1.2", optional = true}
 transformers = {version = "^4.36.2", optional = true}
