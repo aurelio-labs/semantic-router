@@ -37,4 +37,4 @@ jobs:
           poetry install
       - name: Analyzing the code with our lint
         run: |
-          make lint
+          make lint_diff
