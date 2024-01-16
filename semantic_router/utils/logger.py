@@ -40,4 +40,4 @@ def setup_custom_logger(name):
     return logger
 
 
-logger = setup_custom_logger(__name__)
+logger: logging.Logger = setup_custom_logger(__name__)

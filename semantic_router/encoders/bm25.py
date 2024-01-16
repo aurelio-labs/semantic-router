@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.logger import logger
@@ -6,7 +6,7 @@ from semantic_router.utils.logger import logger
 
 class BM25Encoder(BaseEncoder):
     model: Optional[Any] = None
-    idx_mapping: Optional[dict[int, int]] = None
+    idx_mapping: Optional[Dict[int, int]] = None
     type: str = "sparse"
 
     def __init__(
@@ -40,7 +40,7 @@ class BM25Encoder(BaseEncoder):
         else:
             raise TypeError("Expected a dictionary for 'doc_freq'")
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.model is None or self.idx_mapping is None:
             raise ValueError("Model or index mapping is not initialized.")
         if len(docs) == 1:
@@ -60,7 +60,7 @@ class BM25Encoder(BaseEncoder):
                     embeds[i][position] = val
         return embeds
 
-    def fit(self, docs: list[str]):
+    def fit(self, docs: List[str]):
         if self.model is None:
             raise ValueError("Model is not initialized.")
         self.model.fit(docs)

@@ -1,10 +1,12 @@
 import pytest
 
 from semantic_router.encoders import (
+    AzureOpenAIEncoder,
     BaseEncoder,
     BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
+    TfidfEncoder,
 )
 from semantic_router.hybrid_layer import HybridRouteLayer
 from semantic_router.route import Route
@@ -23,8 +25,10 @@ def mock_encoder_call(utterances):
 
 
 @pytest.fixture
-def base_encoder():
-    return BaseEncoder(name="test-encoder", score_threshold=0.5)
+def base_encoder(mocker):
+    mock_base_encoder = BaseEncoder(name="test-encoder", score_threshold=0.5)
+    mocker.patch.object(BaseEncoder, "__call__", return_value=[[0.1, 0.2, 0.3]])
+    return mock_base_encoder
 
 
 @pytest.fixture
@@ -37,6 +41,29 @@ def cohere_encoder(mocker):
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
     return OpenAIEncoder(name="test-openai-encoder", openai_api_key="test_api_key")
+
+
+@pytest.fixture
+def azure_encoder(mocker):
+    mocker.patch.object(AzureOpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+    return AzureOpenAIEncoder(
+        deployment_name="test-deployment",
+        azure_endpoint="test_endpoint",
+        api_key="test_api_key",
+        api_version="test_version",
+        model="test_model",
+    )
+
+
+def bm25_encoder(mocker):
+    mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
+    return BM25Encoder(name="test-bm25-encoder")
+
+
+@pytest.fixture
+def tfidf_encoder(mocker):
+    mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
+    return TfidfEncoder(name="test-tfidf-encoder")
 
 
 @pytest.fixture
@@ -146,6 +173,19 @@ class TestHybridRouteLayer:
         )
         assert base_encoder.score_threshold == 0.50
         assert route_layer.score_threshold == 0.50
+
+    def test_add_route_tfidf(self, cohere_encoder, tfidf_encoder, routes):
+        hybrid_route_layer = HybridRouteLayer(
+            encoder=cohere_encoder,
+            sparse_encoder=tfidf_encoder,
+            routes=routes[:-1],
+        )
+        hybrid_route_layer.add(routes[-1])
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
+        assert hybrid_route_layer.sparse_index is not None
+        assert len(hybrid_route_layer.sparse_index) == len(all_utterances)
 
 
 # Add more tests for edge cases and error handling as needed.

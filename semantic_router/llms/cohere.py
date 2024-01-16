@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import List, Optional
 
 import cohere
 
@@ -26,7 +26,7 @@ class CohereLLM(BaseLLM):
         except Exception as e:
             raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
 
-    def __call__(self, messages: list[Message]) -> str:
+    def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
         try:

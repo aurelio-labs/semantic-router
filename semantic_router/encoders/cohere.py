@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import List, Optional
 
 import cohere
 
@@ -27,7 +27,7 @@ class CohereEncoder(BaseEncoder):
         except Exception as e:
             raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
         try:

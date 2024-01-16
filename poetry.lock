@@ -625,6 +625,17 @@ files = [
 ]
 
 [[package]]
+name = "diskcache"
+version = "5.6.3"
+description = "Disk Cache -- Disk and file backed persistent cache."
+optional = true
+python-versions = ">=3"
+files = [
+    {file = "diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"},
+    {file = "diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc"},
+]
+
+[[package]]
 name = "distro"
 version = "1.9.0"
 description = "Distro - an OS platform information API"
@@ -1193,6 +1204,27 @@ traitlets = ">=5.3"
 [package.extras]
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx-autodoc-typehints", "sphinxcontrib-github-alt", "sphinxcontrib-spelling", "traitlets"]
 test = ["ipykernel", "pre-commit", "pytest", "pytest-cov", "pytest-timeout"]
+
+[[package]]
+name = "llama-cpp-python"
+version = "0.2.29"
+description = "Python bindings for the llama.cpp library"
+optional = true
+python-versions = ">=3.8"
+files = [
+    {file = "llama_cpp_python-0.2.29.tar.gz", hash = "sha256:95d6eeba61f1a65beee57377d1e3bd451f0b7bcc76e2e5ec836014b278be1658"},
+]
+
+[package.dependencies]
+diskcache = ">=5.6.1"
+numpy = ">=1.20.0"
+typing-extensions = ">=4.5.0"
+
+[package.extras]
+all = ["llama_cpp_python[dev,server,test]"]
+dev = ["black (>=23.3.0)", "httpx (>=0.24.1)", "mkdocs (>=1.4.3)", "mkdocs-material (>=9.1.18)", "mkdocstrings[python] (>=0.22.0)", "pytest (>=7.4.0)", "twine (>=4.0.2)"]
+server = ["fastapi (>=0.100.0)", "pydantic-settings (>=2.0.1)", "sse-starlette (>=1.6.1)", "starlette-context (>=0.3.6,<0.4)", "uvicorn (>=0.22.0)"]
+test = ["httpx (>=0.24.1)", "pytest (>=7.4.0)", "scipy (>=1.10)"]
 
 [[package]]
 name = "markupsafe"
@@ -3222,9 +3254,9 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [extras]
 fastembed = ["fastembed"]
 hybrid = ["pinecone-text"]
-local = ["torch", "transformers"]
+local = ["llama-cpp-python", "torch", "transformers"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "2a681be9b20ab9f43fb612ebf2a3122d267819a7248ee231526cae68ab7ff7c3"
+content-hash = "18d30912c10cfcac4392d5bb7067fb85932c1780d20a5af7a73b722f92c03081"

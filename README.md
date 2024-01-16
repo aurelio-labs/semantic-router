@@ -15,6 +15,8 @@
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
+---
+
 ## Quickstart
 
 To get started with _semantic-router_ we install it like so:
@@ -114,4 +116,28 @@ rl("I'm interested in learning about llama 2").name
 
 In this case, no decision could be made as we had no matches — so our route layer returned `None`!
 
-## 📚 [Resources](https://github.com/aurelio-labs/semantic-router/tree/main/docs)
+---
+
+## 📚 Resources
+
+### Docs
+
+| Notebook | Description |
+| -------- | ----------- |
+| [Introduction](https://github.com/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb) | Introduction to Semantic Router and static routes |
+| [Dynamic Routes](https://github.com/aurelio-labs/semantic-router/blob/main/docs/02-dynamic-routes.ipynb) | Dynamic routes for parameter generation and functionc calls |
+| [Save/Load Layers](https://github.com/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb) | How to save and load `RouteLayer` from file |
+| [Local Execution](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb) | Fully local Semantic Router with dynamic routes — *local models such as Mistral 7B outperform GPT-3.5 in most tests* |
+| [LangChain Integration](https://github.com/aurelio-labs/semantic-router/blob/main/docs/03-basic-langchain-agent.ipynb) | How to integrate Semantic Router with LangChain Agents |
+
+### Online Course
+
+**COMING SOON**
+
+### Community
+
+Julian Horsey, [Semantic Router superfast decision layer for LLMs and AI agents](https://www.geeky-gadgets.com/semantic-router-superfast-decision-layer-for-llms-and-ai-agents/), Geeky Gadgets
+
+azhar, [Beyond Basic Chatbots: How Semantic Router is Changing the Game](https://medium.com/ai-insights-cobet/beyond-basic-chatbots-how-semantic-router-is-changing-the-game-783dd959a32d), AI Insights @ Medium
+
+Daniel Avila, [Semantic Router: Enhancing Control in LLM Conversations](https://blog.codegpt.co/semantic-router-enhancing-control-in-llm-conversations-68ce905c8d33), CodeGPT @ Medium

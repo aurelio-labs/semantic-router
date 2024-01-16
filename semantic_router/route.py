@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -40,9 +40,9 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: list[str]
+    utterances: List[str]
     description: Optional[str] = None
-    function_schema: Optional[dict[str, Any]] = None
+    function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
 
     def __call__(self, query: str) -> RouteChoice:
@@ -53,8 +53,8 @@ class Route(BaseModel):
                     "attribute is set."
                 )
             # if a function schema is provided we generate the inputs
-            extracted_inputs = function_call.extract_function_inputs(
-                query=query, llm=self.llm, function_schema=self.function_schema
+            extracted_inputs = self.llm.extract_function_inputs(
+                query=query, function_schema=self.function_schema
             )
             func_call = extracted_inputs
         else:
@@ -62,11 +62,11 @@ class Route(BaseModel):
             func_call = None
         return RouteChoice(name=self.name, function_call=func_call)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return self.dict()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]):
+    def from_dict(cls, data: Dict[str, Any]):
         return cls(**data)
 
     @classmethod
@@ -92,33 +92,33 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: dict[str, Any]):
+    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: Dict[str, Any]):
         logger.info("Generating dynamic route...")
 
         prompt = f"""
-        You are tasked to generate a JSON configuration based on the provided
-        function schema. Please follow the template below, no other tokens allowed:
+You are tasked to generate a JSON configuration based on the provided
+function schema. Please follow the template below, no other tokens allowed:
 
-        <config>
-        {{
-            "name": "<function_name>",
-            "utterances": [
-                "<example_utterance_1>",
-                "<example_utterance_2>",
-                "<example_utterance_3>",
-                "<example_utterance_4>",
-                "<example_utterance_5>"]
-        }}
-        </config>
+<config>
+{{
+    "name": "<function_name>",
+    "utterances": [
+        "<example_utterance_1>",
+        "<example_utterance_2>",
+        "<example_utterance_3>",
+        "<example_utterance_4>",
+        "<example_utterance_5>"]
+}}
+</config>
 
-        Only include the "name" and "utterances" keys in your answer.
-        The "name" should match the function name and the "utterances"
-        should comprise a list of 5 example phrases that could be used to invoke
-        the function. Use real values instead of placeholders.
+Only include the "name" and "utterances" keys in your answer.
+The "name" should match the function name and the "utterances"
+should comprise a list of 5 example phrases that could be used to invoke
+the function. Use real values instead of placeholders.
 
-        Input schema:
-        {function_schema}
-        """
+Input schema:
+{function_schema}
+"""
 
         llm_input = [Message(role="user", content=prompt)]
         output = llm(llm_input)
