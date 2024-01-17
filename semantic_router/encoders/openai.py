@@ -29,7 +29,9 @@ class OpenAIEncoder(BaseEncoder):
         try:
             self.client = openai.Client(api_key=api_key)
         except Exception as e:
-            raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
+            raise ValueError(
+                f"OpenAI API client failed to initialize. Error: {e}"
+            ) from e
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
@@ -49,7 +51,7 @@ class OpenAIEncoder(BaseEncoder):
                 logger.warning(f"Retrying in {2**j} seconds...")
             except Exception as e:
                 logger.error(f"OpenAI API call failed. Error: {error_message}")
-                raise ValueError(f"OpenAI API call failed. Error: {e}")
+                raise ValueError(f"OpenAI API call failed. Error: {e}") from e
 
         if (
             not embeds

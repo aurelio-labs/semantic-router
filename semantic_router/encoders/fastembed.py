@@ -48,4 +48,4 @@ class FastEmbedEncoder(BaseEncoder):
             embeddings: List[List[float]] = [e.tolist() for e in embeds]
             return embeddings
         except Exception as e:
-            raise ValueError(f"FastEmbed embed failed. Error: {e}")
+            raise ValueError(f"FastEmbed embed failed. Error: {e}") from e
