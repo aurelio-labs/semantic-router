@@ -1,7 +1,7 @@
 import pytest
 from llama_cpp import Llama
 
-from semantic_router.llms import LlamaCppLLM
+from semantic_router.llms.llamacpp import LlamaCppLLM
 from semantic_router.schema import Message
 
 
