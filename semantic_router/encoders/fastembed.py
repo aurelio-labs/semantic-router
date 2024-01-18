@@ -1,7 +1,7 @@
 from typing import Any, List, Optional
 
 import numpy as np
-from pydantic import PrivateAttr
+from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
 
