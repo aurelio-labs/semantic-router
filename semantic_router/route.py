@@ -44,7 +44,7 @@ class Route(BaseModel):
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
-    
+
     def __call__(self, query: str) -> RouteChoice:
         logger.info(f"this is the llm passed to route object {self.llm}")
         if self.function_schema:

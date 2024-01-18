@@ -75,7 +75,7 @@ class BaseLLM(BaseModel):
         """
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
-        
+
         if not output:
             raise Exception("No output generated for extract function input")
 
