@@ -25,7 +25,9 @@ class CohereEncoder(BaseEncoder):
         try:
             self.client = cohere.Client(cohere_api_key)
         except Exception as e:
-            raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
+            raise ValueError(
+                f"Cohere API client failed to initialize. Error: {e}"
+            ) from e
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
@@ -34,4 +36,4 @@ class CohereEncoder(BaseEncoder):
             embeds = self.client.embed(docs, input_type="search_query", model=self.name)
             return embeds.embeddings
         except Exception as e:
-            raise ValueError(f"Cohere API call failed. Error: {e}")
+            raise ValueError(f"Cohere API call failed. Error: {e}") from e

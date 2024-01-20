@@ -24,7 +24,9 @@ class CohereLLM(BaseLLM):
         try:
             self.client = cohere.Client(cohere_api_key)
         except Exception as e:
-            raise ValueError(f"Cohere API client failed to initialize. Error: {e}")
+            raise ValueError(
+                f"Cohere API client failed to initialize. Error: {e}"
+            ) from e
 
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
@@ -43,4 +45,4 @@ class CohereLLM(BaseLLM):
             return output
 
         except Exception as e:
-            raise ValueError(f"Cohere API call failed. Error: {e}")
+            raise ValueError(f"Cohere API call failed. Error: {e}") from e
