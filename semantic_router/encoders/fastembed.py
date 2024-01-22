@@ -1,7 +1,7 @@
 from typing import Any, List, Optional
 
 import numpy as np
-from pydantic import PrivateAttr
+from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
 
@@ -48,4 +48,4 @@ class FastEmbedEncoder(BaseEncoder):
             embeddings: List[List[float]] = [e.tolist() for e in embeds]
             return embeddings
         except Exception as e:
-            raise ValueError(f"FastEmbed embed failed. Error: {e}")
+            raise ValueError(f"FastEmbed embed failed. Error: {e}") from e

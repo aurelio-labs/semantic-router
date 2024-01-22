@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
+from pydantic.v1 import BaseModel
+from pydantic.v1.dataclasses import dataclass
 
 from semantic_router.encoders import (
     BaseEncoder,

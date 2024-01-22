@@ -29,7 +29,9 @@ class OpenAILLM(BaseLLM):
         try:
             self.client = openai.OpenAI(api_key=api_key)
         except Exception as e:
-            raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
+            raise ValueError(
+                f"OpenAI API client failed to initialize. Error: {e}"
+            ) from e
         self.temperature = temperature
         self.max_tokens = max_tokens
 
@@ -51,4 +53,4 @@ class OpenAILLM(BaseLLM):
             return output
         except Exception as e:
             logger.error(f"LLM error: {e}")
-            raise Exception(f"LLM error: {e}")
+            raise Exception(f"LLM error: {e}") from e
