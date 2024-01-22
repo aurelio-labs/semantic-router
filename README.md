@@ -26,7 +26,7 @@ To get started with _semantic-router_ we install it like so:
 pip install -qU semantic-router
 ```
 
-❗️ _If wanting to use a fully local version of semantic router you can use `HuggingFaceEncoder` and `LlamaCppEncoder` (`pip install -qU "semantic-router[local]"`, see [here](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb)). To use the `HybridRouteLayer` you must `pip install -qU "semantic-router[hybrid]"`._
+❗️ _If wanting to use a fully local version of semantic router you can use `HuggingFaceEncoder` and `LlamaCppLLM` (`pip install -qU "semantic-router[local]"`, see [here](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb)). To use the `HybridRouteLayer` you must `pip install -qU "semantic-router[hybrid]"`._
 
 We begin by defining a set of `Route` objects. These are the decision paths that the semantic router can decide to use, let's try two simple routes for now — one for talk on _politics_ and another for _chitchat_:
 
@@ -133,7 +133,7 @@ In this case, no decision could be made as we had no matches — so our route la
 
 ### Online Course
 
-**COMING SOON**
+[![Semantic Router Course](https://github.com/aurelio-labs/assets/blob/main/images/aurelio-1080p-header-dark-semantic-router.jpg)](https://www.youtube.com/watch?v=ro312jDqAh0&list=PLIUOU7oqGTLhYDPiDKlALecva3jab531-&index=1)
 
 ### Community
 
