@@ -6,8 +6,8 @@ from semantic_router.schema import Message
 
 @pytest.fixture
 def azure_openai_llm(mocker):
-    mocker.patch("azureopenai.Client")
-    return AzureOpenAILLM(openai_api_key="test_api_key")
+    mocker.patch("openai.Client")
+    return AzureOpenAILLM(openai_api_key="test_api_key", azure_endpoint="test_endpoint")
 
 
 class TestOpenAILLM:
@@ -25,11 +25,18 @@ class TestOpenAILLM:
         with pytest.raises(ValueError) as _:
             AzureOpenAILLM()
 
+    # def test_azure_openai_llm_init_without_azure_endpoint(self, mocker):
+    #     mocker.patch("os.getenv", side_effect=[None, "fake-api-key"])  
+    #     with pytest.raises(ValueError) as e:
+    #         AzureOpenAILLM(openai_api_key="test_api_key")
+    #     assert "Azure endpoint API key cannot be 'None'." in str(e.value)
+
     def test_azure_openai_llm_init_without_azure_endpoint(self, mocker):
-        mocker.patch("os.getenv", side_effect=[None, "fake-api-key"])  # Simulate missing Azure endpoint
+        mocker.patch("os.getenv", side_effect=lambda key, default=None: {"OPENAI_CHAT_MODEL_NAME": "test-model-name"}.get(key, default))
         with pytest.raises(ValueError) as e:
             AzureOpenAILLM(openai_api_key="test_api_key")
         assert "Azure endpoint API key cannot be 'None'" in str(e.value)
+
 
     def test_azure_openai_llm_call_uninitialized_client(self, azure_openai_llm):
         # Set the client to None to simulate an uninitialized client
@@ -52,7 +59,7 @@ class TestOpenAILLM:
     def test_azure_openai_llm_temperature_max_tokens_initialization(self):
         test_temperature = 0.5
         test_max_tokens = 100
-        azure_llm = AzureOpenAILLM(openai_api_key="test_api_key", temperature=test_temperature, max_tokens=test_max_tokens)
+        azure_llm = AzureOpenAILLM(openai_api_key="test_api_key",azure_endpoint="test_endpoint", temperature=test_temperature, max_tokens=test_max_tokens)
 
         assert azure_llm.temperature == test_temperature, "Temperature not set correctly"
         assert azure_llm.max_tokens == test_max_tokens, "Max tokens not set correctly"

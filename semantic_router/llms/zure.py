@@ -23,11 +23,11 @@ class AzureOpenAILLM(BaseLLM):
         api_version="2023-07-01-preview",
     ):
         if name is None:
-            name = os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-35-turbo")
+            name = os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-3.5-turbo")
         super().__init__(name=name)
         api_key = openai_api_key or os.getenv("AZURE_OPENAI_API_KEY")
         if api_key is None:
-            raise ValueError("OpenAI API key cannot be 'None'.")
+            raise ValueError("AzureOpenAI API key cannot be 'None'.")
         azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         if azure_endpoint is None:
             raise ValueError("Azure endpoint API key cannot be 'None'.")
@@ -36,13 +36,13 @@ class AzureOpenAILLM(BaseLLM):
                 api_key=api_key, azure_endpoint=azure_endpoint, api_version=api_version
             )
         except Exception as e:
-            raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
+            raise ValueError(f"AzureOpenAI API client failed to initialize. Error: {e}")
         self.temperature = temperature
         self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
-            raise ValueError("OpenAI client is not initialized.")
+            raise ValueError("AzureOpenAI client is not initialized.")
         try:
             completion = self.client.chat.completions.create(
                 model=self.name,
