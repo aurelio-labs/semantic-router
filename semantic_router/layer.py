@@ -7,7 +7,7 @@ import yaml
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.llms import AzureOpenAILLM, BaseLLM, OpenAILLM
+from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger

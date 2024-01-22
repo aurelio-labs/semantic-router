@@ -57,7 +57,6 @@ class Route(BaseModel):
             extracted_inputs = self.llm.extract_function_inputs(
                 query=query, function_schema=self.function_schema
             )
-            logger.info(f"extracted inputs {extracted_inputs}")
             func_call = extracted_inputs
         else:
             # otherwise we just pass None for the call
