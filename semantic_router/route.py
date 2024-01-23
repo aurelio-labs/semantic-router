@@ -44,6 +44,7 @@ class Route(BaseModel):
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
+    score_threshold: Optional[float] = None
 
     def __call__(self, query: str) -> RouteChoice:
         if self.function_schema:
