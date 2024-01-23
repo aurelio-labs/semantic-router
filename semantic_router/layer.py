@@ -339,10 +339,10 @@ class RouteLayer:
 
 
 class TestRouteSelection:
-    def __init__(self, route_layer: RouteLayer, test_data: List[Tuple[str, str]], score_threshold_values: Optional[List[float]] = None):
+    def __init__(self, route_layer: RouteLayer, test_data: List[Tuple[str, str]], score_threshold_values: List[float] = None):
         self.route_layer = route_layer
         self.test_data = test_data
-        self.score_threshold_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] 
+        self.score_threshold_values = score_threshold_values
 
     def evaluate(self, score_thresholds: Optional[Dict[str, float]] = None) -> float:
         correct = 0
