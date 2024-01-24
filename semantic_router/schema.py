@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic.v1 import BaseModel
 from pydantic.v1.dataclasses import dataclass
@@ -10,7 +10,7 @@ from semantic_router.encoders import (
     FastEmbedEncoder,
     OpenAIEncoder,
 )
-from semantic_router.utils.splitters import semantic_splitter
+from semantic_router.utils.splitters import semantic_splitter, DocumentSplit
 
 
 class EncoderType(Enum):
@@ -77,7 +77,7 @@ class Conversation(BaseModel):
         split_method: Literal[
             "consecutive_similarity_drop", "cumulative_similarity_drop"
         ] = "consecutive_similarity_drop",
-    ) -> Dict[str, List[str]]:
+    ) -> list[DocumentSplit]:
         docs = [f"{m.role}: {m.content}" for m in self.messages]
         return semantic_splitter(
             encoder=encoder, docs=docs, threshold=threshold, split_method=split_method
