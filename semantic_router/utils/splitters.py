@@ -71,12 +71,12 @@ def semantic_splitter(
                 curr_split_docs_embed = encoder([curr_split_docs])[0]
                 next_doc_embed = encoder([next_doc])[0]
 
-                similarity = np.dot(curr_split_docs_embed, next_doc_embed) / (
+                curr_sim_score = np.dot(curr_split_docs_embed, next_doc_embed) / (
                     np.linalg.norm(curr_split_docs_embed)
                     * np.linalg.norm(next_doc_embed)
                 )
 
-                if similarity < threshold:
+                if curr_sim_score < threshold:
                     splits.append(
                         DocumentSplit(
                             docs=docs[curr_split_start_idx : idx + 1],
