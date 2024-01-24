@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 import numpy as np
 from pydantic.v1 import BaseModel
@@ -9,7 +9,7 @@ from semantic_router.encoders import BaseEncoder
 class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
-    triggered_score: float | None = None
+    triggered_score: Optional[float] = None
 
 
 def semantic_splitter(
