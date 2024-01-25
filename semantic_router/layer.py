@@ -11,10 +11,7 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-import itertools
 from tqdm.auto import tqdm
-
-from typing import Dict
 import random
 
 
