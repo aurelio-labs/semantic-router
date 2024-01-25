@@ -47,6 +47,7 @@ class Route(BaseModel):
     score_threshold: Optional[float] = None
 
     def __call__(self, query: str) -> RouteChoice:
+        logger.info(f"this is the llm passed to route object {self.llm}")
         if self.function_schema:
             if not self.llm:
                 raise ValueError(
@@ -97,29 +98,29 @@ class Route(BaseModel):
         logger.info("Generating dynamic route...")
 
         prompt = f"""
-You are tasked to generate a JSON configuration based on the provided
-function schema. Please follow the template below, no other tokens allowed:
+        You are tasked to generate a JSON configuration based on the provided
+        function schema. Please follow the template below, no other tokens allowed:
 
-<config>
-{{
-    "name": "<function_name>",
-    "utterances": [
-        "<example_utterance_1>",
-        "<example_utterance_2>",
-        "<example_utterance_3>",
-        "<example_utterance_4>",
-        "<example_utterance_5>"]
-}}
-</config>
+        <config>
+        {{
+            "name": "<function_name>",
+            "utterances": [
+                "<example_utterance_1>",
+                "<example_utterance_2>",
+                "<example_utterance_3>",
+                "<example_utterance_4>",
+                "<example_utterance_5>"]
+        }}
+        </config>
 
-Only include the "name" and "utterances" keys in your answer.
-The "name" should match the function name and the "utterances"
-should comprise a list of 5 example phrases that could be used to invoke
-the function. Use real values instead of placeholders.
+        Only include the "name" and "utterances" keys in your answer.
+        The "name" should match the function name and the "utterances"
+        should comprise a list of 5 example phrases that could be used to invoke
+        the function. Use real values instead of placeholders.
 
-Input schema:
-{function_schema}
-"""
+        Input schema:
+        {function_schema}
+        """
 
         llm_input = [Message(role="user", content=prompt)]
         output = llm(llm_input)

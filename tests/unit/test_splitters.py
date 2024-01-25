@@ -17,7 +17,8 @@ def test_semantic_splitter_consecutive_similarity_drop():
 
     result = semantic_splitter(mock_encoder, docs, threshold, split_method)
 
-    assert result == {"split 1": ["doc1", "doc2", "doc3"], "split 2": ["doc4", "doc5"]}
+    assert result[0].docs == ["doc1", "doc2", "doc3"]
+    assert result[1].docs == ["doc4", "doc5"]
 
 
 def test_semantic_splitter_cumulative_similarity_drop():
@@ -33,7 +34,8 @@ def test_semantic_splitter_cumulative_similarity_drop():
 
     result = semantic_splitter(mock_encoder, docs, threshold, split_method)
 
-    assert result == {"split 1": ["doc1", "doc2"], "split 2": ["doc3", "doc4", "doc5"]}
+    assert result[0].docs == ["doc1", "doc2"]
+    assert result[1].docs == ["doc3", "doc4", "doc5"]
 
 
 def test_semantic_splitter_invalid_method():
@@ -62,7 +64,5 @@ def test_split_by_topic():
         encoder=mock_encoder, threshold=0.5, split_method="consecutive_similarity_drop"
     )
 
-    assert result == {
-        "split 1": ["User: What is the latest news?"],
-        "split 2": ["Bot: How is the weather today?"],
-    }
+    assert result[0].docs == ["User: What is the latest news?"]
+    assert result[1].docs == ["Bot: How is the weather today?"]
