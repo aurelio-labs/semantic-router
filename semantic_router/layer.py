@@ -186,7 +186,11 @@ class RouteLayer:
         results = self._query(text)
         top_class, top_class_scores = self._semantic_classify(results)
         # get chosen route object
-        route = [route for route in self.routes if route.name == top_class][0]
+        matching_routes = [route for route in self.routes if route.name == top_class]
+        if not matching_routes:
+            logger.error(f"No route found with name {top_class}. Check to see if any Routes have been defined.")
+            return RouteChoice()
+        route = matching_routes[0]
         threshold = (
             route.score_threshold
             if route.score_threshold is not None
