@@ -31,7 +31,6 @@ class BaseLLM(BaseModel):
             param_types = [
                 info.split(":")[1].strip().split("=")[0].strip() for info in param_info
             ]
-
             for name, type_str in zip(param_names, param_types):
                 if name not in inputs:
                     logger.error(f"Input {name} missing from query")
@@ -76,12 +75,14 @@ class BaseLLM(BaseModel):
         """
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
+
         if not output:
             raise Exception("No output generated for extract function input")
 
         output = output.replace("'", '"').strip().rstrip(",")
-
+        logger.info(f"LLM output: {output}")
         function_inputs = json.loads(output)
+        logger.info(f"Function inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schema):
             raise ValueError("Invalid inputs")
         return function_inputs

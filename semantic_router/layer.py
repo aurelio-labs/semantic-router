@@ -199,10 +199,12 @@ class RouteLayer:
                         "default. Ensure API key is set in OPENAI_API_KEY environment "
                         "variable."
                     )
+
                     self.llm = OpenAILLM()
                     route.llm = self.llm
                 else:
                     route.llm = self.llm
+            logger.info(f"LLM  `{route.llm}` is chosen")
             return route(text)
         else:
             # if no route passes threshold, return empty route choice

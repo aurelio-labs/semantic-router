@@ -1,8 +1,15 @@
-from typing import Dict, List, Literal
+from typing import List, Literal, Optional
 
 import numpy as np
+from pydantic.v1 import BaseModel
 
 from semantic_router.encoders import BaseEncoder
+
+
+class DocumentSplit(BaseModel):
+    docs: List[str]
+    is_triggered: bool = False
+    triggered_score: Optional[float] = None
 
 
 def semantic_splitter(
@@ -12,7 +19,7 @@ def semantic_splitter(
     split_method: Literal[
         "consecutive_similarity_drop", "cumulative_similarity_drop"
     ] = "consecutive_similarity_drop",
-) -> Dict[str, List[str]]:
+) -> List[DocumentSplit]:
     """
     Splits a list of documents base on semantic similarity changes.
 
@@ -33,7 +40,7 @@ def semantic_splitter(
         Dict[str, List[str]]: Splits with corresponding documents.
     """
     total_docs = len(docs)
-    splits = {}
+    splits = []
     curr_split_start_idx = 0
     curr_split_num = 1
 
@@ -43,8 +50,15 @@ def semantic_splitter(
         sim_matrix = np.matmul(norm_embeds, norm_embeds.T)
 
         for idx in range(1, total_docs):
-            if idx < len(sim_matrix) and sim_matrix[idx - 1][idx] < threshold:
-                splits[f"split {curr_split_num}"] = docs[curr_split_start_idx:idx]
+            curr_sim_score = sim_matrix[idx - 1][idx]
+            if idx < len(sim_matrix) and curr_sim_score < threshold:
+                splits.append(
+                    DocumentSplit(
+                        docs=docs[curr_split_start_idx:idx],
+                        is_triggered=True,
+                        triggered_score=curr_sim_score,
+                    )
+                )
                 curr_split_start_idx = idx
                 curr_split_num += 1
 
@@ -57,15 +71,19 @@ def semantic_splitter(
                 curr_split_docs_embed = encoder([curr_split_docs])[0]
                 next_doc_embed = encoder([next_doc])[0]
 
-                similarity = np.dot(curr_split_docs_embed, next_doc_embed) / (
+                curr_sim_score = np.dot(curr_split_docs_embed, next_doc_embed) / (
                     np.linalg.norm(curr_split_docs_embed)
                     * np.linalg.norm(next_doc_embed)
                 )
 
-                if similarity < threshold:
-                    splits[f"split {curr_split_num}"] = docs[
-                        curr_split_start_idx : idx + 1
-                    ]
+                if curr_sim_score < threshold:
+                    splits.append(
+                        DocumentSplit(
+                            docs=docs[curr_split_start_idx : idx + 1],
+                            is_triggered=True,
+                            triggered_score=curr_sim_score,
+                        )
+                    )
                     curr_split_start_idx = idx + 1
                     curr_split_num += 1
 
@@ -75,5 +93,5 @@ def semantic_splitter(
             " 'cumulative_similarity_drop'."
         )
 
-    splits[f"split {curr_split_num}"] = docs[curr_split_start_idx:]
+    splits.append(DocumentSplit(docs=docs[curr_split_start_idx:]))
     return splits
