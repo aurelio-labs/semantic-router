@@ -341,7 +341,7 @@ class RouteLayer:
         config = self.to_config()
         config.to_file(file_path)
 
-    def get_route_thresholds(self) -> Dict[str, float]:
+    def get_route_thresholds(self) -> Dict[str, Optional[float]]:
         return {route.name: route.score_threshold for route in self.routes}
 
     def fit(
@@ -390,7 +390,7 @@ class TestRouteSelection:
     ):
         # Define the range of threshold values for each route
         route_names = [route.name for route in self.route_layer.routes]
-        best_accuracy = 0
+        best_accuracy = 0.0
         best_thresholds = {}
         # Evaluate the performance for each random sample
         for _ in tqdm(range(num_samples), desc=f"Processing {num_samples} Samples."):
