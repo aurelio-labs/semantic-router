@@ -188,7 +188,9 @@ class RouteLayer:
         # get chosen route object
         matching_routes = [route for route in self.routes if route.name == top_class]
         if not matching_routes:
-            logger.error(f"No route found with name {top_class}. Check to see if any Routes have been defined.")
+            logger.error(
+                f"No route found with name {top_class}. Check to see if any Routes have been defined."
+            )
             return RouteChoice()
         route = matching_routes[0]
         threshold = (
