@@ -20,7 +20,6 @@ class OpenAIEncoder(BaseEncoder):
         openai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
     ):
-        print("init OpenAIEncoder")
         if name is None:
             name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
         super().__init__(name=name, score_threshold=score_threshold)
