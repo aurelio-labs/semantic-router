@@ -10,7 +10,7 @@ from semantic_router.encoders import (
     FastEmbedEncoder,
     OpenAIEncoder,
 )
-from semantic_router.utils.splitters import semantic_splitter, DocumentSplit
+from semantic_router.utils.splitters import DocumentSplit, semantic_splitter
 
 
 class EncoderType(Enum):
