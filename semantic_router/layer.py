@@ -161,7 +161,6 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        top_k_routes: int = 3,
     ):
         logger.info("Initializing RouteLayer")
         self.index = None
@@ -177,6 +176,10 @@ class RouteLayer:
         self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
+        # set route score thresholds if not already set
+        for route in self.routes:
+            if route.score_threshold is None:
+                route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
         if len(self.routes) > 0:
             # initialize index now
@@ -264,6 +267,9 @@ class RouteLayer:
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
         embeds = self.encoder(route.utterances)
+        # if route has no score_threshold, use default
+        if route.score_threshold is None:
+            route.score_threshold = self.score_threshold
 
         # create route array
         if self.categories is None:
@@ -352,6 +358,19 @@ class RouteLayer:
             return max(scores) > threshold
         else:
             return False
+    
+    def _update_thresholds(
+        self,
+        score_thresholds: Optional[Dict[str, float]] = None
+    ):
+        """
+        Update the score thresholds for each route.
+        """
+        if score_thresholds:
+            for route in self.routes:
+                route.score_threshold = score_thresholds.get(
+                    route.name, self.score_threshold
+                )
 
     def to_config(self) -> LayerConfig:
         return LayerConfig(
@@ -373,33 +392,34 @@ class RouteLayer:
 
     def fit(
         self,
-        X: List[str],
+        X: List[Union[str, float]],
         y: List[str],
-        score_threshold_values: List[float] = [
-            0.5,
-            0.55,
-            0.6,
-            0.65,
-            0.7,
-            0.75,
-            0.8,
-            0.85,
-            0.9,
-            0.95,
-        ],
-        num_samples: int = 20,
+        max_iter: int = 500,
     ):
-        # Find the best score threshold for each route
-        acc, thresholds = random_score_threshold_search(
-            X=X,
-            y=y,
-            route_layer=self,
-            score_threshold_values=score_threshold_values,
-            num_samples=num_samples,
-        )
-        # update current route layer
-        self = update_route_thresholds(self, thresholds)
-        return thresholds, acc
+        # convert inputs into array
+        if isinstance(X[0], str):
+            X = np.array(self.encoder(X))
+        # initial eval (we will iterate from here)
+        best_acc = self.evaluate(X=X, y=y)
+        best_thresholds = self.get_route_thresholds()
+        # begin fit
+        for _ in (pbar := tqdm(range(max_iter))):
+            pbar.set_postfix({"acc": round(best_acc, 2)})
+            # Find the best score threshold for each route
+            thresholds = threshold_random_search(
+                route_layer=self,
+                search_range=0.8,
+            )
+            # update current route layer
+            self._update_thresholds(score_thresholds=thresholds)
+            # evaluate
+            acc = self.evaluate(X=X, y=y)
+            # update best
+            if acc > best_acc:
+                best_acc = acc
+                best_thresholds = thresholds
+        # update route layer to best thresholds
+        self._update_thresholds(score_thresholds=best_thresholds)
     
     def evaluate(self, X: List[Union[str, float]], y: List[str]) -> float:
         """
@@ -408,7 +428,7 @@ class RouteLayer:
         correct = 0
         if isinstance(X[0], str):
             X = np.array(self.encoder(X))
-        for xq, target_route in tqdm(zip(X, y), total=len(X)):
+        for xq, target_route in zip(X, y):
             route_choice = self(vector=xq)
             if route_choice.name == target_route:
                 correct += 1
@@ -416,51 +436,28 @@ class RouteLayer:
         return accuracy
 
 
-def random_score_threshold_search(
-    X: List[str],
-    y: List[str],
+def threshold_random_search(
     route_layer: RouteLayer,
-    score_threshold_values: List[float],
-    num_samples: int,
+    search_range: Union[int, float],
 ) -> Tuple[float, Dict[str, float]]:
-    # TODO maybe we rename num_samples to iterations?
+    """Performs a random search iteration given a route layer and a search range.
+    """
     # extract the route names
-    route_names = [route.name for route in route_layer.routes]
-    # generate query vectors from X
-    Xq = [route_layer._encode(text) for text in X]
-    best_accuracy = 0.0
-    best_thresholds = {}
-    # Evaluate the performance for each random sample
-    for _ in tqdm(range(num_samples), desc=f"Processing {num_samples} Samples."):
-        # Generate a random threshold for each route
-        score_thresholds = {
-            route: random.choice(score_threshold_values) for route in route_names
-        }
-
-        # update the route thresholds
-        route_layer = update_route_thresholds(
-            route_layer=route_layer,
-            score_thresholds=score_thresholds
-        )
-
-        accuracy = route_layer.evaluate(X=Xq, y=y)
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_thresholds = score_thresholds
-
-    return best_accuracy, best_thresholds
-
-def update_route_thresholds(
-    route_layer=RouteLayer,
-    score_thresholds: Optional[Dict[str, float]] = None
-) -> RouteLayer:
-    """
-    Update the score thresholds for each route.
-    """
-    if score_thresholds:
-        for route in route_layer.routes:
-            route.score_threshold = score_thresholds.get(
-                route.name, route_layer.score_threshold
+    routes = route_layer.get_route_thresholds()
+    route_names = list(routes.keys())
+    route_thresholds = list(routes.values())
+    # generate search range for each
+    score_threshold_values = []
+    for threshold in route_thresholds:
+        score_threshold_values.append(
+            np.linspace(
+                start=max(threshold-search_range, 0.0),
+                stop=min(threshold+search_range, 1.0),
+                num=100
             )
-    return route_layer
-
+        )
+    # Generate a random threshold for each route
+    score_thresholds = {
+        route: random.choice(score_threshold_values[i]) for i, route in enumerate(route_names)
+    }
+    return score_thresholds
