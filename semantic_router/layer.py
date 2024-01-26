@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import yaml
@@ -191,8 +191,19 @@ class RouteLayer:
             return None
         return matching_routes[0]
 
-    def __call__(self, text: str) -> RouteChoice:
-        results = self._query(text)
+    def __call__(
+        self,
+        text: Optional[str] = None,
+        vector: Optional[List[float]] = None,
+    ) -> RouteChoice:
+        # if no vector provided, encode text to get vector
+        if vector is None:
+            if text is None:
+                raise ValueError("Either text or vector must be provided")
+            vector = self._encode(text=text)
+        # get relevant utterances
+        results = self._retrieve(xq=vector)
+        # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
         route = self.check_for_matching_routes(top_class)
         if route is None:
@@ -214,9 +225,12 @@ class RouteLayer:
 
                     self.llm = OpenAILLM()
                     route.llm = self.llm
+                elif text is None:
+                    raise ValueError(
+                        "Text must be provided to use dynamic route with function_schema"
+                    )
                 else:
                     route.llm = self.llm
-            logger.info(f"LLM  `{route.llm}` is chosen")
             return route(text)
         else:
             # if no route passes threshold, return empty route choice
@@ -290,14 +304,17 @@ class RouteLayer:
             else embed_utterance_arr
         )
 
-    def _query(self, text: str, top_k: int = 5):
-        """Given some text, encodes and searches the index vector space to
-        retrieve the top_k most similar records.
+    def _encode(self, text: str) -> np.ndarray:
+        """Given some text, encode it.
         """
         # create query vector
         xq = np.array(self.encoder([text]))
         xq = np.squeeze(xq)  # Reduce to 1d array.
+        return xq
 
+    def _retrieve(self, xq: np.ndarray, top_k: int = 5) -> List[dict]:
+        """Given a query vector, retrieve the top_k most similar records.
+        """
         if self.index is not None:
             # calculate similarity matrix
             sim = similarity_matrix(xq, self.index)
@@ -357,7 +374,7 @@ class RouteLayer:
     def fit(
         self,
         X: List[str],
-        Y: List[str],
+        y: List[str],
         score_threshold_values: List[float] = [
             0.5,
             0.55,
@@ -372,73 +389,78 @@ class RouteLayer:
         ],
         num_samples: int = 20,
     ):
-        test_route_selection = TestRouteSelection(route_layer=self)
         # Find the best score threshold for each route
-        (
-            best_thresholds,
-            best_accuracy,
-        ) = test_route_selection.random_score_threshold_search(
+        acc, thresholds = random_score_threshold_search(
             X=X,
-            Y=Y,
+            y=y,
+            route_layer=self,
             score_threshold_values=score_threshold_values,
             num_samples=num_samples,
         )
-        test_route_selection.update_route_thresholds(best_thresholds)
-        return best_accuracy, best_thresholds
-
-
-class TestRouteSelection:
-    def __init__(self, route_layer: RouteLayer):
-        self.route_layer = route_layer
-
-    def random_score_threshold_search(
-        self,
-        X: List[str],
-        Y: List[str],
-        score_threshold_values: List[float],
-        num_samples: int,
-    ):
-        # Define the range of threshold values for each route
-        route_names = [route.name for route in self.route_layer.routes]
-        best_accuracy = 0.0
-        best_thresholds = {}
-        # Evaluate the performance for each random sample
-        for _ in tqdm(range(num_samples), desc=f"Processing {num_samples} Samples."):
-            # Generate a random threshold for each route
-            score_thresholds = {
-                route: random.choice(score_threshold_values) for route in route_names
-            }
-
-            # Update the route thresholds
-            self.update_route_thresholds(score_thresholds)
-
-            accuracy = self.evaluate(X=X, Y=Y)
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                best_thresholds = score_thresholds
-
-        return best_thresholds, best_accuracy
-
-    def update_route_thresholds(
-        self, score_thresholds: Optional[Dict[str, float]] = None
-    ):
-        """
-        Update the score thresholds for each route.
-        """
-        if score_thresholds:
-            for route in self.route_layer.routes:
-                route.score_threshold = score_thresholds.get(
-                    route.name, self.route_layer.score_threshold
-                )
-
-    def evaluate(self, X: List[str], Y: List[str]) -> float:
+        # update current route layer
+        self = update_route_thresholds(self, thresholds)
+        return thresholds, acc
+    
+    def evaluate(self, X: List[Union[str, float]], y: List[str]) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
         correct = 0
-        for input_text, expected_route_name in zip(X, Y):
-            route_choice = self.route_layer(input_text)
-            if route_choice.name == expected_route_name:
+        if isinstance(X[0], str):
+            X = np.array(self.encoder(X))
+        for xq, target_route in tqdm(zip(X, y), total=len(X)):
+            route_choice = self(vector=xq)
+            if route_choice.name == target_route:
                 correct += 1
         accuracy = correct / len(X)
         return accuracy
+
+
+def random_score_threshold_search(
+    X: List[str],
+    y: List[str],
+    route_layer: RouteLayer,
+    score_threshold_values: List[float],
+    num_samples: int,
+) -> Tuple[float, Dict[str, float]]:
+    # TODO maybe we rename num_samples to iterations?
+    # extract the route names
+    route_names = [route.name for route in route_layer.routes]
+    # generate query vectors from X
+    Xq = [route_layer._encode(text) for text in X]
+    best_accuracy = 0.0
+    best_thresholds = {}
+    # Evaluate the performance for each random sample
+    for _ in tqdm(range(num_samples), desc=f"Processing {num_samples} Samples."):
+        # Generate a random threshold for each route
+        score_thresholds = {
+            route: random.choice(score_threshold_values) for route in route_names
+        }
+
+        # update the route thresholds
+        route_layer = update_route_thresholds(
+            route_layer=route_layer,
+            score_thresholds=score_thresholds
+        )
+
+        accuracy = route_layer.evaluate(X=Xq, y=y)
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            best_thresholds = score_thresholds
+
+    return best_accuracy, best_thresholds
+
+def update_route_thresholds(
+    route_layer=RouteLayer,
+    score_thresholds: Optional[Dict[str, float]] = None
+) -> RouteLayer:
+    """
+    Update the score thresholds for each route.
+    """
+    if score_thresholds:
+        for route in route_layer.routes:
+            route.score_threshold = score_thresholds.get(
+                route.name, route_layer.score_threshold
+            )
+    return route_layer
+

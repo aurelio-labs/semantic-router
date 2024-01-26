@@ -47,7 +47,6 @@ class Route(BaseModel):
     score_threshold: Optional[float] = None
 
     def __call__(self, query: str) -> RouteChoice:
-        logger.info(f"this is the llm passed to route object {self.llm}")
         if self.function_schema:
             if not self.llm:
                 raise ValueError(
