@@ -399,7 +399,7 @@ class RouteLayer:
         # convert inputs into array
         Xq: Any = np.array(self.encoder(X))
         # initial eval (we will iterate from here)
-        best_acc = self.evaluate(X=Xq, y=y)
+        best_acc = self._vec_evaluate(Xq=Xq, y=y)
         best_thresholds = self.get_route_thresholds()
         # begin fit
         for _ in (pbar := tqdm(range(max_iter))):
@@ -424,8 +424,7 @@ class RouteLayer:
         """
         Evaluate the accuracy of the route selection.
         """
-        if isinstance(X[0], str):
-            Xq = np.array(self.encoder(X))
+        Xq = np.array(self.encoder(X))
         accuracy = self._vec_evaluate(Xq=Xq, y=y)
         return accuracy
 
