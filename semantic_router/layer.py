@@ -310,14 +310,14 @@ class RouteLayer:
             else embed_utterance_arr
         )
 
-    def _encode(self, text: str) -> np.ndarray:
+    def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
         # create query vector
         xq = np.array(self.encoder([text]))
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
-    def _retrieve(self, xq: np.ndarray, top_k: int = 5) -> List[dict]:
+    def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
         if self.index is not None:
             # calculate similarity matrix
@@ -382,20 +382,24 @@ class RouteLayer:
         config = self.to_config()
         config.to_file(file_path)
 
-    def get_route_thresholds(self) -> Dict[str, Optional[float]]:
-        return {route.name: route.score_threshold for route in self.routes}
+    def get_route_thresholds(self) -> Dict[str, float]:
+        # TODO: float() below is hacky fix for lint, fix this with new type?
+        thresholds = {
+            route.name: float(route.score_threshold or self.score_threshold)
+            for route in self.routes
+        }
+        return thresholds
 
     def fit(
         self,
-        X: List[Union[str, float]],
+        X: List[str],
         y: List[str],
         max_iter: int = 500,
     ):
         # convert inputs into array
-        if isinstance(X[0], str):
-            X = np.array(self.encoder(X))
+        Xq: Any = np.array(self.encoder(X))
         # initial eval (we will iterate from here)
-        best_acc = self.evaluate(X=X, y=y)
+        best_acc = self.evaluate(X=Xq, y=y)
         best_thresholds = self.get_route_thresholds()
         # begin fit
         for _ in (pbar := tqdm(range(max_iter))):
@@ -408,7 +412,7 @@ class RouteLayer:
             # update current route layer
             self._update_thresholds(score_thresholds=thresholds)
             # evaluate
-            acc = self.evaluate(X=X, y=y)
+            acc = self._vec_evaluate(Xq=Xq, y=y)
             # update best
             if acc > best_acc:
                 best_acc = acc
@@ -416,25 +420,32 @@ class RouteLayer:
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
 
-    def evaluate(self, X: List[Union[str, float]], y: List[str]) -> float:
+    def evaluate(self, X: List[str], y: List[str]) -> float:
+        """
+        Evaluate the accuracy of the route selection.
+        """
+        if isinstance(X[0], str):
+            Xq = np.array(self.encoder(X))
+        accuracy = self._vec_evaluate(Xq=Xq, y=y)
+        return accuracy
+
+    def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
         correct = 0
-        if isinstance(X[0], str):
-            X = np.array(self.encoder(X))
-        for xq, target_route in zip(X, y):
+        for xq, target_route in zip(Xq, y):
             route_choice = self(vector=xq)
             if route_choice.name == target_route:
                 correct += 1
-        accuracy = correct / len(X)
+        accuracy = correct / len(Xq)
         return accuracy
 
 
 def threshold_random_search(
     route_layer: RouteLayer,
     search_range: Union[int, float],
-) -> Tuple[float, Dict[str, float]]:
+) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""
     # extract the route names
     routes = route_layer.get_route_thresholds()

@@ -46,12 +46,17 @@ class Route(BaseModel):
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
-    def __call__(self, query: str) -> RouteChoice:
+    def __call__(self, query: str | None) -> RouteChoice:
         if self.function_schema:
             if not self.llm:
                 raise ValueError(
                     "LLM is required for dynamic routes. Please ensure the `llm` "
                     "attribute is set."
+                )
+            elif query is None:
+                raise ValueError(
+                    "Query is required for dynamic routes. Please ensure the `query` "
+                    "argument is passed."
                 )
             # if a function schema is provided we generate the inputs
             extracted_inputs = self.llm.extract_function_inputs(
