@@ -46,7 +46,7 @@ class Route(BaseModel):
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
-    def __call__(self, query: str | None) -> RouteChoice:
+    def __call__(self, query: Optional[str] = None) -> RouteChoice:
         if self.function_schema:
             if not self.llm:
                 raise ValueError(
