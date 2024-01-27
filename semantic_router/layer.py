@@ -204,10 +204,13 @@ class RouteLayer:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = self._encode(text=text)
+        else:
+            vector = np.array(vector)
         # get relevant utterances
         results = self._retrieve(xq=vector)
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
+        # TODO do we need this check?
         route = self.check_for_matching_routes(top_class)
         if route is None:
             return RouteChoice()
@@ -218,6 +221,10 @@ class RouteLayer:
         )
         passed = self._pass_threshold(top_class_scores, threshold)
         if passed:
+            if route.function_schema and text is None:
+                raise ValueError(
+                    "Route has a function schema, but no text was provided."
+                )
             if route.function_schema and not isinstance(route.llm, BaseLLM):
                 if not self.llm:
                     logger.warning(
@@ -228,10 +235,6 @@ class RouteLayer:
 
                     self.llm = OpenAILLM()
                     route.llm = self.llm
-                elif text is None:
-                    raise ValueError(
-                        "Text must be provided to use dynamic route with function_schema"
-                    )
                 else:
                     route.llm = self.llm
             return route(text)
@@ -382,7 +385,7 @@ class RouteLayer:
         config = self.to_config()
         config.to_file(file_path)
 
-    def get_route_thresholds(self) -> Dict[str, float]:
+    def get_thresholds(self) -> Dict[str, float]:
         # TODO: float() below is hacky fix for lint, fix this with new type?
         thresholds = {
             route.name: float(route.score_threshold or self.score_threshold)
@@ -400,7 +403,7 @@ class RouteLayer:
         Xq: Any = np.array(self.encoder(X))
         # initial eval (we will iterate from here)
         best_acc = self._vec_evaluate(Xq=Xq, y=y)
-        best_thresholds = self.get_route_thresholds()
+        best_thresholds = self.get_thresholds()
         # begin fit
         for _ in (pbar := tqdm(range(max_iter))):
             pbar.set_postfix({"acc": round(best_acc, 2)})
@@ -447,7 +450,7 @@ def threshold_random_search(
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""
     # extract the route names
-    routes = route_layer.get_route_thresholds()
+    routes = route_layer.get_thresholds()
     route_names = list(routes.keys())
     route_thresholds = list(routes.values())
     # generate search range for each
