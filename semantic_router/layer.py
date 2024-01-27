@@ -203,11 +203,11 @@ class RouteLayer:
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=text)
+            vector_arr = self._encode(text=text)
         else:
-            vector = np.array(vector)
+            vector_arr = np.array(vector)
         # get relevant utterances
-        results = self._retrieve(xq=vector)
+        results = self._retrieve(xq=vector_arr)
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
         # TODO do we need this check?

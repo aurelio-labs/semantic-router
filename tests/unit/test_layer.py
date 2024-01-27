@@ -95,9 +95,16 @@ def routes():
 @pytest.fixture
 def dynamic_routes():
     return [
-        Route(name="Route 1", utterances=["Hello", "Hi"], function_schema={"name": "test"}),
-        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"], function_schema={"name": "test"}),
+        Route(
+            name="Route 1", utterances=["Hello", "Hi"], function_schema={"name": "test"}
+        ),
+        Route(
+            name="Route 2",
+            utterances=["Goodbye", "Bye", "Au revoir"],
+            function_schema={"name": "test"},
+        ),
     ]
+
 
 @pytest.fixture
 def test_data():
@@ -106,7 +113,7 @@ def test_data():
         ("what's the weather like today?", "chitchat"),
         ("what is the Pythagorean theorem?", "mathematics"),
         ("what is photosynthesis?", "biology"),
-        ("tell me an interesting fact", None)
+        ("tell me an interesting fact", None),
     ]
 
 
@@ -134,7 +141,9 @@ class TestRouteLayer:
         route_layer_none = RouteLayer(encoder=None)
         assert route_layer_none.score_threshold == openai_encoder.score_threshold
 
-    def test_initialization_dynamic_route(self, cohere_encoder, openai_encoder, dynamic_routes):
+    def test_initialization_dynamic_route(
+        self, cohere_encoder, openai_encoder, dynamic_routes
+    ):
         route_layer_cohere = RouteLayer(encoder=cohere_encoder, routes=dynamic_routes)
         assert route_layer_cohere.score_threshold == 0.3
         route_layer_openai = RouteLayer(encoder=openai_encoder, routes=dynamic_routes)
@@ -173,7 +182,7 @@ class TestRouteLayer:
     def test_query_with_no_index(self, openai_encoder):
         route_layer = RouteLayer(encoder=openai_encoder)
         assert route_layer(text="Anything").name is None
-    
+
     def test_query_with_vector(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         vector = [0.1, 0.2, 0.3]
@@ -207,7 +216,7 @@ class TestRouteLayer:
         )
         assert classification == "Route 1"
         assert score == [0.9, 0.8]
-    
+
     def test_query_no_text_dynamic_route(self, openai_encoder, dynamic_routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=dynamic_routes)
         vector = [0.1, 0.2, 0.3]
@@ -263,7 +272,7 @@ class TestRouteLayer:
 
     def test_get_thresholds(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        assert route_layer.get_thresholds() == {'Route 1': 0.82, 'Route 2': 0.82}
+        assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
 
 
 class TestLayerFit:
@@ -279,6 +288,7 @@ class TestLayerFit:
         # unpack test data
         X, y = zip(*test_data)
         route_layer.fit(X=X, y=y)
+
 
 # Add more tests for edge cases and error handling as needed.
 
