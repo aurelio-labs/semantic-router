@@ -12,6 +12,7 @@ from semantic_router.utils.logger import logger
 
 class OpenAIEncoder(BaseEncoder):
     client: Optional[openai.Client]
+    dimensions: Optional[int] = None
     type: str = "openai"
 
     def __init__(
@@ -19,6 +20,7 @@ class OpenAIEncoder(BaseEncoder):
         name: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
+        dimensions: Optional[int] = None,
     ):
         if name is None:
             name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
@@ -32,6 +34,8 @@ class OpenAIEncoder(BaseEncoder):
             raise ValueError(
                 f"OpenAI API client failed to initialize. Error: {e}"
             ) from e
+        # set dimensions to support openai embed 3 dimensions param
+        self.dimensions = dimensions
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
@@ -42,7 +46,11 @@ class OpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(3):
             try:
-                embeds = self.client.embeddings.create(input=docs, model=self.name)
+                embeds = self.client.embeddings.create(
+                    input=docs,
+                    model=self.name,
+                    dimensions=self.dimensions,
+                )
                 if embeds.data:
                     break
             except OpenAIError as e:
