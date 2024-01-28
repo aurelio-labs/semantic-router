@@ -1,9 +1,10 @@
 import os
 from time import sleep
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import openai
 from openai import OpenAIError
+from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
@@ -12,7 +13,7 @@ from semantic_router.utils.logger import logger
 
 class OpenAIEncoder(BaseEncoder):
     client: Optional[openai.Client]
-    dimensions: Optional[int] = None
+    dimensions: Union[int, NotGiven] = NotGiven()
     type: str = "openai"
 
     def __init__(
@@ -20,7 +21,7 @@ class OpenAIEncoder(BaseEncoder):
         name: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
-        dimensions: Optional[int] = None,
+        dimensions: Union[int, NotGiven] = NotGiven(),
     ):
         if name is None:
             name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
