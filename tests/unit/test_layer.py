@@ -167,6 +167,32 @@ class TestRouteLayer:
         assert set(route_layer.categories) == {"Route 1", "Route 2"}
         del route_layer
 
+    def test_list_route_names(self, openai_encoder, routes):
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_names = route_layer.list_route_names()
+        assert set(route_names) == {route.name for route in routes}, "The list of route names should match the names of the routes added."
+
+    def test_remove_route(self, openai_encoder, routes):
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        # Remove a route by name
+        route_to_remove = routes[0].name
+        route_layer.remove(route_to_remove)
+        # Ensure the route is no longer in the route layer
+        assert route_to_remove not in route_layer.list_route_names(), "The route should be removed from the route layer."
+        # Ensure the route is no longer in the index or categories
+        assert route_to_remove not in route_layer.categories, "The route should be removed from the categories."
+        # Ensure the route's utterances are no longer in the index
+        for utterance in routes[0].utterances:
+            assert utterance not in route_layer.index, "The route's utterances should be removed from the index."
+
+    def test_remove_route_not_found(self, openai_encoder, routes):
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        # Attempt to remove a route that does not exist
+        non_existent_route = "non-existent-route"
+        with pytest.raises(ValueError) as excinfo:
+            route_layer.remove(non_existent_route)
+        assert str(excinfo.value) == f"Route `{non_existent_route}` not found", "Attempting to remove a non-existent route should raise a ValueError."
+
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
         route_layer._add_routes(routes=routes)
