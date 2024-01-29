@@ -288,7 +288,7 @@ class RouteLayer:
             self.index = np.concatenate([self.index, embed_arr])
         # add route to routes list
         self.routes.append(route)
-    
+
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
@@ -299,9 +299,14 @@ class RouteLayer:
             self.routes = [route for route in self.routes if route.name != name]
             logger.info(f"Removed route `{name}`")
             # Also remove from index and categories
-            indices_to_remove = [i for i, route_name in enumerate(self.categories) if route_name == name]
-            self.index = np.delete(self.index, indices_to_remove, axis=0)
-            self.categories = np.delete(self.categories, indices_to_remove, axis=0)
+            if self.categories is not None and self.index is not None:
+                indices_to_remove = [
+                    i
+                    for i, route_name in enumerate(self.categories)
+                    if route_name == name
+                ]
+                self.index = np.delete(self.index, indices_to_remove, axis=0)
+                self.categories = np.delete(self.categories, indices_to_remove, axis=0)
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
