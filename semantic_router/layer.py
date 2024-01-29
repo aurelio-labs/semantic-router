@@ -294,7 +294,9 @@ class RouteLayer:
 
     def remove(self, name: str):
         if name not in [route.name for route in self.routes]:
-            logger.error(f"Route `{name}` not found")
+            err_msg = f"Route `{name}` not found"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
         else:
             self.routes = [route for route in self.routes if route.name != name]
             logger.info(f"Removed route `{name}`")
