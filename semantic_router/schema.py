@@ -121,8 +121,9 @@ class Conversation(BaseModel):
         # Use the splitter to split the documents
         new_topics = self.splitter(docs)
         
-        # Check if the first new topic includes any of the new messages
-        if any(message in new_topics[0].docs for message in docs[-len(unclustered_messages):]):
+        # Check if the first new topic includes the first new message.
+        # This means that the first new message shares the same topic as the last old message to have been assigned a topic.
+        if docs[-len(unclustered_messages)] in new_topics[0].docs:
             start = self.topics[-1][0]
         else:
             start = len(self.topics) + 1
