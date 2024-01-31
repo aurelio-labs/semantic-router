@@ -1,7 +1,8 @@
 from typing import List
-from semantic_router.splitters import BaseSplitter
+from semantic_router.splitters.base import BaseSplitter
 import numpy as np
-from semantic_router.utils import DocumentSplit
+from semantic_router.schema import DocumentSplit
+from semantic_router.encoders import BaseEncoder
 
 class CAVSimSplitter(BaseSplitter):
     
@@ -34,32 +35,33 @@ class CAVSimSplitter(BaseSplitter):
 
     def __init__(
         self,
-        docs: List[str],
+        encoder: BaseEncoder,
         name: str = "cav_similarity_splitter",
         similarity_threshold: float = 0.45,
     ):
         super().__init__(
-            docs=docs,
             name=name, 
             similarity_threshold=similarity_threshold,
+            encoder=encoder
             )
 
-    def __call__(self):
-        total_docs = len(self.docs)
+    def __call__(self, docs: List[str]):
+        total_docs = len(docs)
         splits = []
         curr_split_start_idx = 0
         curr_split_num = 1
+        doc_embeds = self.encoder(docs)
 
         for idx in range(1, total_docs):
-            curr_split_docs_embeds = self.encoder(self.docs[curr_split_start_idx : idx + 1])
+            curr_split_docs_embeds = doc_embeds[curr_split_start_idx : idx + 1]
             avg_embedding = np.mean(curr_split_docs_embeds, axis=0)
 
             # Compute the average embedding for the next two documents, if available
             if idx + 3 <= total_docs:  # Check if the next two indices are within the range
-                next_doc_embeds = self.encoder(self.docs[idx + 1 : idx + 3])
+                next_doc_embeds = doc_embeds[idx + 1 : idx + 3]
                 next_avg_embed = np.mean(next_doc_embeds, axis=0)
             elif idx + 2 <= total_docs:  # Check if the next index is within the range
-                next_avg_embed = self.encoder([self.docs[idx + 1]])[0]
+                next_avg_embed = doc_embeds[idx + 1]
             else:
                 next_avg_embed = None
 
@@ -72,7 +74,7 @@ class CAVSimSplitter(BaseSplitter):
                 if curr_sim_score < self.similarity_threshold:
                     splits.append(
                         DocumentSplit(
-                            docs=list(self.docs[curr_split_start_idx : idx + 1]),
+                            docs=list(docs[curr_split_start_idx : idx + 1]),
                             is_triggered=True,
                             triggered_score=curr_sim_score,
                         )
@@ -80,5 +82,5 @@ class CAVSimSplitter(BaseSplitter):
                     curr_split_start_idx = idx + 1
                     curr_split_num += 1
 
-        splits.append(DocumentSplit(docs=list(self.docs[curr_split_start_idx:])))
+        splits.append(DocumentSplit(docs=list(docs[curr_split_start_idx:])))
         return splits
