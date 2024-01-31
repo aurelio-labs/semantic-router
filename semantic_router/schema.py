@@ -82,3 +82,8 @@ class Conversation(BaseModel):
         return semantic_splitter(
             encoder=encoder, docs=docs, threshold=threshold, split_method=split_method
         )
+    
+class DocumentSplit(BaseModel):
+    docs: List[str]
+    is_triggered: bool = False
+    triggered_score: Optional[float] = None
