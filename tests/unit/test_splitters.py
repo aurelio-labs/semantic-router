@@ -18,7 +18,7 @@ def test_consecutive_sim_splitter():
 
     cohere_encoder = CohereEncoder(
         name="",
-        cohere_api_key="",
+        cohere_api_key="a",
         input_type="",
     )
     # Instantiate the ConsecutiveSimSplitter with the mock encoder
@@ -55,7 +55,7 @@ def test_cumulative_sim_splitter():
     # Instantiate the CumulativeSimSplitter with the mock encoder
     cohere_encoder = CohereEncoder(
         name="",
-        cohere_api_key="",
+        cohere_api_key="a",
         input_type="",
     )
     splitter = CumulativeSimSplitter(encoder=cohere_encoder, score_threshold=0.9)
@@ -93,7 +93,7 @@ def test_split_by_topic_consecutive_similarity():
 
     cohere_encoder = CohereEncoder(
         name="",
-        cohere_api_key="",
+        cohere_api_key="a",
         input_type="",
     )
 
@@ -123,7 +123,7 @@ def test_split_by_topic_cumulative_similarity():
 
     cohere_encoder = CohereEncoder(
         name="",
-        cohere_api_key="",
+        cohere_api_key="a",
         input_type="",
     )
 
