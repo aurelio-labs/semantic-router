@@ -4,8 +4,9 @@ from semantic_router.encoders import BaseEncoder
 import numpy as np
 from semantic_router.schema import DocumentSplit
 
+
 class ConsecutiveSimSplitter(BaseSplitter):
-    
+
     """
     Called "consecutive sim splitter" because we check the similarities of consecutive document embeddings (compare ith to i+1th document embedding).
     """
@@ -14,15 +15,17 @@ class ConsecutiveSimSplitter(BaseSplitter):
         self,
         encoder: BaseEncoder,
         name: str = "consecutive_similarity_splitter",
-        similarity_threshold: float = 0.45
+        similarity_threshold: float = 0.45,
     ):
         super().__init__(
-            name=name, 
-            similarity_threshold=similarity_threshold,
-            encoder=encoder
-            )
+            name=name, similarity_threshold=similarity_threshold, encoder=encoder
+        )
 
     def __call__(self, docs: List[str]):
+        # Check if there's only a single document
+        if len(docs) == 1:
+            raise ValueError("There is only one document provided; at least two are required to determine topics based on similarity.")
+
         doc_embeds = self.encoder(docs)
         norm_embeds = doc_embeds / np.linalg.norm(doc_embeds, axis=1, keepdims=True)
         sim_matrix = np.matmul(norm_embeds, norm_embeds.T)

@@ -4,8 +4,9 @@ import numpy as np
 from semantic_router.schema import DocumentSplit
 from semantic_router.encoders import BaseEncoder
 
+
 class CumulativeSimSplitter(BaseSplitter):
-    
+
     """
     Called "cumulative sim" because we check the similarities of the embeddings of cumulative concatenated documents with the next document.
     """
@@ -17,13 +18,14 @@ class CumulativeSimSplitter(BaseSplitter):
         similarity_threshold: float = 0.45,
     ):
         super().__init__(
-            name=name, 
-            similarity_threshold=similarity_threshold,
-            encoder=encoder
-            )
+            name=name, similarity_threshold=similarity_threshold, encoder=encoder
+        )
 
     def __call__(self, docs: List[str]):
         total_docs = len(docs)
+        # Check if there's only a single document
+        if total_docs == 1:
+            raise ValueError("There is only one document provided; at least two are required to determine topics based on similarity.")
         splits = []
         curr_split_start_idx = 0
 
@@ -34,26 +36,28 @@ class CumulativeSimSplitter(BaseSplitter):
                     curr_split_docs = docs[idx]
                 else:
                     # For subsequent iterations, compare cumulative documents up to the current one with the next.
-                    curr_split_docs = "\n".join(docs[0: idx + 1])
+                    curr_split_docs = "\n".join(docs[curr_split_start_idx : idx + 1])
                 next_doc = docs[idx + 1]
 
                 # Embedding and similarity calculation remains the same.
                 curr_split_docs_embed = self.encoder([curr_split_docs])[0]
                 next_doc_embed = self.encoder([next_doc])[0]
                 curr_sim_score = np.dot(curr_split_docs_embed, next_doc_embed) / (
-                    np.linalg.norm(curr_split_docs_embed) * np.linalg.norm(next_doc_embed)
+                    np.linalg.norm(curr_split_docs_embed)
+                    * np.linalg.norm(next_doc_embed)
                 )
-
                 # Decision to split based on similarity score.
                 if curr_sim_score < self.similarity_threshold:
                     splits.append(
                         DocumentSplit(
-                            docs=list(docs[curr_split_start_idx: idx + 1]),
+                            docs=list(docs[curr_split_start_idx : idx + 1]),
                             is_triggered=True,
                             triggered_score=curr_sim_score,
                         )
                     )
-                    curr_split_start_idx = idx + 1  # Update the start index for the next segment.
+                    curr_split_start_idx = (
+                        idx + 1
+                    )  # Update the start index for the next segment.
 
         # Add the last segment after the loop.
         if curr_split_start_idx < total_docs:

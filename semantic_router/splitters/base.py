@@ -3,6 +3,7 @@ from typing import List
 from pydantic.v1 import BaseModel
 from semantic_router.encoders import BaseEncoder
 
+
 class BaseSplitter(BaseModel):
     name: str
     encoder: BaseEncoder
