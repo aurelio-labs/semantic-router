@@ -42,28 +42,9 @@ class Conversation(BaseModel):
         if self.splitter is None:
             raise ValueError("Splitter is not configured. Please call configure_splitter first.")
         new_topics = []
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('self.topics')
-        print(self.topics)
-        print('#'*50)
-        # DEBUGGING: End.
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('self.messages')
-        print(self.messages)
-        print('#'*50)
-        # DEBUGGING: End.
 
         # Get the messages that haven't been clustered into topics yet
         unclustered_messages = self.messages[len(self.topics):]
-
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('unclustered_messages')
-        print(unclustered_messages)
-        print('#'*50)
-        # DEBUGGING: End.
         
         # If there are no unclustered messages, return early
         if not unclustered_messages:
@@ -81,30 +62,14 @@ class Conversation(BaseModel):
         
         # Add the unclustered messages to the docs
         docs.extend([f"{m.role}: {m.content}" for m in unclustered_messages])
-        
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('docs')
-        print(docs)
-        print('#'*50)
-        # DEBUGGING: End.
 
         # Use the splitter to split the documents
         new_topics = self.splitter(docs)
 
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('new_topics')
-        print(new_topics)
-        print('#'*50)
-        # DEBUGGING: End.
-
-        
         # Ensure there are new topics before proceeding
         if not new_topics:
             return self.topics, []
     
-
         # Check if there are any previously assigned topics
         if self.topics and new_topics:
             # Check if the first new topic includes the last message that was assigned a topic in the previous splitting.

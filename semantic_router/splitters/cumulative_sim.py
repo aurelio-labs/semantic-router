@@ -3,10 +3,6 @@ from semantic_router.splitters.base import BaseSplitter
 import numpy as np
 from semantic_router.schema import DocumentSplit
 from semantic_router.encoders import BaseEncoder
-# DEBUGGING: Start.
-import time
-# DEBUGGING: End.
-
 
 class CumulativeSimSplitter(BaseSplitter):
     
@@ -36,7 +32,6 @@ class CumulativeSimSplitter(BaseSplitter):
             if idx + 1 < total_docs:
                 curr_split_docs = "\n".join(docs[curr_split_start_idx : idx + 1])
                 next_doc = docs[idx + 1]
-                time.sleep(30)
                 curr_split_docs_embed = self.encoder([curr_split_docs])[0]
                 next_doc_embed = self.encoder([next_doc])[0]
 
