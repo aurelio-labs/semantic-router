@@ -9,6 +9,7 @@ from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
 from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.encoders.cohere import CohereEncoder
+from semantic_router.splitters.base import BaseSplitter
 
 
 def test_consecutive_sim_splitter():
@@ -182,3 +183,17 @@ def test_cumulative_similarity_splitter_single_doc():
     with pytest.raises(ValueError) as excinfo:
         splitter(docs)
     assert "at least two are required" in str(excinfo.value)
+
+
+@pytest.fixture
+def base_splitter_instance():
+    # Now MockEncoder includes default values for required fields
+    mock_encoder = Mock(spec=BaseEncoder)
+    mock_encoder.name = "mock_encoder"
+    mock_encoder.score_threshold = 0.5
+    return BaseSplitter(name="test_splitter", encoder=mock_encoder, score_threshold=0.5)
+
+
+def test_base_splitter_call_not_implemented(base_splitter_instance):
+    with pytest.raises(NotImplementedError):
+        base_splitter_instance(["document"])
