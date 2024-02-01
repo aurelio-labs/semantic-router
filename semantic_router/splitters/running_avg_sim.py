@@ -36,12 +36,13 @@ class RunningAvgSimSplitter(BaseSplitter):
             running_avg = np.mean(segment_sim_scores)
 
             # Check for a significant drop in similarity compared to the running average
-            if idx > 0 and (running_avg - curr_sim_score) > self.similarity_threshold:
+            similarity_drop = running_avg - curr_sim_score
+            if idx > 0 and similarity_drop > self.similarity_threshold:
                 splits.append(
                     DocumentSplit(
                         docs=list(docs[curr_split_start_idx:idx + 1]),  # Include current doc in the split
                         is_triggered=True,
-                        triggered_score=curr_sim_score,
+                        triggered_score=similarity_drop,
                     )
                 )
                 curr_split_start_idx = idx + 1

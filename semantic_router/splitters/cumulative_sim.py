@@ -26,30 +26,37 @@ class CumulativeSimSplitter(BaseSplitter):
         total_docs = len(docs)
         splits = []
         curr_split_start_idx = 0
-        curr_split_num = 1
 
-        for idx in range(1, total_docs):
-            if idx + 1 < total_docs:
-                curr_split_docs = "\n".join(docs[curr_split_start_idx : idx + 1])
+        for idx in range(0, total_docs):
+            if idx + 1 < total_docs:  # Ensure there is a next document to compare with.
+                if idx == 0:
+                    # On the first iteration, compare the first document directly to the second.
+                    curr_split_docs = docs[idx]
+                else:
+                    # For subsequent iterations, compare cumulative documents up to the current one with the next.
+                    curr_split_docs = "\n".join(docs[0: idx + 1])
                 next_doc = docs[idx + 1]
+
+                # Embedding and similarity calculation remains the same.
                 curr_split_docs_embed = self.encoder([curr_split_docs])[0]
                 next_doc_embed = self.encoder([next_doc])[0]
-
                 curr_sim_score = np.dot(curr_split_docs_embed, next_doc_embed) / (
-                    np.linalg.norm(curr_split_docs_embed)
-                    * np.linalg.norm(next_doc_embed)
+                    np.linalg.norm(curr_split_docs_embed) * np.linalg.norm(next_doc_embed)
                 )
 
+                # Decision to split based on similarity score.
                 if curr_sim_score < self.similarity_threshold:
                     splits.append(
                         DocumentSplit(
-                            docs=list(docs[curr_split_start_idx : idx + 1]),
+                            docs=list(docs[curr_split_start_idx: idx + 1]),
                             is_triggered=True,
                             triggered_score=curr_sim_score,
                         )
                     )
-                    curr_split_start_idx = idx + 1
-                    curr_split_num += 1
+                    curr_split_start_idx = idx + 1  # Update the start index for the next segment.
 
-        splits.append(DocumentSplit(docs=list(docs[curr_split_start_idx:])))
+        # Add the last segment after the loop.
+        if curr_split_start_idx < total_docs:
+            splits.append(DocumentSplit(docs=list(docs[curr_split_start_idx:])))
+
         return splits
