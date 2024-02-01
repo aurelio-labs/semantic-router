@@ -21,9 +21,9 @@ class CohereEncoder(BaseEncoder):
         if name is None:
             name = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0")
         super().__init__(
-            name=name, 
-            score_threshold=score_threshold, 
-            input_type=input_type # type: ignore
+            name=name,
+            score_threshold=score_threshold,
+            input_type=input_type,  # type: ignore
         )
         self.input_type = input_type
         cohere_api_key = cohere_api_key or os.getenv("COHERE_API_KEY")

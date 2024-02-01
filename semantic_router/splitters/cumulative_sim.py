@@ -25,7 +25,9 @@ class CumulativeSimSplitter(BaseSplitter):
         total_docs = len(docs)
         # Check if there's only a single document
         if total_docs == 1:
-            raise ValueError("There is only one document provided; at least two are required to determine topics based on similarity.")
+            raise ValueError(
+                "There is only one document provided; at least two are required to determine topics based on similarity."
+            )
         splits = []
         curr_split_start_idx = 0
 

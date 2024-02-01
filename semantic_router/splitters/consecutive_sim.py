@@ -24,7 +24,9 @@ class ConsecutiveSimSplitter(BaseSplitter):
     def __call__(self, docs: List[str]):
         # Check if there's only a single document
         if len(docs) == 1:
-            raise ValueError("There is only one document provided; at least two are required to determine topics based on similarity.")
+            raise ValueError(
+                "There is only one document provided; at least two are required to determine topics based on similarity."
+            )
 
         doc_embeds = self.encoder(docs)
         norm_embeds = doc_embeds / np.linalg.norm(doc_embeds, axis=1, keepdims=True)
