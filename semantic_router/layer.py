@@ -242,6 +242,32 @@ class RouteLayer:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
 
+    def retrieve_multiple_routes(
+        self,
+        text: Optional[str] = None,
+        vector: Optional[List[float]] = None,
+    ) -> List[RouteChoice]:
+        if vector is None:
+            if text is None:
+                raise ValueError("Either text or vector must be provided")
+            vector_arr = self._encode(text=text)
+        else:
+            vector_arr = np.array(vector)
+        # get relevant utterances
+        results = self._retrieve(xq=vector_arr)
+
+        # decide most relevant routes
+        categories_with_scores = self._semantic_classify_multiple_routes(results, self.score_threshold)
+
+        route_choices = []
+        for category, score in categories_with_scores:
+            route = self.check_for_matching_routes(category)
+            if route:
+                route_choice = RouteChoice(name=route.name, similarity_score=score, route=route)
+                route_choices.append(route_choice)
+
+        return route_choices
+
     def __str__(self):
         return (
             f"RouteLayer(encoder={self.encoder}, "
@@ -375,6 +401,27 @@ class RouteLayer:
             logger.warning("No classification found for semantic classifier.")
             return "", []
 
+    def _semantic_classify_multiple_routes(self, query_results: List[dict], threshold: float) -> List[Tuple[str, float]]:
+        scores_by_class: Dict[str, List[float]] = {}
+        for result in query_results:
+            score = result["score"]
+            route = result["route"]
+            if route in scores_by_class:
+                scores_by_class[route].append(score)
+            else:
+                scores_by_class[route] = [score]
+
+
+        # Filter classes based on threshold and find max score for each
+        classes_above_threshold = []
+        for route, scores in scores_by_class.items():
+            if self._pass_threshold(scores, threshold):
+                max_score = max(scores)
+                classes_above_threshold.append((route, max_score))
+
+        return classes_above_threshold
+        
+        
     def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
             return max(scores) > threshold
@@ -490,3 +537,47 @@ def threshold_random_search(
         for i, route in enumerate(route_names)
     }
     return score_thresholds
+
+
+if __name__ == "__main__":
+    from semantic_router import Route
+    from semantic_router.layer import RouteLayer
+    from semantic_router.encoders import OpenAIEncoder
+
+    # Define routes with example phrases
+    politics = Route(
+        name="politics",
+        utterances=[
+            "isn't politics the best thing ever",
+            "why don't you tell me about your political opinions",
+            "don't you just love the president",
+            "don't you just hate the president",
+            "they're going to destroy this country!",
+            "they will save the country!",
+        ],
+    )
+
+    chitchat = Route(
+        name="chitchat",
+        utterances=[
+            "how's the weather today?",
+            "how are things going?",
+            "lovely weather today",
+            "the weather is horrendous",
+            "let's go to the chippy",
+        ],
+    )
+
+    routes = [politics, chitchat]
+
+    # Initialize the encoder
+    encoder = OpenAIEncoder()
+
+    # Initialize the RouteLayer with the encoder and routes
+    rl = RouteLayer(encoder=encoder, routes=routes)
+
+    # Test the RouteLayer with example queries
+    print(rl.retrieve_multiple_routes("how's the weather today?"))  # Expected to match the chitchat route
+    print(rl.retrieve_multiple_routes("don't you love politics?"))  # Expected to match the politics route
+    print(rl.retrieve_multiple_routes("I'm interested in learning about llama 2"))  # Expected to return None since it doesn't match any route
+    print(rl.retrieve_multiple_routes("Hi! How are you doing in politics??")) 
