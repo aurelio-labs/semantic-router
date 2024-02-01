@@ -2,7 +2,6 @@ from pydantic.v1 import BaseModel, Field
 from typing import Union, List, Literal, Tuple
 from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
 from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
-from semantic_router.splitters.running_avg_sim import RunningAvgSimSplitter
 from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import Message
 from semantic_router.schema import DocumentSplit
@@ -40,7 +39,7 @@ class Conversation(BaseModel):
         encoder: BaseEncoder,
         threshold: float = 0.5,
         split_method: Literal[
-            "consecutive_similarity", "cumulative_similarity", "running_avg_similarity"
+            "consecutive_similarity", "cumulative_similarity"
         ] = "consecutive_similarity",
     ):
         
@@ -53,8 +52,8 @@ class Conversation(BaseModel):
         :type encoder: BaseEncoder
         :param threshold: The similarity threshold to be used by the splitter. Defaults to 0.5.
         :type threshold: float
-        :param split_method: The method to be used for splitting the conversation into topics. Can be one of "consecutive_similarity", "cumulative_similarity", or "running_avg_similarity". Defaults to "consecutive_similarity".
-        :type split_method: Literal["consecutive_similarity", "cumulative_similarity", "running_avg_similarity"]
+        :param split_method: The method to be used for splitting the conversation into topics. Can be one of "consecutive_similarity" or "cumulative_similarity". Defaults to "consecutive_similarity".
+        :type split_method: Literal["consecutive_similarity", "cumulative_similarity"]
         :raises ValueError: If an invalid split method is provided.
         """
 
@@ -62,8 +61,6 @@ class Conversation(BaseModel):
             self.splitter = ConsecutiveSimSplitter(encoder=encoder, similarity_threshold=threshold)
         elif split_method == "cumulative_similarity":
             self.splitter = CumulativeSimSplitter(encoder=encoder, similarity_threshold=threshold)
-        elif split_method == "running_avg_similarity":
-            self.splitter = RunningAvgSimSplitter(encoder=encoder, similarity_threshold=threshold)
         else:
             raise ValueError(f"Invalid split method: {split_method}")
     
