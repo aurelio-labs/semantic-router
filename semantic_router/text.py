@@ -7,7 +7,7 @@ from semantic_router.schema import Message
 from semantic_router.schema import DocumentSplit
 
 # Define a type alias for the splitter to simplify the annotation
-SplitterType = Union[ConsecutiveSimSplitter, CumulativeSimSplitter, RunningAvgSimSplitter, None]
+SplitterType = Union[ConsecutiveSimSplitter, CumulativeSimSplitter, None]
 
 class Conversation(BaseModel):
     messages: List[Message] = Field(default_factory=list) # Ensure this is initialized as an empty list
