@@ -61,11 +61,11 @@ class Conversation(BaseModel):
 
         if split_method == "consecutive_similarity":
             self.splitter = ConsecutiveSimSplitter(
-                encoder=encoder, similarity_threshold=threshold
+                encoder=encoder, score_threshold=threshold
             )
         elif split_method == "cumulative_similarity":
             self.splitter = CumulativeSimSplitter(
-                encoder=encoder, similarity_threshold=threshold
+                encoder=encoder, score_threshold=threshold
             )
         else:
             raise ValueError(f"Invalid split method: {split_method}")

@@ -15,10 +15,10 @@ class ConsecutiveSimSplitter(BaseSplitter):
         self,
         encoder: BaseEncoder,
         name: str = "consecutive_similarity_splitter",
-        similarity_threshold: float = 0.45,
+        score_threshold: float = 0.45,
     ):
         super().__init__(
-            name=name, similarity_threshold=similarity_threshold, encoder=encoder
+            name=name, score_threshold=score_threshold, encoder=encoder
         )
 
     def __call__(self, docs: List[str]):
@@ -38,7 +38,7 @@ class ConsecutiveSimSplitter(BaseSplitter):
 
         for idx in range(1, total_docs):
             curr_sim_score = sim_matrix[idx - 1][idx]
-            if idx < len(sim_matrix) and curr_sim_score < self.similarity_threshold:
+            if idx < len(sim_matrix) and curr_sim_score < self.score_threshold:
                 splits.append(
                     DocumentSplit(
                         docs=list(docs[curr_split_start_idx:idx]),

@@ -15,10 +15,10 @@ class CumulativeSimSplitter(BaseSplitter):
         self,
         encoder: BaseEncoder,
         name: str = "cumulative_similarity_splitter",
-        similarity_threshold: float = 0.45,
+        score_threshold: float = 0.45,
     ):
         super().__init__(
-            name=name, similarity_threshold=similarity_threshold, encoder=encoder
+            name=name, score_threshold=score_threshold, encoder=encoder
         )
 
     def __call__(self, docs: List[str]):
@@ -49,7 +49,7 @@ class CumulativeSimSplitter(BaseSplitter):
                     * np.linalg.norm(next_doc_embed)
                 )
                 # Decision to split based on similarity score.
-                if curr_sim_score < self.similarity_threshold:
+                if curr_sim_score < self.score_threshold:
                     splits.append(
                         DocumentSplit(
                             docs=list(docs[curr_split_start_idx : idx + 1]),
