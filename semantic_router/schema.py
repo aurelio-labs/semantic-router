@@ -64,6 +64,9 @@ class Message(BaseModel):
 
     def to_llamacpp(self):
         return {"role": self.role, "content": self.content}
+    
+    def __str__(self):
+        return f"{self.role}: {self.content}"
 
 
 class DocumentSplit(BaseModel):

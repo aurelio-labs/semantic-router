@@ -88,7 +88,7 @@ def test_split_by_topic_consecutive_similarity():
 
     messages = [
         Message(role="User", content="What is the latest news?"),
-        Message(role="Bot", content="How is the weather today?"),
+        Message(role="Assistant", content="How is the weather today?"),
     ]
     conversation = Conversation(messages=messages)
 
@@ -107,7 +107,7 @@ def test_split_by_topic_consecutive_similarity():
 
     assert len(new_topics) == 2
     assert new_topics[0].docs == ["User: What is the latest news?"]
-    assert new_topics[1].docs == ["Bot: How is the weather today?"]
+    assert new_topics[1].docs == ["Assistant: How is the weather today?"]
 
 
 def test_split_by_topic_cumulative_similarity():
@@ -118,7 +118,7 @@ def test_split_by_topic_cumulative_similarity():
 
     messages = [
         Message(role="User", content="What is the latest news?"),
-        Message(role="Bot", content="How is the weather today?"),
+        Message(role="Assistant", content="How is the weather today?"),
     ]
     conversation = Conversation(messages=messages)
 

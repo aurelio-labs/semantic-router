@@ -1,3 +1,6 @@
+from colorama import Fore
+from colorama import Style
+
 from pydantic.v1 import BaseModel, Field
 from typing import Union, List, Literal, Tuple
 from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
@@ -9,6 +12,16 @@ from semantic_router.schema import DocumentSplit
 # Define a type alias for the splitter to simplify the annotation
 SplitterType = Union[ConsecutiveSimSplitter, CumulativeSimSplitter, None]
 
+colors = [
+    Fore.WHITE,
+    Fore.RED,
+    Fore.GREEN,
+    Fore.YELLOW,
+    Fore.BLUE,
+    Fore.MAGENTA,
+    Fore.CYAN
+]
+
 
 class Conversation(BaseModel):
     messages: List[Message] = Field(
@@ -17,25 +30,30 @@ class Conversation(BaseModel):
     topics: List[Tuple[int, str]] = []
     splitter: SplitterType = None
 
+    def __str__(self):
+        if not self.messages:
+            return ""
+        if not self.topics:
+            return "\n".join([str(message) for message in self.messages])
+        else:
+            # we print each topic a different color
+            return_str_list = []
+            current_topic_id = None
+            color_idx = 0
+            for topic_id, message in self.topics:
+                if topic_id != current_topic_id:
+                    # change color
+                    color_idx = (color_idx + 1) % len(colors)
+                    current_topic_id = topic_id
+                return_str_list.append(f"{colors[color_idx]}{message}{Style.RESET_ALL}")
+            return "\n".join(return_str_list)
+
+
     def add_new_messages(self, new_messages: List[Message]):
         self.messages.extend(new_messages)
 
     def remove_topics(self):
         self.topics = []
-
-    def print_topics(self):
-        if not self.topics:
-            print("No topics to display.")
-            return
-        print("Topics:")
-        current_topic_id = None
-        for topic_id, message in self.topics:
-            if topic_id != current_topic_id:
-                if current_topic_id is not None:
-                    print("\n", end="")
-                print(f"Topic {topic_id + 1}:")
-                current_topic_id = topic_id
-            print(f" - {message}")
 
     def configure_splitter(
         self,
