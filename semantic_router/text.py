@@ -50,6 +50,11 @@ class Conversation(BaseModel):
 
 
     def add_new_messages(self, new_messages: List[Message]):
+        """Adds new messages to the conversation.
+        
+        :param messages: The new messages to be added to the conversation.
+        :type messages: List[Message]
+        """
         self.messages.extend(new_messages)
 
     def remove_topics(self):
