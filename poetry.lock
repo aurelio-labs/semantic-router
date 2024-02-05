@@ -3388,4 +3388,4 @@ local = ["llama-cpp-python", "torch", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "49fd469a4cf8a0a31d2e4df9e9a2b40d1f6fefeba87ec26d76d1cb716f4f51ca"
+content-hash = "10453196b0249ab854bdcd965ce8631ad9e0db33ae4423d35b250cb8b07b9898"
