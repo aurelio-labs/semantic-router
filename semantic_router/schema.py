@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 from pydantic.v1 import BaseModel
 from pydantic.v1.dataclasses import dataclass
@@ -10,7 +10,6 @@ from semantic_router.encoders import (
     FastEmbedEncoder,
     OpenAIEncoder,
 )
-from semantic_router.utils.splitters import DocumentSplit, semantic_splitter
 
 
 class EncoderType(Enum):
@@ -66,19 +65,11 @@ class Message(BaseModel):
     def to_llamacpp(self):
         return {"role": self.role, "content": self.content}
 
+    def __str__(self):
+        return f"{self.role}: {self.content}"
 
-class Conversation(BaseModel):
-    messages: List[Message]
 
-    def split_by_topic(
-        self,
-        encoder: BaseEncoder,
-        threshold: float = 0.5,
-        split_method: Literal[
-            "consecutive_similarity_drop", "cumulative_similarity_drop"
-        ] = "consecutive_similarity_drop",
-    ) -> list[DocumentSplit]:
-        docs = [f"{m.role}: {m.content}" for m in self.messages]
-        return semantic_splitter(
-            encoder=encoder, docs=docs, threshold=threshold, split_method=split_method
-        )
+class DocumentSplit(BaseModel):
+    docs: List[str]
+    is_triggered: bool = False
+    triggered_score: Optional[float] = None
