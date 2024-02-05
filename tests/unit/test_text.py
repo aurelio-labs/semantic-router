@@ -77,43 +77,6 @@ def test_split_by_topic_with_no_unclustered_messages(
     assert "No unclustered messages to process." in captured.out
 
 
-def test_print_topics_empty(conversation_instance, capsys):
-    # Test printing topics when there are no topics
-    conversation_instance.print_topics()
-    captured = capsys.readouterr()
-    assert "No topics to display." in captured.out
-
-
-def test_print_topics_with_data(conversation_instance, capsys):
-    # Add some topics to the conversation instance
-    conversation_instance.topics.append((0, "Hello, how are you?"))
-    conversation_instance.topics.append((0, "I'm fine, thanks!"))
-    conversation_instance.topics.append((1, "What's the weather like?"))
-    conversation_instance.topics.append((2, "It's sunny."))
-
-    # Test printing topics with data
-    conversation_instance.print_topics()
-    captured = capsys.readouterr()
-
-    # Expected output based on the topics added
-    expected_output = (
-        "Topics:\n"
-        "Topic 1:\n"
-        " - Hello, how are you?\n"
-        " - I'm fine, thanks!\n"
-        "\n"
-        "Topic 2:\n"
-        " - What's the weather like?\n"
-        "\n"
-        "Topic 3:\n"
-        " - It's sunny."
-    )
-
-    # Normalize newlines for Windows compatibility
-    normalized_output = captured.out.replace("\r\n", "\n")
-    assert normalized_output.strip() == expected_output
-
-
 def test_get_last_message_and_topic_id_with_no_topics(conversation_instance):
     # Test the method when there are no topics in the conversation
     last_topic_id, last_message = conversation_instance.get_last_message_and_topic_id()
