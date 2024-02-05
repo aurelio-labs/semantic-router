@@ -50,6 +50,11 @@ class Conversation(BaseModel):
 
 
     def add_new_messages(self, new_messages: List[Message]):
+        """Adds new messages to the conversation.
+        
+        :param messages: The new messages to be added to the conversation.
+        :type messages: List[Message]
+        """
         self.messages.extend(new_messages)
 
     def remove_topics(self):
@@ -143,7 +148,7 @@ class Conversation(BaseModel):
             for message in topic.docs:
                 self.topics.append((i, message))
 
-    def split_by_topic(self) -> Tuple[List[Tuple[int, str]], List[DocumentSplit]]:
+    def split_by_topic(self, force: bool = False) -> Tuple[List[Tuple[int, str]], List[DocumentSplit]]:
         """
         Splits the messages into topics based on their semantic similarity.
 
@@ -160,6 +165,10 @@ class Conversation(BaseModel):
                 "Splitter is not configured. Please call configure_splitter first."
             )
         new_topics: List[DocumentSplit] = []
+
+        if self.topics:
+            # reset self.topics
+            self.topics = []
 
         # Get unclusteed messages.
         unclustered_messages = self.messages[len(self.topics) :]

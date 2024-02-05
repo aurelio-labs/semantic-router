@@ -18,6 +18,7 @@ class ConsecutiveSimSplitter(BaseSplitter):
         score_threshold: float = 0.45,
     ):
         super().__init__(name=name, score_threshold=score_threshold, encoder=encoder)
+        encoder.score_threshold = score_threshold
 
     def __call__(self, docs: List[str]):
         # Check if there's only a single document
