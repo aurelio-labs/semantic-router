@@ -19,7 +19,7 @@ colors = [
     Fore.YELLOW,
     Fore.BLUE,
     Fore.MAGENTA,
-    Fore.CYAN
+    Fore.CYAN,
 ]
 
 
@@ -48,10 +48,9 @@ class Conversation(BaseModel):
                 return_str_list.append(f"{colors[color_idx]}{message}{Style.RESET_ALL}")
             return "\n".join(return_str_list)
 
-
     def add_new_messages(self, new_messages: List[Message]):
         """Adds new messages to the conversation.
-        
+
         :param messages: The new messages to be added to the conversation.
         :type messages: List[Message]
         """
@@ -148,7 +147,9 @@ class Conversation(BaseModel):
             for message in topic.docs:
                 self.topics.append((i, message))
 
-    def split_by_topic(self, force: bool = False) -> Tuple[List[Tuple[int, str]], List[DocumentSplit]]:
+    def split_by_topic(
+        self, force: bool = False
+    ) -> Tuple[List[Tuple[int, str]], List[DocumentSplit]]:
         """
         Splits the messages into topics based on their semantic similarity.
 
