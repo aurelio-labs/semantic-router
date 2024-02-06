@@ -13,6 +13,7 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice, Index
 from semantic_router.utils.logger import logger
+from semantic_router.indices.local_index import LocalIndex
 
 IndexType = Union[LocalIndex, None]
 
@@ -166,7 +167,7 @@ class RouteLayer:
         index_name: Optional[str] = None,
     ):
         logger.info("local")
-        self.index = Index.get_by_name(index_name="index")
+        self.index = Index.get_by_name(index_name="local")
         self.categories = None
         if encoder is None:
             logger.warning(

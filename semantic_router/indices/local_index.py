@@ -1,21 +1,17 @@
 import numpy as np
 from typing import List, Any
-from .base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
-from typing import Tuple
+from pydantic import BaseModel
+import numpy as np
+from typing import List, Any, Tuple, Optional
 
-class LocalIndex(BaseIndex):
-    """
-    Local index implementation using numpy arrays.
-    """
+class LocalIndex(BaseModel):
+    index: Optional[np.ndarray] = None
 
-    def __init__(self):
-        self.index = None
+    class Config: # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
+        arbitrary_types_allowed = True
 
     def add(self, embeds: List[Any]):
-        """
-        Add items to the index.
-        """
         embeds = np.array(embeds)
         if self.index is None:
             self.index = embeds
