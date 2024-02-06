@@ -11,9 +11,10 @@ from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import Encoder, EncoderType, RouteChoice
+from semantic_router.schema import Encoder, EncoderType, RouteChoice, Index
 from semantic_router.utils.logger import logger
 
+IndexType = Union[LocalIndex, None]
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
@@ -155,15 +156,17 @@ class RouteLayer:
     categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
+    index: IndexType = None
 
     def __init__(
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
+        index_name: Optional[str] = None,
     ):
-        logger.info("Initializing RouteLayer")
-        self.index = None
+        logger.info("local")
+        self.index = Index.get_by_name(index_name="index")
         self.categories = None
         if encoder is None:
             logger.warning(
@@ -281,11 +284,7 @@ class RouteLayer:
             str_arr = np.array([route.name] * len(embeds))
             self.categories = np.concatenate([self.categories, str_arr])
         # create utterance array (the index)
-        if self.index is None:
-            self.index = np.array(embeds)
-        else:
-            embed_arr = np.array(embeds)
-            self.index = np.concatenate([self.index, embed_arr])
+        self.index.add(embeds)
         # add route to routes list
         self.routes.append(route)
 
@@ -301,13 +300,13 @@ class RouteLayer:
             self.routes = [route for route in self.routes if route.name != name]
             logger.info(f"Removed route `{name}`")
             # Also remove from index and categories
-            if self.categories is not None and self.index is not None:
+            if self.categories is not None and self.index.is_index_populated():
                 indices_to_remove = [
                     i
                     for i, route_name in enumerate(self.categories)
                     if route_name == name
                 ]
-                self.index = np.delete(self.index, indices_to_remove, axis=0)
+                self.index.remove(indices_to_remove)
                 self.categories = np.delete(self.categories, indices_to_remove, axis=0)
 
     def _add_routes(self, routes: List[Route]):
@@ -325,14 +324,7 @@ class RouteLayer:
             if self.categories is not None
             else route_array
         )
-
-        # create utterance array (the index)
-        embed_utterance_arr = np.array(embedded_utterance)
-        self.index = (
-            np.concatenate([self.index, embed_utterance_arr])
-            if self.index is not None
-            else embed_utterance_arr
-        )
+        self.index.add(embedded_utterance)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
@@ -343,10 +335,9 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        if self.index is not None:
+        if self.index.is_index_populated():
             # calculate similarity matrix
-            sim = similarity_matrix(xq, self.index)
-            scores, idx = top_scores(sim, top_k)
+            scores, idx = self.index.search(xq, top_k)
             # get the utterance categories (route names)
             routes = self.categories[idx] if self.categories is not None else []
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]

@@ -11,6 +11,8 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 
+from semantic_router.indices.local_index import LocalIndex
+
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
@@ -73,3 +75,13 @@ class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
+
+
+class Index:
+    @classmethod
+    def get_by_name(cls, index_name: str):
+        if index_name == "local" or index_name is None:
+            return LocalIndex()
+        # TODO: Later we'll add more index options.
+        else:
+            raise ValueError(f"Invalid index name: {index_name}")
