@@ -1,11 +1,11 @@
 import numpy as np
 from typing import List, Any
 from semantic_router.linear import similarity_matrix, top_scores
-from pydantic import BaseModel
+from semantic_router.indices.base import BaseIndex
 import numpy as np
 from typing import List, Any, Tuple, Optional
 
-class LocalIndex(BaseModel):
+class LocalIndex(BaseIndex):
     index: Optional[np.ndarray] = None
 
     class Config: # Stop pydantic from complaining about  Optional[np.ndarray] type hints.

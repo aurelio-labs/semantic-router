@@ -164,10 +164,10 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        index_name: Optional[str] = None,
+        index_name: Optional[str] = "local",
     ):
         logger.info("local")
-        self.index = Index.get_by_name(index_name="local")
+        self.index = Index.get_by_name(index_name=index_name)
         self.categories = None
         if encoder is None:
             logger.warning(
