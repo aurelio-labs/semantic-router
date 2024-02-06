@@ -11,9 +11,9 @@ class LocalIndex(BaseIndex):
         arbitrary_types_allowed = True
 
     def add(self, embeds: List[Any]):
-        embeds = np.array(embeds)
+        embeds = np.array(embeds)  # type: ignore
         if self.index is None:
-            self.index = embeds
+            self.index = embeds  # type: ignore
         else:
             self.index = np.concatenate([self.index, embeds])
 
@@ -21,14 +21,13 @@ class LocalIndex(BaseIndex):
         """
         Remove all items of a specific category from the index.
         """
-        self.index = np.delete(self.index, indices_to_remove, axis=0)
+        if self.index is not None:
+            self.index = np.delete(self.index, indices_to_remove, axis=0)
 
     def is_index_populated(self):
         return self.index is not None and len(self.index) > 0
 
-    def search(
-        self, query_vector: Any, top_k: int = 5
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def query(self, query_vector: Any, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
         """
         Search the index for the query and return top_k results.
         """

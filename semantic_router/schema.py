@@ -79,7 +79,7 @@ class DocumentSplit(BaseModel):
 
 class Index:
     @classmethod
-    def get_by_name(cls, index_name: str):
+    def get_by_name(cls, index_name: Optional[str] = None):
         if index_name == "local" or index_name is None:
             return LocalIndex()
         # TODO: Later we'll add more index options.

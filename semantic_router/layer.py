@@ -12,9 +12,7 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice, Index
 from semantic_router.utils.logger import logger
-from semantic_router.indices.local_index import LocalIndex
-
-IndexType = Union[LocalIndex, None]
+from semantic_router.indices.base import BaseIndex
 
 
 def is_valid(layer_config: str) -> bool:
@@ -153,11 +151,10 @@ class LayerConfig:
 
 
 class RouteLayer:
-    index: Optional[np.ndarray] = None
     categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
-    index: IndexType = None
+    index: BaseIndex
 
     def __init__(
         self,
@@ -167,7 +164,7 @@ class RouteLayer:
         index_name: Optional[str] = "local",
     ):
         logger.info("local")
-        self.index = Index.get_by_name(index_name=index_name)
+        self.index: BaseIndex = Index.get_by_name(index_name=index_name)
         self.categories = None
         if encoder is None:
             logger.warning(
@@ -338,7 +335,7 @@ class RouteLayer:
         """Given a query vector, retrieve the top_k most similar records."""
         if self.index.is_index_populated():
             # calculate similarity matrix
-            scores, idx = self.index.search(xq, top_k)
+            scores, idx = self.index.query(xq, top_k)
             # get the utterance categories (route names)
             routes = self.categories[idx] if self.categories is not None else []
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
