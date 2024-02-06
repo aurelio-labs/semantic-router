@@ -1,14 +1,13 @@
 import numpy as np
-from typing import List, Any
+from typing import List, Any, Tuple, Optional
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.indices.base import BaseIndex
-import numpy as np
-from typing import List, Any, Tuple, Optional
+
 
 class LocalIndex(BaseIndex):
     index: Optional[np.ndarray] = None
 
-    class Config: # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
+    class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
         arbitrary_types_allowed = True
 
     def add(self, embeds: List[Any]):
@@ -27,7 +26,9 @@ class LocalIndex(BaseIndex):
     def is_index_populated(self):
         return self.index is not None and len(self.index) > 0
 
-    def search(self, query_vector: Any, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    def search(
+        self, query_vector: Any, top_k: int = 5
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Search the index for the query and return top_k results.
         """
@@ -35,4 +36,3 @@ class LocalIndex(BaseIndex):
             raise ValueError("Index is not populated.")
         sim = similarity_matrix(query_vector, self.index)
         return top_scores(sim, top_k)
-                          

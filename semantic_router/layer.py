@@ -8,7 +8,6 @@ import yaml
 from tqdm.auto import tqdm
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
-from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice, Index
@@ -16,6 +15,7 @@ from semantic_router.utils.logger import logger
 from semantic_router.indices.local_index import LocalIndex
 
 IndexType = Union[LocalIndex, None]
+
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
