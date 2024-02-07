@@ -41,6 +41,14 @@ class BaseIndex(BaseModel):
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def delete_index(self):
+        """
+        Deletes or resets the index.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
 
     class Config:
         arbitrary_types_allowed = True

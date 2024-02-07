@@ -12,6 +12,7 @@ from semantic_router.encoders import (
 )
 
 from semantic_router.indices.local_index import LocalIndex
+from semantic_router.indices.pinecone import PineconeIndex
 
 
 class EncoderType(Enum):
@@ -78,10 +79,16 @@ class DocumentSplit(BaseModel):
 
 
 class Index:
+    index_map = {
+        "local": LocalIndex,
+        "pinecone": PineconeIndex,
+    }
+
     @classmethod
     def get_by_name(cls, index_name: Optional[str] = None):
-        if index_name == "local" or index_name is None:
-            return LocalIndex()
-        # TODO: Later we'll add more index options.
-        else:
+        if index_name is None:
+            index_name = "local"
+        try:
+            return cls.index_map[index_name]()
+        except KeyError:
             raise ValueError(f"Invalid index name: {index_name}")

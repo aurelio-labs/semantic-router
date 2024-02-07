@@ -35,3 +35,9 @@ class LocalIndex(BaseIndex):
             raise ValueError("Index is not populated.")
         sim = similarity_matrix(query_vector, self.index)
         return top_scores(sim, top_k)
+    
+    def delete_index(self):
+        """
+        Deletes the index, effectively clearing it and setting it to None.
+        """
+        self.index = None
