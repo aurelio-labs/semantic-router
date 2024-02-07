@@ -5,7 +5,6 @@ from semantic_router.indices.base import BaseIndex
 
 
 class LocalIndex(BaseIndex):
-    index: Optional[np.ndarray] = None
 
     class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
         arbitrary_types_allowed = True
