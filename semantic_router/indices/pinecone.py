@@ -12,9 +12,10 @@ class PineconeIndex(BaseIndex):
     cloud: str = "aws"
     region: str = "us-west-2" 
     pinecone: Any = Field(default=None, exclude=True)
+    vector_id_counter: int = 0
 
     def __init__(self, **data):
-        super().__init__(**data)
+        super().__init__(**data) 
         # Initialize Pinecone environment with the new API
         self.pinecone = pinecone.Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         
@@ -35,9 +36,18 @@ class PineconeIndex(BaseIndex):
         # Store the index name for potential deletion
         self.index_name = self.index_name
 
-    def add(self, embeds: List[np.ndarray]):
-        # Assuming embeds is a list of tuples (id, vector)
-        self.index.upsert(vectors=embeds)
+    def add(self, embeds: List[List[float]]):
+        # Format embeds as a list of dictionaries for Pinecone's upsert method
+        vectors_to_upsert = []
+        for i, vector in enumerate(embeds):
+            # Generate a unique ID for each vector
+            vector_id = f"vec{i+1}"
+
+            # Prepare for upsert
+            vectors_to_upsert.append({"id": vector_id, "values": vector})
+
+        # Perform the upsert operation
+        self.index.upsert(vectors=vectors_to_upsert)
 
     def remove(self, ids_to_remove: List[str]):
         self.index.delete(ids=ids_to_remove)

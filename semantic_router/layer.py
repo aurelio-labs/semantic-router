@@ -313,7 +313,7 @@ class RouteLayer:
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterance = self.encoder(all_utterances)
+        embedded_utterances = self.encoder(all_utterances)
 
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
@@ -323,7 +323,7 @@ class RouteLayer:
             if self.categories is not None
             else route_array
         )
-        self.index.add(embedded_utterance)
+        self.index.add(embedded_utterances)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
