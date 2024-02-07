@@ -13,7 +13,7 @@ from semantic_router.encoders import (
 
 from semantic_router.indices.local_index import LocalIndex
 from semantic_router.indices.pinecone import PineconeIndex
-
+from semantic_router.indices.base import BaseIndex
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
@@ -76,19 +76,3 @@ class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
-
-
-class Index:
-    index_map = {
-        "local": LocalIndex,
-        "pinecone": PineconeIndex,
-    }
-
-    @classmethod
-    def get_by_name(cls, index_name: Optional[str] = None):
-        if index_name is None:
-            index_name = "local"
-        try:
-            return cls.index_map[index_name]()
-        except KeyError:
-            raise ValueError(f"Invalid index name: {index_name}")

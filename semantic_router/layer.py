@@ -10,9 +10,10 @@ from tqdm.auto import tqdm
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import Encoder, EncoderType, RouteChoice, Index
+from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
 from semantic_router.indices.base import BaseIndex
+from semantic_router.indices.local_index import LocalIndex
 
 
 def is_valid(layer_config: str) -> bool:
@@ -161,10 +162,10 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        index_name: Optional[str] = "local",
+        index: Optional[BaseIndex] = LocalIndex,
     ):
         logger.info("local")
-        self.index: BaseIndex = Index.get_by_name(index_name=index_name)
+        self.index: BaseIndex = index
         self.categories = None
         if encoder is None:
             logger.warning(

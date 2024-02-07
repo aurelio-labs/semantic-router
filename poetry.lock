@@ -3403,5 +3403,5 @@ pinecone = ["pinecone-client"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.9"
-content-hash = "10a0117bd6c131c255db119d7c83ace94f09dbe77ac6a4bba7bf0d90da54fad0"
+python-versions = ">=3.9,<3.13"
+content-hash = "52ce34492a7d4827a3c2b96332e7285369209dbe9ec2a9488d8eac2c13d4d0c6"

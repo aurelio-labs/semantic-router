@@ -1,25 +1,39 @@
+from pydantic import BaseModel, Field
 import os
 import pinecone
-import numpy as np
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from semantic_router.indices.base import BaseIndex
-
+import numpy as np
 
 class PineconeIndex(BaseIndex):
-    def __init__(self, index_name: str, environment: str = 'us-west1-gcp', metric: str = 'cosine', dimension: int = 768):
-        super().__init__()
-        
-        # Initialize Pinecone environment
-        pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment=environment)
+    index_name: str
+    dimension: int = 768
+    metric: str = "cosine"
+    cloud: str = "aws"
+    region: str = "us-west-2" 
+    pinecone: Any = Field(default=None, exclude=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Initialize Pinecone environment with the new API
+        self.pinecone = pinecone.Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         
         # Create or connect to an existing Pinecone index
-        if index_name not in pinecone.list_indexes():
-            print(f"Creating new Pinecone index: {index_name}")
-            pinecone.create_index(name=index_name, metric=metric, dimension=dimension)
-        self.index = pinecone.Index(index_name)
+        if self.index_name not in self.pinecone.list_indexes().names():
+            print(f"Creating new Pinecone index: {self.index_name}")
+            self.pinecone.create_index(
+                name=self.index_name, 
+                dimension=self.dimension, 
+                metric=self.metric,
+                spec=pinecone.ServerlessSpec(
+                    cloud=self.cloud,
+                    region=self.region
+                )
+            )
+        self.index = self.pinecone.Index(self.index_name)
         
         # Store the index name for potential deletion
-        self.index_name = index_name
+        self.index_name = self.index_name
 
     def add(self, embeds: List[np.ndarray]):
         # Assuming embeds is a list of tuples (id, vector)
