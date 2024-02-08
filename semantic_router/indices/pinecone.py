@@ -12,7 +12,7 @@ class PineconeIndex(BaseIndex):
     cloud: str = "aws"
     region: str = "us-west-2" 
     pinecone: Any = Field(default=None, exclude=True)
-    vector_id_counter: int = 0
+    vector_id_counter: int = -1
 
     def __init__(self, **data):
         super().__init__(**data) 
@@ -33,15 +33,12 @@ class PineconeIndex(BaseIndex):
             )
         self.index = self.pinecone.Index(self.index_name)
         
-        # Store the index name for potential deletion
-        self.index_name = self.index_name
-
     def add(self, embeds: List[List[float]]):
         # Format embeds as a list of dictionaries for Pinecone's upsert method
         vectors_to_upsert = []
-        for i, vector in enumerate(embeds):
-            # Generate a unique ID for each vector
-            vector_id = f"vec{i+1}"
+        for vector in embeds:
+            self.vector_id_counter += 1  # Increment the counter for each new vector
+            vector_id = str(self.vector_id_counter)  # Convert counter to string ID
 
             # Prepare for upsert
             vectors_to_upsert.append({"id": vector_id, "values": vector})
@@ -52,18 +49,31 @@ class PineconeIndex(BaseIndex):
     def remove(self, ids_to_remove: List[str]):
         self.index.delete(ids=ids_to_remove)
 
+    def remove_all(self):
+        self.index.delete(delete_all=True)
+
     def is_index_populated(self) -> bool:
         stats = self.index.describe_index_stats()
-        return stats["dimension"] > 0 and stats["index_size"] > 0
-
+        return stats["dimension"] > 0 and stats["total_vector_count"] > 0
+    
     def query(self, query_vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
-        results = self.index.query(queries=[query_vector], top_k=top_k)
-        ids = [result["id"] for result in results["matches"]]
+        query_vector_list = query_vector.tolist()
+        results = self.index.query(vector=[query_vector_list], top_k=top_k)
+        ids = [int(result["id"]) for result in results["matches"]]
         scores = [result["score"] for result in results["matches"]]
-        return np.array(ids), np.array(scores)
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('ids')
+        print(ids)
+        print('#'*50)
+        # DEBUGGING: End.
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('scores')
+        print(scores)
+        print('#'*50)
+        # DEBUGGING: End.
+        return np.array(scores), np.array(ids)
 
     def delete_index(self):
-        """
-        Deletes the Pinecone index.
-        """
         pinecone.delete_index(self.index_name)

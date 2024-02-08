@@ -188,6 +188,9 @@ class RouteLayer:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
+        # DEBUGGING: Start.
+        print(f'top_class 2: {top_class}')
+        # DEBUGGING: End.
         matching_routes = [route for route in self.routes if route.name == top_class]
         if not matching_routes:
             logger.error(
@@ -210,8 +213,17 @@ class RouteLayer:
             vector_arr = np.array(vector)
         # get relevant utterances
         results = self._retrieve(xq=vector_arr)
+        # DEBUGGING: Start.
+        print(f'results: {results}')
+        # DEBUGGING: End.
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
+        # DEBUGGING: Start.
+        print(f'top_class 1: {top_class}')
+        # DEBUGGING: End.
+        # DEBUGGING: Start.
+        print(f'top_class_scores: {top_class_scores}')
+        # DEBUGGING: End.
         # TODO do we need this check?
         route = self.check_for_matching_routes(top_class)
         if route is None:
@@ -221,6 +233,24 @@ class RouteLayer:
             if route.score_threshold is not None
             else self.score_threshold
         )
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('Chosen route')
+        print(route)
+        print('#'*50)
+        # DEBUGGING: End.
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('top_class_scores')
+        print(top_class_scores)
+        print('#'*50)
+        # DEBUGGING: End.
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('threshold')
+        print(threshold)
+        print('#'*50)
+        # DEBUGGING: End.
         passed = self._pass_threshold(top_class_scores, threshold)
         if passed:
             if route.function_schema and text is None:
@@ -334,7 +364,17 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('RouteLayer._retrieve - CHECKPOINT 1')
+        print('#'*50)
+        # DEBUGGING: End.
         if self.index.is_index_populated():
+            # DEBUGGING: Start.
+            print('#'*50)
+            print('RouteLayer._retrieve - CHECKPOINT 2')
+            print('#'*50)
+            # DEBUGGING: End.
             # calculate similarity matrix
             scores, idx = self.index.query(xq, top_k)
             # get the utterance categories (route names)
