@@ -188,9 +188,6 @@ class RouteLayer:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
-        # DEBUGGING: Start.
-        print(f'top_class 2: {top_class}')
-        # DEBUGGING: End.
         matching_routes = [route for route in self.routes if route.name == top_class]
         if not matching_routes:
             logger.error(
@@ -213,17 +210,8 @@ class RouteLayer:
             vector_arr = np.array(vector)
         # get relevant utterances
         results = self._retrieve(xq=vector_arr)
-        # DEBUGGING: Start.
-        print(f'results: {results}')
-        # DEBUGGING: End.
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
-        # DEBUGGING: Start.
-        print(f'top_class 1: {top_class}')
-        # DEBUGGING: End.
-        # DEBUGGING: Start.
-        print(f'top_class_scores: {top_class_scores}')
-        # DEBUGGING: End.
         # TODO do we need this check?
         route = self.check_for_matching_routes(top_class)
         if route is None:
@@ -233,24 +221,6 @@ class RouteLayer:
             if route.score_threshold is not None
             else self.score_threshold
         )
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('Chosen route')
-        print(route)
-        print('#'*50)
-        # DEBUGGING: End.
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('top_class_scores')
-        print(top_class_scores)
-        print('#'*50)
-        # DEBUGGING: End.
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('threshold')
-        print(threshold)
-        print('#'*50)
-        # DEBUGGING: End.
         passed = self._pass_threshold(top_class_scores, threshold)
         if passed:
             if route.function_schema and text is None:
@@ -306,14 +276,21 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # create route array
-        if self.categories is None:
-            self.categories = np.array([route.name] * len(embeds))
-        else:
-            str_arr = np.array([route.name] * len(embeds))
-            self.categories = np.concatenate([self.categories, str_arr])
-        # create utterance array (the index)
-        self.index.add(embeds)
+        # Embed route arrays with method that depends on index type.
+        if self.index.type == "local":
+            # create route array
+            if self.categories is None:
+                self.categories = np.array([route.name] * len(embeds))
+            else:
+                str_arr = np.array([route.name] * len(embeds))
+                self.categories = np.concatenate([self.categories, str_arr])
+            self.index.add(embeds)
+        elif self.index.type == "pinecone":
+            vectors_to_upsert = []
+            for _, embed in enumerate(embeds):
+                vectors_to_upsert.append((embed, route.name))
+            self.index.add(vectors_to_upsert)
+
         # add route to routes list
         self.routes.append(route)
 
@@ -340,20 +317,19 @@ class RouteLayer:
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
-        all_utterances = [
-            utterance for route in routes for utterance in route.utterances
-        ]
+        all_utterances = [utterance for route in routes for utterance in route.utterances]
         embedded_utterances = self.encoder(all_utterances)
 
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
-        route_array = np.array(route_names)
-        self.categories = (
-            np.concatenate([self.categories, route_array])
-            if self.categories is not None
-            else route_array
-        )
-        self.index.add(embedded_utterances)
+
+        if self.index.type == "local":
+            # For local index, just add the embeddings directly
+            self.index.add(embedded_utterances)
+        elif self.index.type == "pinecone":
+            # For Pinecone, prepare a list of 2-tuples with embeddings and route names
+            vectors_to_upsert = list(zip(embedded_utterances, route_names))
+            self.index.add(vectors_to_upsert)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
@@ -364,21 +340,14 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('RouteLayer._retrieve - CHECKPOINT 1')
-        print('#'*50)
-        # DEBUGGING: End.
         if self.index.is_index_populated():
-            # DEBUGGING: Start.
-            print('#'*50)
-            print('RouteLayer._retrieve - CHECKPOINT 2')
-            print('#'*50)
-            # DEBUGGING: End.
             # calculate similarity matrix
-            scores, idx = self.index.query(xq, top_k)
-            # get the utterance categories (route names)
-            routes = self.categories[idx] if self.categories is not None else []
+            if self.index.type == "local":
+                scores, idx = self.index.query(xq, top_k)
+                # get the utterance categories (route names)
+                routes = self.categories[idx] if self.categories is not None else []
+            elif self.index.type == "pinecone":
+                scores, routes = self.index.query(xq, top_k)
             return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
         else:
             logger.warning("No index found for route layer.")

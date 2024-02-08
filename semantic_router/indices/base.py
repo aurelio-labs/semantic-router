@@ -13,6 +13,7 @@ class BaseIndex(BaseModel):
     # You can define common attributes here if there are any.
     # For example, a placeholder for the index attribute:
     index: Optional[Any] = None
+    type: str = ""
 
     def add(self, embeds: List[Any]):
         """

@@ -6,6 +6,10 @@ from semantic_router.indices.base import BaseIndex
 
 class LocalIndex(BaseIndex):
 
+    def __init__(self, **data):
+        super().__init__(**data) 
+        self.type = "local"
+
     class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
         arbitrary_types_allowed = True
 
