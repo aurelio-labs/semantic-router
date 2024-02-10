@@ -11,9 +11,9 @@ from semantic_router.encoders import (
     OpenAIEncoder,
 )
 
-from semantic_router.indices.local_index import LocalIndex
-from semantic_router.indices.pinecone import PineconeIndex
-from semantic_router.indices.base import BaseIndex
+from semantic_router.index.local import LocalIndex
+from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.base import BaseIndex
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"

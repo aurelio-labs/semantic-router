@@ -1,5 +1,5 @@
 from pydantic.v1 import BaseModel
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Tuple, Optional, Union
 import numpy as np
 
 
@@ -13,16 +13,19 @@ class BaseIndex(BaseModel):
     # You can define common attributes here if there are any.
     # For example, a placeholder for the index attribute:
     index: Optional[Any] = None
-    type: str = ""
+    routes: Optional[List[str]] = None
+    utterances: Optional[List[str]] = None
+    dimensions: Union[int, None] = None
+    type: str = "base"
 
-    def add(self, embeds: List[Any]):
+    def add(self, embeddings: List[float], routes: List[str], utterances: List[str]):
         """
         Add embeddings to the index.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def remove(self, indices_to_remove: List[int]):
+    def delete(self, indices_to_remove: List[int]):
         """
         Remove items from the index by their indices.
         This method should be implemented by subclasses.

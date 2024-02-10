@@ -12,8 +12,8 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-from semantic_router.indices.base import BaseIndex
-from semantic_router.indices.local_index import LocalIndex
+from semantic_router.index.base import BaseIndex
+from semantic_router.index.local import LocalIndex
 
 
 def is_valid(layer_config: str) -> bool:
@@ -276,23 +276,12 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # Embed route arrays with method that depends on index type.
-        if self.index.type == "local":
-            # create route array
-            if self.categories is None:
-                self.categories = np.array([route.name] * len(embeds))
-            else:
-                str_arr = np.array([route.name] * len(embeds))
-                self.categories = np.concatenate([self.categories, str_arr])
-            self.index.add(embeds)
-        elif self.index.type == "pinecone":
-            vectors_to_upsert = []
-            for _, embed in enumerate(embeds):
-                vectors_to_upsert.append((embed, route.name))
-            self.index.add(vectors_to_upsert)
-
-        # add route to routes list
-        self.routes.append(route)
+        # add routes to the index
+        self.index.add(
+            embeddings=embeds,
+            routes=[route.name] * len(route.utterances),
+            utterances=route.utterances,
+        )
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -319,17 +308,14 @@ class RouteLayer:
         # create embeddings for all routes
         all_utterances = [utterance for route in routes for utterance in route.utterances]
         embedded_utterances = self.encoder(all_utterances)
-
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
-
-        if self.index.type == "local":
-            # For local index, just add the embeddings directly
-            self.index.add(embedded_utterances)
-        elif self.index.type == "pinecone":
-            # For Pinecone, prepare a list of 2-tuples with embeddings and route names
-            vectors_to_upsert = list(zip(embedded_utterances, route_names))
-            self.index.add(vectors_to_upsert)
+        # add everything to the index
+        self.index.add(
+            embeddings=embedded_utterances,
+            routes=route_names,
+            utterances=all_utterances
+        )
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
@@ -340,18 +326,14 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        if self.index.is_index_populated():
-            # calculate similarity matrix
-            if self.index.type == "local":
-                scores, idx = self.index.query(xq, top_k)
-                # get the utterance categories (route names)
-                routes = self.categories[idx] if self.categories is not None else []
-            elif self.index.type == "pinecone":
-                scores, routes = self.index.query(xq, top_k)
-            return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-        else:
-            logger.warning("No index found for route layer.")
-            return []
+        # calculate similarity matrix
+        if self.index.type == "local":
+            scores, idx = self.index.query(xq, top_k)
+            # get the utterance categories (route names)
+            routes = self.categories[idx] if self.categories is not None else []
+        elif self.index.type == "pinecone":
+            scores, routes = self.index.query(xq, top_k)
+        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
