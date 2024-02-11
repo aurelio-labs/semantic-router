@@ -9,14 +9,15 @@ from semantic_router.encoders import (
     CohereEncoder,
     FastEmbedEncoder,
     OpenAIEncoder,
+    MistralEncoder,
 )
-
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
     FASTEMBED = "fastembed"
     OPENAI = "openai"
     COHERE = "cohere"
+    MISTRAL = "mistral"
 
 
 class RouteChoice(BaseModel):
@@ -43,6 +44,8 @@ class Encoder:
             self.model = OpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name=name)
+        elif self.type == EncoderType.MISTRAL:
+            self.model = MistralEncoder(name=name)
         else:
             raise ValueError
 
@@ -63,6 +66,9 @@ class Message(BaseModel):
         return {"role": self.role, "message": self.content}
 
     def to_llamacpp(self):
+        return {"role": self.role, "content": self.content}
+
+    def to_mistral(self):
         return {"role": self.role, "content": self.content}
 
     def __str__(self):
