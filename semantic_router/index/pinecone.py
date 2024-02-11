@@ -16,7 +16,7 @@ class PineconeRecord(BaseModel):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": f"{self.route}#{self.id}",
             "values": self.values,
             "metadata": {
                 "sr_route": self.route,
@@ -105,7 +105,7 @@ class PineconeIndex(BaseIndex):
             vectors_to_upsert.append(record.to_dict())
         self.index.upsert(vectors=vectors_to_upsert)
 
-    def delete(self, ids_to_remove: List[str]):
+    def delete(self, route_name: str):
         self.index.delete(ids=ids_to_remove)
 
     def delete_all(self):
@@ -119,8 +119,8 @@ class PineconeIndex(BaseIndex):
             "vectors": stats["total_vector_count"]
         }
     
-    def query(self, query_vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
-        query_vector_list = query_vector.tolist()
+    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+        query_vector_list = vector.tolist()
         results = self.index.query(
             vector=[query_vector_list], 
             top_k=top_k,

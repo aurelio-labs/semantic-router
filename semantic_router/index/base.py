@@ -25,9 +25,9 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def delete(self, indices_to_remove: List[int]):
+    def delete(self, route_name: str):
         """
-        Remove items from the index by their indices.
+        Deletes route by route name.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
@@ -39,7 +39,7 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def query(self, query_vector: Any, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
         """
         Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.

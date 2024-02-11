@@ -152,7 +152,6 @@ class LayerConfig:
 
 
 class RouteLayer:
-    categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
     index: BaseIndex
@@ -166,7 +165,6 @@ class RouteLayer:
     ):
         logger.info("local")
         self.index: BaseIndex = index
-        self.categories = None
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -208,7 +206,7 @@ class RouteLayer:
             vector_arr = self._encode(text=text)
         else:
             vector_arr = np.array(vector)
-        # get relevant utterances
+        # get relevant results (scores and routes)
         results = self._retrieve(xq=vector_arr)
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
@@ -285,24 +283,23 @@ class RouteLayer:
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
+    
+    def update(self, route_name: str, utterances: List[str]):
+        raise NotImplementedError("This method has not yet been implemented.")
 
-    def remove(self, name: str):
-        if name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{name}` not found"
+    def delete(self, route_name: str):
+        """Deletes a route given a specific route name.
+        
+        :param route_name: the name of the route to be deleted
+        :type str:
+        """
+        if route_name not in [route.name for route in self.routes]:
+            err_msg = f"Route `{route_name}` not found"
             logger.error(err_msg)
             raise ValueError(err_msg)
         else:
-            self.routes = [route for route in self.routes if route.name != name]
-            logger.info(f"Removed route `{name}`")
-            # Also remove from index and categories
-            if self.categories is not None and self.index.is_index_populated():
-                indices_to_remove = [
-                    i
-                    for i, route_name in enumerate(self.categories)
-                    if route_name == name
-                ]
-                self.index.remove(indices_to_remove)
-                self.categories = np.delete(self.categories, indices_to_remove, axis=0)
+            self.routes = [route for route in self.routes if route.name != route_name]
+            self.index.delete(route_name=route_name)
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
@@ -326,13 +323,8 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        # calculate similarity matrix
-        if self.index.type == "local":
-            scores, idx = self.index.query(xq, top_k)
-            # get the utterance categories (route names)
-            routes = self.categories[idx] if self.categories is not None else []
-        elif self.index.type == "pinecone":
-            scores, routes = self.index.query(xq, top_k)
+        # get scores and routes
+        scores, routes = self.index.query(vector=xq, top_k=top_k)
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
