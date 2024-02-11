@@ -58,4 +58,4 @@ class AzureOpenAILLM(BaseLLM):
             return output
         except Exception as e:
             logger.error(f"LLM error: {e}")
-            raise Exception(f"LLM error: {e}")
+            raise Exception(f"LLM error: {e}") from e
