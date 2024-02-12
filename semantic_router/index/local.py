@@ -39,6 +39,17 @@ class LocalIndex(BaseIndex):
             raise ValueError("Routes are not populated.")
         idx = [i for i, _route_name in enumerate(self.route_names) if _route_name == route_name]
         return idx
+    
+    def get_routes(self) -> List[Route]:
+        """
+        Gets a list of Route objects currently stored in the index.
+
+        Returns:
+            List[Route]: A list of Route objects.
+        """
+        if self.routes is None:
+            raise ValueError("No routes have been added to the index.")
+        return self.routes
 
     def delete(self, route_name: str):
         """

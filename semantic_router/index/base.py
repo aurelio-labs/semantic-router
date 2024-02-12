@@ -1,7 +1,7 @@
 from pydantic.v1 import BaseModel
 from typing import Any, List, Tuple, Optional, Union
 import numpy as np
-
+from semantic_router.route import Route
 
 class BaseIndex(BaseModel):
     """
@@ -55,7 +55,7 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
     
-    def get_routes(self):
+    def get_routes(self) -> List[Route]:
         """
         Returns a list of all routes stored in the index.
         This method should be implemented by subclasses.
