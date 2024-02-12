@@ -163,12 +163,12 @@ class TestRouteLayer:
         assert route_layer.routes == [route1]
         assert route_layer.index is not None
         # Use the describe method to get the number of vectors
-        assert route_layer.index.describe()['vectors'] == 2
+        assert route_layer.index.describe()["vectors"] == 2
 
         # Add route2 and check
         route_layer.add(route=route2)
         assert route_layer.routes == [route1, route2]
-        assert route_layer.index.describe()['vectors'] == 4
+        assert route_layer.index.describe()["vectors"] == 4
 
     def test_list_route_names(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -206,7 +206,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder)
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        assert route_layer.index.describe()['vectors'] == 5
+        assert route_layer.index.describe()["vectors"] == 5
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
