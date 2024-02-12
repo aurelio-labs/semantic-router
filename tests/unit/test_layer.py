@@ -155,11 +155,15 @@ class TestRouteLayer:
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
         route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
+        assert route_layer.routes == []
+
         route_layer.add(route=route1)
+        assert route_layer.routes == [route1]
         assert route_layer.index is not None
         assert route_layer.index.shape[0] == 2
 
         route_layer.add(route=route2)
+        assert route_layer.routes == [route1, route2]
         assert route_layer.index.shape[0] == 4
         del route_layer
 
