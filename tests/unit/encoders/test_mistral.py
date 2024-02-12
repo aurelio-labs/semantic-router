@@ -1,6 +1,7 @@
 import pytest
 from mistralai.exceptions import MistralException
-from mistralai.models.embeddings import EmbeddingResponse, EmbeddingObject, UsageInfo
+from mistralai.models.embeddings import EmbeddingObject, EmbeddingResponse, UsageInfo
+
 from semantic_router.encoders import MistralEncoder
 
 
@@ -46,7 +47,9 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
 
-        mock_embedding = EmbeddingObject(index=0, object="embedding", embedding=[0.1, 0.2])
+        mock_embedding = EmbeddingObject(
+            index=0, object="embedding", embedding=[0.1, 0.2]
+        )
         # Mock the CreateEmbeddingResponse object
         mock_response = EmbeddingResponse(
             model="mistral-embed",
@@ -74,7 +77,9 @@ class TestMistralEncoder:
             mistralai_encoder(["test document"])
         assert "No embeddings returned. Error" in str(e.value)
 
-    def test_mistralai_encoder_call_failure_non_mistralai_error(self, mistralai_encoder, mocker):
+    def test_mistralai_encoder_call_failure_non_mistralai_error(
+        self, mistralai_encoder, mocker
+    ):
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
@@ -96,7 +101,9 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
 
-        mock_embedding = EmbeddingObject(index=0, object="embedding", embedding=[0.1, 0.2])
+        mock_embedding = EmbeddingObject(
+            index=0, object="embedding", embedding=[0.1, 0.2]
+        )
         # Mock the CreateEmbeddingResponse object
         mock_response = EmbeddingResponse(
             model="mistral-embed",

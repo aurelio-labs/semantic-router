@@ -17,5 +17,5 @@ __all__ = [
     "TfidfEncoder",
     "FastEmbedEncoder",
     "HuggingFaceEncoder",
-    "MistralEncoder"
+    "MistralEncoder",
 ]

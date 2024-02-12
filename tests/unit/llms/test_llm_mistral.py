@@ -35,7 +35,9 @@ class TestMistralAILLM:
 
     def test_mistralai_llm_init_exception(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
-        mocker.patch("mistralai.mistralai", side_effect=Exception("Initialization error"))
+        mocker.patch(
+            "mistralai.mistralai", side_effect=Exception("Initialization error")
+        )
         with pytest.raises(ValueError) as e:
             MistralAILLM()
         assert (
@@ -49,7 +51,9 @@ class TestMistralAILLM:
 
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch.object(
-            mistralai_llm.client.chat.completions, "create", return_value=mock_completion
+            mistralai_llm.client.chat.completions,
+            "create",
+            return_value=mock_completion,
         )
         llm_input = [Message(role="user", content="test")]
         output = mistralai_llm(llm_input)

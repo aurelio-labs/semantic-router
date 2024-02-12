@@ -8,9 +8,10 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     FastEmbedEncoder,
-    OpenAIEncoder,
     MistralEncoder,
+    OpenAIEncoder,
 )
+
 
 class EncoderType(Enum):
     HUGGINGFACE = "huggingface"
