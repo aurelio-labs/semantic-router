@@ -161,7 +161,7 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        index: Optional[BaseIndex] = LocalIndex,  # type: ignore
+        index: Optional[BaseIndex] = LocalIndex(),  # type: ignore
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
