@@ -1,8 +1,10 @@
 from typing import List
-from semantic_router.splitters.base import BaseSplitter
+
 import numpy as np
-from semantic_router.schema import DocumentSplit
+
 from semantic_router.encoders import BaseEncoder
+from semantic_router.schema import DocumentSplit
+from semantic_router.splitters.base import BaseSplitter
 
 
 class CumulativeSimSplitter(BaseSplitter):

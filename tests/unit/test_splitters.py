@@ -1,15 +1,15 @@
 from unittest.mock import Mock, create_autospec
 
-import pytest
 import numpy as np
+import pytest
 
-from semantic_router.text import Conversation
-from semantic_router.schema import Message
-from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
-from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.encoders.cohere import CohereEncoder
+from semantic_router.schema import Message
 from semantic_router.splitters.base import BaseSplitter
+from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
+from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
+from semantic_router.text import Conversation
 
 
 def test_consecutive_sim_splitter():
