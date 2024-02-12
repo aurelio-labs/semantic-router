@@ -115,7 +115,7 @@ class PineconeIndex(BaseIndex):
             self.index = self._init_index(force_create=True)
         vectors_to_upsert = []
         for vector, utterance in zip(embeddings, utterances):
-            record = PineconeRecord(values=vector, route=route.name, utterance=utterance)  # Use route.name
+            record = PineconeRecord(values=vector, route_name=route.name, utterance=utterance)  # Use route.name
             vectors_to_upsert.append(record.to_dict())
         if self.index is not None:
             self.index.upsert(vectors=vectors_to_upsert)
@@ -164,6 +164,57 @@ class PineconeIndex(BaseIndex):
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
+    
+    def get_all_vector_ids(self) -> List[str]:
+        """
+        Retrieves all vector IDs from the Pinecone index using pagination.
+        """
+        all_vector_ids = []
+        next_page_token = None
+
+        while True:
+            # Construct the request URL for listing vectors. Adjust parameters as needed.
+            list_url = f"https://{self.host}/vectors/list"
+            params = {}
+            if next_page_token:
+                params["paginationToken"] = next_page_token
+
+            # Make the request to list vectors. Adjust headers and parameters as needed.
+            response = requests.get(list_url, params=params, headers={"Api-Key": os.getenv("PINECONE_API_KEY")})
+            response_data = response.json()
+
+            # Extract vector IDs from the response and add them to the list
+            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            all_vector_ids.extend(vector_ids)
+
+            # Check if there's a next page token; if not, break the loop
+            next_page_token = response_data.get("pagination", {}).get("next")
+            if not next_page_token:
+                break
+
+        return all_vector_ids
+    
+    def get_routes(self) -> List[Route]:
+        """
+        Gets a list of Route objects representing all data currently stored in the index.
+        Directly creates Route objects from unique route names and adds them to the routes list.
+
+        Returns:
+            List[Route]: A list of Route objects.
+        """
+
+        # Get all vector ids.
+        all_vector_ids = self.get_all_vector_ids()
+        # Extract unique route names from the vector IDs.
+        unique_route_names = set(vector_id.split("#")[0] for vector_id in all_vector_ids)
+        # Directly create Route objects and add them to the routes list
+        routes = []
+        for route_name in unique_route_names:
+            route_vec_ids = self._get_route_vecs(route_name=route_name)
+            route = Route(name=route_name, utterances=route_vec_ids)
+            routes.append(route)
+        return routes
+
 
     def delete_index(self):
         self.client.delete_index(self.index_name)
