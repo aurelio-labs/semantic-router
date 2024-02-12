@@ -281,6 +281,9 @@ class RouteLayer:
             utterances=route.utterances,
         )
 
+    def get_routes(self) -> List[Route]:
+        return self.index.get_routes()
+
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 

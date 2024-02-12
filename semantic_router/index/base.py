@@ -54,6 +54,13 @@ class BaseIndex(BaseModel):
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+    
+    def get_routes(self):
+        """
+        Returns a list of all routes stored in the index.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     class Config:
         arbitrary_types_allowed = True
