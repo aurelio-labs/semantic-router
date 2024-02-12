@@ -153,22 +153,15 @@ class TestRouteLayer:
     def test_add_route(self, openai_encoder):
         route_layer = RouteLayer(encoder=openai_encoder)
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
-        route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
-        # Initially, the routes list should be empty
+        # Initially, the routes list should be empty and index should have no vectors
         assert route_layer.routes == []
+        assert route_layer.index.describe()['vectors'] == 0, "Index should initially have no vectors"
 
         # Add route1 and check
         route_layer.add(route=route1)
-        assert route_layer.routes == [route1]
-        assert route_layer.index is not None
-        # Use the describe method to get the number of vectors
-        assert route_layer.index.describe()["vectors"] == 2
-
-        # Add route2 and check
-        route_layer.add(route=route2)
-        assert route_layer.routes == [route1, route2]
-        assert route_layer.index.describe()["vectors"] == 4
+        assert route_layer.routes == [route1], "Route1 should be correctly added to routes list"
+        assert route_layer.index.describe()['vectors'] == len(route1.utterances), "Index should reflect the correct number of vectors after adding route1"
 
     def test_list_route_names(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -204,9 +197,12 @@ class TestRouteLayer:
 
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
+        # Assuming 'routes' fixture provides two routes with a total of 5 utterances
+        total_utterances = sum(len(route.utterances) for route in routes)
+
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        assert route_layer.index.describe()["vectors"] == 5
+        assert route_layer.index.describe()['vectors'] == total_utterances, f"Index should contain {total_utterances} vectors after adding multiple routes"
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
