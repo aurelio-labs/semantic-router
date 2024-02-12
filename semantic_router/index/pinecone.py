@@ -17,15 +17,15 @@ def clean_route_name(route_name: str) -> str:
 class PineconeRecord(BaseModel):
     id: str = ""
     values: List[float]
-    route: str
+    route_name: str
     utterance: str
 
     def __init__(self, **data):
         super().__init__(**data)
         # generate ID based on route name and utterances to prevent duplicates
-        clean_route = clean_route_name(self.route)
+        clean_route_name = clean_route_name(self.route_name)
         utterance_id = hashlib.md5(self.utterance.encode()).hexdigest()
-        self.id = f"{clean_route}#{utterance_id}"
+        self.id = f"{clean_route_name}#{utterance_id}"
 
     def to_dict(self):
         return {
@@ -121,6 +121,7 @@ class PineconeIndex(BaseIndex):
             self.index.upsert(vectors=vectors_to_upsert)
         else:
             raise ValueError("Index is None could not upsert.")
+
 
     def _get_route_vecs(self, route_name: str):
         clean_route = clean_route_name(route_name)
