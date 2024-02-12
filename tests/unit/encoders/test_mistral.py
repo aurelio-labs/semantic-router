@@ -7,13 +7,13 @@ from semantic_router.encoders import MistralEncoder
 
 @pytest.fixture
 def mistralai_encoder(mocker):
-    mocker.patch("MistralClient")
+    mocker.patch("mistralai.client.MistralClient")
     return MistralEncoder(mistralai_api_key="test_api_key")
 
 
 class TestMistralEncoder:
     def test_mistralai_encoder_init_success(self, mocker):
-        encoder = MistralEncoder()
+        encoder = MistralEncoder(mistralai_api_key="test_api_key")
         assert encoder.client is not None
 
     def test_mistralai_encoder_init_no_api_key(self, mocker):
@@ -26,15 +26,14 @@ class TestMistralEncoder:
         mistralai_encoder.client = None
         with pytest.raises(ValueError) as e:
             mistralai_encoder(["test document"])
-        assert "MistralAI client is not initialized." in str(e.value)
+        assert "Mistral client not initialized" in str(e.value)
 
     def test_mistralai_encoder_init_exception(self, mocker):
-        mocker.patch("os.getenv", return_value="fake-api-key")
-        mocker.patch("MistralClient", side_effect=Exception("Initialization error"))
+        mocker.patch("mistralai.client.MistralClient", side_effect=Exception("Initialization error"))
         with pytest.raises(ValueError) as e:
             MistralEncoder()
         assert (
-            "mistralai API client failed to initialize. Error: Initialization error"
+            "Mistral API key not provided"
             in str(e.value)
         )
 
@@ -52,15 +51,16 @@ class TestMistralEncoder:
         )
         # Mock the CreateEmbeddingResponse object
         mock_response = EmbeddingResponse(
+            id="test-id",
             model="mistral-embed",
             object="list",
-            usage=UsageInfo(prompt_tokens=0, total_tokens=20),
+            usage=UsageInfo(prompt_tokens=1, total_tokens=20, completion_tokens=None),
             data=[mock_embedding],
         )
 
         responses = [MistralException("mistralai error"), mock_response]
         mocker.patch.object(
-            mistralai_encoder.client.embeddings, "create", side_effect=responses
+            mistralai_encoder.client, "embeddings", side_effect=responses
         )
         embeddings = mistralai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -69,13 +69,13 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            mistralai_encoder.client.embeddings,
-            "create",
+            mistralai_encoder.client,
+            "embeddings",
             side_effect=MistralException("Test error"),
         )
         with pytest.raises(ValueError) as e:
             mistralai_encoder(["test document"])
-        assert "No embeddings returned. Error" in str(e.value)
+        assert "No embeddings returned from MistralAI: Test error" in str(e.value)
 
     def test_mistralai_encoder_call_failure_non_mistralai_error(
         self, mistralai_encoder, mocker
@@ -83,14 +83,14 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            mistralai_encoder.client.embeddings,
-            "create",
+            mistralai_encoder.client,
+            "embeddings",
             side_effect=Exception("Non-MistralException"),
         )
         with pytest.raises(ValueError) as e:
             mistralai_encoder(["test document"])
 
-        assert "mistralai API call failed. Error: Non-MistralException" in str(e.value)
+        assert "Unable to connect to MistralAI ('Non-MistralException',): Non-MistralException" in str(e.value)
 
     def test_mistralai_encoder_call_successful_retry(self, mistralai_encoder, mocker):
         mock_embeddings = mocker.Mock()
@@ -106,15 +106,16 @@ class TestMistralEncoder:
         )
         # Mock the CreateEmbeddingResponse object
         mock_response = EmbeddingResponse(
+            id="test-id",
             model="mistral-embed",
             object="list",
-            usage=UsageInfo(prompt_tokens=0, total_tokens=20),
+            usage=UsageInfo(prompt_tokens=1, total_tokens=20, completion_tokens=None),
             data=[mock_embedding],
         )
 
         responses = [MistralException("mistralai error"), mock_response]
         mocker.patch.object(
-            mistralai_encoder.client.embeddings, "create", side_effect=responses
+            mistralai_encoder.client, "embeddings", side_effect=responses
         )
         embeddings = mistralai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]

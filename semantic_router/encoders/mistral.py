@@ -19,13 +19,13 @@ class MistralEncoder(BaseEncoder):
     def __init__(
         self,
         name: Optional[str] = None,
-        mistral_api_key: Optional[str] = None,
+        mistralai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
     ):
         if name is None:
             name = os.getenv("MISTRAL_MODEL_NAME", "mistral-embed")
         super().__init__(name=name, score_threshold=score_threshold)
-        api_key = mistral_api_key or os.getenv("MISTRALAI_API_KEY")
+        api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
         if api_key is None:
             raise ValueError("Mistral API key not provided")
         try:

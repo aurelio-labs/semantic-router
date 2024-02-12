@@ -6,7 +6,7 @@ from semantic_router.schema import Message
 
 @pytest.fixture
 def mistralai_llm(mocker):
-    mocker.patch("mistralai.Client")
+    mocker.patch("mistralai.client.MistralClient")
     return MistralAILLM(mistralai_api_key="test_api_key")
 
 
@@ -31,17 +31,16 @@ class TestMistralAILLM:
         with pytest.raises(ValueError) as e:
             llm_input = [Message(role="user", content="test")]
             mistralai_llm(llm_input)
-        assert "mistralai client is not initialized." in str(e.value)
+        assert "MistralAI client is not initialized." in str(e.value)
 
     def test_mistralai_llm_init_exception(self, mocker):
-        mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch(
-            "mistralai.mistralai", side_effect=Exception("Initialization error")
+            "mistralai.client.MistralClient", side_effect=Exception("Initialization error")
         )
         with pytest.raises(ValueError) as e:
             MistralAILLM()
         assert (
-            "mistralai API client failed to initialize. Error: Initialization error"
+            "MistralAI API key cannot be 'None'."
             in str(e.value)
         )
 
@@ -51,8 +50,8 @@ class TestMistralAILLM:
 
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch.object(
-            mistralai_llm.client.chat.completions,
-            "create",
+            mistralai_llm.client,
+            "chat",
             return_value=mock_completion,
         )
         llm_input = [Message(role="user", content="test")]
