@@ -20,7 +20,7 @@ class MistralEncoder(BaseEncoder):
         self,
         name: Optional[str] = None,
         mistral_api_key: Optional[str] = None,
-        score_threshold: Optional[float] = 0.82,
+        score_threshold: float = 0.82,
     ):
         if name is None:
             name = os.getenv("MISTRAL_MODEL_NAME", "mistral-embed")
