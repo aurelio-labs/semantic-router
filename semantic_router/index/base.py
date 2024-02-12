@@ -32,9 +32,9 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def is_index_populated(self) -> bool:
+    def describe(self) -> bool:
         """
-        Check if the index is populated.
+        Returns a dictionary with index details such as type, dimensions, and total vector count.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
