@@ -9,7 +9,8 @@ class LocalIndex(BaseIndex):
         super().__init__()
         self.type = "local"
         self.index: Optional[np.ndarray] = None
-        self.routes: Optional[np.ndarray] = None
+        self.routes: Optional[List[Route]] = None
+        self.route_names: Optional[List[str]] = None
         self.utterances: Optional[np.ndarray] = None
 
     class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
@@ -23,18 +24,20 @@ class LocalIndex(BaseIndex):
         utterances_arr = np.array(utterances)
         if self.index is None:
             self.index = embeds  # type: ignore
-            self.routes = route_names_arr
+            self.routes = [route]
+            self.route_names = route_names_arr
             self.utterances = utterances_arr
         else:
             self.index = np.concatenate([self.index, embeds])
-            self.routes = np.concatenate([self.routes, route_names_arr])
+            self.routes.append(route)
+            self.route_names = np.concatenate([self.route_names, route_names_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route."""
-        if self.routes is None:
+        if self.route_names is None:
             raise ValueError("Routes are not populated.")
-        idx = [i for i, route in enumerate(self.routes) if route == route_name]
+        idx = [i for i, _route_name in enumerate(self.route_names) if _route_name == route_name]
         return idx
 
     def delete(self, route_name: str):
@@ -43,12 +46,13 @@ class LocalIndex(BaseIndex):
         """
         if (
             self.index is not None
-            and self.routes is not None
+            and self.route_names is not None
             and self.utterances is not None
         ):
             delete_idx = self._get_indices_for_route(route_name=route_name)
             self.index = np.delete(self.index, delete_idx, axis=0)
-            self.routes = np.delete(self.routes, delete_idx, axis=0)
+            self.routes = [route for route in self.routes if route.name != route_name] if self.routes else None
+            self.route_names = np.delete(self.route_names, delete_idx, axis=0)
             self.utterances = np.delete(self.utterances, delete_idx, axis=0)
         else:
             raise ValueError(
@@ -66,13 +70,13 @@ class LocalIndex(BaseIndex):
         """
         Search the index for the query and return top_k results.
         """
-        if self.index is None or self.routes is None:
+        if self.index is None or self.route_names is None:
             raise ValueError("Index or routes are not populated.")
         sim = similarity_matrix(vector, self.index)
         # extract the index values of top scoring vectors
         scores, idx = top_scores(sim, top_k)
         # get routes from index values
-        route_names = self.routes[idx].copy()
+        route_names = self.route_names[idx].copy()
         return scores, route_names
 
     def delete_index(self):
