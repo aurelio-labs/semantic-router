@@ -29,13 +29,13 @@ class TestMistralEncoder:
         assert "Mistral client not initialized" in str(e.value)
 
     def test_mistralai_encoder_init_exception(self, mocker):
-        mocker.patch("mistralai.client.MistralClient", side_effect=Exception("Initialization error"))
+        mocker.patch(
+            "mistralai.client.MistralClient",
+            side_effect=Exception("Initialization error"),
+        )
         with pytest.raises(ValueError) as e:
             MistralEncoder()
-        assert (
-            "Mistral API key not provided"
-            in str(e.value)
-        )
+        assert "Mistral API key not provided" in str(e.value)
 
     def test_mistralai_encoder_call_success(self, mistralai_encoder, mocker):
         mock_embeddings = mocker.Mock()
@@ -90,7 +90,10 @@ class TestMistralEncoder:
         with pytest.raises(ValueError) as e:
             mistralai_encoder(["test document"])
 
-        assert "Unable to connect to MistralAI ('Non-MistralException',): Non-MistralException" in str(e.value)
+        assert (
+            "Unable to connect to MistralAI ('Non-MistralException',): Non-MistralException"
+            in str(e.value)
+        )
 
     def test_mistralai_encoder_call_successful_retry(self, mistralai_encoder, mocker):
         mock_embeddings = mocker.Mock()

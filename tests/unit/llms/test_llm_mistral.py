@@ -35,14 +35,12 @@ class TestMistralAILLM:
 
     def test_mistralai_llm_init_exception(self, mocker):
         mocker.patch(
-            "mistralai.client.MistralClient", side_effect=Exception("Initialization error")
+            "mistralai.client.MistralClient",
+            side_effect=Exception("Initialization error"),
         )
         with pytest.raises(ValueError) as e:
             MistralAILLM()
-        assert (
-            "MistralAI API key cannot be 'None'."
-            in str(e.value)
-        )
+        assert "MistralAI API key cannot be 'None'." in str(e.value)
 
     def test_mistralai_llm_call_success(self, mistralai_llm, mocker):
         mock_completion = mocker.MagicMock()
