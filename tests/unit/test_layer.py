@@ -156,15 +156,11 @@ class TestRouteLayer:
         route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
         route_layer.add(route=route1)
-        assert route_layer.index is not None and route_layer.categories is not None
+        assert route_layer.index is not None
         assert route_layer.index.shape[0] == 2
-        assert len(set(route_layer.categories)) == 1
-        assert set(route_layer.categories) == {"Route 1"}
 
         route_layer.add(route=route2)
         assert route_layer.index.shape[0] == 4
-        assert len(set(route_layer.categories)) == 2
-        assert set(route_layer.categories) == {"Route 1", "Route 2"}
         del route_layer
 
     def test_list_route_names(self, openai_encoder, routes):
@@ -183,10 +179,6 @@ class TestRouteLayer:
         assert (
             route_to_delete not in route_layer.list_route_names()
         ), "The route should be deleted from the route layer."
-        # Ensure the route is no longer in the index or categories
-        assert (
-            route_to_delete not in route_layer.categories
-        ), "The route should be deleted from the categories."
         # Ensure the route's utterances are no longer in the index
         for utterance in routes[0].utterances:
             assert (
@@ -206,9 +198,8 @@ class TestRouteLayer:
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
         route_layer._add_routes(routes=routes)
-        assert route_layer.index is not None and route_layer.categories is not None
+        assert route_layer.index is not None
         assert route_layer.index.shape[0] == 5
-        assert len(set(route_layer.categories)) == 2
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
