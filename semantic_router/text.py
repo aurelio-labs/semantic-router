@@ -1,13 +1,12 @@
-from colorama import Fore
-from colorama import Style
+from typing import List, Literal, Tuple, Union
 
+from colorama import Fore, Style
 from pydantic.v1 import BaseModel, Field
-from typing import Union, List, Literal, Tuple
+
+from semantic_router.encoders import BaseEncoder
+from semantic_router.schema import DocumentSplit, Message
 from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
 from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
-from semantic_router.encoders import BaseEncoder
-from semantic_router.schema import Message
-from semantic_router.schema import DocumentSplit
 
 # Define a type alias for the splitter to simplify the annotation
 SplitterType = Union[ConsecutiveSimSplitter, CumulativeSimSplitter, None]
