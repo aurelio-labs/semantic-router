@@ -155,17 +155,20 @@ class TestRouteLayer:
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
         route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
+        # Initially, the routes list should be empty
         assert route_layer.routes == []
 
+        # Add route1 and check
         route_layer.add(route=route1)
         assert route_layer.routes == [route1]
         assert route_layer.index is not None
-        assert route_layer.index.shape[0] == 2
+        # Use the describe method to get the number of vectors
+        assert route_layer.index.describe()['vectors'] == 2
 
+        # Add route2 and check
         route_layer.add(route=route2)
         assert route_layer.routes == [route1, route2]
-        assert route_layer.index.shape[0] == 4
-        del route_layer
+        assert route_layer.index.describe()['vectors'] == 4
 
     def test_list_route_names(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -203,7 +206,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder)
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        assert route_layer.index.shape[0] == 5
+        assert route_layer.index.describe()['vectors'] == 5
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
