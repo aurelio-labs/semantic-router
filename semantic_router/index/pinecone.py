@@ -12,6 +12,7 @@ import numpy as np
 def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
 
+
 class PineconeRecord(BaseModel):
     id: str = ""
     values: List[float]
@@ -29,10 +30,7 @@ class PineconeRecord(BaseModel):
         return {
             "id": self.id,
             "values": self.values,
-            "metadata": {
-                "sr_route": self.route,
-                "sr_utterance": self.utterance
-            }
+            "metadata": {"sr_route": self.route, "sr_utterance": self.utterance},
         }
 
 
@@ -42,14 +40,14 @@ class PineconeIndex(BaseIndex):
     dimensions: Union[int, None] = None
     metric: str = "cosine"
     cloud: str = "aws"
-    region: str = "us-west-2" 
+    region: str = "us-west-2"
     host: str = ""
     client: Any = Field(default=None, exclude=True)
     index: Optional[Any] = Field(default=None, exclude=True)
     ServerlessSpec: Any = Field(default=None, exclude=True)
 
     def __init__(self, **data):
-        super().__init__(**data) 
+        super().__init__(**data)
         self._initialize_client()
 
         self.type = "pinecone"
@@ -62,6 +60,7 @@ class PineconeIndex(BaseIndex):
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
             from pinecone import Pinecone, ServerlessSpec
+
             self.ServerlessSpec = ServerlessSpec
         except ImportError:
             raise ImportError(
@@ -81,13 +80,10 @@ class PineconeIndex(BaseIndex):
             # if the index doesn't exist and we have dimension value
             # we create the index
             self.client.create_index(
-                name=self.index_name, 
-                dimension=self.dimensions, 
+                name=self.index_name,
+                dimension=self.dimensions,
                 metric=self.metric,
-                spec=self.ServerlessSpec(
-                    cloud=self.cloud,
-                    region=self.region
-                )
+                spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
             )
             # wait for index to be created
             while not self.client.describe_index(self.index_name).status["ready"]:
@@ -100,7 +96,9 @@ class PineconeIndex(BaseIndex):
             # grab the dimensions from the index
             self.dimensions = index.describe_index_stats()["dimension"]
         elif force_create and not dimensions_given:
-            raise ValueError("Cannot create an index without specifying the dimensions.")
+            raise ValueError(
+                "Cannot create an index without specifying the dimensions."
+            )
         else:
             # if the index doesn't exist and we don't have the dimensions
             # we return None
@@ -109,8 +107,10 @@ class PineconeIndex(BaseIndex):
         if index is not None:
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
-        
-    def add(self, embeddings: List[List[float]], routes: List[str], utterances: List[str]):
+
+    def add(
+        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+    ):
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             # we set force_create to True as we MUST have an index to add data
@@ -119,35 +119,46 @@ class PineconeIndex(BaseIndex):
         for vector, route, utterance in zip(embeddings, routes, utterances):
             record = PineconeRecord(values=vector, route=route, utterance=utterance)
             vectors_to_upsert.append(record.to_dict())
-        self.index.upsert(vectors=vectors_to_upsert)
+        if self.index is not None:
+            self.index.upsert(vectors=vectors_to_upsert)
+        else:
+            raise ValueError("Index is None could not upsert.")
 
     def _get_route_vecs(self, route_name: str):
         clean_route = clean_route_name(route_name)
         res = requests.get(
             f"https://{self.host}/vectors/list?prefix={clean_route}#",
-            headers={"Api-Key": os.environ["PINECONE_API_KEY"]}
+            headers={"Api-Key": os.environ["PINECONE_API_KEY"]},
         )
         return [vec["id"] for vec in res.json()["vectors"]]
 
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_vecs(route_name=route_name)
-        self.index.delete(ids=route_vec_ids)
+        if self.index is not None:
+            self.index.delete(ids=route_vec_ids)
+        else:
+            raise ValueError("Index is None, could not delete.")
 
     def delete_all(self):
         self.index.delete(delete_all=True)
 
-    def describe(self) -> bool:
-        stats = self.index.describe_index_stats()
-        return {
-            "type": self.type,
-            "dimensions": stats["dimension"],
-            "vectors": stats["total_vector_count"]
-        }
-    
+    def describe(self) -> dict:
+        if self.index is not None:
+            stats = self.index.describe_index_stats()
+            return {
+                "type": self.type,
+                "dimensions": stats["dimension"],
+                "vectors": stats["total_vector_count"],
+            }
+        else:
+            raise ValueError("Index is None, cannot describe index stats.")
+
     def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+        if self.index is None:
+            raise ValueError("Index is not populated.")
         query_vector_list = vector.tolist()
         results = self.index.query(
-            vector=[query_vector_list], 
+            vector=[query_vector_list],
             top_k=top_k,
             include_metadata=True,
         )

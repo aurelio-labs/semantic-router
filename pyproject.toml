@@ -45,6 +45,7 @@ pytest-cov = "^4.1.0"
 pytest-xdist = "^3.5.0"
 mypy = "^1.7.1"
 types-pyyaml = "^6.0.12.12"
+types-requests = "^2.31.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -161,10 +161,10 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        index: Optional[BaseIndex] = LocalIndex,
+        index: Optional[BaseIndex] = LocalIndex,  # type: ignore
     ):
         logger.info("local")
-        self.index: BaseIndex = index
+        self.index: BaseIndex = index if index is not None else LocalIndex()
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -283,13 +283,13 @@ class RouteLayer:
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
-    
+
     def update(self, route_name: str, utterances: List[str]):
         raise NotImplementedError("This method has not yet been implemented.")
 
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
-        
+
         :param route_name: the name of the route to be deleted
         :type str:
         """
@@ -303,7 +303,9 @@ class RouteLayer:
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
-        all_utterances = [utterance for route in routes for utterance in route.utterances]
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
         embedded_utterances = self.encoder(all_utterances)
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
@@ -311,7 +313,7 @@ class RouteLayer:
         self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
-            utterances=all_utterances
+            utterances=all_utterances,
         )
 
     def _encode(self, text: str) -> Any:

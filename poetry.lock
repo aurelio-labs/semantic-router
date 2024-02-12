@@ -3218,7 +3218,7 @@ files = [
 name = "types-requests"
 version = "2.31.0.20240125"
 description = "Typing stubs for requests"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "types-requests-2.31.0.20240125.tar.gz", hash = "sha256:03a28ce1d7cd54199148e043b2079cdded22d6795d19a2c2a6791a4b2b5e2eb5"},
@@ -3404,4 +3404,4 @@ pinecone = ["pinecone-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "52ce34492a7d4827a3c2b96332e7285369209dbe9ec2a9488d8eac2c13d4d0c6"
+content-hash = "23b8995b7eee4df19bb2242d6a81de8557a855053b4346a532efa63be2ea303f"
