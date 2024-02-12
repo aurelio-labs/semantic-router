@@ -156,12 +156,18 @@ class TestRouteLayer:
 
         # Initially, the routes list should be empty and index should have no vectors
         assert route_layer.routes == []
-        assert route_layer.index.describe()['vectors'] == 0, "Index should initially have no vectors"
+        assert (
+            route_layer.index.describe()["vectors"] == 0
+        ), "Index should initially have no vectors"
 
         # Add route1 and check
         route_layer.add(route=route1)
-        assert route_layer.routes == [route1], "Route1 should be correctly added to routes list"
-        assert route_layer.index.describe()['vectors'] == len(route1.utterances), "Index should reflect the correct number of vectors after adding route1"
+        assert route_layer.routes == [
+            route1
+        ], "Route1 should be correctly added to routes list"
+        assert route_layer.index.describe()["vectors"] == len(
+            route1.utterances
+        ), "Index should reflect the correct number of vectors after adding route1"
 
     def test_list_route_names(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -202,7 +208,9 @@ class TestRouteLayer:
 
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        assert route_layer.index.describe()['vectors'] == total_utterances, f"Index should contain {total_utterances} vectors after adding multiple routes"
+        assert (
+            route_layer.index.describe()["vectors"] == total_utterances
+        ), f"Index should contain {total_utterances} vectors after adding multiple routes"
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
