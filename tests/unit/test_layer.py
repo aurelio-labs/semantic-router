@@ -174,24 +174,24 @@ class TestRouteLayer:
             route.name for route in routes
         }, "The list of route names should match the names of the routes added."
 
-    def test_remove_route(self, openai_encoder, routes):
+    def test_delete_route(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        # Remove a route by name
-        route_to_remove = routes[0].name
-        route_layer.remove(route_to_remove)
+        # Delete a route by name
+        route_to_delete = routes[0].name
+        route_layer.delete(route_to_delete)
         # Ensure the route is no longer in the route layer
         assert (
-            route_to_remove not in route_layer.list_route_names()
-        ), "The route should be removed from the route layer."
+            route_to_delete not in route_layer.list_route_names()
+        ), "The route should be deleted from the route layer."
         # Ensure the route is no longer in the index or categories
         assert (
-            route_to_remove not in route_layer.categories
-        ), "The route should be removed from the categories."
+            route_to_delete not in route_layer.categories
+        ), "The route should be deleted from the categories."
         # Ensure the route's utterances are no longer in the index
         for utterance in routes[0].utterances:
             assert (
                 utterance not in route_layer.index
-            ), "The route's utterances should be removed from the index."
+            ), "The route's utterances should be deleted from the index."
 
     def test_remove_route_not_found(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
