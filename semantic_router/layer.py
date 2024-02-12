@@ -268,16 +268,16 @@ class RouteLayer:
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
-        # create embeddings
+        # Create embeddings
         embeds = self.encoder(route.utterances)
-        # if route has no score_threshold, use default
+        # If route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # add routes to the index
+        # Add routes to the index, now passing the Route object directly
         self.index.add(
             embeddings=embeds,
-            routes=[route.name] * len(route.utterances),
+            route=route,
             utterances=route.utterances,
         )
 

@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Tuple, Optional
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.index.base import BaseIndex
-
+from semantic_router.route import Route
 
 class LocalIndex(BaseIndex):
     def __init__(self):
@@ -16,18 +16,18 @@ class LocalIndex(BaseIndex):
         arbitrary_types_allowed = True
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+        self, embeddings: List[List[float]], route: Route, utterances: List[str]
     ):
         embeds = np.array(embeddings)  # type: ignore
-        routes_arr = np.array(routes)
+        route_names_arr = np.array([route.name] * len(utterances))
         utterances_arr = np.array(utterances)
         if self.index is None:
             self.index = embeds  # type: ignore
-            self.routes = routes_arr
+            self.routes = route_names_arr
             self.utterances = utterances_arr
         else:
             self.index = np.concatenate([self.index, embeds])
-            self.routes = np.concatenate([self.routes, routes_arr])
+            self.routes = np.concatenate([self.routes, route_names_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _get_indices_for_route(self, route_name: str):

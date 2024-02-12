@@ -7,6 +7,7 @@ from typing import Any, List, Tuple, Optional, Union
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
 import numpy as np
+from semantic_router.route import Route
 
 
 def clean_route_name(route_name: str) -> str:
@@ -107,17 +108,14 @@ class PineconeIndex(BaseIndex):
         if index is not None:
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
-
-    def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
-    ):
+        
+    def add(self, embeddings: List[List[float]], route: Route, utterances: List[str]):
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
-            # we set force_create to True as we MUST have an index to add data
             self.index = self._init_index(force_create=True)
         vectors_to_upsert = []
-        for vector, route, utterance in zip(embeddings, routes, utterances):
-            record = PineconeRecord(values=vector, route=route, utterance=utterance)
+        for vector, utterance in zip(embeddings, utterances):
+            record = PineconeRecord(values=vector, route=route.name, utterance=utterance)  # Use route.name
             vectors_to_upsert.append(record.to_dict())
         if self.index is not None:
             self.index.upsert(vectors=vectors_to_upsert)
