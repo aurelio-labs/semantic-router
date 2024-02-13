@@ -17,11 +17,11 @@ class LocalIndex(BaseIndex):
         arbitrary_types_allowed = True
 
     def add(
-        self, embeddings: List[List[float]], route: Route, utterances: List[str]
+        self, embeddings: List[List[float]], route: Route
     ):
         embeds = np.array(embeddings)  # type: ignore
-        route_names_arr = np.array([route.name] * len(utterances))
-        utterances_arr = np.array(utterances)
+        route_names_arr = np.array([route.name] * len(route.utterances))
+        utterances_arr = np.array(route.utterances)
         if self.index is None:
             self.index = embeds  # type: ignore
             self.routes = [route]

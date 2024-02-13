@@ -109,12 +109,12 @@ class PineconeIndex(BaseIndex):
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
         
-    def add(self, embeddings: List[List[float]], route: Route, utterances: List[str]):
+    def add(self, embeddings: List[List[float]], route: Route):
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
         vectors_to_upsert = []
-        for vector, utterance in zip(embeddings, utterances):
+        for vector, utterance in zip(embeddings, route.utterances):
             record = PineconeRecord(values=vector, route_name=route.name, utterance=utterance)  # Use route.name
             vectors_to_upsert.append(record.to_dict())
         if self.index is not None:

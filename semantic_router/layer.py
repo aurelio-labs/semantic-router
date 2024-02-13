@@ -277,8 +277,7 @@ class RouteLayer:
         # Add routes to the index, now passing the Route object directly
         self.index.add(
             embeddings=embeds,
-            route=route,
-            utterances=route.utterances,
+            route=route
         )
 
     def get_routes(self) -> List[Route]:
