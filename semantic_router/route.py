@@ -70,14 +70,14 @@ class Route(BaseModel):
 
     # def to_dict(self) -> Dict[str, Any]:
     #     return self.dict()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         data = self.dict()
         if self.llm is not None:
-            data['llm'] = {
-                'module': self.llm.__module__,
-                'class': self.llm.__class__.__name__,
-                'model': self.llm.name
+            data["llm"] = {
+                "module": self.llm.__module__,
+                "class": self.llm.__class__.__name__,
+                "model": self.llm.name,
             }
         return data
 
