@@ -302,7 +302,9 @@ class TestRouteLayer:
         # now load from config and confirm it's the same
         route_layer_from_config = RouteLayer.from_config(layer_config)
         assert (route_layer_from_config.index.index == route_layer.index.index).all()
-        assert route_layer_from_config._get_route_names() == route_layer._get_route_names()
+        assert (
+            route_layer_from_config._get_route_names() == route_layer._get_route_names()
+        )
         assert route_layer_from_config.score_threshold == route_layer.score_threshold
 
     def test_get_thresholds(self, openai_encoder, routes):

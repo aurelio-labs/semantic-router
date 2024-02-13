@@ -303,8 +303,7 @@ class RouteLayer:
             self.index.delete(route_name=route_name)
 
     def _refresh_routes(self):
-        """Pulls out the latest routes from the index.
-        """
+        """Pulls out the latest routes from the index."""
         raise NotImplementedError("This method has not yet been implemented.")
         route_mapping = {route.name: route for route in self.routes}
         index_routes = self.index.get_routes()
@@ -319,7 +318,6 @@ class RouteLayer:
                 new_routes.append(Route(name=route_name, utterances=[utterance]))
             route = route_mapping[route_name]
             self.routes.append(route)
-
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
@@ -458,7 +456,7 @@ class RouteLayer:
                 correct += 1
         accuracy = correct / len(Xq)
         return accuracy
-    
+
     def _get_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 

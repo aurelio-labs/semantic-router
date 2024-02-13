@@ -8,12 +8,10 @@ class LocalIndex(BaseIndex):
     def __init__(
         self,
         index: Optional[np.ndarray] = None,
-        routes: Optional[List[str]] = None,
-        utterances: Optional[List[str]] = None,
+        routes: Optional[np.ndarray] = None,
+        utterances: Optional[np.ndarray] = None,
     ):
-        super().__init__(
-            index=index, routes=routes, utterances=utterances
-        )
+        super().__init__(index=index, routes=routes, utterances=utterances)
         self.type = "local"
 
     class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
@@ -41,9 +39,9 @@ class LocalIndex(BaseIndex):
         Returns:
             List[Tuple]: A list of (route_name, utterance) objects.
         """
-        if self.route_names is None or self.utterances is None:
+        if self.routes is None or self.utterances is None:
             raise ValueError("No routes have been added to the index.")
-        return list(zip(self.route_names, self.utterances))
+        return list(zip(self.routes, self.utterances))
 
     def describe(self) -> dict:
         return {
@@ -64,7 +62,7 @@ class LocalIndex(BaseIndex):
         # get routes from index values
         route_names = self.routes[idx].copy()
         return scores, route_names
-    
+
     def delete(self, route_name: str):
         """
         Delete all records of a specific route from the index.
@@ -95,7 +93,7 @@ class LocalIndex(BaseIndex):
             raise ValueError("Routes are not populated.")
         idx = [i for i, route in enumerate(self.routes) if route == route_name]
         return idx
-    
+
     def __len__(self):
         if self.index is not None:
             return self.index.shape[0]

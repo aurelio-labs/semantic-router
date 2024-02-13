@@ -3,7 +3,7 @@ import requests
 import time
 import hashlib
 import os
-from typing import Any, List, Tuple, Optional, Union
+from typing import Any, Dict, List, Tuple, Optional, Union
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
 import numpy as np
@@ -128,11 +128,13 @@ class PineconeIndex(BaseIndex):
         clean_route = clean_route_name(route_name)
         ids, _ = self._get_all(prefix=f"{clean_route}#")
         return ids
-    
+
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
         Retrieves all vector IDs from the Pinecone index using pagination.
         """
+        if self.index is None:
+            raise ValueError("Index is None, could not retrieve vector IDs.")
         all_vector_ids = []
         next_page_token = None
 
@@ -143,8 +145,8 @@ class PineconeIndex(BaseIndex):
 
         # Construct the request URL for listing vectors. Adjust parameters as needed.
         list_url = f"https://{self.host}/vectors/list{prefix_str}"
-        params = {}
-        headers = {"Api-Key": os.getenv("PINECONE_API_KEY")}
+        params: Dict = {}
+        headers = {"Api-Key": os.environ["PINECONE_API_KEY"]}
         metadata = []
 
         while True:
@@ -164,9 +166,7 @@ class PineconeIndex(BaseIndex):
             if include_metadata:
                 res_meta = self.index.fetch(ids=vector_ids)
                 # extract metadata only
-                metadata.extend(
-                    [x["metadata"] for x in res_meta["vectors"].values()]
-                )
+                metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
 
             # Check if there's a next page token; if not, break the loop
             next_page_token = response_data.get("pagination", {}).get("next")
@@ -174,7 +174,7 @@ class PineconeIndex(BaseIndex):
                 break
 
         return all_vector_ids, metadata
-    
+
     def get_routes(self) -> List[Tuple]:
         """
         Gets a list of route and utterance objects currently stored in the index.
