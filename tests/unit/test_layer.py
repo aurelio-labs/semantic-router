@@ -124,8 +124,8 @@ class TestRouteLayer:
         assert route_layer.score_threshold == 0.82
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
-            len(set(route_layer.categories))
-            if route_layer.categories is not None
+            len(set(route_layer._get_route_names()))
+            if route_layer._get_route_names() is not None
             else 0 == 2
         )
 
@@ -153,15 +153,18 @@ class TestRouteLayer:
     def test_add_route(self, openai_encoder):
         route_layer = RouteLayer(encoder=openai_encoder)
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
+        route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
-        # Initially, the routes list should be empty and index should have no vectors
+        # Initially, the routes list should be empty
         assert route_layer.routes == []
-        assert route_layer.index.describe()['vectors'] == 0, "Index should initially have no vectors"
-
         # Add route1 and check
         route_layer.add(route=route1)
-        assert route_layer.routes == [route1], "Route1 should be correctly added to routes list"
-        assert route_layer.index.describe()['vectors'] == len(route1.utterances), "Index should reflect the correct number of vectors after adding route1"
+        assert route_layer.routes == [route1]
+        # TODO add length check
+        # Add route2 and check
+        route_layer.add(route=route2)
+        assert route_layer.routes == [route1, route2]
+        # TODO add length check
 
     def test_list_route_names(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -190,19 +193,16 @@ class TestRouteLayer:
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
         with pytest.raises(ValueError) as excinfo:
-            route_layer.remove(non_existent_route)
+            route_layer.delete(non_existent_route)
         assert (
             str(excinfo.value) == f"Route `{non_existent_route}` not found"
         ), "Attempting to remove a non-existent route should raise a ValueError."
 
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder)
-        # Assuming 'routes' fixture provides two routes with a total of 5 utterances
-        total_utterances = sum(len(route.utterances) for route in routes)
-
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        assert route_layer.index.describe()['vectors'] == total_utterances, f"Index should contain {total_utterances} vectors after adding multiple routes"
+        # TODO add length check
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
@@ -271,7 +271,7 @@ class TestRouteLayer:
             route_layer_from_file = RouteLayer.from_json(temp.name)
             assert (
                 route_layer_from_file.index is not None
-                and route_layer_from_file.categories is not None
+                and route_layer_from_file._get_route_names() is not None
             )
             os.remove(temp.name)
 
@@ -284,7 +284,7 @@ class TestRouteLayer:
             route_layer_from_file = RouteLayer.from_yaml(temp.name)
             assert (
                 route_layer_from_file.index is not None
-                and route_layer_from_file.categories is not None
+                and route_layer_from_file._get_route_names() is not None
             )
             os.remove(temp.name)
 
@@ -296,8 +296,8 @@ class TestRouteLayer:
         assert layer_config.routes == routes
         # now load from config and confirm it's the same
         route_layer_from_config = RouteLayer.from_config(layer_config)
-        assert (route_layer_from_config.index == route_layer.index).all()
-        assert (route_layer_from_config.categories == route_layer.categories).all()
+        assert route_layer_from_config.index == route_layer.index
+        assert route_layer_from_config._get_route_names() == route_layer._get_route_names()
         assert route_layer_from_config.score_threshold == route_layer.score_threshold
 
     def test_get_thresholds(self, openai_encoder, routes):

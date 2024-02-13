@@ -5,12 +5,16 @@ from semantic_router.index.base import BaseIndex
 
 
 class LocalIndex(BaseIndex):
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        index: Optional[np.ndarray] = None,
+        routes: Optional[List[str]] = None,
+        utterances: Optional[List[str]] = None,
+    ):
+        super().__init__(
+            index=index, routes=routes, utterances=utterances
+        )
         self.type = "local"
-        self.index: Optional[np.ndarray] = None
-        self.routes: Optional[np.ndarray] = None
-        self.utterances: Optional[np.ndarray] = None
 
     class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
         arbitrary_types_allowed = True
@@ -30,30 +34,16 @@ class LocalIndex(BaseIndex):
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
-    def _get_indices_for_route(self, route_name: str):
-        """Gets an array of indices for a specific route."""
-        if self.routes is None:
-            raise ValueError("Routes are not populated.")
-        idx = [i for i, route in enumerate(self.routes) if route == route_name]
-        return idx
+    def get_routes(self) -> List[Tuple]:
+        """
+        Gets a list of route and utterance objects currently stored in the index.
 
-    def delete(self, route_name: str):
+        Returns:
+            List[Tuple]: A list of (route_name, utterance) objects.
         """
-        Delete all records of a specific route from the index.
-        """
-        if (
-            self.index is not None
-            and self.routes is not None
-            and self.utterances is not None
-        ):
-            delete_idx = self._get_indices_for_route(route_name=route_name)
-            self.index = np.delete(self.index, delete_idx, axis=0)
-            self.routes = np.delete(self.routes, delete_idx, axis=0)
-            self.utterances = np.delete(self.utterances, delete_idx, axis=0)
-        else:
-            raise ValueError(
-                "Attempted to delete route records but either indx, routes or utterances is None."
-            )
+        if self.route_names is None or self.utterances is None:
+            raise ValueError("No routes have been added to the index.")
+        return list(zip(self.route_names, self.utterances))
 
     def describe(self) -> dict:
         return {
@@ -74,9 +64,40 @@ class LocalIndex(BaseIndex):
         # get routes from index values
         route_names = self.routes[idx].copy()
         return scores, route_names
+    
+    def delete(self, route_name: str):
+        """
+        Delete all records of a specific route from the index.
+        """
+        if (
+            self.index is not None
+            and self.routes is not None
+            and self.utterances is not None
+        ):
+            delete_idx = self._get_indices_for_route(route_name=route_name)
+            self.index = np.delete(self.index, delete_idx, axis=0)
+            self.routes = np.delete(self.routes, delete_idx, axis=0)
+            self.utterances = np.delete(self.utterances, delete_idx, axis=0)
+        else:
+            raise ValueError(
+                "Attempted to delete route records but either index, routes or utterances is None."
+            )
 
     def delete_index(self):
         """
         Deletes the index, effectively clearing it and setting it to None.
         """
         self.index = None
+
+    def _get_indices_for_route(self, route_name: str):
+        """Gets an array of indices for a specific route."""
+        if self.routes is None:
+            raise ValueError("Routes are not populated.")
+        idx = [i for i, route in enumerate(self.routes) if route == route_name]
+        return idx
+    
+    def __len__(self):
+        if self.index is not None:
+            return self.index.shape[0]
+        else:
+            return 0

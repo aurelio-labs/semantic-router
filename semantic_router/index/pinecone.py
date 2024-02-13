@@ -124,16 +124,71 @@ class PineconeIndex(BaseIndex):
         else:
             raise ValueError("Index is None could not upsert.")
 
-    def _get_route_vecs(self, route_name: str):
+    def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
-        res = requests.get(
-            f"https://{self.host}/vectors/list?prefix={clean_route}#",
-            headers={"Api-Key": os.environ["PINECONE_API_KEY"]},
-        )
-        return [vec["id"] for vec in res.json()["vectors"]]
+        ids, _ = self._get_all(prefix=f"{clean_route}#")
+        return ids
+    
+    def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
+        """
+        Retrieves all vector IDs from the Pinecone index using pagination.
+        """
+        all_vector_ids = []
+        next_page_token = None
+
+        if prefix:
+            prefix_str = f"?prefix={prefix}"
+        else:
+            prefix_str = ""
+
+        # Construct the request URL for listing vectors. Adjust parameters as needed.
+        list_url = f"https://{self.host}/vectors/list{prefix_str}"
+        params = {}
+        headers = {"Api-Key": os.getenv("PINECONE_API_KEY")}
+        metadata = []
+
+        while True:
+            if next_page_token:
+                params["paginationToken"] = next_page_token
+
+            # Make the request to list vectors. Adjust headers and parameters as needed.
+            response = requests.get(list_url, params=params, headers=headers)
+            response_data = response.json()
+            print(response_data)
+
+            # Extract vector IDs from the response and add them to the list
+            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            all_vector_ids.extend(vector_ids)
+
+            # if we need metadata, we fetch it
+            if include_metadata:
+                res_meta = self.index.fetch(ids=vector_ids)
+                # extract metadata only
+                metadata.extend(
+                    [x["metadata"] for x in res_meta["vectors"].values()]
+                )
+
+            # Check if there's a next page token; if not, break the loop
+            next_page_token = response_data.get("pagination", {}).get("next")
+            if not next_page_token:
+                break
+
+        return all_vector_ids, metadata
+    
+    def get_routes(self) -> List[Tuple]:
+        """
+        Gets a list of route and utterance objects currently stored in the index.
+
+        Returns:
+            List[Tuple]: A list of (route_name, utterance) objects.
+        """
+        # Get all records
+        _, metadata = self._get_all(include_metadata=True)
+        route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
+        return route_tuples
 
     def delete(self, route_name: str):
-        route_vec_ids = self._get_route_vecs(route_name=route_name)
+        route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
             self.index.delete(ids=route_vec_ids)
         else:

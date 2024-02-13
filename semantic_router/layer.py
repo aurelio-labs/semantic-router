@@ -161,7 +161,7 @@ class RouteLayer:
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
-        index: Optional[BaseIndex] = LocalIndex(),  # type: ignore
+        index: Optional[BaseIndex] = None,  # type: ignore
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -280,6 +280,7 @@ class RouteLayer:
             routes=[route.name] * len(route.utterances),
             utterances=route.utterances,
         )
+        self.routes.append(route)
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -300,6 +301,25 @@ class RouteLayer:
         else:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
+
+    def _refresh_routes(self):
+        """Pulls out the latest routes from the index.
+        """
+        raise NotImplementedError("This method has not yet been implemented.")
+        route_mapping = {route.name: route for route in self.routes}
+        index_routes = self.index.get_routes()
+        new_routes_names = []
+        new_routes = []
+        for route_name, utterance in index_routes:
+            if route_name in route_mapping:
+                if route_name not in new_routes_names:
+                    existing_route = route_mapping[route_name]
+                    new_routes.append(existing_route)
+
+                new_routes.append(Route(name=route_name, utterances=[utterance]))
+            route = route_mapping[route_name]
+            self.routes.append(route)
+
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
@@ -438,6 +458,9 @@ class RouteLayer:
                 correct += 1
         accuracy = correct / len(Xq)
         return accuracy
+    
+    def _get_route_names(self) -> List[str]:
+        return [route.name for route in self.routes]
 
 
 def threshold_random_search(
