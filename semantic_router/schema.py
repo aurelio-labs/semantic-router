@@ -81,8 +81,3 @@ class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
-
-
-class RouteEmbeddings(NamedTuple):
-    route: Route
-    embeddings: List[List[float]]

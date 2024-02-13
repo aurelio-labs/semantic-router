@@ -2,29 +2,26 @@ import numpy as np
 from typing import List, Tuple, Optional
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.index.base import BaseIndex
-from semantic_router.route import Route
-from semantic_router.schema import RouteEmbeddings
+from semantic_router.encoders import BaseEncoder
 
 class LocalIndex(BaseIndex):
-    def __init__(self):
+    def __init__(self, encoder: BaseEncoder):
         super().__init__()
         self.type = "local"
         # Initialize as None to indicate no data has been added yet
         self.index: Optional[np.ndarray] = None
-        self.routes: List[Route] = []
         self.route_names: List[str] = []
         self.utterances: List[str] = []
+        self.encoder: BaseEncoder = encoder
 
-    def add(self, route_embeddings: List[RouteEmbeddings]):
-        for re in route_embeddings:
-            embeds = np.array(re.embeddings)
-            if self.index is None:
-                self.index = embeds
-            else:
-                self.index = np.concatenate([self.index, embeds])
-            self.routes.append(re.route)
-            self.route_names.extend([re.route.name] * len(re.route.utterances))
-            self.utterances.extend(re.route.utterances)
+    def add(self, route_names: List[str], utterances: List[str]):
+        embeds = np.array(self.encoder(utterances))
+        if self.index is None:
+            self.index = embeds
+        else:
+            self.index = np.concatenate([self.index, embeds])
+        self.route_names.extend(route_names)
+        self.utterances.extend(utterances)
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route."""
@@ -33,16 +30,16 @@ class LocalIndex(BaseIndex):
         idx = [i for i, _route_name in enumerate(self.route_names) if _route_name == route_name]
         return idx
     
-    def get_routes(self) -> List[Route]:
+    def get_routes(self) -> List[Tuple]:
         """
-        Gets a list of Route objects currently stored in the index.
+        Gets a list of route and utterance objects currently stored in the index.
 
         Returns:
-            List[Route]: A list of Route objects.
+            List[Tuple]: A list of (route_name, utterance) objects.
         """
-        if self.routes is None:
+        if self.route_names is None or self.utterances is None:
             raise ValueError("No routes have been added to the index.")
-        return self.routes
+        return list(zip(self.route_names, self.utterances))
 
     def delete(self, route_name: str):
         """

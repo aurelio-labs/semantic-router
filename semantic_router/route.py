@@ -41,6 +41,7 @@ def is_valid(route_config: str) -> bool:
 class Route(BaseModel):
     name: str
     utterances: List[str]
+    embeddings: Optional[List[List[float]]] = None
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None

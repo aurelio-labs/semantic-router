@@ -12,9 +12,8 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-from semantic_router.index.base import BaseIndex
-from semantic_router.index.local import LocalIndex
-from semantic_router.schema import RouteEmbeddings
+from semantic_router.index import BaseIndex, LocalIndex
+
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
@@ -143,7 +142,7 @@ class LayerConfig:
         logger.error(f"Route `{name}` not found")
         return None
 
-    def remove(self, name: str):
+    def delete(self, name: str):
         if name not in [route.name for route in self.routes]:
             logger.error(f"Route `{name}` not found")
         else:
@@ -174,19 +173,20 @@ class RouteLayer:
         else:
             self.encoder = encoder
         self.llm = llm
-        self.routes: list[Route] = routes if routes is not None else []
+        routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
         # set route score thresholds if not already set
-        for route in self.routes:
+        for route in routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
-        if len(self.routes) > 0:
+        if len(routes) > 0:
             # initialize index now
-            self._add_routes(routes=self.routes)
+            self._add_routes(routes=routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
-        matching_routes = [route for route in self.routes if route.name == top_class]
+        routes = self.get_routes()
+        matching_routes = [route for route in routes if route.name == top_class]
         if not matching_routes:
             logger.error(
                 f"No route found with name {top_class}. Check to see if any Routes have been defined."
@@ -243,10 +243,11 @@ class RouteLayer:
             return RouteChoice()
 
     def __str__(self):
+        routes = self.get_routes()
         return (
             f"RouteLayer(encoder={self.encoder}, "
             f"score_threshold={self.score_threshold}, "
-            f"routes={self.routes})"
+            f"routes={routes})"
         )
 
     @classmethod
@@ -268,18 +269,15 @@ class RouteLayer:
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
-        embeds = self.encoder(route.utterances)
+        # add embeddings to route
+        route.embeddings = self.encoder(route.utterances)
         # If route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
-        route_embeddings = RouteEmbeddings(route=route, embeddings=embeds)
-        self.index.add(route_embeddings=[route_embeddings])
+        self.index.add(routes=[route])
 
     def get_routes(self) -> List[Route]:
         return self.index.get_routes()
-
-    def list_route_names(self) -> List[str]:
-        return [route.name for route in self.routes]
 
     def update(self, route_name: str, utterances: List[str]):
         raise NotImplementedError("This method has not yet been implemented.")
@@ -290,21 +288,20 @@ class RouteLayer:
         :param route_name: the name of the route to be deleted
         :type str:
         """
-        if route_name not in [route.name for route in self.routes]:
+        routes = self.get_routes()
+        if route_name not in [route.name for route in routes]:
             err_msg = f"Route `{route_name}` not found"
             logger.error(err_msg)
             raise ValueError(err_msg)
         else:
-            self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
 
     def _add_routes(self, routes: List[Route]):
-        route_embeddings = []
         for route in routes:
             embeddings = self.encoder(route.utterances)
-            route_embeddings.append(RouteEmbeddings(route, embeddings))
+            route.embeddings = embeddings
 
-        self.index.add(route_embeddings=route_embeddings)
+        self.index.add(routes=routes)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""

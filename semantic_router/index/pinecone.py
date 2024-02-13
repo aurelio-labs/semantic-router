@@ -7,8 +7,7 @@ from typing import Any, List, Tuple, Optional, Union
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
 import numpy as np
-from semantic_router.route import Route
-from semantic_router.schema import RouteEmbeddings
+
 
 def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
@@ -109,24 +108,20 @@ class PineconeIndex(BaseIndex):
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
         
-    def add(self, route_embeddings: List[RouteEmbeddings]):
+    def add(self, route_names: List[str], utterances: List[str]):
+        embeds = np.array(self.encoder(utterances))
         if self.index is None:
-            self.dimensions = self.dimensions or len(route_embeddings[0].embeddings[0])
+            self.dimensions = self.dimensions or embeds.shape[0]
             self.index = self._init_index(force_create=True)
         
         vectors_to_upsert = []
-        for re in route_embeddings:
-            route = re.route
-            for vector, utterance in zip(re.embeddings, route.utterances):
-                clean_route_name_str = clean_route_name(route.name)
-                utterance_id = hashlib.md5(utterance.encode()).hexdigest()
-                record_id = f"{clean_route_name_str}#{utterance_id}"
-                record = {
-                    "id": record_id,
-                    "values": vector,
-                    "metadata": {"sr_route": route.name, "sr_utterance": utterance},
-                }
-                vectors_to_upsert.append(record)
+        for route_name, utterance, embed in zip(route_names, utterances, embeds):
+            record = PineconeRecord(
+                values=embed,
+                route_name=route_name,
+                utterance=utterance,
+            )
+            vectors_to_upsert.append(record.to_dict())
 
         if self.index is not None:
             self.index.upsert(vectors=vectors_to_upsert)
@@ -136,11 +131,8 @@ class PineconeIndex(BaseIndex):
 
     def _get_route_vecs(self, route_name: str):
         clean_route_name_str = clean_route_name(route_name)
-        res = requests.get(
-            f"https://{self.host}/vectors/list?prefix={clean_route_name_str}#",
-            headers={"Api-Key": os.environ["PINECONE_API_KEY"]},
-        )
-        return [vec["id"] for vec in res.json()["vectors"]]
+        ids = self._get_all_ids(prefix=f"{clean_route_name_str}#")
+        return ids
 
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_vecs(route_name=route_name)
@@ -176,23 +168,31 @@ class PineconeIndex(BaseIndex):
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
     
-    def get_all_vector_ids(self) -> List[str]:
+    def _get_all_ids(self, prefix: Optional[str] = None) -> List[str]:
         """
         Retrieves all vector IDs from the Pinecone index using pagination.
         """
         all_vector_ids = []
         next_page_token = None
 
+        if prefix:
+            prefix_str = f"?prefix={prefix}"
+        else:
+            prefix_str = ""
+
+        # Construct the request URL for listing vectors. Adjust parameters as needed.
+        list_url = f"https://{self.host}/vectors/list{prefix_str}"
+        params = {}
+        headers = {"Api-Key": os.getenv("PINECONE_API_KEY")}
+
         while True:
-            # Construct the request URL for listing vectors. Adjust parameters as needed.
-            list_url = f"https://{self.host}/vectors/list"
-            params = {}
             if next_page_token:
                 params["paginationToken"] = next_page_token
 
             # Make the request to list vectors. Adjust headers and parameters as needed.
-            response = requests.get(list_url, params=params, headers={"Api-Key": os.getenv("PINECONE_API_KEY")})
+            response = requests.get(list_url, params=params, headers=headers)
             response_data = response.json()
+            print(response_data)
 
             # Extract vector IDs from the response and add them to the list
             vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
@@ -205,26 +205,18 @@ class PineconeIndex(BaseIndex):
 
         return all_vector_ids
     
-    def get_routes(self) -> List[Route]:
+    def get_routes(self) -> List[Tuple]:
         """
-        Gets a list of Route objects representing all data currently stored in the index.
-        Directly creates Route objects from unique route names and adds them to the routes list.
+        Gets a list of route and utterance objects currently stored in the index.
 
         Returns:
-            List[Route]: A list of Route objects.
+            List[Tuple]: A list of (route_name, utterance) objects.
         """
 
         # Get all vector ids.
-        all_vector_ids = self.get_all_vector_ids()
-        # Extract unique route names from the vector IDs.
-        unique_route_names = set(vector_id.split("#")[0] for vector_id in all_vector_ids)
+        all_vector_ids = self._get_all_ids()
         # Directly create Route objects and add them to the routes list
-        routes = []
-        for route_name in unique_route_names:
-            route_vec_ids = self._get_route_vecs(route_name=route_name)
-            route = Route(name=route_name, utterances=route_vec_ids)
-            routes.append(route)
-        return routes
+        pass
 
 
     def delete_index(self):

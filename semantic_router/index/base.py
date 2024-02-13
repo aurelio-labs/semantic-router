@@ -1,8 +1,6 @@
 from pydantic.v1 import BaseModel
 from typing import Any, List, Tuple, Optional, Union
 import numpy as np
-from semantic_router.route import Route
-from semantic_router.schema import RouteEmbeddings 
 
 class BaseIndex(BaseModel):
     """
@@ -19,7 +17,7 @@ class BaseIndex(BaseModel):
     dimensions: Union[int, None] = None
     type: str = "base"
 
-    def add(self, route_embeddings: List[RouteEmbeddings]):
+    def add(self, route_names: List[str], utterances: List[str]):
         """
         Add embeddings to the index.
         This method should be implemented by subclasses.
@@ -54,7 +52,7 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
     
-    def get_routes(self) -> List[Route]:
+    def get_routes(self) -> List[Tuple]:
         """
         Returns a list of all routes stored in the index.
         This method should be implemented by subclasses.

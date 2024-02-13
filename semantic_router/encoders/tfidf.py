@@ -7,7 +7,6 @@ from numpy import ndarray
 from numpy.linalg import norm
 
 from semantic_router.encoders import BaseEncoder
-from semantic_router.route import Route
 
 
 class TfidfEncoder(BaseEncoder):
@@ -31,7 +30,7 @@ class TfidfEncoder(BaseEncoder):
         tfidf = tf * self.idf
         return tfidf.tolist()
 
-    def fit(self, routes: list[Route]):
+    def fit(self, routes: list):
         docs = []
         for route in routes:
             for doc in route.utterances:
