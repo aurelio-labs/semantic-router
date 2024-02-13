@@ -98,7 +98,7 @@ class LayerConfig:
             routes = []
             for route_data in layer["routes"]:
                 # Handle the 'llm' field specially if it exists
-                if "llm" in route_data:
+                if "llm" in route_data and route_data["llm"] is not None:
                     llm_data = route_data.pop(
                         "llm"
                     )  # Remove 'llm' from route_data and handle it separately
