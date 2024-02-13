@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, NamedTuple
+from semantic_router.route import Route
 
 from pydantic.v1 import BaseModel
 from pydantic.v1.dataclasses import dataclass
@@ -80,3 +81,8 @@ class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
+
+
+class RouteEmbeddings(NamedTuple):
+    route: Route
+    embeddings: List[List[float]]

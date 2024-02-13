@@ -14,7 +14,7 @@ from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
-
+from semantic_router.schema import RouteEmbeddings
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
@@ -268,17 +268,12 @@ class RouteLayer:
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
-        # Create embeddings
         embeds = self.encoder(route.utterances)
         # If route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
-
-        # Add routes to the index, now passing the Route object directly
-        self.index.add(
-            embeddings=embeds,
-            route=route
-        )
+        route_embeddings = RouteEmbeddings(route=route, embeddings=embeds)
+        self.index.add(route_embeddings=[route_embeddings])
 
     def get_routes(self) -> List[Route]:
         return self.index.get_routes()
@@ -304,19 +299,12 @@ class RouteLayer:
             self.index.delete(route_name=route_name)
 
     def _add_routes(self, routes: List[Route]):
-        # create embeddings for all routes
-        all_utterances = [
-            utterance for route in routes for utterance in route.utterances
-        ]
-        embedded_utterances = self.encoder(all_utterances)
-        # create route array
-        route_names = [route.name for route in routes for _ in route.utterances]
-        # add everything to the index
-        self.index.add(
-            embeddings=embedded_utterances,
-            routes=route_names,
-            utterances=all_utterances,
-        )
+        route_embeddings = []
+        for route in routes:
+            embeddings = self.encoder(route.utterances)
+            route_embeddings.append(RouteEmbeddings(route, embeddings))
+
+        self.index.add(route_embeddings=route_embeddings)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""

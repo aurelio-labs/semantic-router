@@ -8,7 +8,7 @@ from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
 import numpy as np
 from semantic_router.route import Route
-
+from semantic_router.schema import RouteEmbeddings
 
 def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
@@ -109,14 +109,25 @@ class PineconeIndex(BaseIndex):
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
         
-    def add(self, embeddings: List[List[float]], route: Route):
+    def add(self, route_embeddings: List[RouteEmbeddings]):
         if self.index is None:
-            self.dimensions = self.dimensions or len(embeddings[0])
+            self.dimensions = self.dimensions or len(route_embeddings[0].embeddings[0])
             self.index = self._init_index(force_create=True)
+        
         vectors_to_upsert = []
-        for vector, utterance in zip(embeddings, route.utterances):
-            record = PineconeRecord(values=vector, route_name=route.name, utterance=utterance)  # Use route.name
-            vectors_to_upsert.append(record.to_dict())
+        for re in route_embeddings:
+            route = re.route
+            for vector, utterance in zip(re.embeddings, route.utterances):
+                clean_route_name_str = clean_route_name(route.name)
+                utterance_id = hashlib.md5(utterance.encode()).hexdigest()
+                record_id = f"{clean_route_name_str}#{utterance_id}"
+                record = {
+                    "id": record_id,
+                    "values": vector,
+                    "metadata": {"sr_route": route.name, "sr_utterance": utterance},
+                }
+                vectors_to_upsert.append(record)
+
         if self.index is not None:
             self.index.upsert(vectors=vectors_to_upsert)
         else:

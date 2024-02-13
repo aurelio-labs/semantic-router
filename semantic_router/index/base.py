@@ -2,6 +2,7 @@ from pydantic.v1 import BaseModel
 from typing import Any, List, Tuple, Optional, Union
 import numpy as np
 from semantic_router.route import Route
+from semantic_router.schema import RouteEmbeddings 
 
 class BaseIndex(BaseModel):
     """
@@ -18,9 +19,7 @@ class BaseIndex(BaseModel):
     dimensions: Union[int, None] = None
     type: str = "base"
 
-    def add(
-        self, embeddings: List[List[float]], routes: Route
-    ):
+    def add(self, route_embeddings: List[RouteEmbeddings]):
         """
         Add embeddings to the index.
         This method should be implemented by subclasses.

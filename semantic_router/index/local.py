@@ -3,35 +3,28 @@ from typing import List, Tuple, Optional
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.index.base import BaseIndex
 from semantic_router.route import Route
+from semantic_router.schema import RouteEmbeddings
 
 class LocalIndex(BaseIndex):
     def __init__(self):
         super().__init__()
         self.type = "local"
+        # Initialize as None to indicate no data has been added yet
         self.index: Optional[np.ndarray] = None
-        self.routes: Optional[List[Route]] = None
-        self.route_names: Optional[List[str]] = None
-        self.utterances: Optional[np.ndarray] = None
+        self.routes: List[Route] = []
+        self.route_names: List[str] = []
+        self.utterances: List[str] = []
 
-    class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
-        arbitrary_types_allowed = True
-
-    def add(
-        self, embeddings: List[List[float]], route: Route
-    ):
-        embeds = np.array(embeddings)  # type: ignore
-        route_names_arr = np.array([route.name] * len(route.utterances))
-        utterances_arr = np.array(route.utterances)
-        if self.index is None:
-            self.index = embeds  # type: ignore
-            self.routes = [route]
-            self.route_names = route_names_arr
-            self.utterances = utterances_arr
-        else:
-            self.index = np.concatenate([self.index, embeds])
-            self.routes.append(route)
-            self.route_names = np.concatenate([self.route_names, route_names_arr])
-            self.utterances = np.concatenate([self.utterances, utterances_arr])
+    def add(self, route_embeddings: List[RouteEmbeddings]):
+        for re in route_embeddings:
+            embeds = np.array(re.embeddings)
+            if self.index is None:
+                self.index = embeds
+            else:
+                self.index = np.concatenate([self.index, embeds])
+            self.routes.append(re.route)
+            self.route_names.extend([re.route.name] * len(re.route.utterances))
+            self.utterances.extend(re.route.utterances)
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route."""
