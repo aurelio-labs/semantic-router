@@ -23,9 +23,9 @@ class PineconeRecord(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         # generate ID based on route name and utterances to prevent duplicates
-        clean_route_name_str = clean_route_name(self.route_name)
+        clean_route_name = clean_route_name(self.route_name)
         utterance_id = hashlib.md5(self.utterance.encode()).hexdigest()
-        self.id = f"{clean_route_name_str}#{utterance_id}"
+        self.id = f"{clean_route_name}#{utterance_id}"
 
     def to_dict(self):
         return {
@@ -135,9 +135,9 @@ class PineconeIndex(BaseIndex):
 
 
     def _get_route_vecs(self, route_name: str):
-        clean_route_name_str = clean_route_name(route_name)
+        clean_route = clean_route_name(route_name)
         res = requests.get(
-            f"https://{self.host}/vectors/list?prefix={clean_route_name_str}#",
+            f"https://{self.host}/vectors/list?prefix={clean_route}#",
             headers={"Api-Key": os.environ["PINECONE_API_KEY"]},
         )
         return [vec["id"] for vec in res.json()["vectors"]]
