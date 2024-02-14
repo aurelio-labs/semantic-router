@@ -1,12 +1,14 @@
 import os
 import tempfile
-from unittest.mock import mock_open, patch
+from unittest.mock import mock_open, patch, MagicMock, create_autospec
 
 import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.route import Route
+from semantic_router.llms.base import BaseLLM
+from semantic_router.schema import Message
 
 
 def mock_encoder_call(utterances):
@@ -334,18 +336,6 @@ class TestRouteLayer:
         assert len(layer_config.routes) == 2
         assert layer_config.routes[0].name == "politics"
 
-    # def test_from_file_with_llm(openai_encoder, tmp_path):
-    #     # Create a temporary JSON file with LLM information in one of the routes
-    #     config_with_llm = layer_json_with_llm()  # You need to define this function to include LLM data
-    #     config_path = tmp_path / "config_with_llm.json"
-    #     config_path.write_text(config_with_llm)
-
-    #     # Load the LayerConfig from the temporary file
-    #     layer_config = LayerConfig.from_file(str(config_path))
-
-    #     # Assertions to verify LLM handling
-    #     assert isinstance(layer_config.routes[0].llm, BaseLLM)  # Or the specific LLM class you expect
-
     def test_from_file_invalid_path(self):
         with pytest.raises(FileNotFoundError) as excinfo:
             LayerConfig.from_file("nonexistent_path.json")
@@ -361,6 +351,44 @@ class TestRouteLayer:
         with pytest.raises(ValueError) as excinfo:
             LayerConfig.from_file(str(config_path))
         assert "Unsupported file type" in str(excinfo.value)
+
+    def test_from_file_with_llm(self, tmp_path):
+        llm_config_json = """
+        {
+            "encoder_type": "cohere",
+            "encoder_name": "embed-english-v3.0",
+            "routes": [
+                {
+                    "name": "llm_route",
+                    "utterances": ["tell me a joke", "say something funny"],
+                    "llm": {
+                        "module": "semantic_router.llms.base",
+                        "class": "BaseLLM",
+                        "model": "fake-model-v1"
+                    }
+                }
+            ]
+        }"""
+
+        # Instead of mocking, directly instantiate BaseLLM with a name
+        fake_llm_instance = BaseLLM(name="fake-model-v1")
+
+        config_path = tmp_path / "config_with_llm.json"
+        with open(config_path, "w") as file:
+            file.write(llm_config_json)
+
+        # Load the LayerConfig from the temporary file
+        layer_config = LayerConfig.from_file(str(config_path))
+
+        # Assertions to verify the behavior
+        # Since we're not mocking importlib.import_module, we skip the assertion
+        # that checks if the module was imported. Instead, we focus on the result.
+        assert isinstance(
+            layer_config.routes[0].llm, BaseLLM
+        ), "LLM should be instantiated and associated with the route based on the config"
+        assert (
+            layer_config.routes[0].llm.name == "fake-model-v1"
+        ), "LLM instance should have the 'name' attribute set correctly"
 
     def test_config(self, openai_encoder, routes):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
