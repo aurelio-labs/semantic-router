@@ -1,6 +1,6 @@
 import os
 import tempfile
-from unittest.mock import mock_open, patch, MagicMock, create_autospec
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -8,7 +8,6 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.route import Route
 from semantic_router.llms.base import BaseLLM
-from semantic_router.schema import Message
 
 
 def mock_encoder_call(utterances):
@@ -369,9 +368,6 @@ class TestRouteLayer:
                 }
             ]
         }"""
-
-        # Instead of mocking, directly instantiate BaseLLM with a name
-        fake_llm_instance = BaseLLM(name="fake-model-v1")
 
         config_path = tmp_path / "config_with_llm.json"
         with open(config_path, "w") as file:
