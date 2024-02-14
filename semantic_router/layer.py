@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
+import importlib
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.llms import BaseLLM, OpenAILLM
