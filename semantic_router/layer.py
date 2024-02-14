@@ -8,11 +8,12 @@ import yaml
 from tqdm.auto import tqdm
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
-from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
+from semantic_router.index.base import BaseIndex
+from semantic_router.index.local import LocalIndex
 
 
 def is_valid(layer_config: str) -> bool:
@@ -151,20 +152,19 @@ class LayerConfig:
 
 
 class RouteLayer:
-    index: Optional[np.ndarray] = None
-    categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
+    index: BaseIndex
 
     def __init__(
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
+        index: Optional[BaseIndex] = None,  # type: ignore
     ):
-        logger.info("Initializing RouteLayer")
-        self.index = None
-        self.categories = None
+        logger.info("local")
+        self.index: BaseIndex = index if index is not None else LocalIndex()
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -206,7 +206,7 @@ class RouteLayer:
             vector_arr = self._encode(text=text)
         else:
             vector_arr = np.array(vector)
-        # get relevant utterances
+        # get relevant results (scores and routes)
         results = self._retrieve(xq=vector_arr)
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
@@ -274,64 +274,64 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # create route array
-        if self.categories is None:
-            self.categories = np.array([route.name] * len(embeds))
-        else:
-            str_arr = np.array([route.name] * len(embeds))
-            self.categories = np.concatenate([self.categories, str_arr])
-        # create utterance array (the index)
-        if self.index is None:
-            self.index = np.array(embeds)
-        else:
-            embed_arr = np.array(embeds)
-            self.index = np.concatenate([self.index, embed_arr])
-        # add route to routes list
+        # add routes to the index
+        self.index.add(
+            embeddings=embeds,
+            routes=[route.name] * len(route.utterances),
+            utterances=route.utterances,
+        )
         self.routes.append(route)
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
-    def remove(self, name: str):
-        if name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{name}` not found"
+    def update(self, route_name: str, utterances: List[str]):
+        raise NotImplementedError("This method has not yet been implemented.")
+
+    def delete(self, route_name: str):
+        """Deletes a route given a specific route name.
+
+        :param route_name: the name of the route to be deleted
+        :type str:
+        """
+        if route_name not in [route.name for route in self.routes]:
+            err_msg = f"Route `{route_name}` not found"
             logger.error(err_msg)
             raise ValueError(err_msg)
         else:
-            self.routes = [route for route in self.routes if route.name != name]
-            logger.info(f"Removed route `{name}`")
-            # Also remove from index and categories
-            if self.categories is not None and self.index is not None:
-                indices_to_remove = [
-                    i
-                    for i, route_name in enumerate(self.categories)
-                    if route_name == name
-                ]
-                self.index = np.delete(self.index, indices_to_remove, axis=0)
-                self.categories = np.delete(self.categories, indices_to_remove, axis=0)
+            self.routes = [route for route in self.routes if route.name != route_name]
+            self.index.delete(route_name=route_name)
+
+    def _refresh_routes(self):
+        """Pulls out the latest routes from the index."""
+        raise NotImplementedError("This method has not yet been implemented.")
+        route_mapping = {route.name: route for route in self.routes}
+        index_routes = self.index.get_routes()
+        new_routes_names = []
+        new_routes = []
+        for route_name, utterance in index_routes:
+            if route_name in route_mapping:
+                if route_name not in new_routes_names:
+                    existing_route = route_mapping[route_name]
+                    new_routes.append(existing_route)
+
+                new_routes.append(Route(name=route_name, utterances=[utterance]))
+            route = route_mapping[route_name]
+            self.routes.append(route)
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterance = self.encoder(all_utterances)
-
+        embedded_utterances = self.encoder(all_utterances)
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
-        route_array = np.array(route_names)
-        self.categories = (
-            np.concatenate([self.categories, route_array])
-            if self.categories is not None
-            else route_array
-        )
-
-        # create utterance array (the index)
-        embed_utterance_arr = np.array(embedded_utterance)
-        self.index = (
-            np.concatenate([self.index, embed_utterance_arr])
-            if self.index is not None
-            else embed_utterance_arr
+        # add everything to the index
+        self.index.add(
+            embeddings=embedded_utterances,
+            routes=route_names,
+            utterances=all_utterances,
         )
 
     def _encode(self, text: str) -> Any:
@@ -343,16 +343,9 @@ class RouteLayer:
 
     def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        if self.index is not None:
-            # calculate similarity matrix
-            sim = similarity_matrix(xq, self.index)
-            scores, idx = top_scores(sim, top_k)
-            # get the utterance categories (route names)
-            routes = self.categories[idx] if self.categories is not None else []
-            return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-        else:
-            logger.warning("No index found for route layer.")
-            return []
+        # get scores and routes
+        scores, routes = self.index.query(vector=xq, top_k=top_k)
+        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
@@ -463,6 +456,9 @@ class RouteLayer:
                 correct += 1
         accuracy = correct / len(Xq)
         return accuracy
+
+    def _get_route_names(self) -> List[str]:
+        return [route.name for route in self.routes]
 
 
 def threshold_random_search(
