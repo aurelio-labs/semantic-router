@@ -68,8 +68,18 @@ class Route(BaseModel):
             func_call = None
         return RouteChoice(name=self.name, function_call=func_call)
 
+    # def to_dict(self) -> Dict[str, Any]:
+    #     return self.dict()
+
     def to_dict(self) -> Dict[str, Any]:
-        return self.dict()
+        data = self.dict()
+        if self.llm is not None:
+            data["llm"] = {
+                "module": self.llm.__module__,
+                "class": self.llm.__class__.__name__,
+                "model": self.llm.name,
+            }
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]):

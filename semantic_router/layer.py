@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
+import importlib
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
 from semantic_router.llms import BaseLLM, OpenAILLM
@@ -78,7 +79,6 @@ class LayerConfig:
 
     @classmethod
     def from_file(cls, path: str) -> "LayerConfig":
-        """Load the routes from a file in JSON or YAML format"""
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
@@ -91,16 +91,36 @@ class LayerConfig:
                     "Unsupported file type. Only .json and .yaml are supported"
                 )
 
-            route_config_str = json.dumps(layer)
-            if is_valid(route_config_str):
-                encoder_type = layer["encoder_type"]
-                encoder_name = layer["encoder_name"]
-                routes = [Route.from_dict(route) for route in layer["routes"]]
-                return cls(
-                    encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
-                )
-            else:
+            if not is_valid(json.dumps(layer)):
                 raise Exception("Invalid config JSON or YAML")
+
+            encoder_type = layer["encoder_type"]
+            encoder_name = layer["encoder_name"]
+            routes = []
+            for route_data in layer["routes"]:
+                # Handle the 'llm' field specially if it exists
+                if "llm" in route_data and route_data["llm"] is not None:
+                    llm_data = route_data.pop(
+                        "llm"
+                    )  # Remove 'llm' from route_data and handle it separately
+                    # Use the module path directly from llm_data without modification
+                    llm_module_path = llm_data["module"]
+                    # Dynamically import the module and then the class from that module
+                    llm_module = importlib.import_module(llm_module_path)
+                    llm_class = getattr(llm_module, llm_data["class"])
+                    # Instantiate the LLM class with the provided model name
+                    llm = llm_class(name=llm_data["model"])
+                    route_data[
+                        "llm"
+                    ] = llm  # Reassign the instantiated llm object back to route_data
+
+                # Dynamically create the Route object using the remaining route_data
+                route = Route(**route_data)
+                routes.append(route)
+
+            return cls(
+                encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         return {

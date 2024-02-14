@@ -7,6 +7,7 @@ import pytest
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.route import Route
+from semantic_router.llms.base import BaseLLM
 
 
 def mock_encoder_call(utterances):
@@ -268,30 +269,143 @@ class TestRouteLayer:
         assert route_layer.score_threshold == 0.5
 
     def test_json(self, openai_encoder, routes):
-        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as temp:
+        temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
+        try:
+            temp_path = temp.name  # Save the temporary file's path
+            temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-            route_layer.to_json(temp.name)
-            assert os.path.exists(temp.name)
-            route_layer_from_file = RouteLayer.from_json(temp.name)
+            route_layer.to_json(temp_path)
+            assert os.path.exists(temp_path)
+            route_layer_from_file = RouteLayer.from_json(temp_path)
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
             )
-            os.remove(temp.name)
+        finally:
+            os.remove(temp_path)  # Ensure the file is deleted even if the test fails
 
     def test_yaml(self, openai_encoder, routes):
-        with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as temp:
+        temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
+        try:
+            temp_path = temp.name  # Save the temporary file's path
+            temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-            route_layer.to_yaml(temp.name)
-            assert os.path.exists(temp.name)
-            route_layer_from_file = RouteLayer.from_yaml(temp.name)
+            route_layer.to_yaml(temp_path)
+            assert os.path.exists(temp_path)
+            route_layer_from_file = RouteLayer.from_yaml(temp_path)
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
             )
-            os.remove(temp.name)
+        finally:
+            os.remove(temp_path)  # Ensure the file is deleted even if the test fails
+
+    def test_from_file_json(openai_encoder, tmp_path):
+        # Create a temporary JSON file with layer configuration
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            layer_json()
+        )  # Assuming layer_json() returns a valid JSON string
+
+        # Load the LayerConfig from the temporary file
+        layer_config = LayerConfig.from_file(str(config_path))
+
+        # Assertions to verify the loaded configuration
+        assert layer_config.encoder_type == "cohere"
+        assert layer_config.encoder_name == "embed-english-v3.0"
+        assert len(layer_config.routes) == 2
+        assert layer_config.routes[0].name == "politics"
+
+    def test_from_file_yaml(openai_encoder, tmp_path):
+        # Create a temporary YAML file with layer configuration
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            layer_yaml()
+        )  # Assuming layer_yaml() returns a valid YAML string
+
+        # Load the LayerConfig from the temporary file
+        layer_config = LayerConfig.from_file(str(config_path))
+
+        # Assertions to verify the loaded configuration
+        assert layer_config.encoder_type == "cohere"
+        assert layer_config.encoder_name == "embed-english-v3.0"
+        assert len(layer_config.routes) == 2
+        assert layer_config.routes[0].name == "politics"
+
+    def test_from_file_invalid_path(self):
+        with pytest.raises(FileNotFoundError) as excinfo:
+            LayerConfig.from_file("nonexistent_path.json")
+        assert "[Errno 2] No such file or directory: 'nonexistent_path.json'" in str(
+            excinfo.value
+        )
+
+    def test_from_file_unsupported_type(self, tmp_path):
+        # Create a temporary unsupported file
+        config_path = tmp_path / "config.unsupported"
+        config_path.write_text(layer_json())
+
+        with pytest.raises(ValueError) as excinfo:
+            LayerConfig.from_file(str(config_path))
+        assert "Unsupported file type" in str(excinfo.value)
+
+    def test_from_file_invalid_config(self, tmp_path):
+        # Define an invalid configuration JSON
+        invalid_config_json = """
+        {
+            "encoder_type": "cohere",
+            "encoder_name": "embed-english-v3.0",
+            "routes": "This should be a list, not a string"
+        }"""
+
+        # Write the invalid configuration to a temporary JSON file
+        config_path = tmp_path / "invalid_config.json"
+        with open(config_path, "w") as file:
+            file.write(invalid_config_json)
+
+        # Patch the is_valid function to return False for this test
+        with patch("semantic_router.layer.is_valid", return_value=False):
+            # Attempt to load the LayerConfig from the temporary file
+            # and assert that it raises an exception due to invalid configuration
+            with pytest.raises(Exception) as excinfo:
+                LayerConfig.from_file(str(config_path))
+            assert "Invalid config JSON or YAML" in str(
+                excinfo.value
+            ), "Loading an invalid configuration should raise an exception."
+
+    def test_from_file_with_llm(self, tmp_path):
+        llm_config_json = """
+        {
+            "encoder_type": "cohere",
+            "encoder_name": "embed-english-v3.0",
+            "routes": [
+                {
+                    "name": "llm_route",
+                    "utterances": ["tell me a joke", "say something funny"],
+                    "llm": {
+                        "module": "semantic_router.llms.base",
+                        "class": "BaseLLM",
+                        "model": "fake-model-v1"
+                    }
+                }
+            ]
+        }"""
+
+        config_path = tmp_path / "config_with_llm.json"
+        with open(config_path, "w") as file:
+            file.write(llm_config_json)
+
+        # Load the LayerConfig from the temporary file
+        layer_config = LayerConfig.from_file(str(config_path))
+
+        # Using BaseLLM because trying to create a useable Mock LLM is a nightmare.
+        assert isinstance(
+            layer_config.routes[0].llm, BaseLLM
+        ), "LLM should be instantiated and associated with the route based on the config"
+        assert (
+            layer_config.routes[0].llm.name == "fake-model-v1"
+        ), "LLM instance should have the 'name' attribute set correctly"
 
     def test_config(self, openai_encoder, routes):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
