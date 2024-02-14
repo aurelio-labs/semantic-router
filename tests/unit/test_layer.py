@@ -351,6 +351,30 @@ class TestRouteLayer:
             LayerConfig.from_file(str(config_path))
         assert "Unsupported file type" in str(excinfo.value)
 
+    def test_from_file_invalid_config(self, tmp_path):
+        # Define an invalid configuration JSON
+        invalid_config_json = """
+        {
+            "encoder_type": "cohere",
+            "encoder_name": "embed-english-v3.0",
+            "routes": "This should be a list, not a string"
+        }"""
+
+        # Write the invalid configuration to a temporary JSON file
+        config_path = tmp_path / "invalid_config.json"
+        with open(config_path, "w") as file:
+            file.write(invalid_config_json)
+
+        # Patch the is_valid function to return False for this test
+        with patch("semantic_router.layer.is_valid", return_value=False):
+            # Attempt to load the LayerConfig from the temporary file
+            # and assert that it raises an exception due to invalid configuration
+            with pytest.raises(Exception) as excinfo:
+                LayerConfig.from_file(str(config_path))
+            assert "Invalid config JSON or YAML" in str(
+                excinfo.value
+            ), "Loading an invalid configuration should raise an exception."
+
     def test_from_file_with_llm(self, tmp_path):
         llm_config_json = """
         {
@@ -376,9 +400,7 @@ class TestRouteLayer:
         # Load the LayerConfig from the temporary file
         layer_config = LayerConfig.from_file(str(config_path))
 
-        # Assertions to verify the behavior
-        # Since we're not mocking importlib.import_module, we skip the assertion
-        # that checks if the module was imported. Instead, we focus on the result.
+        # Using BaseLLM because trying to create a useable Mock LLM is a nightmare.
         assert isinstance(
             layer_config.routes[0].llm, BaseLLM
         ), "LLM should be instantiated and associated with the route based on the config"
