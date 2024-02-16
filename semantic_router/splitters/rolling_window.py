@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 from matplotlib import pyplot as plt
 from nltk.tokenize import word_tokenize
+from semantic_router.encoders.base import BaseEncoder
 
 from semantic_router.schema import DocumentSplit
 from semantic_router.splitters.base import BaseSplitter
@@ -35,7 +36,7 @@ class RollingWindowSplitter(BaseSplitter):
 
     def __init__(
         self,
-        encoder,
+        encoder: BaseEncoder,
         score_threshold=0.3,
         window_size=5,
         plot_splits=False,
