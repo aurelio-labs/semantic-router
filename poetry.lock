@@ -3586,10 +3586,10 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [extras]
 fastembed = ["fastembed"]
 hybrid = ["pinecone-text"]
-local = ["llama-cpp-python", "torch", "torchvision", "transformers"]
+local = ["llama-cpp-python", "pillow", "torch", "torchvision", "transformers"]
 pinecone = ["pinecone-client"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "f599bf518d075937db3bf6bc3b7984fe0daab85b1f91fe1ce260080b4b69eba7"
+content-hash = "3a35329d367ec72d3796f6e72262d4f59c8c64fe05ef138ec8579f102b09c754"

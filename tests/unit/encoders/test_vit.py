@@ -3,17 +3,6 @@ import pytest
 from semantic_router.encoders import VitEncoder
 
 
-@pytest.fixture
-def mock_vit_encoder(mocker):
-    mocker.patch("transformers.AutoModel", autospec=True)
-    mocker.patch("transformers.AutoFeatureExtractor", autospec=True)
-
-    encoder = VitEncoder(name="some_model_name")
-    mocker.patch.object(encoder, "_initialize_hf_model")
-
-    return encoder
-
-
 class TestVitEncoder:
     def test_vit_encoder__import_errors_transformers(self, mocker):
         mocker.patch.dict("sys.modules", {"transformers": None})

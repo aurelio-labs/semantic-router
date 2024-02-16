@@ -32,11 +32,12 @@ black = "^23.12.1"
 colorama = "^0.4.6"
 pinecone-client = {version="^3.0.0", optional = true}
 torchvision = { version = "^0.16.2", optional = true}
+pillow = { version= "^10.2.0", optional = true}
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
 fastembed = ["fastembed"]
-local = ["torch", "torchvision", "transformers", "llama-cpp-python"]
+local = ["torch", "torchvision", "transformers", "llama-cpp-python", "pillow"]
 pinecone = ["pinecone-client"]
 
 [tool.poetry.group.dev.dependencies]
