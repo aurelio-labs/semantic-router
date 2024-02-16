@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import random
@@ -6,19 +7,19 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
-import importlib
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
+from semantic_router.index.base import BaseIndex
+from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-from semantic_router.index.base import BaseIndex
-from semantic_router.index.local import LocalIndex
 
 
 def is_valid(layer_config: str) -> bool:
-    """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
+    """Make sure the given string is json format and contains the 3 keys:
+    ["encoder_name", "encoder_type", "routes"]"""
     try:
         output_json = json.loads(layer_config)
         required_keys = ["encoder_name", "encoder_type", "routes"]
@@ -209,7 +210,8 @@ class RouteLayer:
         matching_routes = [route for route in self.routes if route.name == top_class]
         if not matching_routes:
             logger.error(
-                f"No route found with name {top_class}. Check to see if any Routes have been defined."
+                f"No route found with name {top_class}. Check to see if any Routes "
+                "have been defined."
             )
             return None
         return matching_routes[0]

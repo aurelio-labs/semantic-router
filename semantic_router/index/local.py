@@ -1,7 +1,9 @@
+from typing import List, Optional, Tuple
+
 import numpy as np
-from typing import List, Tuple, Optional
-from semantic_router.linear import similarity_matrix, top_scores
+
 from semantic_router.index.base import BaseIndex
+from semantic_router.linear import similarity_matrix, top_scores
 
 
 class LocalIndex(BaseIndex):
@@ -14,7 +16,8 @@ class LocalIndex(BaseIndex):
         super().__init__(index=index, routes=routes, utterances=utterances)
         self.type = "local"
 
-    class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
+    class Config:
+        # Stop pydantic from complaining about Optional[np.ndarray]type hints.
         arbitrary_types_allowed = True
 
     def add(
@@ -78,7 +81,8 @@ class LocalIndex(BaseIndex):
             self.utterances = np.delete(self.utterances, delete_idx, axis=0)
         else:
             raise ValueError(
-                "Attempted to delete route records but either index, routes or utterances is None."
+                "Attempted to delete route records but either index, routes or "
+                "utterances is None."
             )
 
     def delete_index(self):

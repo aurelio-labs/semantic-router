@@ -6,8 +6,8 @@ import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
-from semantic_router.route import Route
 from semantic_router.llms.base import BaseLLM
+from semantic_router.route import Route
 
 
 def mock_encoder_call(utterances):
@@ -399,10 +399,11 @@ class TestRouteLayer:
         # Load the LayerConfig from the temporary file
         layer_config = LayerConfig.from_file(str(config_path))
 
-        # Using BaseLLM because trying to create a useable Mock LLM is a nightmare.
+        # Using BaseLLM because trying to create a usable Mock LLM is a nightmare.
         assert isinstance(
             layer_config.routes[0].llm, BaseLLM
-        ), "LLM should be instantiated and associated with the route based on the config"
+        ), "LLM should be instantiated and associated with the route based on the "
+        "config"
         assert (
             layer_config.routes[0].llm.name == "fake-model-v1"
         ), "LLM instance should have the 'name' attribute set correctly"

@@ -1,6 +1,7 @@
-from pydantic.v1 import BaseModel
-from typing import Any, List, Tuple, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
+
 import numpy as np
+from pydantic.v1 import BaseModel
 
 
 class BaseIndex(BaseModel):
@@ -36,7 +37,8 @@ class BaseIndex(BaseModel):
 
     def describe(self) -> dict:
         """
-        Returns a dictionary with index details such as type, dimensions, and total vector count.
+        Returns a dictionary with index details such as type, dimensions, and total
+        vector count.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
