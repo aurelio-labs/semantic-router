@@ -3479,4 +3479,4 @@ pinecone = ["pinecone-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "23b8995b7eee4df19bb2242d6a81de8557a855053b4346a532efa63be2ea303f"
+content-hash = "2489dc5d7e05f05d822b85b8f6dc063ea1cf7771d07408338741270f50300e9a"
