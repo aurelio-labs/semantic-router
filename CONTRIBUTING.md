@@ -16,7 +16,8 @@ Please follow these guidelines when making a contribution:
         - Running `poetry run ruff . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
         - Confirming the linters pass using `poetry run make lint` again.
         - Running `ruff . --fix`.
-    - Ensure that, for any new code, new [PyTests are written](https://github.com/aurelio-labs/semantic-router/tree/main/tests/unit). If any code is removed, then ensure that corresponding PyTests are also removed. Finally, ensure that all remaining PyTests pass. Codecov checks will inform you if any code is not covered by PyTests upon creating the PR, and when commiting to it.
+    - Ensure that, for any new code, new [PyTests are written](https://github.com/aurelio-labs/semantic-router/tree/main/tests/unit). If any code is removed, then ensure that corresponding PyTests are also removed. Finally, ensure that all remaining PyTests pass using `pytest ./tests` (to avoid integration tests you can run `pytest ./tests/unit`.
+    - Codecov checks will inform you if any code is not covered by PyTests upon creating the PR. You should aim to cover new code with PyTests.
 
 > **Feedback and Discussion:**
 While we encourage you to initiate a draft Pull Request early to get feedback on your implementation, we also highly value discussions and questions. If you're unsure about any aspect of your contribution or need clarification on the project's direction, please don't hesitate to use the [Issues section](https://github.com/aurelio-labs/semantic-router/issues) of our repository. Engaging in discussions or asking questions before starting your work can help ensure that your efforts align well with the project's goals and existing work.
