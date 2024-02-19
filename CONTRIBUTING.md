@@ -11,7 +11,7 @@ Please follow these guidelines when making a contribution:
     - Ensure that the Pull Request title is prepended with a [valid type](https://flank.github.io/flank/pr_titles/). E.g. `feat: My New Feature`.
     - Run linting (and fix any issues that are flagged) by:
         - Navigating to /semantic-router.
-        - Running `poetry run make lint` to few linting issues.
+        - Running `poetry run make lint` to fix linting issues.
         - Running `poetry run black .` to fix `black` linting issues.
         - Running `poetry run ruff . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
         - Confirming the linters pass using `poetry run make lint` again.
