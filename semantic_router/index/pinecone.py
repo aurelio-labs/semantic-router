@@ -1,12 +1,14 @@
-from pydantic.v1 import BaseModel, Field
-import requests
-import time
 import hashlib
 import os
-from typing import Any, Dict, List, Tuple, Optional, Union
+import time
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import requests
+from pydantic.v1 import BaseModel, Field
+
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
-import numpy as np
 
 
 def clean_route_name(route_name: str) -> str:
@@ -156,10 +158,12 @@ class PineconeIndex(BaseIndex):
             # Make the request to list vectors. Adjust headers and parameters as needed.
             response = requests.get(list_url, params=params, headers=headers)
             response_data = response.json()
-            print(response_data)
 
             # Extract vector IDs from the response and add them to the list
             vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            # check that there are vector IDs, otherwise break the loop
+            if not vector_ids:
+                break
             all_vector_ids.extend(vector_ids)
 
             # if we need metadata, we fetch it

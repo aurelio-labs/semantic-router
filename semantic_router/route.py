@@ -46,6 +46,9 @@ class Route(BaseModel):
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
+    class Config:
+        arbitrary_types_allowed = True
+
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
         if self.function_schema:
             if not self.llm:

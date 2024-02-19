@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import random
@@ -6,15 +7,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
-import importlib
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
+from semantic_router.index.base import BaseIndex
+from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-from semantic_router.index.base import BaseIndex
-from semantic_router.index.local import LocalIndex
 
 
 def is_valid(layer_config: str) -> bool:

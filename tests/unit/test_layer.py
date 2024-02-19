@@ -6,8 +6,8 @@ import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
-from semantic_router.route import Route
 from semantic_router.llms.base import BaseLLM
+from semantic_router.route import Route
 
 
 def mock_encoder_call(utterances):
