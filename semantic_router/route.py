@@ -2,6 +2,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from PIL.Image import Image
 from pydantic.v1 import BaseModel
 
 from semantic_router.llms import BaseLLM
@@ -40,11 +41,14 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: List[str]
+    utterances: Union[List[str], List[Image]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
         if self.function_schema:
