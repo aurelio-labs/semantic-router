@@ -22,7 +22,7 @@ Please follow these guidelines when making a contribution:
 > **Feedback and Discussion:**
 While we encourage you to initiate a draft Pull Request early to get feedback on your implementation, we also highly value discussions and questions. If you're unsure about any aspect of your contribution or need clarification on the project's direction, please don't hesitate to use the [Issues section](https://github.com/aurelio-labs/semantic-router/issues) of our repository. Engaging in discussions or asking questions before starting your work can help ensure that your efforts align well with the project's goals and existing work.
 
-## Setting Up a Development Environment
+# Setting Up Your Development Environment
 
 1. Fork on GitHub:
     Go to the [repository's page](https://github.com/aurelio-labs/semantic-router) on GitHub: 
