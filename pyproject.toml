@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.22"
+version = "0.0.23"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -39,7 +39,7 @@ hybrid = ["pinecone-text"]
 fastembed = ["fastembed"]
 local = ["torch", "transformers", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
-vision = ["torchvision", "pillow"]
+vision = ["torch", "torchvision", "transformers", "pillow"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
