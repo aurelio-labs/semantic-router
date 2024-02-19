@@ -7,7 +7,7 @@ Please follow these guidelines when making a contribution:
 2. If no related issue exists yet, please create one and suggest your changes. Checking in with the team first will allow us to determine if the changes are in scope.
 3. If the changes are agreed, then you can go ahead and set up a development environment (see [Setting Up Your Development Environment](#setting-up-your-development-environment) below).
 4. Once you have commits ready to be shared, initiate a draft Pull Request with an initial version of your implementation and request feedback. It's advisable not to wait until the feature is fully completed.
-5. Ensure that the Pull Request adheres to the correct naming conventions: 
+5. Ensure that the Pull Request adheres to the correct naming conventions:wh 
 
 ## Setting Up a Development Environment
 
@@ -36,3 +36,4 @@ Please follow these guidelines when making a contribution:
     # Install via poetry
     poetry install
     ```
+    
