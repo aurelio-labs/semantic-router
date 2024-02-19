@@ -28,9 +28,7 @@ class OpenAIEncoder(BaseEncoder):
             name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
         super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        print(f"api key: {api_key}")
         org_id = openai_org_id or os.getenv("OPENAI_ORGANIZATION")
-        print(f"org id: {org_id}")
         if (api_key is None) and (org_id is None):
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
