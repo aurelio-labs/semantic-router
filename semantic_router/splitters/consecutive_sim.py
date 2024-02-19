@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 
 import numpy as np
 
@@ -22,7 +22,7 @@ class ConsecutiveSimSplitter(BaseSplitter):
         super().__init__(name=name, score_threshold=score_threshold, encoder=encoder)
         encoder.score_threshold = score_threshold
 
-    def __call__(self, docs: List[str]):
+    def __call__(self, docs: List[Any]):
         # Check if there's only a single document
         if len(docs) == 1:
             raise ValueError(

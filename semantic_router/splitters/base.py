@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 
 from pydantic.v1 import BaseModel
 
@@ -10,5 +10,5 @@ class BaseSplitter(BaseModel):
     encoder: BaseEncoder
     score_threshold: float
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(self, docs: List[Any]) -> List[List[float]]:
         raise NotImplementedError("Subclasses must implement this method")
