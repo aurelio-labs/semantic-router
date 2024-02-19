@@ -24,7 +24,10 @@ class LocalIndex(BaseIndex):
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
-        utterances_arr = np.array(utterances)
+        if isinstance(utterances[0], str):
+            utterances_arr = np.array(utterances)
+        else:
+            utterances_arr = np.array(utterances, dtype=object)
         if self.index is None:
             self.index = embeds  # type: ignore
             self.routes = routes_arr
