@@ -1,6 +1,8 @@
 from typing import Any, List, Optional
 
 from pydantic.v1 import PrivateAttr
+from PIL import Image
+from PIL.Image import Image as _Image
 
 from semantic_router.encoders import BaseEncoder
 
@@ -9,21 +11,21 @@ class VitEncoder(BaseEncoder):
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
     score_threshold: float = 0.5
-    extractor_kwargs: dict = {}
+    processor_kwargs: dict = {}
     model_kwargs: dict = {}
     device: Optional[str] = None
-    _extractor: Any = PrivateAttr()
+    _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()
     _torch: Any = PrivateAttr()
     _T: Any = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
-        self._extractor, self._model = self._initialize_hf_model()
+        self._processor, self._model = self._initialize_hf_model()
 
     def _initialize_hf_model(self):
         try:
-            from transformers import AutoFeatureExtractor, AutoModel
+            from transformers import ViTImageProcessor, ViTModel
         except ImportError:
             raise ImportError(
                 "Please install transformers to use HuggingFaceEncoder. "
@@ -44,12 +46,9 @@ class VitEncoder(BaseEncoder):
         self._torch = torch
         self._T = T
 
-        extractor = AutoFeatureExtractor.from_pretrained(
-            self.name,
-            **self.extractor_kwargs,
-        )
+        processor = ViTImageProcessor.from_pretrained(self.name, **self.processor_kwargs)
 
-        model = AutoModel.from_pretrained(self.name, **self.model_kwargs)
+        model = ViTModel.from_pretrained(self.name, **self.model_kwargs)
 
         if self.device:
             model.to(self.device)
@@ -59,36 +58,29 @@ class VitEncoder(BaseEncoder):
             model.to(device)
             self.device = device
 
-        return extractor, model
+        return processor, model
+
+    def _process_images(self, images: List[_Image]):
+        rgb_images = [self._ensure_rgb(img) for img in images]
+        processed_images = self._processor(images=rgb_images, return_tensors="pt")
+        processed_images = processed_images.to(self.device)
+        return processed_images
+
+    def _ensure_rgb(self, img: _Image):
+        rgbimg = Image.new("RGB", img.size)
+        rgbimg.paste(img)
+        return rgbimg
 
     def __call__(
         self,
-        imgs: List[str],
+        imgs: List[_Image],
         batch_size: int = 32,
     ) -> List[List[float]]:
         all_embeddings = []
         for i in range(0, len(imgs), batch_size):
             batch_imgs = imgs[i : i + batch_size]
-            batch_imgs_transform = self._torch.stack(
-                [self._transformation_chain(img) for img in batch_imgs]
-            )
-            new_batch = {"pixel_values": batch_imgs_transform.to(self._model.device)}
+            batch_imgs_transform = self._process_images(batch_imgs)
             with self._torch.no_grad():
-                embeddings = (
-                    self._model(**new_batch).last_hidden_state[:, 0].cpu().tolist()
-                )
+                embeddings = self._model(**batch_imgs_transform).last_hidden_state[:, 0].cpu().tolist()
             all_embeddings.extend(embeddings)
         return all_embeddings
-
-    def _transformation_chain(self, img):
-        return self._T.Compose(
-            [
-                # We first resize the input image to 256x256 and then we take center crop.
-                self._T.Resize(int((256 / 224) * self._extractor.size["height"])),
-                self._T.CenterCrop(self._extractor.size["height"]),
-                self._T.ToTensor(),
-                self._T.Normalize(
-                    mean=self._extractor.image_mean, std=self._extractor.image_std
-                ),
-            ]
-        )(img)

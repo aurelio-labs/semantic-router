@@ -1,6 +1,26 @@
 import pytest
 
+import numpy as np
+from PIL import Image
+
 from semantic_router.encoders import VitEncoder
+
+vit_encoder = VitEncoder()
+
+
+@pytest.fixture()
+def dummy_pil_image():
+    return Image.fromarray(np.random.rand(1024, 512, 3).astype(np.uint8))
+
+
+@pytest.fixture()
+def dummy_black_and_white_img():
+    return Image.fromarray(np.random.rand(224, 224, 2).astype(np.uint8))
+
+
+@pytest.fixture()
+def misshaped_pil_image():
+    return Image.fromarray(np.random.rand(64, 64, 3).astype(np.uint8))
 
 
 class TestVitEncoder:
@@ -19,27 +39,31 @@ class TestVitEncoder:
         with pytest.raises(ImportError):
             VitEncoder()
 
-    @pytest.mark.skip(reason="TODO: Fix torch mocking")
-    def test_vit_encoder_initialization(self, mocker, monkeypatch):
-        mock_model = mocker.patch(
-            "transformers.AutoModel.from_pretrained", autospec=True
-        )
-        mock_extractor = mocker.patch(
-            "transformers.AutoFeatureExtractor.from_pretrained", autospec=True
-        )
-        monkeypatch.setattr(
-            "torch.cuda.is_available", mocker.MagicMock(return_value=False)
-        )
+    def test_vit_encoder_initialization(self):
+        assert vit_encoder.name == "google/vit-base-patch16-224"
+        assert vit_encoder.type == "huggingface"
+        assert vit_encoder.score_threshold == 0.5
+        assert vit_encoder.device == "cpu"
 
-        mock_model.return_value = mocker.MagicMock()
-        mock_extractor.return_value = mocker.MagicMock(size={"height": 224})
+    def test_vit_encoder_call(self, dummy_pil_image):
+        encoded_images = vit_encoder([dummy_pil_image] * 3)
 
-        encoder = VitEncoder()
+        assert len(encoded_images) == 3
+        assert set(map(len, encoded_images)) == {768}
 
-        assert encoder.name == "google/vit-base-patch16-224"
-        assert encoder.type == "huggingface"
-        assert encoder.score_threshold == 0.5
-        assert encoder.device == "cpu"
+    def test_vit_encoder_call_misshaped(self, dummy_pil_image, misshaped_pil_image):
+        encoded_images = vit_encoder([dummy_pil_image, misshaped_pil_image])
 
-        mock_model.assert_called_once_with(encoder.name, **encoder.model_kwargs)
-        mock_extractor.assert_called_once_with(encoder.name, **encoder.extractor_kwargs)
+        assert len(encoded_images) == 2
+        assert set(map(len, encoded_images)) == {768}
+
+    def test_vit_encoder_process_images_device(self, dummy_pil_image):
+        imgs = vit_encoder._process_images([dummy_pil_image] * 3)["pixel_values"]
+
+        assert imgs.device.type == "cpu"
+
+    def test_vit_encoder_ensure_rgb(self, dummy_black_and_white_img):
+        rgb_image = vit_encoder._ensure_rgb(dummy_black_and_white_img)
+
+        assert rgb_image.mode == "RGB"
+        assert np.array(rgb_image).shape == (224, 224, 3)
