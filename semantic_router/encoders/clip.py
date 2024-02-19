@@ -66,7 +66,7 @@ class CLIPEncoder(BaseEncoder):
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
-        
+
         try:
             from PIL import Image
         except ImportError:
@@ -114,7 +114,7 @@ class CLIPEncoder(BaseEncoder):
             embeds = self._model.get_image_features(pixel_values=inputs)
             embeds = embeds.squeeze(0).cpu().detach().numpy()
         return embeds
-    
+
     def _ensure_rgb(self, img: Any):
         rgbimg = self._Image.new("RGB", img.size)
         rgbimg.paste(img)

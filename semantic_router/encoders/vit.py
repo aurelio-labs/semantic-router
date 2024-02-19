@@ -41,7 +41,7 @@ class VitEncoder(BaseEncoder):
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
-        
+
         try:
             from PIL import Image
         except ImportError:
