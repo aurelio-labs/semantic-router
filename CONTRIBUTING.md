@@ -1,13 +1,22 @@
 # Contributing to the Semantic Router
 
-The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes or documenation. We're always eager to hear your suggestions.
+The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes or documentation. We're always eager to hear your suggestions.
 
 Please follow these guidelines when making a contribution:
-1. Before making any changes, [check here for related issues](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md).
-2. If no related issue exists yet, please create one and suggest your changes. Checking in with the team first will allow us to determine if the changes are in scope.
-3. If the changes are agreed, then you can go ahead and set up a development environment (see [Setting Up Your Development Environment](#setting-up-your-development-environment) below).
-4. Once you have commits ready to be shared, initiate a draft Pull Request with an initial version of your implementation and request feedback. It's advisable not to wait until the feature is fully completed.
-5. Ensure that the Pull Request adheres to the correct naming conventions:wh 
+1. **Check for Existing Issues:** Before making any changes, [check here for related issues](https://github.com/aurelio-labs/semantic-router/issues).
+2. **Run Your Changes by Us!** If no related issue exists yet, please create one and suggest your changes. Checking in with the team first will allow us to determine if the changes are in scope.
+3. **Set Up Development Environment** If the changes are agreed, then you can go ahead and set up a development environment (see [Setting Up Your Development Environment](#setting-up-your-development-environment) below).
+4. **Create an Early Draft Pull Request** Once you have commits ready to be shared, initiate a draft Pull Request with an initial version of your implementation and request feedback. It's advisable not to wait until the feature is fully completed.
+5. **Ensure that All Pull Request Checks Pass** There are Pull Request checks that need to be satifisfied before the changes can be merged. These appear towards the bottom of the Pull Request webpage on GitHub, and include:
+    - Ensure that the Pull Request title is prepended with a [valid type](https://flank.github.io/flank/pr_titles/). E.g. `feat: My New Feature`.
+    - Run linting (and fix any issues that are flagged) by:
+        - Navigating to /semantic-router.
+        - Running `black .`.
+        - Running `ruff . --fix`.
+    - Ensure that, for any new code, new [PyTests are written](https://github.com/aurelio-labs/semantic-router/tree/main/tests/unit). If any code is removed, then ensure that corresponding PyTests are also removed. Finally, ensure that all remaining PyTests pass. Codecov checks will inform you if any code is not covered by PyTests upon creating the PR, and when commiting to it.
+
+> **Feedback and Discussion:**
+While we encourage you to initiate a draft Pull Request early to get feedback on your implementation, we also highly value discussions and questions. If you're unsure about any aspect of your contribution or need clarification on the project's direction, please don't hesitate to use the [Issues section](https://github.com/aurelio-labs/semantic-router/issues) of our repository. Engaging in discussions or asking questions before starting your work can help ensure that your efforts align well with the project's goals and existing work.
 
 ## Setting Up a Development Environment
 
@@ -17,15 +26,15 @@ Please follow these guidelines when making a contribution:
 2. Clone Your Fork:
     After forking, you'll be taken to your new fork of the repository on GitHub. Copy the URL of your fork from the address bar or by clicking the "Code" button and copying the URL under "Clone with HTTPS" or "Clone with SSH".
     Open your terminal or command prompt.
-    Use the git clone command followed by the URL you copied to clone the repository to your local machine. Replace &lt;Your-Fork-URL&gt; with the URL of your fork
+    Use the git clone command followed by the URL you copied to clone the repository to your local machine. Replace `https://github.com/<your-gh-username>/<semantic-router>.git` with the URL of your fork:
     ```
-    git clone https://github.com/<your-gh-username>/<semantic-route>.git
+    git clone https://github.com/<your-gh-username>/<semantic-router>.git
     ```
-4. Ensure you have poetry installed: `pip install poetry`.
-3. Then navigate to the cloned folder, create a virtualenv, and install via poetry (which defaults to an editable installation):
+3. Ensure you have poetry installed: `pip install poetry`.
+4. Then navigate to the cloned folder, create a virtualenv, and install via poetry (which defaults to an editable installation):
     ```
     # Move into the cloned folder
-    cd haystack/
+    cd semantic-router/
 
     # Create a virtual environment
     python3 -m venv venv
@@ -36,4 +45,4 @@ Please follow these guidelines when making a contribution:
     # Install via poetry
     poetry install
     ```
-    
+
