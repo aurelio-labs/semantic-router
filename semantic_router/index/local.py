@@ -1,7 +1,9 @@
+from typing import List, Optional, Tuple
+
 import numpy as np
-from typing import List, Tuple, Optional
-from semantic_router.linear import similarity_matrix, top_scores
+
 from semantic_router.index.base import BaseIndex
+from semantic_router.linear import similarity_matrix, top_scores
 
 
 class LocalIndex(BaseIndex):

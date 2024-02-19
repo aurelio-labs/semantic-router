@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic.v1 import BaseModel
 from pydantic.v1.dataclasses import dataclass
@@ -77,6 +77,6 @@ class Message(BaseModel):
 
 
 class DocumentSplit(BaseModel):
-    docs: List[str]
+    docs: List[Any]
     is_triggered: bool = False
     triggered_score: Optional[float] = None

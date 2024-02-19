@@ -1,8 +1,8 @@
 from typing import Any, List, Optional
 
-from pydantic.v1 import PrivateAttr
 from PIL import Image
 from PIL.Image import Image as _Image
+from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
 
@@ -46,7 +46,9 @@ class VitEncoder(BaseEncoder):
         self._torch = torch
         self._T = T
 
-        processor = ViTImageProcessor.from_pretrained(self.name, **self.processor_kwargs)
+        processor = ViTImageProcessor.from_pretrained(
+            self.name, **self.processor_kwargs
+        )
 
         model = ViTModel.from_pretrained(self.name, **self.model_kwargs)
 
@@ -81,6 +83,11 @@ class VitEncoder(BaseEncoder):
             batch_imgs = imgs[i : i + batch_size]
             batch_imgs_transform = self._process_images(batch_imgs)
             with self._torch.no_grad():
-                embeddings = self._model(**batch_imgs_transform).last_hidden_state[:, 0].cpu().tolist()
+                embeddings = (
+                    self._model(**batch_imgs_transform)
+                    .last_hidden_state[:, 0]
+                    .cpu()
+                    .tolist()
+                )
             all_embeddings.extend(embeddings)
         return all_embeddings
