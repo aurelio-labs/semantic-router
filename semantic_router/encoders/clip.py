@@ -18,6 +18,7 @@ class CLIPEncoder(BaseEncoder):
     _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()
     _torch: Any = PrivateAttr()
+    _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -37,9 +38,9 @@ class CLIPEncoder(BaseEncoder):
         for i in range(0, len(docs), batch_size):
             batch_docs = docs[i : i + batch_size]
             if text:
-                embeddings = self._encode_text(batch_docs)
+                embeddings = self._encode_text(docs=batch_docs)
             else:
-                embeddings = self._encode_image(batch_docs)
+                embeddings = self._encode_image(images=batch_docs)
             if normalize_embeddings:
                 embeddings = embeddings / np.linalg.norm(embeddings, axis=0)
 
@@ -54,7 +55,7 @@ class CLIPEncoder(BaseEncoder):
             raise ImportError(
                 "Please install transformers to use CLIPEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
             )
 
         try:
@@ -63,10 +64,20 @@ class CLIPEncoder(BaseEncoder):
             raise ImportError(
                 "Please install Pytorch to use CLIPEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
+            )
+        
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Please install PIL to use HuggingFaceEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[vision]`"
             )
 
         self._torch = torch
+        self._Image = Image
 
         tokenizer = CLIPTokenizerFast.from_pretrained(
             self.name,
@@ -94,11 +105,17 @@ class CLIPEncoder(BaseEncoder):
             embeds = embeds.squeeze(0).cpu().detach().numpy()
         return embeds
 
-    def _encode_image(self, docs: List[Any]) -> Any:
-        inputs = self._processor(text=None, images=docs, return_tensors="pt")[
+    def _encode_image(self, images: List[Any]) -> Any:
+        rgb_images = [self._ensure_rgb(img) for img in images]
+        inputs = self._processor(text=None, images=rgb_images, return_tensors="pt")[
             "pixel_values"
         ].to(self.device)
         with self._torch.no_grad():
             embeds = self._model.get_image_features(pixel_values=inputs)
             embeds = embeds.squeeze(0).cpu().detach().numpy()
         return embeds
+    
+    def _ensure_rgb(self, img: Any):
+        rgbimg = self._Image.new("RGB", img.size)
+        rgbimg.paste(img)
+        return rgbimg

@@ -1,7 +1,5 @@
 from typing import Any, List, Optional
 
-from PIL import Image
-from PIL.Image import Image as _Image
 from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
@@ -18,6 +16,7 @@ class VitEncoder(BaseEncoder):
     _model: Any = PrivateAttr()
     _torch: Any = PrivateAttr()
     _T: Any = PrivateAttr()
+    _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -30,7 +29,7 @@ class VitEncoder(BaseEncoder):
             raise ImportError(
                 "Please install transformers to use HuggingFaceEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
             )
 
         try:
@@ -40,10 +39,20 @@ class VitEncoder(BaseEncoder):
             raise ImportError(
                 "Please install Pytorch to use HuggingFaceEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
+            )
+        
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Please install PIL to use HuggingFaceEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[vision]`"
             )
 
         self._torch = torch
+        self._Image = Image
         self._T = T
 
         processor = ViTImageProcessor.from_pretrained(
@@ -62,20 +71,20 @@ class VitEncoder(BaseEncoder):
 
         return processor, model
 
-    def _process_images(self, images: List[_Image]):
+    def _process_images(self, images: List[Any]):
         rgb_images = [self._ensure_rgb(img) for img in images]
         processed_images = self._processor(images=rgb_images, return_tensors="pt")
         processed_images = processed_images.to(self.device)
         return processed_images
 
-    def _ensure_rgb(self, img: _Image):
-        rgbimg = Image.new("RGB", img.size)
+    def _ensure_rgb(self, img: Any):
+        rgbimg = self._Image.new("RGB", img.size)
         rgbimg.paste(img)
         return rgbimg
 
     def __call__(
         self,
-        imgs: List[_Image],
+        imgs: List[Any],
         batch_size: int = 32,
     ) -> List[List[float]]:
         all_embeddings = []
