@@ -431,14 +431,13 @@ class RouteLayer:
         self,
         X: List[str],
         y: List[str],
-        batch_size : int,
+        batch_size: int,
         max_iter: int = 500,
-        
     ):
         # convert inputs into array
         Xq = []
-        for i in tqdm(range(0, len(X), batch_size), desc= "Processing batches"):
-            emb = np.array(self.encoder(X[i:i+batch_size]))
+        for i in tqdm(range(0, len(X), batch_size), desc="Processing batches"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
         # initial eval (we will iterate from here)
         best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
@@ -467,9 +466,9 @@ class RouteLayer:
         Evaluate the accuracy of the route selection.
         """
         Xq = []
-        for i in tqdm(range(0,len(X),batch_size), desc="Processing batches"):
-              emb = np.array(self.encoder(X[i:i+batch_size]))
-              Xq.extend(emb)
+        for i in tqdm(range(0, len(X), batch_size), desc="Processing batches"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
 
         accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
         return accuracy
