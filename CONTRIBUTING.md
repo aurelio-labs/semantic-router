@@ -11,11 +11,11 @@ Please follow these guidelines when making a contribution:
     - Ensure that the Pull Request title is prepended with a [valid type](https://flank.github.io/flank/pr_titles/). E.g. `feat: My New Feature`.
     - Run linting (and fix any issues that are flagged) by:
         - Navigating to /semantic-router.
-        - Running `poetry run make lint` to fix linting issues.
-        - Running `poetry run black .` to fix `black` linting issues.
-        - Running `poetry run ruff . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
-        - Confirming the linters pass using `poetry run make lint` again.
-        - Running `ruff . --fix`.
+        - Running `make lint` to fix linting issues.
+        - Running `black .` to fix `black` linting issues.
+        - Running `ruff . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
+        - Running `mypy .` and then fixing any of the issues that are raised.
+        - Confirming the linters pass using `make lint` again.
     - Ensure that, for any new code, new [PyTests are written](https://github.com/aurelio-labs/semantic-router/tree/main/tests/unit). If any code is removed, then ensure that corresponding PyTests are also removed. Finally, ensure that all remaining PyTests pass using `pytest ./tests` (to avoid integration tests you can run `pytest ./tests/unit`.
     - Codecov checks will inform you if any code is not covered by PyTests upon creating the PR. You should aim to cover new code with PyTests.
 
