@@ -435,7 +435,7 @@ class RouteLayer:
         max_iter: int = 500,
     ):
         # convert inputs into array
-        Xq = []
+        Xq: List[List[float]] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Processing batches"):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
@@ -465,7 +465,7 @@ class RouteLayer:
         """
         Evaluate the accuracy of the route selection.
         """
-        Xq = []
+        Xq: List[List[float]] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Processing batches"):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
