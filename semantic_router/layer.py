@@ -431,15 +431,19 @@ class RouteLayer:
         self,
         X: List[str],
         y: List[str],
+        batch_size: int = 500,
         max_iter: int = 500,
     ):
         # convert inputs into array
-        Xq: Any = np.array(self.encoder(X))
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
         # initial eval (we will iterate from here)
-        best_acc = self._vec_evaluate(Xq=Xq, y=y)
+        best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
         best_thresholds = self.get_thresholds()
         # begin fit
-        for _ in (pbar := tqdm(range(max_iter))):
+        for _ in (pbar := tqdm(range(max_iter), desc="Training")):
             pbar.set_postfix({"acc": round(best_acc, 2)})
             # Find the best score threshold for each route
             thresholds = threshold_random_search(
@@ -457,12 +461,16 @@ class RouteLayer:
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
 
-    def evaluate(self, X: List[str], y: List[str]) -> float:
+    def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
-        Xq = np.array(self.encoder(X))
-        accuracy = self._vec_evaluate(Xq=Xq, y=y)
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
+
+        accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
         return accuracy
 
     def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:
