@@ -4,6 +4,7 @@ import os
 import random
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from datasets import load_dataset
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
@@ -285,6 +286,14 @@ class RouteLayer:
     def from_config(cls, config: LayerConfig):
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
+    
+    @classmethod
+    def from_hub(cls, route_layer_id: str):
+        data = load_dataset(route_layer_id, split="train")
+        # transform dataset into list of Route objects
+        routes = [Route(**data[i]) for i in range(len(data))]
+        return cls(routes=routes)
+
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
@@ -418,6 +427,9 @@ class RouteLayer:
     def to_yaml(self, file_path: str):
         config = self.to_config()
         config.to_file(file_path)
+
+    def to_hub(self, route_layer_id: str, api_key: str):
+        raise NotImplementedError("To be implemented")
 
     def get_thresholds(self) -> Dict[str, float]:
         # TODO: float() below is hacky fix for lint, fix this with new type?
