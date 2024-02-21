@@ -1,7 +1,5 @@
-import os
 from typing import List, Optional
 import requests
-import json
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
@@ -29,14 +27,13 @@ class OllamaLLM(BaseLLM):
         self.stream = stream
 
     def __call__(
-        self, 
-        messages: List[Message], 
-        temperature: Optional[float] = None, 
-        llm_name: Optional[str] = None, 
-        max_tokens: Optional[int] = None, 
-        stream: Optional[bool] = None
+        self,
+        messages: List[Message],
+        temperature: Optional[float] = None,
+        llm_name: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        stream: Optional[bool] = None,
     ) -> str:
-        
         # Use instance defaults if not overridden
         temperature = temperature if temperature is not None else self.temperature
         llm_name = llm_name if llm_name is not None else self.llm_name
@@ -47,16 +44,13 @@ class OllamaLLM(BaseLLM):
             payload = {
                 "model": llm_name,
                 "messages": [m.to_openai() for m in messages],
-                "options": {
-                    "temperature": temperature,
-                    "num_predict": max_tokens
-                },
+                "options": {"temperature": temperature, "num_predict": max_tokens},
                 "format": "json",
-                "stream": stream
+                "stream": stream,
             }
 
             response = requests.post("http://localhost:11434/api/chat", json=payload)
-         
+
             output = response.json()["message"]["content"]
 
             return output
