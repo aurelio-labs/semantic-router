@@ -14,7 +14,9 @@ def openai_encoder(mocker):
 
 class TestOpenAIEncoder:
     def test_openai_encoder_init_success(self, mocker):
-        mocker.patch("os.getenv", return_value="fake-api-key")
+        # -- Mock the return value of os.getenv 3 times: model name, api key and org ID
+        side_effect = ["fake-model-name", "fake-api-key", "fake-org-id"]
+        mocker.patch("os.getenv", side_effect=side_effect)
         encoder = OpenAIEncoder()
         assert encoder.client is not None
 
