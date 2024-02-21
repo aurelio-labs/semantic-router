@@ -29,7 +29,7 @@ class OpenAIEncoder(BaseEncoder):
         super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
-        if (api_key is None):
+        if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
             self.client = openai.Client(api_key=api_key, organization=openai_org_id)
