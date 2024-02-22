@@ -293,13 +293,8 @@ class RouteLayer:
     def from_hub(cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None):
         # Load the dataset from Hugging Face Hub
         full_dataset_id = f"{namespace}/{route_layer_id}"
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('full_dataset_id')
-        print(full_dataset_id)
-        print('#'*50)
-        # DEBUGGING: End.
-        # data = load_dataset(full_dataset_id, use_auth_token=access_token)
+
+        # data = load_dataset(full_dataset_id, use_auth_token=access_token) # TODO: Couldn't get this to work. Revisit.
 
         # Assuming the file is directly accessible and you know its filename
         file_path = hf_hub_download(
