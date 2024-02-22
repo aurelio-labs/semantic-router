@@ -48,9 +48,7 @@ class OllamaLLM(BaseLLM):
                 "format": "json",
                 "stream": stream,
             }
-
             response = requests.post("http://localhost:11434/api/chat", json=payload)
-
             output = response.json()["message"]["content"]
 
             return output
