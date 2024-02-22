@@ -8,6 +8,7 @@ from mistralai.exceptions import MistralException
 from mistralai.models.embeddings import EmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.defaults import EncoderDefault
 
 
 class MistralEncoder(BaseEncoder):
@@ -23,7 +24,7 @@ class MistralEncoder(BaseEncoder):
         score_threshold: float = 0.82,
     ):
         if name is None:
-            name = os.getenv("MISTRAL_MODEL_NAME", "mistral-embed")
+            name = EncoderDefault.MISTRAL.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
         if api_key is None:

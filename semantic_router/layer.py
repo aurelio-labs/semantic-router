@@ -14,6 +14,7 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -65,14 +66,16 @@ class LayerConfig:
             # if encoder_name is not provided, use the default encoder for type
             # TODO base these values on default values in encoders themselves..
             # TODO without initializing them (as this is just config)
-            if encoder_type == EncoderType.OPENAI:
-                encoder_name = "text-embedding-ada-002"
-            elif encoder_type == EncoderType.COHERE:
-                encoder_name = "embed-english-v3.0"
-            elif encoder_type == EncoderType.FASTEMBED:
-                encoder_name = "BAAI/bge-small-en-v1.5"
-            elif encoder_type == EncoderType.HUGGINGFACE:
-                raise NotImplementedError
+            for encode_type in EncoderType:
+                if encode_type.value == self.encoder_type:
+                    if self.encoder_type == EncoderType.HUGGINGFACE.value:
+                        raise NotImplementedError(
+                            "HuggingFace encoder not supported by LayerConfig yet."
+                        )
+                    encoder_name = EncoderDefault[encode_type.name].value[
+                        "embedding_model"
+                    ]
+                    break
             logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
         self.encoder_name = encoder_name
         self.routes = routes
