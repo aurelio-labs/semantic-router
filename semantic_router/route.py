@@ -9,7 +9,7 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
-
+import importlib
 
 def is_valid(route_config: str) -> bool:
     try:
@@ -87,6 +87,15 @@ class Route(BaseModel):
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]):
+        if "llm" in data and data["llm"] is not None:
+            llm_info = data["llm"]
+            # Dynamically import the module and class for the LLM
+            module = importlib.import_module(llm_info["module"])
+            LLMClass = getattr(module, llm_info["class"])
+            # Instantiate the LLM class with the provided model name
+            llm_instance = LLMClass(name=llm_info["model"])
+            data["llm"] = llm_instance  # Replace the dictionary with the actual LLM instance
+        
         return cls(**data)
 
     @classmethod

@@ -16,7 +16,7 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-from huggingface_hub import HfApi, Repository
+from huggingface_hub import HfApi, Repository, hf_hub_download
 import shutil
 import stat
 
@@ -290,11 +290,48 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
     
     @classmethod
-    def from_hub(cls, route_layer_id: str):
-        data = load_dataset(route_layer_id, split="train")
-        # transform dataset into list of Route objects
-        routes = [Route(**data[i]) for i in range(len(data))]
-        return cls(routes=routes)
+    def from_hub(cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None):
+        # Load the dataset from Hugging Face Hub
+        full_dataset_id = f"{namespace}/{route_layer_id}"
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('full_dataset_id')
+        print(full_dataset_id)
+        print('#'*50)
+        # DEBUGGING: End.
+        # data = load_dataset(full_dataset_id, use_auth_token=access_token)
+
+        # Assuming the file is directly accessible and you know its filename
+        file_path = hf_hub_download(
+            repo_id=full_dataset_id, 
+            filename="route_layer_data.json", 
+            repo_type="dataset",
+            revision="main",  # Ensure you're targeting the latest version in the main branch.
+            force_download=True,  # Force re-downloading the file, incase the cached version is outdated.
+            use_auth_token=access_token  # Optional: only if required for private repositories.
+            )
+        # Load the file content
+        with open(file_path, 'r') as file:
+            serialized_data = json.load(file)
+        
+        # Deserialize encoder
+        encoder_data = serialized_data['encoder']
+        encoder_type = encoder_data['type']
+        encoder_name = encoder_data.get('name', None)
+        encoder_score_threshold = encoder_data.get('score_threshold', None)
+        
+        # Dynamically import and instantiate the encoder
+        encoder = Encoder(encoder_type, name=encoder_name).model
+        encoder.score_threshold = encoder_score_threshold
+        
+        # Deserialize routes
+        routes = []
+        for route_data in serialized_data['routes']:
+            route_instance = Route.from_dict(route_data)
+            routes.append(route_instance)
+        
+        # Create a new instance with the deserialized data
+        return cls(encoder=encoder, routes=routes)
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
