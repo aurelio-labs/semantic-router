@@ -63,9 +63,6 @@ class LayerConfig:
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
-            # if encoder_name is not provided, use the default encoder for type
-            # TODO base these values on default values in encoders themselves..
-            # TODO without initializing them (as this is just config)
             for encode_type in EncoderType:
                 if encode_type.value == self.encoder_type:
                     if self.encoder_type == EncoderType.HUGGINGFACE.value:
