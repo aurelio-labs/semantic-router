@@ -4,7 +4,7 @@ import os
 import random
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
@@ -16,7 +16,9 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.logger import logger
-
+from huggingface_hub import HfApi, Repository
+import shutil
+import stat
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
@@ -294,7 +296,6 @@ class RouteLayer:
         routes = [Route(**data[i]) for i in range(len(data))]
         return cls(routes=routes)
 
-
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
@@ -428,8 +429,92 @@ class RouteLayer:
         config = self.to_config()
         config.to_file(file_path)
 
-    def to_hub(self, route_layer_id: str, api_key: str):
-        raise NotImplementedError("To be implemented")
+    def serialize(self):
+        serialized_routes = [route.to_dict() for route in self.routes]
+        # Serialize encoder information correctly
+        encoder_info = {
+            "type": getattr(self.encoder, "type", "base"),
+            "name": getattr(self.encoder, "name", None),
+            "score_threshold": getattr(self.encoder, "score_threshold", None),
+        }
+        # Prepare the complete serialization including routes and encoder info
+        serialized_data = {
+            "routes": serialized_routes,
+            "encoder": encoder_info,
+            # Add tags for Hugging Face Hub
+            "tags": [ "semantic-router", "RouteLayer", getattr(self.encoder, "type", "base")],
+        }
+        return serialized_data
+
+    def create_hub_repo(self, namespace: str, route_layer_id: str, access_token: str) -> str:
+        """
+        Create a new dataset repository on the Hugging Face Hub or use an existing one, ensuring the local directory is a fresh clone of the remote repository.
+
+        This method attempts to create a repository named `route_layer_id` on the Hugging Face Hub, specifically as a dataset repository. 
+        If a repository with this name already exists, the method proceeds without error due to 'exist_ok=True'. 
+        Regardless of the existing state, this method ensures that the local directory named after `route_layer_id` is a fresh clone of the repository, 
+        reflecting its current state on the Hub. This is achieved by deleting the local directory if it exists, and then cloning the repository from the Hub.
+        """
+        repo_id = f"{namespace}/{route_layer_id}"
+        
+        hf_api = HfApi(token=access_token)
+        repo_url = hf_api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True).url
+        repo_local_path = f"./{route_layer_id}"
+
+        if os.path.exists(repo_local_path):
+            shutil.rmtree(repo_local_path)
+
+        _ = Repository(local_dir=repo_local_path, clone_from=repo_url, use_auth_token=access_token)
+
+        return repo_local_path
+    
+    def _json_to_hub(self, repo_local_path: str, json_data: str):
+        """
+        Save the JSON data to a file in the repository.
+        """
+        json_file_path = os.path.join(repo_local_path, "route_layer_data.json")
+        with open(json_file_path, "w") as json_file:
+            json_file.write(json_data)
+
+    def _commit_push_to_hub(self, repo_local_path: str):
+        """
+        Commit and push the changes to the repository.
+        """
+        repo = Repository(repo_local_path, use_auth_token=True)
+        repo.git_add("route_layer_data.json")
+        try:
+            repo.git_commit("Update route layer data")
+            repo.git_push()
+        except Exception as e:
+            # Handle or log the exception as needed
+            print(f"Error during commit/push in {repo_local_path}: {e}")
+
+    def remove_readonly(self, func, path, _):
+        """Needed to stop error about local repo being in use, so that we can delete it."""
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+
+    def to_hub(self, namespace: str, route_layer_id: str, access_token: str = None):
+        """
+        Serialize data and upload to the Hugging Face Hub using the User Access Token.
+        """
+        serialized_data = self.serialize()
+        json_data = json.dumps(serialized_data, indent=4)
+        access_token = access_token or os.getenv("HUGGING_FACE_ACCESS_TOKEN")
+        
+        if not access_token:
+            raise ValueError("No Hugging Face access token provided. Please provide an access token or set the HUGGING_FACE_ACCESS_TOKEN environment variable.")
+        
+        repo_local_path = None
+        try:
+            repo_local_path = self.create_hub_repo(namespace, route_layer_id, access_token)
+            self._json_to_hub(repo_local_path, json_data)
+            self._commit_push_to_hub(repo_local_path)
+        finally:
+            # Cleanup: Delete the local repository directory if it exists
+            if repo_local_path and os.path.exists(repo_local_path):
+                shutil.rmtree(repo_local_path, onerror=self.remove_readonly)
 
     def get_thresholds(self) -> Dict[str, float]:
         # TODO: float() below is hacky fix for lint, fix this with new type?
