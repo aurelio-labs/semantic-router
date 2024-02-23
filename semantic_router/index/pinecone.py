@@ -50,10 +50,9 @@ class PineconeIndex(BaseIndex):
 
     def __init__(self, **data):
         super().__init__(**data)
-        clean_route = clean_route_name(self.route)
-        # Use SHA-256 for a more secure hash
-        utterance_id = hashlib.sha256(self.utterance.encode()).hexdigest()
-        self.id = f"{clean_route}#{utterance_id}"
+        self._initialize_client()
+        self.type = "pinecone"
+        self.client = self._initialize_client()
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
