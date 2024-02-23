@@ -1,5 +1,5 @@
 from itertools import cycle
-from typing import List
+from typing import List, Optional
 
 from pydantic.v1 import BaseModel
 from termcolor import colored
@@ -12,6 +12,8 @@ class BaseSplitter(BaseModel):
     name: str
     encoder: BaseEncoder
     score_threshold: float
+    min_split_tokens: Optional[int] = None
+    max_split_tokens: Optional[int] = None
 
     def __call__(self, docs: List[str]) -> List[DocumentSplit]:
         raise NotImplementedError("Subclasses must implement this method")

@@ -77,6 +77,12 @@ class Message(BaseModel):
 
 
 class DocumentSplit(BaseModel):
-    docs: List[str]
+    docs: list[str]
     is_triggered: bool = False
-    triggered_score: Optional[float] = None
+    triggered_score: float | None = None
+    token_count: int | None = None
+    metadata: dict | None = None
+
+    @property
+    def content(self) -> str:
+        return " ".join(self.docs)
