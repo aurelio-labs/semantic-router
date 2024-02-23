@@ -1,10 +1,5 @@
-from typing import List
-
 import regex
 import tiktoken
-from colorama import Fore, Style
-
-from semantic_router.schema import DocumentSplit
 
 
 def split_to_sentences(text: str) -> list[str]:
@@ -66,4 +61,3 @@ def tiktoken_length(text: str) -> int:
     tokenizer = tiktoken.get_encoding("cl100k_base")
     tokens = tokenizer.encode(text, disallowed_special=())
     return len(tokens)
-

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from colorama import Fore, Style
 from pydantic.v1 import BaseModel, Extra
@@ -10,7 +10,6 @@ from semantic_router.schema import DocumentSplit
 class BaseSplitter(BaseModel):
     name: str
     encoder: BaseEncoder
-    score_threshold: Optional[float]
 
     class Config:
         extra = Extra.allow

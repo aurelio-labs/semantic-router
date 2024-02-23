@@ -9,7 +9,6 @@ from semantic_router.splitters.utils import split_to_sentences, tiktoken_length
 from semantic_router.utils.logger import logger
 
 
-
 class RollingWindowSplitter(BaseSplitter):
     def __init__(
         self,
@@ -20,7 +19,7 @@ class RollingWindowSplitter(BaseSplitter):
         max_split_tokens=300,
         split_tokens_tolerance=10,
         plot_splits=False,
-        name = "rolling_window_splitter",
+        name="rolling_window_splitter",
     ):
         super().__init__(name=name, encoder=encoder)
         self.calculated_threshold: float
