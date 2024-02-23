@@ -1615,12 +1615,12 @@ files = [
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.2.47"
+version = "0.2.48"
 description = "Python bindings for the llama.cpp library"
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "llama_cpp_python-0.2.47.tar.gz", hash = "sha256:cd1a46a70ec2d4be4c3b063e6824f8481790bd5081e934c9a85f534738d3cf62"},
+    {file = "llama_cpp_python-0.2.48.tar.gz", hash = "sha256:37294f14c3b8157334beb8c9b6d92087f2c9d82730d733e6fc4fc15034271dd8"},
 ]
 
 [package.dependencies]
@@ -3703,20 +3703,6 @@ files = [
 mpmath = ">=0.19"
 
 [[package]]
-name = "termcolor"
-version = "2.4.0"
-description = "ANSI color formatting for output in terminal"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "termcolor-2.4.0-py3-none-any.whl", hash = "sha256:9297c0df9c99445c2412e832e882a7884038a25617c60cea2ad69488d4040d63"},
-    {file = "termcolor-2.4.0.tar.gz", hash = "sha256:aab9e56047c8ac41ed798fa36d892a37aca6b3e9159f3e0c24bc64a9b3ac7b7a"},
-]
-
-[package.extras]
-tests = ["pytest", "pytest-cov"]
-
-[[package]]
 name = "tiktoken"
 version = "0.6.0"
 description = "tiktoken is a fast BPE tokeniser for use with OpenAI's models"
@@ -4406,4 +4392,4 @@ vision = ["pillow", "torch", "torchvision", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "13824ce7626ac01d8ef8217219a4670f666458edb0a05f0606906af5f3e94b57"
+content-hash = "5808af6bf85a4aaaecb2c70178b38dfe134791073b7641a1eb488bfda6155963"
