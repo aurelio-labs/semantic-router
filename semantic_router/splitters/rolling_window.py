@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 
 from semantic_router.encoders.base import BaseEncoder
@@ -26,7 +27,7 @@ class RollingWindowSplitter:
         self.max_split_tokens = max_split_tokens
         self.split_tokens_tolerance = split_tokens_tolerance
 
-    def encode_documents(self, docs: list[str]) -> np.ndarray:
+    def encode_documents(self, docs: List[str]) -> np.ndarray:
         try:
             embeddings = self.encoder(docs)
             return np.array(embeddings)
@@ -34,7 +35,7 @@ class RollingWindowSplitter:
             logger.error(f"Error encoding documents {docs}: {e}")
             raise
 
-    def calculate_similarity_scores(self, encoded_docs: np.ndarray) -> list[float]:
+    def calculate_similarity_scores(self, encoded_docs: np.ndarray) -> List[float]:
         raw_similarities = []
         for idx in range(1, len(encoded_docs)):
             window_start = max(0, idx - self.window_size)
@@ -46,14 +47,14 @@ class RollingWindowSplitter:
             raw_similarities.append(curr_sim_score)
         return raw_similarities
 
-    def find_split_indices(self, similarities: list[float]) -> list[int]:
+    def find_split_indices(self, similarities: List[float]) -> List[int]:
         split_indices = []
         for idx in range(1, len(similarities)):
             if similarities[idx] < self.calculated_threshold:
                 split_indices.append(idx + 1)
         return split_indices
 
-    def find_optimal_threshold(self, docs: list[str], encoded_docs: np.ndarray):
+    def find_optimal_threshold(self, docs: List[str], encoded_docs: np.ndarray):
         token_counts = [tiktoken_length(doc) for doc in docs]
         cumulative_token_counts = np.cumsum([0] + token_counts)
         similarity_scores = self.calculate_similarity_scores(encoded_docs)
@@ -111,15 +112,15 @@ class RollingWindowSplitter:
         return self.calculated_threshold
 
     def split_documents(
-        self, docs: list[str], split_indices: list[int], similarities: list[float]
-    ) -> list[DocumentSplit]:
+        self, docs: List[str], split_indices: List[int], similarities: List[float]
+    ) -> List[DocumentSplit]:
         """
         This method iterates through each document, appending it to the current split
         until it either reaches a split point (determined by split_indices) or exceeds
         the maximum token limit for a split (self.max_split_tokens).
         When a document causes the current token count to exceed this limit,
         or when a split point is reached and the minimum token requirement is met,
-        the current split is finalized and added to the list of splits.
+        the current split is finalized and added to the List of splits.
         """
         token_counts = [tiktoken_length(doc) for doc in docs]
         splits, current_split = [], []
@@ -205,7 +206,7 @@ class RollingWindowSplitter:
         return splits
 
     def plot_similarity_scores(
-        self, similarities: list[float], split_indices: list[int]
+        self, similarities: List[float], split_indices: List[int]
     ):
         try:
             from matplotlib import pyplot as plt
@@ -254,7 +255,7 @@ class RollingWindowSplitter:
         plt.show()
 
     def plot_sentence_similarity_scores(
-        self, docs: list[str], threshold: float, window_size: int
+        self, docs: List[str], threshold: float, window_size: int
     ):
         try:
             from matplotlib import pyplot as plt
@@ -299,7 +300,7 @@ class RollingWindowSplitter:
                     f"below {threshold}: {sentences[i + window_size]}"
                 )
 
-    def __call__(self, docs: list[str]) -> list[DocumentSplit]:
+    def __call__(self, docs: List[str]) -> List[DocumentSplit]:
         if not docs:
             raise ValueError("At least one document is required for splitting.")
 

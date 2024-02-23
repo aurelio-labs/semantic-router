@@ -154,10 +154,12 @@ class PineconeIndex(BaseIndex):
             # Make the request to list vectors. Adjust headers and parameters as needed.
             response = requests.get(list_url, params=params, headers=headers)
             response_data = response.json()
-            print(response_data)
 
             # Extract vector IDs from the response and add them to the list
             vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            # check that there are vector IDs, otherwise break the loop
+            if not vector_ids:
+                break
             all_vector_ids.extend(vector_ids)
 
             # if we need metadata, we fetch it

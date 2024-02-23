@@ -14,6 +14,7 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -63,17 +64,16 @@ class LayerConfig:
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
-            # if encoder_name is not provided, use the default encoder for type
-            # TODO base these values on default values in encoders themselves..
-            # TODO without initializing them (as this is just config)
-            if encoder_type == EncoderType.OPENAI:
-                encoder_name = "text-embedding-ada-002"
-            elif encoder_type == EncoderType.COHERE:
-                encoder_name = "embed-english-v3.0"
-            elif encoder_type == EncoderType.FASTEMBED:
-                encoder_name = "BAAI/bge-small-en-v1.5"
-            elif encoder_type == EncoderType.HUGGINGFACE:
-                raise NotImplementedError
+            for encode_type in EncoderType:
+                if encode_type.value == self.encoder_type:
+                    if self.encoder_type == EncoderType.HUGGINGFACE.value:
+                        raise NotImplementedError(
+                            "HuggingFace encoder not supported by LayerConfig yet."
+                        )
+                    encoder_name = EncoderDefault[encode_type.name].value[
+                        "embedding_model"
+                    ]
+                    break
             logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
         self.encoder_name = encoder_name
         self.routes = routes
@@ -433,15 +433,19 @@ class RouteLayer:
         self,
         X: List[str],
         y: List[str],
+        batch_size: int = 500,
         max_iter: int = 500,
     ):
         # convert inputs into array
-        Xq: Any = np.array(self.encoder(X))
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
         # initial eval (we will iterate from here)
-        best_acc = self._vec_evaluate(Xq=Xq, y=y)
+        best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
         best_thresholds = self.get_thresholds()
         # begin fit
-        for _ in (pbar := tqdm(range(max_iter))):
+        for _ in (pbar := tqdm(range(max_iter), desc="Training")):
             pbar.set_postfix({"acc": round(best_acc, 2)})
             # Find the best score threshold for each route
             thresholds = threshold_random_search(
@@ -459,12 +463,16 @@ class RouteLayer:
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
 
-    def evaluate(self, X: List[str], y: List[str]) -> float:
+    def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
-        Xq = np.array(self.encoder(X))
-        accuracy = self._vec_evaluate(Xq=Xq, y=y)
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
+
+        accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
         return accuracy
 
     def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:

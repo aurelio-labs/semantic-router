@@ -433,13 +433,13 @@ class TestLayerFit:
         # unpack test data
         X, y = zip(*test_data)
         # evaluate
-        route_layer.evaluate(X=X, y=y)
+        route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
 
     def test_fit(self, openai_encoder, routes, test_data):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         # unpack test data
         X, y = zip(*test_data)
-        route_layer.fit(X=X, y=y)
+        route_layer.fit(X=X, y=y, batch_size=int(len(test_data) / 5))
 
 
 # Add more tests for edge cases and error handling as needed.
