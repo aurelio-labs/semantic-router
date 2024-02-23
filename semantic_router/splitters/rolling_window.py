@@ -4,21 +4,25 @@ import numpy as np
 
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.schema import DocumentSplit
+from semantic_router.splitters.base import BaseSplitter
 from semantic_router.splitters.utils import split_to_sentences, tiktoken_length
 from semantic_router.utils.logger import logger
 
 
-class RollingWindowSplitter:
+
+class RollingWindowSplitter(BaseSplitter):
     def __init__(
         self,
         encoder: BaseEncoder,
-        threshold_adjustment: float = 0.01,
+        threshold_adjustment=0.01,
         window_size=5,
         min_split_tokens=100,
         max_split_tokens=300,
         split_tokens_tolerance=10,
         plot_splits=False,
+        name = "rolling_window_splitter",
     ):
+        super().__init__(name=name, encoder=encoder)
         self.calculated_threshold: float
         self.encoder = encoder
         self.threshold_adjustment = threshold_adjustment
