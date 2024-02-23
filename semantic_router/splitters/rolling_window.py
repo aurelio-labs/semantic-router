@@ -245,7 +245,7 @@ class RollingWindowSplitter:
         plt.ylabel("Similarity Score")
         plt.title(
             f"Threshold: {self.calculated_threshold} |"
-            " Window Size: {self.window_size}",
+            f" Window Size: {self.window_size}",
             loc="right",
             fontsize=10,
         )

@@ -73,7 +73,17 @@ def plot_splits(document_splits: List[DocumentSplit]) -> None:
     for i, split in enumerate(document_splits):
         color = colors[i % len(colors)]
         colored_content = f"{color}{split.content}{Style.RESET_ALL}"
-        print(f"Split {i + 1}, tokens {split.token_count}:")
+        if split.is_triggered:
+            triggered = f"{split.triggered_score:.2f}"
+        elif i == len(document_splits) - 1:
+            triggered = "final split"
+        else:
+            triggered = "token limit"
+        print(
+            f"Split {i + 1}, "
+            f"tokens {split.token_count}, "
+            f"triggered by: {triggered}"
+        )
         print(colored_content)
         print("-" * 88)
         print("\n")
