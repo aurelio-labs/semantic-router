@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from pydantic.v1 import BaseModel
 from pydantic.v1.dataclasses import dataclass
@@ -77,6 +77,12 @@ class Message(BaseModel):
 
 
 class DocumentSplit(BaseModel):
-    docs: List[Any]
+    docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
+    token_count: Optional[int] = None
+    metadata: Optional[dict] = None
+
+    @property
+    def content(self) -> str:
+        return " ".join(self.docs)

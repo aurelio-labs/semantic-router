@@ -31,8 +31,11 @@ llama-cpp-python = {version = "^0.2.28", optional = true}
 black = "^23.12.1"
 colorama = "^0.4.6"
 pinecone-client = {version="^3.0.0", optional = true}
+regex = "^2023.12.25"
 torchvision = { version = "^0.16.2", optional = true}
 pillow = { version= "^10.2.0", optional = true}
+tiktoken = "^0.6.0"
+matplotlib = { version="^3.8.3", optional = true}
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
@@ -40,6 +43,7 @@ fastembed = ["fastembed"]
 local = ["torch", "transformers", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
+processing = ["matplotlib"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
