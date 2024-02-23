@@ -215,7 +215,10 @@ class RollingWindowSplitter(BaseSplitter):
         try:
             from matplotlib import pyplot as plt
         except ImportError:
-            logger.warning("Plotting is disabled. Please `pip install matplotlib`.")
+            logger.warning(
+                "Plotting is disabled. Please `pip install "
+                "semantic-router[processing]`."
+            )
             return
 
         if not self.plot_splits:
