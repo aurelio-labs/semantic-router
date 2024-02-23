@@ -1,4 +1,5 @@
 import pytest
+
 from semantic_router.llms.ollama import OllamaLLM
 from semantic_router.schema import Message
 

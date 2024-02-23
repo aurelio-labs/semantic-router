@@ -1,4 +1,5 @@
 from typing import List
+
 import numpy as np
 
 from semantic_router.encoders.base import BaseEncoder

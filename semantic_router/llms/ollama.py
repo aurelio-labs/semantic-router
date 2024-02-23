@@ -1,4 +1,5 @@
 from typing import List, Optional
+
 import requests
 
 from semantic_router.llms import BaseLLM
