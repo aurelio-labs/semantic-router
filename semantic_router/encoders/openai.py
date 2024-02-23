@@ -8,6 +8,7 @@ from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -25,7 +26,7 @@ class OpenAIEncoder(BaseEncoder):
         dimensions: Union[int, NotGiven] = NotGiven(),
     ):
         if name is None:
-            name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
+            name = EncoderDefault.OPENAI.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")

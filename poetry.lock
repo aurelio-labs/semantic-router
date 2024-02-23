@@ -3599,9 +3599,9 @@ fastembed = ["fastembed"]
 hybrid = ["pinecone-text"]
 local = ["llama-cpp-python", "torch", "transformers"]
 pinecone = ["pinecone-client"]
-vision = ["pillow", "torchvision"]
+vision = ["pillow", "torch", "torchvision", "transformers"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "8e996c0bf391fd54ea5a52867a097339a2e00f6ddec661336a57e325d4c6c895"
+content-hash = "26f85562a59d475cc411ed0aa003cc84cd8ebc328cfafed1c74e77d0aaa544d3"
