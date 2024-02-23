@@ -14,6 +14,7 @@ class RollingWindowSplitter(BaseSplitter):
         self,
         encoder: BaseEncoder,
         threshold_adjustment=0.01,
+        dynamic_threshold: bool = True,
         window_size=5,
         min_split_tokens=100,
         max_split_tokens=300,
@@ -25,6 +26,7 @@ class RollingWindowSplitter(BaseSplitter):
         self.calculated_threshold: float
         self.encoder = encoder
         self.threshold_adjustment = threshold_adjustment
+        self.dynamic_threshold = dynamic_threshold
         self.window_size = window_size
         self.plot_splits = plot_splits
         self.min_split_tokens = min_split_tokens
@@ -321,7 +323,10 @@ class RollingWindowSplitter(BaseSplitter):
                 )
             docs = split_to_sentences(docs[0])
         encoded_docs = self.encode_documents(docs)
-        self.find_optimal_threshold(docs, encoded_docs)
+        if self.dynamic_threshold:
+            self.find_optimal_threshold(docs, encoded_docs)
+        else:
+            self.calculated_threshold = self.encoder.score_threshold
         similarities = self.calculate_similarity_scores(encoded_docs)
         split_indices = self.find_split_indices(similarities=similarities)
         splits = self.split_documents(docs, split_indices, similarities)
