@@ -478,7 +478,7 @@ class RouteLayer:
         }
         return serialized_data
 
-    def create_hub_repo(self, namespace: str, route_layer_id: str, access_token: str) -> str:
+    def _create_hub_repo(self, namespace: str, route_layer_id: str, access_token: str) -> str:
         """
         Create a new dataset repository on the Hugging Face Hub or use an existing one, ensuring the local directory is a fresh clone of the remote repository.
 
@@ -540,7 +540,7 @@ class RouteLayer:
         
         repo_local_path = None
         try:
-            repo_local_path = self.create_hub_repo(namespace, route_layer_id, access_token)
+            repo_local_path = self._create_hub_repo(namespace, route_layer_id, access_token)
             self._json_to_hub(repo_local_path, json_data)
             self._commit_push_to_hub(repo_local_path)
         finally:
