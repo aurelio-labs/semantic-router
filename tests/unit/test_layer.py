@@ -399,10 +399,11 @@ class TestRouteLayer:
         # Load the LayerConfig from the temporary file
         layer_config = LayerConfig.from_file(str(config_path))
 
-        # Using BaseLLM because trying to create a useable Mock LLM is a nightmare.
+        # Using BaseLLM because trying to create a usable Mock LLM is a nightmare.
         assert isinstance(
             layer_config.routes[0].llm, BaseLLM
-        ), "LLM should be instantiated and associated with the route based on the config"
+        ), "LLM should be instantiated and associated with the route based on the "
+        "config"
         assert (
             layer_config.routes[0].llm.name == "fake-model-v1"
         ), "LLM instance should have the 'name' attribute set correctly"
@@ -432,13 +433,13 @@ class TestLayerFit:
         # unpack test data
         X, y = zip(*test_data)
         # evaluate
-        route_layer.evaluate(X=X, y=y)
+        route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
 
     def test_fit(self, openai_encoder, routes, test_data):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
         # unpack test data
         X, y = zip(*test_data)
-        route_layer.fit(X=X, y=y)
+        route_layer.fit(X=X, y=y, batch_size=int(len(test_data) / 5))
 
 
 # Add more tests for edge cases and error handling as needed.

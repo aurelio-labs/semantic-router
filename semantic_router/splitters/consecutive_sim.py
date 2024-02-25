@@ -19,8 +19,9 @@ class ConsecutiveSimSplitter(BaseSplitter):
         name: str = "consecutive_similarity_splitter",
         score_threshold: float = 0.45,
     ):
-        super().__init__(name=name, score_threshold=score_threshold, encoder=encoder)
+        super().__init__(name=name, encoder=encoder)
         encoder.score_threshold = score_threshold
+        self.score_threshold = score_threshold
 
     def __call__(self, docs: List[Any]):
         # Check if there's only a single document

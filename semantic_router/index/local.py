@@ -16,7 +16,8 @@ class LocalIndex(BaseIndex):
         super().__init__(index=index, routes=routes, utterances=utterances)
         self.type = "local"
 
-    class Config:  # Stop pydantic from complaining about  Optional[np.ndarray] type hints.
+    class Config:
+        # Stop pydantic from complaining about Optional[np.ndarray]type hints.
         arbitrary_types_allowed = True
 
     def add(
@@ -83,7 +84,8 @@ class LocalIndex(BaseIndex):
             self.utterances = np.delete(self.utterances, delete_idx, axis=0)
         else:
             raise ValueError(
-                "Attempted to delete route records but either index, routes or utterances is None."
+                "Attempted to delete route records but either index, routes or "
+                "utterances is None."
             )
 
     def delete_index(self):

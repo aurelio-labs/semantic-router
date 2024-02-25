@@ -5,6 +5,7 @@ from mistralai.client import MistralClient
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -21,7 +22,7 @@ class MistralAILLM(BaseLLM):
         max_tokens: int = 200,
     ):
         if name is None:
-            name = os.getenv("MISTRALAI_CHAT_MODEL_NAME", "mistral-tiny")
+            name = EncoderDefault.MISTRAL.value["language_model"]
         super().__init__(name=name)
         api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
         if api_key is None:
