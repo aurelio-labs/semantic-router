@@ -89,7 +89,7 @@ class CLIPEncoder(BaseEncoder):
         self.device = self._get_device()
         model.to(self.device)
         return tokenizer, processor, model
-    
+
     def _get_device(self) -> str:
         if self.device:
             device = self.device

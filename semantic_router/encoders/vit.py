@@ -65,7 +65,7 @@ class VitEncoder(BaseEncoder):
         model.to(self.device)
 
         return processor, model
-    
+
     def _get_device(self) -> str:
         if self.device:
             device = self.device
