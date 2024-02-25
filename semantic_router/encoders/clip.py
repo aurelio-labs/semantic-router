@@ -87,13 +87,14 @@ class CLIPEncoder(BaseEncoder):
         model = CLIPModel.from_pretrained(self.name, **self.model_kwargs)
 
         if self.device:
-            model.to(self.device)
-
+            pass
+        elif self._torch.cuda.is_available():
+            self.device = "cuda"
+        elif self._torch.backends.mps.is_available():
+            self.device = "mps"
         else:
-            device = "cuda" if self._torch.cuda.is_available() else "cpu"
-            model.to(device)
-            self.device = device
-
+            self.device = "cpu"
+        model.to(self.device)
         return tokenizer, processor, model
 
     def _encode_text(self, docs: List[str]) -> Any:
