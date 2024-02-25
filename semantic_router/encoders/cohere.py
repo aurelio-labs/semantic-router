@@ -4,6 +4,7 @@ from typing import List, Optional
 import cohere
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.defaults import EncoderDefault
 
 
 class CohereEncoder(BaseEncoder):
@@ -19,7 +20,7 @@ class CohereEncoder(BaseEncoder):
         input_type: Optional[str] = "search_query",
     ):
         if name is None:
-            name = os.getenv("COHERE_MODEL_NAME", "embed-english-v3.0")
+            name = EncoderDefault.COHERE.value["embedding_model"]
         super().__init__(
             name=name,
             score_threshold=score_threshold,

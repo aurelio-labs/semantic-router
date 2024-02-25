@@ -61,15 +61,21 @@ class VitEncoder(BaseEncoder):
 
         model = ViTModel.from_pretrained(self.name, **self.model_kwargs)
 
-        if self.device:
-            model.to(self.device)
-
-        else:
-            device = "cuda" if self._torch.cuda.is_available() else "cpu"
-            model.to(device)
-            self.device = device
+        self.device = self._get_device()
+        model.to(self.device)
 
         return processor, model
+    
+    def _get_device(self) -> str:
+        if self.device:
+            device = self.device
+        elif self._torch.cuda.is_available():
+            device = "cuda"
+        elif self._torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+        return device
 
     def _process_images(self, images: List[Any]):
         rgb_images = [self._ensure_rgb(img) for img in images]
