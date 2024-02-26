@@ -2,8 +2,9 @@ import re
 from typing import Any
 
 from colorama import Fore, Style
-from semantic_router.splitters import RollingWindowSplitter
+
 from semantic_router.encoders import BaseEncoder
+from semantic_router.splitters import RollingWindowSplitter
 
 
 class UnstructuredSemanticSplitter:
