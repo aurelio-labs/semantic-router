@@ -78,7 +78,6 @@ class Message(BaseModel):
 
 class DocumentSplit(BaseModel):
     docs: List[str]
-    embeddings: List[List[float]] = []
     is_triggered: bool = False
     triggered_score: Optional[float] = None
     token_count: Optional[int] = None
