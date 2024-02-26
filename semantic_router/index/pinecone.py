@@ -23,9 +23,9 @@ class PineconeRecord(BaseModel):
 
     def __init__(self, **data):
         super().__init__(**data)
-        # generate ID based on route name and utterances to prevent duplicates
         clean_route = clean_route_name(self.route)
-        utterance_id = hashlib.md5(self.utterance.encode()).hexdigest()
+        # Use SHA-256 for a more secure hash
+        utterance_id = hashlib.sha256(self.utterance.encode()).hexdigest()
         self.id = f"{clean_route}#{utterance_id}"
 
     def to_dict(self):
@@ -51,13 +51,8 @@ class PineconeIndex(BaseIndex):
     def __init__(self, **data):
         super().__init__(**data)
         self._initialize_client()
-
         self.type = "pinecone"
         self.client = self._initialize_client()
-        if not self.index_name.startswith(self.index_prefix):
-            self.index_name = f"{self.index_prefix}{self.index_name}"
-        # Create or connect to an existing Pinecone index
-        self.index = self._init_index()
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
