@@ -256,8 +256,14 @@ class RollingWindowSplitter(BaseSplitter):
         splits_by_similarity_ratio = (
             splits_by_threshold / total_splits if total_splits else 0
         )
-        min_token_size = min(split.token_count for split in splits) if splits else 0
-        max_token_size = max(split.token_count for split in splits) if splits else 0
+        min_token_size = max_token_size = 0
+        if splits:
+            token_counts = [
+                split.token_count for split in splits if split.token_count is not None
+            ]
+            min_token_size, max_token_size = min(token_counts, default=0), max(
+                token_counts, default=0
+            )
 
         self.statistics = SplitStatistics(
             total_documents=len(docs),
