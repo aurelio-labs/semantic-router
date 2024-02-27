@@ -1,12 +1,14 @@
-from typing import Any, List, Optional, Union, TypeAlias
+from typing import Any, List, Optional, Union
+
 from pydantic.v1 import PrivateAttr
+
 from semantic_router.encoders import BaseEncoder
 
-PILImage: TypeAlias = Union[Any, "Image"]
 try:
     from PIL.Image import Image
 except ImportError:
     pass
+PILImage = Union[Any, "Image"]
 
 
 class VitEncoder(BaseEncoder):
