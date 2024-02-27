@@ -3,14 +3,12 @@ import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from pydantic.v1 import BaseModel
-from typing_extensions import TypeAlias
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 
-PILImage: TypeAlias = Union[Any, "Image"]
 try:
     from PIL.Image import Image
 except ImportError:
@@ -47,7 +45,7 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: Union[List[str], List[PILImage]]
+    utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None

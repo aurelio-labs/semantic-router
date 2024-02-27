@@ -1,10 +1,14 @@
 from typing import Any, List, Optional
 
-from PIL import Image
-from PIL.Image import Image as _Image
 from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.logger import logger
+
+try:
+    from PIL import Image
+except ImportError:
+    logger.warning("Pillow is not installed. Install it with `pip install pillow`")
 
 
 class VitEncoder(BaseEncoder):
@@ -62,20 +66,20 @@ class VitEncoder(BaseEncoder):
 
         return processor, model
 
-    def _process_images(self, images: List[_Image]):
+    def _process_images(self, images: List[Any]):
         rgb_images = [self._ensure_rgb(img) for img in images]
         processed_images = self._processor(images=rgb_images, return_tensors="pt")
         processed_images = processed_images.to(self.device)
         return processed_images
 
-    def _ensure_rgb(self, img: _Image):
+    def _ensure_rgb(self, img: Any):
         rgbimg = Image.new("RGB", img.size)
         rgbimg.paste(img)
         return rgbimg
 
     def __call__(
         self,
-        imgs: List[_Image],
+        imgs: List[Any],
         batch_size: int = 32,
     ) -> List[List[float]]:
         all_embeddings = []
