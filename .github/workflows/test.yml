@@ -39,12 +39,6 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --all-extras
-      - name: Install nltk
-        run: |
-          pip install nltk
-      - name: Download nltk data
-        run: |
-          python -m nltk.downloader punkt stopwords wordnet
       - name: Pytest
         run: |
           make test
