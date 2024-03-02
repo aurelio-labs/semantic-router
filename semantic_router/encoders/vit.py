@@ -3,12 +3,6 @@ from typing import Any, List, Optional
 from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
-from semantic_router.utils.logger import logger
-
-try:
-    from PIL import Image
-except ImportError:
-    logger.warning("Pillow is not installed. Install it with `pip install pillow`")
 
 
 class VitEncoder(BaseEncoder):
@@ -22,6 +16,7 @@ class VitEncoder(BaseEncoder):
     _model: Any = PrivateAttr()
     _torch: Any = PrivateAttr()
     _T: Any = PrivateAttr()
+    _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -34,7 +29,7 @@ class VitEncoder(BaseEncoder):
             raise ImportError(
                 "Please install transformers to use HuggingFaceEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
             )
 
         try:
@@ -44,10 +39,20 @@ class VitEncoder(BaseEncoder):
             raise ImportError(
                 "Please install Pytorch to use HuggingFaceEncoder. "
                 "You can install it with: "
-                "`pip install semantic-router[local]`"
+                "`pip install semantic-router[vision]`"
+            )
+
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Please install PIL to use HuggingFaceEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[vision]`"
             )
 
         self._torch = torch
+        self._Image = Image
         self._T = T
 
         processor = ViTImageProcessor.from_pretrained(
@@ -56,15 +61,21 @@ class VitEncoder(BaseEncoder):
 
         model = ViTModel.from_pretrained(self.name, **self.model_kwargs)
 
-        if self.device:
-            model.to(self.device)
-
-        else:
-            device = "cuda" if self._torch.cuda.is_available() else "cpu"
-            model.to(device)
-            self.device = device
+        self.device = self._get_device()
+        model.to(self.device)
 
         return processor, model
+
+    def _get_device(self) -> str:
+        if self.device:
+            device = self.device
+        elif self._torch.cuda.is_available():
+            device = "cuda"
+        elif self._torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+        return device
 
     def _process_images(self, images: List[Any]):
         rgb_images = [self._ensure_rgb(img) for img in images]
@@ -73,7 +84,7 @@ class VitEncoder(BaseEncoder):
         return processed_images
 
     def _ensure_rgb(self, img: Any):
-        rgbimg = Image.new("RGB", img.size)
+        rgbimg = self._Image.new("RGB", img.size)
         rgbimg.paste(img)
         return rgbimg
 
