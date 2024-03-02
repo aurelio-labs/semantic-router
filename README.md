@@ -133,7 +133,7 @@ In this case, no decision could be made as we had no matches — so our route la
 
 ### Online Course
 
-[![Semantic Router Course](https://github.com/aurelio-labs/assets/blob/main/images/aurelio-1080p-header-dark-semantic-router.jpg)](https://www.youtube.com/watch?v=ro312jDqAh0&list=PLIUOU7oqGTLhYDPiDKlALecva3jab531-&index=1)
+[![Semantic Router Course](https://github.com/aurelio-labs/assets/blob/main/images/aurelio-1080p-header-dark-semantic-router.jpg)](https://www.aurelio.ai/course/semantic-router)
 
 ### Community
 
