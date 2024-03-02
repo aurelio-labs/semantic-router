@@ -7,7 +7,7 @@ from semantic_router.encoders import BaseEncoder
 
 
 class CLIPEncoder(BaseEncoder):
-    name: str = "openai/clip-vit-base-patch32"
+    name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     score_threshold: float = 0.2
     tokenizer_kwargs: dict = {}

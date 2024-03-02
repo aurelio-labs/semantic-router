@@ -1,15 +1,23 @@
 import numpy as np
 import pytest
 from PIL import Image
+import torch
 
 from semantic_router.encoders import CLIPEncoder
 
 clip_encoder = CLIPEncoder()
 
+if torch.cuda.is_available():
+    device = "cuda"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
+
 
 @pytest.fixture()
 def dummy_pil_image():
-    return Image.fromarray(np.random.rand(1024, 512, 3).astype(np.uint8))
+    return Image.fromarray(np.random.rand(512, 224, 3).astype(np.uint8))
 
 
 @pytest.fixture()
@@ -34,10 +42,10 @@ class TestVitEncoder:
             CLIPEncoder()
 
     def test_clip_encoder_initialization(self):
-        assert clip_encoder.name == "openai/clip-vit-base-patch32"
+        assert clip_encoder.name == "openai/clip-vit-base-patch16"
         assert clip_encoder.type == "huggingface"
         assert clip_encoder.score_threshold == 0.2
-        assert clip_encoder.device == "cpu"
+        assert clip_encoder.device == device
 
     def test_clip_encoder_call_text(self):
         embeddings = clip_encoder(["hello", "world"])
@@ -59,7 +67,7 @@ class TestVitEncoder:
 
     def test_clip_device(self):
         device = clip_encoder._model.device.type
-        assert device == "cpu"
+        assert device == device
 
     def test_clip_encoder_ensure_rgb(self, dummy_black_and_white_img):
         rgb_image = clip_encoder._ensure_rgb(dummy_black_and_white_img)
