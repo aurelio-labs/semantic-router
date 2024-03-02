@@ -23,7 +23,14 @@ class CumulativeSimSplitter(BaseSplitter):
         encoder.score_threshold = score_threshold
         self.score_threshold = score_threshold
 
-    def __call__(self, docs: List[str]):
+    def __call__(self, docs: List[str]) -> List[DocumentSplit]:
+        """Split documents into smaller chunks based on semantic similarity.
+
+        :param docs: list of text documents to be split, if only wanted to
+            split a single document, pass it as a list with a single element.
+
+        :return: list of DocumentSplit objects containing the split documents.
+        """
         total_docs = len(docs)
         # Check if there's only a single document
         if total_docs == 1:
