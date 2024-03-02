@@ -5,7 +5,9 @@ from PIL import Image
 
 from semantic_router.encoders import CLIPEncoder
 
-clip_encoder = CLIPEncoder()
+test_model_name = "hf-internal-testing/tiny-random-CLIPModel"
+clip_encoder = CLIPEncoder(name=test_model_name)
+embed_dim = 64
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -42,7 +44,7 @@ class TestVitEncoder:
             CLIPEncoder()
 
     def test_clip_encoder_initialization(self):
-        assert clip_encoder.name == "openai/clip-vit-base-patch16"
+        assert clip_encoder.name == test_model_name
         assert clip_encoder.type == "huggingface"
         assert clip_encoder.score_threshold == 0.2
         assert clip_encoder.device == device
@@ -51,19 +53,19 @@ class TestVitEncoder:
         embeddings = clip_encoder(["hello", "world"])
 
         assert len(embeddings) == 2
-        assert len(embeddings[0]) == 512
+        assert len(embeddings[0]) == embed_dim
 
     def test_clip_encoder_call_image(self, dummy_pil_image):
         encoded_images = clip_encoder([dummy_pil_image] * 3)
 
         assert len(encoded_images) == 3
-        assert set(map(len, encoded_images)) == {512}
+        assert set(map(len, encoded_images)) == {embed_dim}
 
     def test_clip_encoder_call_misshaped(self, dummy_pil_image, misshaped_pil_image):
         encoded_images = clip_encoder([dummy_pil_image, misshaped_pil_image])
 
         assert len(encoded_images) == 2
-        assert set(map(len, encoded_images)) == {512}
+        assert set(map(len, encoded_images)) == {embed_dim}
 
     def test_clip_device(self):
         device = clip_encoder._model.device.type
