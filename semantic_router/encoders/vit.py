@@ -3,12 +3,6 @@ from typing import Any, List, Optional
 from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
-from semantic_router.utils.logger import logger
-
-try:
-    from PIL import Image
-except ImportError:
-    logger.warning("Pillow is not installed. Install it with `pip install pillow`")
 
 
 class VitEncoder(BaseEncoder):
