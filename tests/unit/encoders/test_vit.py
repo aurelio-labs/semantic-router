@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from PIL import Image
 import torch
+from PIL import Image
 
 from semantic_router.encoders import VitEncoder
 
