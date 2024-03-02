@@ -18,7 +18,7 @@
 						<line number="7" hits="1"/>
 					</lines>
 				</class>
-				<class name="hybrid_layer.py" filename="hybrid_layer.py" complexity="0" line-rate="0.9808" branch-rate="0">
+				<class name="hybrid_layer.py" filename="hybrid_layer.py" complexity="0" line-rate="0.2115" branch-rate="0">
 					<methods/>
 					<lines>
 						<line number="1" hits="1"/>
@@ -33,101 +33,101 @@
 						<line number="18" hits="1"/>
 						<line number="19" hits="1"/>
 						<line number="21" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="31" hits="1"/>
+						<line number="28" hits="0"/>
+						<line number="29" hits="0"/>
+						<line number="31" hits="0"/>
 						<line number="32" hits="0"/>
 						<line number="33" hits="0"/>
-						<line number="35" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="48" hits="1"/>
+						<line number="35" hits="0"/>
+						<line number="37" hits="0"/>
+						<line number="38" hits="0"/>
+						<line number="39" hits="0"/>
+						<line number="42" hits="0"/>
+						<line number="44" hits="0"/>
+						<line number="48" hits="0"/>
 						<line number="50" hits="1"/>
-						<line number="51" hits="1"/>
-						<line number="52" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="54" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="57" hits="1"/>
+						<line number="51" hits="0"/>
+						<line number="52" hits="0"/>
+						<line number="53" hits="0"/>
+						<line number="54" hits="0"/>
+						<line number="55" hits="0"/>
+						<line number="57" hits="0"/>
 						<line number="59" hits="1"/>
-						<line number="60" hits="1"/>
+						<line number="60" hits="0"/>
 						<line number="62" hits="1"/>
-						<line number="63" hits="1"/>
-						<line number="65" hits="1"/>
-						<line number="67" hits="1"/>
-						<line number="70" hits="1"/>
-						<line number="72" hits="1"/>
-						<line number="73" hits="1"/>
-						<line number="76" hits="1"/>
-						<line number="78" hits="1"/>
-						<line number="81" hits="1"/>
-						<line number="82" hits="1"/>
-						<line number="84" hits="1"/>
-						<line number="85" hits="1"/>
-						<line number="86" hits="1"/>
+						<line number="63" hits="0"/>
+						<line number="65" hits="0"/>
+						<line number="67" hits="0"/>
+						<line number="70" hits="0"/>
+						<line number="72" hits="0"/>
+						<line number="73" hits="0"/>
+						<line number="76" hits="0"/>
+						<line number="78" hits="0"/>
+						<line number="81" hits="0"/>
+						<line number="82" hits="0"/>
+						<line number="84" hits="0"/>
+						<line number="85" hits="0"/>
+						<line number="86" hits="0"/>
 						<line number="88" hits="1"/>
-						<line number="90" hits="1"/>
-						<line number="91" hits="1"/>
-						<line number="94" hits="1"/>
-						<line number="95" hits="1"/>
-						<line number="98" hits="1"/>
-						<line number="99" hits="1"/>
-						<line number="100" hits="1"/>
+						<line number="90" hits="0"/>
+						<line number="91" hits="0"/>
+						<line number="94" hits="0"/>
+						<line number="95" hits="0"/>
+						<line number="98" hits="0"/>
+						<line number="99" hits="0"/>
+						<line number="100" hits="0"/>
 						<line number="106" hits="1"/>
-						<line number="107" hits="1"/>
-						<line number="109" hits="1"/>
+						<line number="107" hits="0"/>
+						<line number="109" hits="0"/>
 						<line number="115" hits="1"/>
-						<line number="116" hits="1"/>
-						<line number="118" hits="1"/>
+						<line number="116" hits="0"/>
+						<line number="118" hits="0"/>
 						<line number="124" hits="1"/>
-						<line number="129" hits="1"/>
-						<line number="130" hits="1"/>
-						<line number="132" hits="1"/>
-						<line number="133" hits="1"/>
-						<line number="135" hits="1"/>
-						<line number="137" hits="1"/>
-						<line number="139" hits="1"/>
-						<line number="140" hits="1"/>
-						<line number="141" hits="1"/>
-						<line number="143" hits="1"/>
-						<line number="144" hits="1"/>
-						<line number="145" hits="1"/>
-						<line number="146" hits="1"/>
-						<line number="148" hits="1"/>
-						<line number="149" hits="1"/>
-						<line number="150" hits="1"/>
-						<line number="152" hits="1"/>
-						<line number="153" hits="1"/>
-						<line number="155" hits="1"/>
-						<line number="156" hits="1"/>
+						<line number="129" hits="0"/>
+						<line number="130" hits="0"/>
+						<line number="132" hits="0"/>
+						<line number="133" hits="0"/>
+						<line number="135" hits="0"/>
+						<line number="137" hits="0"/>
+						<line number="139" hits="0"/>
+						<line number="140" hits="0"/>
+						<line number="141" hits="0"/>
+						<line number="143" hits="0"/>
+						<line number="144" hits="0"/>
+						<line number="145" hits="0"/>
+						<line number="146" hits="0"/>
+						<line number="148" hits="0"/>
+						<line number="149" hits="0"/>
+						<line number="150" hits="0"/>
+						<line number="152" hits="0"/>
+						<line number="153" hits="0"/>
+						<line number="155" hits="0"/>
+						<line number="156" hits="0"/>
 						<line number="158" hits="1"/>
-						<line number="160" hits="1"/>
-						<line number="161" hits="1"/>
-						<line number="162" hits="1"/>
+						<line number="160" hits="0"/>
+						<line number="161" hits="0"/>
+						<line number="162" hits="0"/>
 						<line number="164" hits="1"/>
-						<line number="165" hits="1"/>
-						<line number="166" hits="1"/>
-						<line number="167" hits="1"/>
-						<line number="168" hits="1"/>
-						<line number="169" hits="1"/>
-						<line number="170" hits="1"/>
-						<line number="172" hits="1"/>
-						<line number="175" hits="1"/>
-						<line number="176" hits="1"/>
-						<line number="179" hits="1"/>
-						<line number="180" hits="1"/>
-						<line number="182" hits="1"/>
-						<line number="183" hits="1"/>
+						<line number="165" hits="0"/>
+						<line number="166" hits="0"/>
+						<line number="167" hits="0"/>
+						<line number="168" hits="0"/>
+						<line number="169" hits="0"/>
+						<line number="170" hits="0"/>
+						<line number="172" hits="0"/>
+						<line number="175" hits="0"/>
+						<line number="176" hits="0"/>
+						<line number="179" hits="0"/>
+						<line number="180" hits="0"/>
+						<line number="182" hits="0"/>
+						<line number="183" hits="0"/>
 						<line number="185" hits="1"/>
-						<line number="186" hits="1"/>
-						<line number="187" hits="1"/>
-						<line number="189" hits="1"/>
+						<line number="186" hits="0"/>
+						<line number="187" hits="0"/>
+						<line number="189" hits="0"/>
 					</lines>
 				</class>
-				<class name="layer.py" filename="layer.py" complexity="0" line-rate="0.8949" branch-rate="0">
+				<class name="layer.py" filename="layer.py" complexity="0" line-rate="0.8576" branch-rate="0">
 					<methods/>
 					<lines>
 						<line number="1" hits="1"/>
@@ -459,8 +459,6 @@
 						<line number="41" hits="1"/>
 						<line number="42" hits="1"/>
 						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
 						<line number="46" hits="1"/>
 						<line number="47" hits="1"/>
 						<line number="49" hits="1"/>
@@ -509,7 +507,6 @@
 						<line number="149" hits="1"/>
 						<line number="151" hits="1"/>
 						<line number="152" hits="1"/>
-						<line number="153" hits="1"/>
 						<line number="154" hits="1"/>
 						<line number="155" hits="0"/>
 					</lines>
@@ -693,7 +690,7 @@
 						<line number="15" hits="1"/>
 					</lines>
 				</class>
-				<class name="bm25.py" filename="encoders/bm25.py" complexity="0" line-rate="0.9574" branch-rate="0">
+				<class name="bm25.py" filename="encoders/bm25.py" complexity="0" line-rate="0.3404" branch-rate="0">
 					<methods/>
 					<lines>
 						<line number="1" hits="1"/>
@@ -707,42 +704,42 @@
 						<line number="18" hits="1"/>
 						<line number="19" hits="1"/>
 						<line number="20" hits="1"/>
-						<line number="21" hits="0"/>
-						<line number="22" hits="0"/>
-						<line number="27" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="30" hits="1"/>
-						<line number="31" hits="1"/>
-						<line number="32" hits="1"/>
+						<line number="21" hits="1"/>
+						<line number="22" hits="1"/>
+						<line number="27" hits="0"/>
+						<line number="29" hits="0"/>
+						<line number="30" hits="0"/>
+						<line number="31" hits="0"/>
+						<line number="32" hits="0"/>
 						<line number="34" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="41" hits="1"/>
+						<line number="35" hits="0"/>
+						<line number="36" hits="0"/>
+						<line number="37" hits="0"/>
+						<line number="38" hits="0"/>
+						<line number="39" hits="0"/>
+						<line number="41" hits="0"/>
 						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="49" hits="1"/>
-						<line number="51" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="54" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="56" hits="1"/>
-						<line number="57" hits="1"/>
-						<line number="58" hits="1"/>
-						<line number="59" hits="1"/>
-						<line number="60" hits="1"/>
-						<line number="61" hits="1"/>
+						<line number="44" hits="0"/>
+						<line number="45" hits="0"/>
+						<line number="46" hits="0"/>
+						<line number="47" hits="0"/>
+						<line number="48" hits="0"/>
+						<line number="49" hits="0"/>
+						<line number="51" hits="0"/>
+						<line number="53" hits="0"/>
+						<line number="54" hits="0"/>
+						<line number="55" hits="0"/>
+						<line number="56" hits="0"/>
+						<line number="57" hits="0"/>
+						<line number="58" hits="0"/>
+						<line number="59" hits="0"/>
+						<line number="60" hits="0"/>
+						<line number="61" hits="0"/>
 						<line number="63" hits="1"/>
-						<line number="64" hits="1"/>
-						<line number="65" hits="1"/>
-						<line number="66" hits="1"/>
-						<line number="67" hits="1"/>
+						<line number="64" hits="0"/>
+						<line number="65" hits="0"/>
+						<line number="66" hits="0"/>
+						<line number="67" hits="0"/>
 					</lines>
 				</class>
 				<class name="clip.py" filename="encoders/clip.py" complexity="0" line-rate="0.939" branch-rate="0">
@@ -866,7 +863,7 @@
 						<line number="49" hits="1"/>
 					</lines>
 				</class>
-				<class name="fastembed.py" filename="encoders/fastembed.py" complexity="0" line-rate="0.8667" branch-rate="0">
+				<class name="fastembed.py" filename="encoders/fastembed.py" complexity="0" line-rate="0.6667" branch-rate="0">
 					<methods/>
 					<lines>
 						<line number="1" hits="1"/>
@@ -886,17 +883,17 @@
 						<line number="23" hits="1"/>
 						<line number="24" hits="1"/>
 						<line number="25" hits="1"/>
-						<line number="26" hits="0"/>
-						<line number="27" hits="0"/>
-						<line number="33" hits="1"/>
-						<line number="40" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="43" hits="1"/>
+						<line number="26" hits="1"/>
+						<line number="27" hits="1"/>
+						<line number="33" hits="0"/>
+						<line number="40" hits="0"/>
+						<line number="42" hits="0"/>
+						<line number="43" hits="0"/>
 						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="49" hits="1"/>
+						<line number="46" hits="0"/>
+						<line number="47" hits="0"/>
+						<line number="48" hits="0"/>
+						<line number="49" hits="0"/>
 						<line number="50" hits="0"/>
 						<line number="51" hits="0"/>
 					</lines>
@@ -1144,8 +1141,6 @@
 						<line number="9" hits="1"/>
 						<line number="10" hits="1"/>
 						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="13" hits="1"/>
 						<line number="14" hits="1"/>
 						<line number="15" hits="1"/>
 						<line number="16" hits="1"/>
