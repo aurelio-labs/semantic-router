@@ -1,16 +1,18 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Any
 
-from mistralai.client import MistralClient
+
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
+from pydantic.v1 import PrivateAttr
+
 
 class MistralAILLM(BaseLLM):
-    client: Optional[MistralClient]
+    client: Any = PrivateAttr()
     temperature: Optional[float]
     max_tokens: Optional[int]
 
@@ -27,15 +29,26 @@ class MistralAILLM(BaseLLM):
         api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
         if api_key is None:
             raise ValueError("MistralAI API key cannot be 'None'.")
+        self._initialize_client(api_key)
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+    def _initialize_client(self, api_key):
+        try:
+            from mistralai.client import MistralClient
+        except ImportError:
+             raise ImportError(
+                "Please install MistralAI to use MistralEncoder. "
+                "You can install it with: "
+                "`pip install 'semantic-router[mistralai]'`"
+            )
         try:
             self.client = MistralClient(api_key=api_key)
         except Exception as e:
             raise ValueError(
                 f"MistralAI API client failed to initialize. Error: {e}"
             ) from e
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-
+       
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
             raise ValueError("MistralAI client is not initialized.")
