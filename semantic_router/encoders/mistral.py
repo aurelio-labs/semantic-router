@@ -13,8 +13,8 @@ class MistralEncoder(BaseEncoder):
     """Class to encode text using MistralAI"""
 
     _client: Any = PrivateAttr()
-    embedding_response: Any = PrivateAttr()
-    mistral_exception: Any = PrivateAttr()
+    _embedding_response: Any = PrivateAttr()
+    _mistral_exception: Any = PrivateAttr()
     type: str = "mistral"
 
     def __init__(
@@ -51,14 +51,14 @@ class MistralEncoder(BaseEncoder):
             )
 
         try:
-            self.client = MistralClient(api_key=api_key)
-            self.embedding_response = EmbeddingResponse
-            self.mistral_exception = MistralException
+            self._client = MistralClient(api_key=api_key)
+            self._embedding_response = EmbeddingResponse
+            self._mistral_exception = MistralException
         except Exception as e:
             raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("Mistral client not initialized")
         embeds = None
         error_message = ""
@@ -66,10 +66,10 @@ class MistralEncoder(BaseEncoder):
         # Exponential backoff
         for _ in range(3):
             try:
-                embeds = self.client.embeddings(model=self.name, input=docs)
+                embeds = self._client.embeddings(model=self.name, input=docs)
                 if embeds.data:
                     break
-            except self.mistral_exception as e:
+            except self._mistral_exception as e:
                 sleep(2**_)
                 error_message = str(e)
             except Exception as e:
@@ -77,7 +77,7 @@ class MistralEncoder(BaseEncoder):
 
         if (
             not embeds
-            or not isinstance(embeds, self.embedding_response)
+            or not isinstance(embeds, self._embedding_response)
             or not embeds.data
         ):
             raise ValueError(f"No embeddings returned from MistralAI: {error_message}")

@@ -11,7 +11,7 @@ from pydantic.v1 import PrivateAttr
 
 
 class MistralAILLM(BaseLLM):
-    client: Any = PrivateAttr()
+    _client: Any = PrivateAttr()
     temperature: Optional[float]
     max_tokens: Optional[int]
 
@@ -42,17 +42,17 @@ class MistralAILLM(BaseLLM):
                 "`pip install 'semantic-router[mistralai]'`"
             )
         try:
-            self.client = MistralClient(api_key=api_key)
+            self._client = MistralClient(api_key=api_key)
         except Exception as e:
             raise ValueError(
                 f"MistralAI API client failed to initialize. Error: {e}"
             ) from e
 
     def __call__(self, messages: List[Message]) -> str:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("MistralAI client is not initialized.")
         try:
-            completion = self.client.chat(
+            completion = self._client.chat(
                 model=self.name,
                 messages=[m.to_mistral() for m in messages],
                 temperature=self.temperature,
