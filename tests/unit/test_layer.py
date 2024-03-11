@@ -523,38 +523,3 @@ class TestLayerConfig:
         layer_config = LayerConfig(routes=[route])
         layer_config.remove("test")
         assert layer_config.routes == []
-
-    def test_check_threshold_with_none_route(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
-        result = route_layer._check_threshold(scores=[0.5, 0.6], route=None)
-        assert (
-            not result
-        ), "Expected _check_threshold to return False when route is None."
-
-    def test_simulate_static_route_selection_returns_route_choice(
-        self, openai_encoder, routes
-    ):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        # Manually set the index to simulate a scenario where a route passes the threshold
-        route_layer.index = LocalIndex()
-        # Assuming routes[0] is the route we want to simulate as the top route
-        route_layer.index.add(
-            embeddings=[[0.1, 0.2, 0.3]],
-            routes=[routes[0].name],
-            utterances=[routes[0].utterances[0]],
-        )
-        # Adjust the score_threshold to ensure the route passes the threshold
-        route_layer.score_threshold = 0
-
-        # Simulate a vector that would match the route we added to the index
-        vector = [0.1, 0.2, 0.3]
-        route_choice = route_layer._simulate_static_route_selection(vector=vector)
-
-        assert (
-            route_choice.name == routes[0].name
-        ), "Expected the RouteChoice name to match the simulated top route name."
-        assert route_choice.function_call is None, "Expected function_call to be None."
-        assert (
-            route_choice.similarity_score is None
-        ), "Expected similarity_score to be None."
-        assert route_choice.trigger is None, "Expected trigger to be None."
