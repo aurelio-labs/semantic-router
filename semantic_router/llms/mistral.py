@@ -2,7 +2,6 @@ import os
 from typing import List, Optional, Any
 
 
-
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
@@ -37,7 +36,7 @@ class MistralAILLM(BaseLLM):
         try:
             from mistralai.client import MistralClient
         except ImportError:
-             raise ImportError(
+            raise ImportError(
                 "Please install MistralAI to use MistralEncoder. "
                 "You can install it with: "
                 "`pip install 'semantic-router[mistralai]'`"
@@ -48,7 +47,7 @@ class MistralAILLM(BaseLLM):
             raise ValueError(
                 f"MistralAI API client failed to initialize. Error: {e}"
             ) from e
-       
+
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
             raise ValueError("MistralAI client is not initialized.")

@@ -4,11 +4,9 @@ from time import sleep
 from typing import List, Optional, Any
 
 
-
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from pydantic.v1 import PrivateAttr
-
 
 
 class MistralEncoder(BaseEncoder):
@@ -32,26 +30,25 @@ class MistralEncoder(BaseEncoder):
         if api_key is None:
             raise ValueError("Mistral API key not provided")
         self._client = self._initialize_client(mistralai_api_key)
-       
+
     def _initialize_client(self, api_key):
         try:
             from mistralai.client import MistralClient
         except ImportError:
-             raise ImportError(
+            raise ImportError(
                 "Please install MistralAI to use MistralEncoder. "
                 "You can install it with: "
                 "`pip install 'semantic-router[mistralai]'`"
             )
         try:
-             from mistralai.exceptions import MistralException
-             from mistralai.models.embeddings import EmbeddingResponse
+            from mistralai.exceptions import MistralException
+            from mistralai.models.embeddings import EmbeddingResponse
         except ImportError:
-             raise ImportError(
+            raise ImportError(
                 "Please install MistralAI to use MistralEncoder. "
                 "You can install it with: "
                 "`pip install 'semantic-router[mistralai]'`"
             )
-       
 
         try:
             self.client = MistralClient(api_key=api_key)
@@ -60,10 +57,7 @@ class MistralEncoder(BaseEncoder):
         except Exception as e:
             raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
 
-    
     def __call__(self, docs: List[str]) -> List[List[float]]:
-
-       
         if self.client is None:
             raise ValueError("Mistral client not initialized")
         embeds = None
@@ -81,7 +75,11 @@ class MistralEncoder(BaseEncoder):
             except Exception as e:
                 raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
 
-        if not embeds or not isinstance(embeds, self.embedding_response) or not embeds.data:
+        if (
+            not embeds
+            or not isinstance(embeds, self.embedding_response)
+            or not embeds.data
+        ):
             raise ValueError(f"No embeddings returned from MistralAI: {error_message}")
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
