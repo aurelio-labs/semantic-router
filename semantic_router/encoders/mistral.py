@@ -12,7 +12,7 @@ from pydantic.v1 import PrivateAttr
 class MistralEncoder(BaseEncoder):
     """Class to encode text using MistralAI"""
 
-    client: Any = PrivateAttr()
+    _client: Any = PrivateAttr()
     embedding_response: Any = PrivateAttr()
     mistral_exception: Any = PrivateAttr()
     type: str = "mistral"
