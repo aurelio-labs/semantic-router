@@ -230,7 +230,7 @@ class RouteLayer:
         route, top_class_scores = self._retrieve_top_route(vector)
         passed = self._check_threshold(top_class_scores, route)
 
-        if passed:
+        if passed and route is not None:
             if route.function_schema and text is None:
                 raise ValueError(
                     "Route has a function schema, but no text was provided."
@@ -512,7 +512,7 @@ class RouteLayer:
         """
         route, scores = self._retrieve_top_route(vector)
         passed = self._check_threshold(scores, route)
-        if passed:
+        if passed and route is not None:
             return RouteChoice(
                 name=route.name, function_call=None, similarity_score=None, trigger=None
             )
