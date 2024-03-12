@@ -44,6 +44,7 @@ local = ["torch", "transformers", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
 processing = ["matplotlib"]
+mistralai = ["mistralai"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
