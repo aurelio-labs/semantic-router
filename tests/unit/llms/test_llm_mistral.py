@@ -3,6 +3,8 @@ import pytest
 from semantic_router.llms import MistralAILLM
 from semantic_router.schema import Message
 
+from unittest.mock import patch
+
 
 @pytest.fixture
 def mistralai_llm(mocker):
@@ -11,6 +13,17 @@ def mistralai_llm(mocker):
 
 
 class TestMistralAILLM:
+    def test_mistral_llm_import_errors(self):
+        with patch.dict("sys.modules", {"mistralai": None}):
+            with pytest.raises(ImportError) as error:
+                MistralAILLM(mistralai_api_key="random")
+
+        assert (
+            "Please install MistralAI to use MistralAI LLM. "
+            "You can install it with: "
+            "`pip install 'semantic-router[mistralai]'`" in str(error.value)
+        )
+
     def test_mistralai_llm_init_with_api_key(self, mistralai_llm):
         assert mistralai_llm._client is not None, "Client should be initialized"
         assert mistralai_llm.name == "mistral-tiny", "Default name not set correctly"

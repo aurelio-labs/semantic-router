@@ -25,10 +25,7 @@ class MistralAILLM(BaseLLM):
         if name is None:
             name = EncoderDefault.MISTRAL.value["language_model"]
         super().__init__(name=name)
-        api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
-        if api_key is None:
-            raise ValueError("MistralAI API key cannot be 'None'.")
-        self._initialize_client(api_key)
+        self._client = self._initialize_client(mistralai_api_key)
         self.temperature = temperature
         self.max_tokens = max_tokens
 
@@ -37,16 +34,20 @@ class MistralAILLM(BaseLLM):
             from mistralai.client import MistralClient
         except ImportError:
             raise ImportError(
-                "Please install MistralAI to use MistralEncoder. "
+                "Please install MistralAI to use MistralAI LLM. "
                 "You can install it with: "
                 "`pip install 'semantic-router[mistralai]'`"
             )
+        api_key = api_key or os.getenv("MISTRALAI_API_KEY")
+        if api_key is None:
+            raise ValueError("MistralAI API key cannot be 'None'.")
         try:
-            self._client = MistralClient(api_key=api_key)
+            client = MistralClient(api_key=api_key)
         except Exception as e:
             raise ValueError(
                 f"MistralAI API client failed to initialize. Error: {e}"
             ) from e
+        return client
 
     def __call__(self, messages: List[Message]) -> str:
         if self._client is None:

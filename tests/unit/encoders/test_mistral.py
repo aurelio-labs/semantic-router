@@ -4,6 +4,8 @@ from mistralai.models.embeddings import EmbeddingObject, EmbeddingResponse, Usag
 
 from semantic_router.encoders import MistralEncoder
 
+from unittest.mock import patch
+
 
 @pytest.fixture
 def mistralai_encoder(mocker):
@@ -12,6 +14,17 @@ def mistralai_encoder(mocker):
 
 
 class TestMistralEncoder:
+    def test_mistral_encoder_import_errors(self):
+        with patch.dict("sys.modules", {"mistralai": None}):
+            with pytest.raises(ImportError) as error:
+                MistralEncoder()
+
+        assert (
+            "Please install MistralAI to use MistralEncoder. "
+            "You can install it with: "
+            "`pip install 'semantic-router[mistralai]'`" in str(error.value)
+        )
+
     def test_mistralai_encoder_init_success(self, mocker):
         encoder = MistralEncoder(mistralai_api_key="test_api_key")
         assert encoder._client is not None

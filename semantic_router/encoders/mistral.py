@@ -26,9 +26,6 @@ class MistralEncoder(BaseEncoder):
         if name is None:
             name = EncoderDefault.MISTRAL.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
-        api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
-        if api_key is None:
-            raise ValueError("Mistral API key not provided")
         (
             self._client,
             self._embedding_response,
@@ -47,6 +44,9 @@ class MistralEncoder(BaseEncoder):
                 "`pip install 'semantic-router[mistralai]'`"
             )
 
+        api_key = api_key or os.getenv("MISTRALAI_API_KEY")
+        if api_key is None:
+            raise ValueError("Mistral API key not provided")
         try:
             client = MistralClient(api_key=api_key)
             embedding_response = EmbeddingResponse
