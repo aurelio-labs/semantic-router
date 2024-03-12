@@ -14,7 +14,7 @@ def mistralai_encoder(mocker):
 class TestMistralEncoder:
     def test_mistralai_encoder_init_success(self, mocker):
         encoder = MistralEncoder(mistralai_api_key="test_api_key")
-        assert encoder.client is not None
+        assert encoder._client is not None
 
     def test_mistralai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
@@ -23,7 +23,7 @@ class TestMistralEncoder:
 
     def test_mistralai_encoder_call_uninitialized_client(self, mistralai_encoder):
         # Set the client to None to simulate an uninitialized client
-        mistralai_encoder.client = None
+        mistralai_encoder._client = None
         with pytest.raises(ValueError) as e:
             mistralai_encoder(["test document"])
         assert "Mistral client not initialized" in str(e.value)
@@ -60,7 +60,7 @@ class TestMistralEncoder:
 
         responses = [MistralException("mistralai error"), mock_response]
         mocker.patch.object(
-            mistralai_encoder.client, "embeddings", side_effect=responses
+            mistralai_encoder._client, "embeddings", side_effect=responses
         )
         embeddings = mistralai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -69,7 +69,7 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            mistralai_encoder.client,
+            mistralai_encoder._client,
             "embeddings",
             side_effect=MistralException("Test error"),
         )
@@ -83,7 +83,7 @@ class TestMistralEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            mistralai_encoder.client,
+            mistralai_encoder._client,
             "embeddings",
             side_effect=Exception("Non-MistralException"),
         )
@@ -118,7 +118,7 @@ class TestMistralEncoder:
 
         responses = [MistralException("mistralai error"), mock_response]
         mocker.patch.object(
-            mistralai_encoder.client, "embeddings", side_effect=responses
+            mistralai_encoder._client, "embeddings", side_effect=responses
         )
         embeddings = mistralai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]

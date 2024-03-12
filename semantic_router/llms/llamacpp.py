@@ -8,12 +8,15 @@ from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
+from pydantic.v1 import PrivateAttr
+
 
 class LlamaCppLLM(BaseLLM):
     llm: Any
     temperature: float
     max_tokens: Optional[int] = 200
     grammar: Optional[Any] = None
+    _llama_cpp: Any = PrivateAttr()
 
     def __init__(
         self,
@@ -32,15 +35,16 @@ class LlamaCppLLM(BaseLLM):
         )
 
         try:
-            from llama_cpp import Llama, LlamaGrammar
+            import llama_cpp
         except ImportError:
             raise ImportError(
                 "Please install LlamaCPP to use Llama CPP llm. "
                 "You can install it with: "
                 "`pip install 'semantic-router[llama-cpp-python]'`"
             )
-        llm = Llama
-        grammar = Optional[LlamaGrammar]
+        self._llama_cpp = llama_cpp
+        llm = self._llama_cpp.Llama
+        grammar = Optional[self._llama_cpp.LlamaGrammar]
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -73,7 +77,7 @@ class LlamaCppLLM(BaseLLM):
         grammar_path = Path(__file__).parent.joinpath("grammars", "json.gbnf")
         assert grammar_path.exists(), f"{grammar_path}\ndoes not exist"
         try:
-            self.grammar = self.grammar.from_file(grammar_path)
+            self.grammar = self._llama_cpp.LlamaGrammar.from_file(grammar_path)
             yield
         finally:
             self.grammar = None

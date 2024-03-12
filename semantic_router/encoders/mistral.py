@@ -29,18 +29,15 @@ class MistralEncoder(BaseEncoder):
         api_key = mistralai_api_key or os.getenv("MISTRALAI_API_KEY")
         if api_key is None:
             raise ValueError("Mistral API key not provided")
-        self._client = self._initialize_client(mistralai_api_key)
+        (
+            self._client,
+            self._embedding_response,
+            self._mistral_exception,
+        ) = self._initialize_client(mistralai_api_key)
 
     def _initialize_client(self, api_key):
         try:
             from mistralai.client import MistralClient
-        except ImportError:
-            raise ImportError(
-                "Please install MistralAI to use MistralEncoder. "
-                "You can install it with: "
-                "`pip install 'semantic-router[mistralai]'`"
-            )
-        try:
             from mistralai.exceptions import MistralException
             from mistralai.models.embeddings import EmbeddingResponse
         except ImportError:
@@ -51,11 +48,12 @@ class MistralEncoder(BaseEncoder):
             )
 
         try:
-            self._client = MistralClient(api_key=api_key)
-            self._embedding_response = EmbeddingResponse
-            self._mistral_exception = MistralException
+            client = MistralClient(api_key=api_key)
+            embedding_response = EmbeddingResponse
+            mistral_exception = MistralException
         except Exception as e:
             raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
+        return client, embedding_response, mistral_exception
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self._client is None:
