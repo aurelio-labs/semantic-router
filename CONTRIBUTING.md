@@ -46,7 +46,6 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
     # Activate the environment
     source venv/bin/activate
 
-    # Install via poetry
-    poetry install
+    # Install via poetry with all extras
+    poetry install --all-extras
     ```
-
