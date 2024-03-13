@@ -25,7 +25,6 @@ class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[dict] = None
     similarity_score: Optional[float] = None
-    trigger: Optional[bool] = None
 
 
 @dataclass

@@ -254,7 +254,6 @@ class RouteLayer:
                 name=route.name,
                 function_call=None,
                 similarity_score=None,
-                trigger=None,
             )
         else:
             # if no route passes threshold, return empty route choice
