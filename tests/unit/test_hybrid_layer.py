@@ -81,7 +81,11 @@ sparse_encoder.fit(["The quick brown fox", "jumps over the lazy dog", "Hello, wo
 class TestHybridRouteLayer:
     def test_initialization(self, openai_encoder, routes):
         route_layer = HybridRouteLayer(
-            encoder=openai_encoder, sparse_encoder=sparse_encoder, routes=routes, top_k=10, alpha=0.8,
+            encoder=openai_encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+            top_k=10,
+            alpha=0.8,
         )
         assert route_layer.index is not None and route_layer.categories is not None
         assert openai_encoder.score_threshold == 0.82
