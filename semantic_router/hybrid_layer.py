@@ -37,6 +37,8 @@ class HybridRouteLayer:
 
         self.alpha = alpha
         self.top_k = top_k
+        if self.top_k < 1:
+            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.routes = routes
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
