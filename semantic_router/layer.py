@@ -249,7 +249,7 @@ class RouteLayer:
                 else:
                     route.llm = self.llm
             return route(text)
-        elif passed and route is not None and simulate_static:
+        elif passed and route is not None and simulate_static: 
             return RouteChoice(
                 name=route.name,
                 function_call=None,
