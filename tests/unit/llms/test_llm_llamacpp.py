@@ -15,7 +15,6 @@ def llamacpp_llm(mocker):
 
 
 class TestLlamaCppLLM:
-
     def test_llama_cpp_import_errors(self, llamacpp_llm):
         with patch.dict("sys.modules", {"llama_cpp": None}):
             with pytest.raises(ImportError) as error:
