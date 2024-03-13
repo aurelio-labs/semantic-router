@@ -1,8 +1,8 @@
 # Contributing to the Semantic Router
 
-The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please, feel free to contribute to new features, bug fixes, or documentation. We're always eager to hear your suggestions.
+The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes, or documentation. We're always eager to hear your suggestions.
 
-Please, follow these guidelines when making a contribution:
+Please follow these guidelines when making a contribution:
 1. **Check for Existing Issues:** Before making any changes, [check here for related issues](https://github.com/aurelio-labs/semantic-router/issues).
 2. **Run Your Changes by Us!** If no related issue exists yet, please create one and suggest your changes. Checking in with the team first will allow us to determine if the changes are in scope.
 3. **Set Up Development Environment** If the changes are agreed, then you can go ahead and set up a development environment (see [Setting Up Your Development Environment](#setting-up-your-development-environment) below).
