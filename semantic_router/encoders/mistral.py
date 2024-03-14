@@ -25,11 +25,7 @@ class MistralEncoder(BaseEncoder):
         if name is None:
             name = EncoderDefault.MISTRAL.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
-        (
-            self._client,
-            self._embedding_response,
-            self._mistral_exception,
-        ) = self._initialize_client(mistralai_api_key)
+           self._client, self._mistralai = self._initialize_client(mistralai_api_key)
 
     def _initialize_client(self, api_key):
         try:
