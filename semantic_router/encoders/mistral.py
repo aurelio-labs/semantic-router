@@ -33,9 +33,8 @@ class MistralEncoder(BaseEncoder):
 
     def _initialize_client(self, api_key):
         try:
+            import mistralai
             from mistralai.client import MistralClient
-            from mistralai.exceptions import MistralException
-            from mistralai.models.embeddings import EmbeddingResponse
         except ImportError:
             raise ImportError(
                 "Please install MistralAI to use MistralEncoder. "
