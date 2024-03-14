@@ -2,8 +2,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-# from llama_cpp import Llama, LlamaGrammar
-
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
