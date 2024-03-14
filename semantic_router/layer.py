@@ -422,7 +422,7 @@ class RouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
+        total_scores = {route: self.aggregation_method(scores) for route, scores in scores_by_class.items()}
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
