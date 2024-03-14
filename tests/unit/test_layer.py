@@ -120,9 +120,10 @@ def test_data():
 
 class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10)
         assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
+        assert route_layer.top_k == 10
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
             len(set(route_layer._get_route_names()))
