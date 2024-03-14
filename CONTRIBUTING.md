@@ -1,6 +1,6 @@
 # Contributing to the Semantic Router
 
-The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes or documentation. We're always eager to hear your suggestions.
+The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes, or documentation. We're always eager to hear your suggestions.
 
 Please follow these guidelines when making a contribution:
 1. **Check for Existing Issues:** Before making any changes, [check here for related issues](https://github.com/aurelio-labs/semantic-router/issues).
@@ -46,7 +46,6 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
     # Activate the environment
     source venv/bin/activate
 
-    # Install via poetry
-    poetry install
+    # Install via poetry with all extras relevant to perform unit tests
+    poetry install --all-extras
     ```
-
