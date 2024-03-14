@@ -28,6 +28,7 @@ class TestMistralEncoder:
     def test_mistralai_encoder_init_success(self, mocker):
         encoder = MistralEncoder(mistralai_api_key="test_api_key")
         assert encoder._client is not None
+        assert encoder._mistralai is not None
 
     def test_mistralai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
