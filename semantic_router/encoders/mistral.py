@@ -13,8 +13,7 @@ class MistralEncoder(BaseEncoder):
     """Class to encode text using MistralAI"""
 
     _client: Any = PrivateAttr()
-    _embedding_response: Any = PrivateAttr()
-    _mistral_exception: Any = PrivateAttr()
+    _mistralai: Any = PrivateAttr()
     type: str = "mistral"
 
     def __init__(
