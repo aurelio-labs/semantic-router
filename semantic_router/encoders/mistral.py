@@ -59,7 +59,7 @@ class MistralEncoder(BaseEncoder):
                 embeds = self._client.embeddings(model=self.name, input=docs)
                 if embeds.data:
                     break
-            except self._mistral_exception as e:
+            except self._mistralai.exceptions.MistralException as e:
                 sleep(2**_)
                 error_message = str(e)
             except Exception as e:
