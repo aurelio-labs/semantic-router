@@ -23,7 +23,7 @@ class TestLlamaCppLLM:
         assert (
             "Please install LlamaCPP to use Llama CPP llm. "
             "You can install it with: "
-            "`pip install 'semantic-router[llama-cpp-python]'`" in str(error.value)
+            "`pip install 'semantic-router[local]'`" in str(error.value)
         )
 
     def test_llamacpp_llm_init_success(self, llamacpp_llm):
