@@ -40,7 +40,7 @@ class LlamaCppLLM(BaseLLM):
             raise ImportError(
                 "Please install LlamaCPP to use Llama CPP llm. "
                 "You can install it with: "
-                "`pip install 'semantic-router[llama-cpp-python]'`"
+                "`pip install 'semantic-router[local]'`"
             )
         self._llama_cpp = llama_cpp
         llm = self._llama_cpp.Llama
