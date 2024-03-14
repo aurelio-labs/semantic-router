@@ -44,7 +44,7 @@ class LlamaCppLLM(BaseLLM):
             )
         self._llama_cpp = llama_cpp
         llm = self._llama_cpp.Llama
-        grammar = Optional[self._llama_cpp.LlamaGrammar]
+        grammar = self._llama_cpp.LlamaGrammar
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens
