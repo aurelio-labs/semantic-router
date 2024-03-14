@@ -183,6 +183,7 @@ class RouteLayer:
         routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
+        aggregation: str = "SUM",
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -200,6 +201,10 @@ class RouteLayer:
         self.top_k = top_k
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
+        self.aggregation = aggregation
+        if not isinstance(self.aggregation, str) or self.aggregation not in ["SUM", "MEAN", "MAX"]:
+            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
+        self.aggregation_method = self._set_aggregation_method(self.aggregation)
 
         # set route score thresholds if not already set
         for route in self.routes:
@@ -395,6 +400,16 @@ class RouteLayer:
         # get scores and routes
         scores, routes = self.index.query(vector=xq, top_k=top_k)
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
+    
+    def _set_aggregation_method(self, aggregation: str = "SUM"):
+        if aggregation == "SUM":
+            return lambda x: sum(x)
+        elif aggregation == "MEAN":
+            return lambda x: np.mean(x)
+        elif aggregation == "MAX":
+            return lambda x: max(x)
+        else:
+            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}

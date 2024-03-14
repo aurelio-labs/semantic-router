@@ -176,7 +176,7 @@ class HybridRouteLayer:
         elif aggregation == "MEAN":
             return lambda x: np.mean(x)
         elif aggregation == "MAX":
-            return lambda x: np.max(x)
+            return lambda x: max(x)
         else:
             raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
 
