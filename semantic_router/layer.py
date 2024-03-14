@@ -182,6 +182,7 @@ class RouteLayer:
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
+        top_k: int = 5,
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -196,6 +197,10 @@ class RouteLayer:
         self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
+        self.top_k = top_k
+        if self.top_k < 1:
+            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
+
         # set route score thresholds if not already set
         for route in self.routes:
             if route.score_threshold is None:
@@ -266,7 +271,7 @@ class RouteLayer:
         Returns a tuple of the route (if any) and the scores of the top class.
         """
         # get relevant results (scores and routes)
-        results = self._retrieve(xq=np.array(vector))
+        results = self._retrieve(xq=np.array(vector), top_k=self.top_k)
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
         # TODO do we need this check?
