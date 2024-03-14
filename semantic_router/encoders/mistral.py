@@ -67,7 +67,7 @@ class MistralEncoder(BaseEncoder):
 
         if (
             not embeds
-            or not isinstance(embeds, self._embedding_response)
+            or not isinstance(embeds, self._mistralai.models.embeddings.EmbeddingResponse)
             or not embeds.data
         ):
             raise ValueError(f"No embeddings returned from MistralAI: {error_message}")
