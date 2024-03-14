@@ -1,4 +1,5 @@
 """This file contains the MistralEncoder class which is used to encode text using MistralAI"""
+
 import os
 from time import sleep
 from typing import List, Optional, Any

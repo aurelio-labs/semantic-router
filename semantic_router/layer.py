@@ -111,9 +111,8 @@ class LayerConfig:
                     llm_class = getattr(llm_module, llm_data["class"])
                     # Instantiate the LLM class with the provided model name
                     llm = llm_class(name=llm_data["model"])
-                    route_data[
-                        "llm"
-                    ] = llm  # Reassign the instantiated llm object back to route_data
+                    # Reassign the instantiated llm object back to route_data
+                    route_data["llm"] = llm
 
                 # Dynamically create the Route object using the remaining route_data
                 route = Route(**route_data)
@@ -254,7 +253,6 @@ class RouteLayer:
                 name=route.name,
                 function_call=None,
                 similarity_score=None,
-                trigger=None,
             )
         else:
             # if no route passes threshold, return empty route choice
