@@ -45,7 +45,7 @@ class MistralEncoder(BaseEncoder):
             client = MistralClient(api_key=api_key)
         except Exception as e:
             raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
-        return client, embedding_response, mistral_exception
+        return client, mistralai
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self._client is None:
