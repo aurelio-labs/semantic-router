@@ -41,8 +41,10 @@ class HybridRouteLayer:
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.aggregation = aggregation
-        if not isinstance(self.aggregation, str) or self.aggregation not in ["SUM", "MEAN", "MAX"]:
-            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
+        if self.aggregation not in ["SUM", "MEAN", "MAX"]:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
         self.routes = routes
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
@@ -178,7 +180,9 @@ class HybridRouteLayer:
         elif aggregation == "MAX":
             return lambda x: max(x)
         else:
-            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
 
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
@@ -191,7 +195,10 @@ class HybridRouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {route: self.aggregation_method(scores) for route, scores in scores_by_class.items()}
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores

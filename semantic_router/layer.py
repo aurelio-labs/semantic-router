@@ -202,8 +202,10 @@ class RouteLayer:
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.aggregation = aggregation
-        if not isinstance(self.aggregation, str) or self.aggregation not in ["SUM", "MEAN", "MAX"]:
-            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
+        if self.aggregation not in ["SUM", "MEAN", "MAX"]:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
 
         # set route score thresholds if not already set
@@ -400,7 +402,7 @@ class RouteLayer:
         # get scores and routes
         scores, routes = self.index.query(vector=xq, top_k=top_k)
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-    
+
     def _set_aggregation_method(self, aggregation: str = "SUM"):
         if aggregation == "SUM":
             return lambda x: sum(x)
@@ -409,7 +411,9 @@ class RouteLayer:
         elif aggregation == "MAX":
             return lambda x: max(x)
         else:
-            raise ValueError(f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.")
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
@@ -422,7 +426,10 @@ class RouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {route: self.aggregation_method(scores) for route, scores in scores_by_class.items()}
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores

@@ -523,7 +523,7 @@ class TestLayerConfig:
         layer_config = LayerConfig(routes=[route])
         layer_config.remove("test")
         assert layer_config.routes == []
-    
+
     def test_setting_aggregation_methods(self, openai_encoder, routes):
         for agg in ["SUM", "MEAN", "MAX"]:
             route_layer = RouteLayer(
@@ -532,8 +532,10 @@ class TestLayerConfig:
                 aggregation=agg,
             )
             assert route_layer.aggregation == agg
-    
-    def test_semantic_classify_multiple_routes_with_different_aggregation(self, openai_encoder, routes):
+
+    def test_semantic_classify_multiple_routes_with_different_aggregation(
+        self, openai_encoder, routes
+    ):
         route_scores = [
             {"route": "Route 1", "score": 0.5},
             {"route": "Route 1", "score": 0.5},
@@ -555,7 +557,7 @@ class TestLayerConfig:
 
             if agg == "SUM":
                 assert classification == "Route 1"
-                assert score == [0.5,] * 4
+                assert score == [0.5, 0.5, 0.5, 0.5]
             elif agg == "MEAN":
                 assert classification == "Route 2"
                 assert score == [0.4, 0.6, 0.8]
