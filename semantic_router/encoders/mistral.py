@@ -47,8 +47,6 @@ class MistralEncoder(BaseEncoder):
             raise ValueError("Mistral API key not provided")
         try:
             client = MistralClient(api_key=api_key)
-            embedding_response = EmbeddingResponse
-            mistral_exception = MistralException
         except Exception as e:
             raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
         return client, embedding_response, mistral_exception
