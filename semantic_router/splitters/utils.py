@@ -73,6 +73,24 @@ def split_to_sentences_spacy(text: str) -> list[str]:
     sentences = [sentence.text.strip() for sentence in doc.sents]
     return sentences
 
+def check_and_download_spacy_model(model_name="en_core_web_sm"):
+    """
+    Checks if the specified SpaCy language model is installed, and if not, attempts to download and install it.
+
+    Args:
+    - model_name (str): The name of the SpaCy model to check and download. Defaults to 'en_core_web_sm'.
+
+    """
+    try:
+        # Try loading the model to see if it's already installed
+        spacy.load(model_name)
+        print(f"Spacy model '{model_name}' is installed.")
+    except OSError:
+        print(f"Spacy model '{model_name}' not found, downloading...")
+        from spacy.cli import download
+        download(model_name)
+        print(f"Downloaded and installed model '{model_name}'.")
+
 
 def tiktoken_length(text: str) -> int:
     tokenizer = tiktoken.get_encoding("cl100k_base")

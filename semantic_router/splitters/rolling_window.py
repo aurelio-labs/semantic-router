@@ -6,7 +6,7 @@ import numpy as np
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.schema import DocumentSplit
 from semantic_router.splitters.base import BaseSplitter
-from semantic_router.splitters.utils import split_to_sentences, split_to_sentences_spacy, tiktoken_length
+from semantic_router.splitters.utils import split_to_sentences, split_to_sentences_spacy, check_and_download_spacy_model, tiktoken_length
 from semantic_router.utils.logger import logger
 
 
@@ -40,6 +40,7 @@ class RollingWindowSplitter(BaseSplitter):
         self,
         encoder: BaseEncoder,
         pre_splitter: str = "regex",
+        spacy_model: str = "en_core_web_sm",
         threshold_adjustment=0.01,
         dynamic_threshold: bool = True,
         window_size=5,
@@ -53,6 +54,7 @@ class RollingWindowSplitter(BaseSplitter):
         self.calculated_threshold: float
         self.encoder = encoder
         self.pre_splitter = pre_splitter
+        self.spacy_model = spacy_model
         self.threshold_adjustment = threshold_adjustment
         self.dynamic_threshold = dynamic_threshold
         self.window_size = window_size
@@ -83,6 +85,7 @@ class RollingWindowSplitter(BaseSplitter):
                 )
             try:
                 if self.pre_splitter == "spacy":
+                    check_and_download_spacy_model(self.spacy_model)
                     docs = split_to_sentences_spacy(docs[0])
                 elif self.pre_splitter == "regex":
                     docs = split_to_sentences(docs[0])
