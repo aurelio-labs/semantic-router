@@ -120,9 +120,10 @@ def test_data():
 
 class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10)
         assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
+        assert route_layer.top_k == 10
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
             len(set(route_layer._get_route_names()))
@@ -522,3 +523,44 @@ class TestLayerConfig:
         layer_config = LayerConfig(routes=[route])
         layer_config.remove("test")
         assert layer_config.routes == []
+
+    def test_setting_aggregation_methods(self, openai_encoder, routes):
+        for agg in ["sum", "mean", "max"]:
+            route_layer = RouteLayer(
+                encoder=openai_encoder,
+                routes=routes,
+                aggregation=agg,
+            )
+            assert route_layer.aggregation == agg
+
+    def test_semantic_classify_multiple_routes_with_different_aggregation(
+        self, openai_encoder, routes
+    ):
+        route_scores = [
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 2", "score": 0.4},
+            {"route": "Route 2", "score": 0.6},
+            {"route": "Route 2", "score": 0.8},
+            {"route": "Route 3", "score": 0.1},
+            {"route": "Route 3", "score": 1.0},
+        ]
+        for agg in ["sum", "mean", "max"]:
+            route_layer = RouteLayer(
+                encoder=openai_encoder,
+                routes=routes,
+                aggregation=agg,
+            )
+            classification, score = route_layer._semantic_classify(route_scores)
+
+            if agg == "sum":
+                assert classification == "Route 1"
+                assert score == [0.5, 0.5, 0.5, 0.5]
+            elif agg == "mean":
+                assert classification == "Route 2"
+                assert score == [0.4, 0.6, 0.8]
+            elif agg == "max":
+                assert classification == "Route 3"
+                assert score == [0.1, 1.0]

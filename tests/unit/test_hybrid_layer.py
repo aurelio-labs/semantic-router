@@ -193,5 +193,48 @@ class TestHybridRouteLayer:
         assert hybrid_route_layer.sparse_index is not None
         assert len(hybrid_route_layer.sparse_index) == len(all_utterances)
 
+    def test_setting_aggregation_methods(self, openai_encoder, routes):
+        for agg in ["sum", "mean", "max"]:
+            route_layer = HybridRouteLayer(
+                encoder=openai_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes,
+                aggregation=agg,
+            )
+            assert route_layer.aggregation == agg
+
+    def test_semantic_classify_multiple_routes_with_different_aggregation(
+        self, openai_encoder, routes
+    ):
+        route_scores = [
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 1", "score": 0.5},
+            {"route": "Route 2", "score": 0.4},
+            {"route": "Route 2", "score": 0.6},
+            {"route": "Route 2", "score": 0.8},
+            {"route": "Route 3", "score": 0.1},
+            {"route": "Route 3", "score": 1.0},
+        ]
+        for agg in ["sum", "mean", "max"]:
+            route_layer = HybridRouteLayer(
+                encoder=openai_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes,
+                aggregation=agg,
+            )
+            classification, score = route_layer._semantic_classify(route_scores)
+
+            if agg == "sum":
+                assert classification == "Route 1"
+                assert score == [0.5, 0.5, 0.5, 0.5]
+            elif agg == "mean":
+                assert classification == "Route 2"
+                assert score == [0.4, 0.6, 0.8]
+            elif agg == "max":
+                assert classification == "Route 3"
+                assert score == [0.1, 1.0]
+
 
 # Add more tests for edge cases and error handling as needed.

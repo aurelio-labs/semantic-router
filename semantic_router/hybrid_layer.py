@@ -25,6 +25,7 @@ class HybridRouteLayer:
         routes: List[Route] = [],
         alpha: float = 0.3,
         top_k: int = 5,
+        aggregation: str = "sum",
     ):
         self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
@@ -39,6 +40,12 @@ class HybridRouteLayer:
         self.top_k = top_k
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
+        self.aggregation = aggregation
+        if self.aggregation not in ["sum", "mean", "max"]:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
+        self.aggregation_method = self._set_aggregation_method(self.aggregation)
         self.routes = routes
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
@@ -165,6 +172,18 @@ class HybridRouteLayer:
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
+    def _set_aggregation_method(self, aggregation: str = "sum"):
+        if aggregation == "sum":
+            return lambda x: sum(x)
+        elif aggregation == "mean":
+            return lambda x: np.mean(x)
+        elif aggregation == "max":
+            return lambda x: max(x)
+        else:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
+
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
@@ -176,7 +195,10 @@ class HybridRouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
