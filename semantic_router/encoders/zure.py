@@ -66,9 +66,9 @@ class AzureOpenAIEncoder(BaseEncoder):
 
         try:
             self.client = openai.AzureOpenAI(
-                azure_deployment=str(self.deployment_name)
-                if self.deployment_name
-                else None,
+                azure_deployment=(
+                    str(self.deployment_name) if self.deployment_name else None
+                ),
                 api_key=str(self.api_key),
                 azure_endpoint=str(self.azure_endpoint),
                 api_version=str(self.api_version),
