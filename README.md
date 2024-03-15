@@ -39,7 +39,7 @@ politics = Route(
     utterances=[
         "isn't politics the best thing ever",
         "why don't you tell me about your political opinions",
-        "don't you just love the president" "don't you just hate the president",
+        "don't you just love the president",
         "they're going to destroy this country!",
         "they will save the country!",
     ],
