@@ -2,26 +2,27 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from llama_cpp import Llama, LlamaGrammar
-
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
+from pydantic.v1 import PrivateAttr
+
 
 class LlamaCppLLM(BaseLLM):
-    llm: Llama
+    llm: Any
     temperature: float
     max_tokens: Optional[int] = 200
-    grammar: Optional[LlamaGrammar] = None
+    grammar: Optional[Any] = None
+    _llama_cpp: Any = PrivateAttr()
 
     def __init__(
         self,
-        llm: Llama,
+        llm: Any,
         name: str = "llama.cpp",
         temperature: float = 0.2,
         max_tokens: Optional[int] = 200,
-        grammar: Optional[LlamaGrammar] = None,
+        grammar: Optional[Any] = None,
     ):
         super().__init__(
             name=name,
@@ -30,6 +31,18 @@ class LlamaCppLLM(BaseLLM):
             max_tokens=max_tokens,
             grammar=grammar,
         )
+
+        try:
+            import llama_cpp
+        except ImportError:
+            raise ImportError(
+                "Please install LlamaCPP to use Llama CPP llm. "
+                "You can install it with: "
+                "`pip install 'semantic-router[local]'`"
+            )
+        self._llama_cpp = llama_cpp
+        llm = self._llama_cpp.Llama
+        grammar = self._llama_cpp.LlamaGrammar
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -62,7 +75,7 @@ class LlamaCppLLM(BaseLLM):
         grammar_path = Path(__file__).parent.joinpath("grammars", "json.gbnf")
         assert grammar_path.exists(), f"{grammar_path}\ndoes not exist"
         try:
-            self.grammar = LlamaGrammar.from_file(grammar_path)
+            self.grammar = self._llama_cpp.LlamaGrammar.from_file(grammar_path)
             yield
         finally:
             self.grammar = None
