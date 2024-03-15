@@ -25,7 +25,7 @@ class HybridRouteLayer:
         routes: List[Route] = [],
         alpha: float = 0.3,
         top_k: int = 5,
-        aggregation: str = "SUM",
+        aggregation: str = "sum",
     ):
         self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
@@ -41,7 +41,7 @@ class HybridRouteLayer:
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.aggregation = aggregation
-        if self.aggregation not in ["SUM", "MEAN", "MAX"]:
+        if self.aggregation not in ["sum", "mean", "max"]:
             raise ValueError(
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
@@ -172,12 +172,12 @@ class HybridRouteLayer:
         sparse = np.array(sparse) * (1 - self.alpha)
         return dense, sparse
 
-    def _set_aggregation_method(self, aggregation: str = "SUM"):
-        if aggregation == "SUM":
+    def _set_aggregation_method(self, aggregation: str = "sum"):
+        if aggregation == "sum":
             return lambda x: sum(x)
-        elif aggregation == "MEAN":
+        elif aggregation == "mean":
             return lambda x: np.mean(x)
-        elif aggregation == "MAX":
+        elif aggregation == "max":
             return lambda x: max(x)
         else:
             raise ValueError(

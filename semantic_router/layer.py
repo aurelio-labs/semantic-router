@@ -183,7 +183,7 @@ class RouteLayer:
         routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
-        aggregation: str = "SUM",
+        aggregation: str = "sum",
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -202,7 +202,7 @@ class RouteLayer:
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.aggregation = aggregation
-        if self.aggregation not in ["SUM", "MEAN", "MAX"]:
+        if self.aggregation not in ["sum", "mean", "max"]:
             raise ValueError(
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
@@ -403,12 +403,12 @@ class RouteLayer:
         scores, routes = self.index.query(vector=xq, top_k=top_k)
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
-    def _set_aggregation_method(self, aggregation: str = "SUM"):
-        if aggregation == "SUM":
+    def _set_aggregation_method(self, aggregation: str = "sum"):
+        if aggregation == "sum":
             return lambda x: sum(x)
-        elif aggregation == "MEAN":
+        elif aggregation == "mean":
             return lambda x: np.mean(x)
-        elif aggregation == "MAX":
+        elif aggregation == "max":
             return lambda x: max(x)
         else:
             raise ValueError(

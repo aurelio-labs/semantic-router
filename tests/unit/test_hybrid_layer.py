@@ -194,7 +194,7 @@ class TestHybridRouteLayer:
         assert len(hybrid_route_layer.sparse_index) == len(all_utterances)
 
     def test_setting_aggregation_methods(self, openai_encoder, routes):
-        for agg in ["SUM", "MEAN", "MAX"]:
+        for agg in ["sum", "mean", "max"]:
             route_layer = HybridRouteLayer(
                 encoder=openai_encoder,
                 sparse_encoder=sparse_encoder,
@@ -217,7 +217,7 @@ class TestHybridRouteLayer:
             {"route": "Route 3", "score": 0.1},
             {"route": "Route 3", "score": 1.0},
         ]
-        for agg in ["SUM", "MEAN", "MAX"]:
+        for agg in ["sum", "mean", "max"]:
             route_layer = HybridRouteLayer(
                 encoder=openai_encoder,
                 sparse_encoder=sparse_encoder,
@@ -226,13 +226,13 @@ class TestHybridRouteLayer:
             )
             classification, score = route_layer._semantic_classify(route_scores)
 
-            if agg == "SUM":
+            if agg == "sum":
                 assert classification == "Route 1"
                 assert score == [0.5, 0.5, 0.5, 0.5]
-            elif agg == "MEAN":
+            elif agg == "mean":
                 assert classification == "Route 2"
                 assert score == [0.4, 0.6, 0.8]
-            elif agg == "MAX":
+            elif agg == "max":
                 assert classification == "Route 3"
                 assert score == [0.1, 1.0]
 
