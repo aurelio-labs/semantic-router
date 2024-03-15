@@ -24,6 +24,7 @@ class HybridRouteLayer:
         sparse_encoder: Optional[BM25Encoder] = None,
         routes: List[Route] = [],
         alpha: float = 0.3,
+        top_k: int = 5,
     ):
         self.encoder = encoder
         self.score_threshold = self.encoder.score_threshold
@@ -35,6 +36,9 @@ class HybridRouteLayer:
             self.sparse_encoder = sparse_encoder
 
         self.alpha = alpha
+        self.top_k = top_k
+        if self.top_k < 1:
+            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.routes = routes
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
@@ -48,7 +52,7 @@ class HybridRouteLayer:
             self._add_routes(routes)
 
     def __call__(self, text: str) -> Optional[str]:
-        results = self._query(text)
+        results = self._query(text, self.top_k)
         top_class, top_class_scores = self._semantic_classify(results)
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:

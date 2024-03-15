@@ -8,7 +8,6 @@ from semantic_router.splitters.base import BaseSplitter
 
 
 class ConsecutiveSimSplitter(BaseSplitter):
-
     """
     Called "consecutive sim splitter" because we check the similarities of consecutive document embeddings (compare ith to i+1th document embedding).
     """

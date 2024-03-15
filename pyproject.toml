@@ -19,7 +19,7 @@ python = ">=3.9,<3.13"
 pydantic = "^2.5.3"
 openai = "^1.10.0"
 cohere = "^4.32"
-mistralai= "^0.0.12"
+mistralai= {version = "^0.0.12", optional = true}
 numpy = "^1.25.2"
 colorlog = "^6.8.0"
 pyyaml = "^6.0.1"
@@ -44,6 +44,7 @@ local = ["torch", "transformers", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
 processing = ["matplotlib"]
+mistralai = ["mistralai"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
