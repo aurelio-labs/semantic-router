@@ -1,6 +1,7 @@
 import regex
-import spacy
 import tiktoken
+
+from semantic_router.utils.logger import logger
 
 
 def split_to_sentences(text: str) -> list[str]:
@@ -58,7 +59,7 @@ def split_to_sentences(text: str) -> list[str]:
     return sentences
 
 
-def split_to_sentences_spacy(text: str) -> list[str]:
+def split_to_sentences_spacy(text: str, spacy_model: str = "en_core_web_sm") -> list[str]:
     """
     Use SpaCy to split a given text into sentences. Supported languages: English.
 
@@ -67,29 +68,31 @@ def split_to_sentences_spacy(text: str) -> list[str]:
 
     Returns:
         list: A list of sentences extracted from the text.
-    """ 
-    nlp = spacy.load("en_core_web_sm") 
+    """
+
+    # Check if SpaCy is installed
+    try:
+        import spacy
+    except ImportError:
+        logger.warning(
+            "SpaCy is not installed. Please `pip install "
+            "semantic-router[processing]`."
+        )
+        return
+
+    # Check if the SpaCy model is installed
+    try:
+        spacy.load(spacy_model)
+    except OSError:
+        print(f"Spacy model '{spacy_model}' not found, downloading...")
+        from spacy.cli import download
+        download(spacy_model)
+        print(f"Downloaded and installed model '{spacy_model}'.")
+
+    nlp = spacy.load("en_core_web_sm")
     doc = nlp(text)
     sentences = [sentence.text.strip() for sentence in doc.sents]
     return sentences
-
-def check_and_download_spacy_model(model_name="en_core_web_sm"):
-    """
-    Checks if the specified SpaCy language model is installed, and if not, attempts to download and install it.
-
-    Args:
-    - model_name (str): The name of the SpaCy model to check and download. Defaults to 'en_core_web_sm'.
-
-    """
-    try:
-        # Try loading the model to see if it's already installed
-        spacy.load(model_name)
-        print(f"Spacy model '{model_name}' is installed.")
-    except OSError:
-        print(f"Spacy model '{model_name}' not found, downloading...")
-        from spacy.cli import download
-        download(model_name)
-        print(f"Downloaded and installed model '{model_name}'.")
 
 
 def tiktoken_length(text: str) -> int:

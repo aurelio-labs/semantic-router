@@ -32,7 +32,7 @@ black = "^23.12.1"
 colorama = "^0.4.6"
 pinecone-client = {version="^3.0.0", optional = true}
 regex = "^2023.12.25"
-spacy = "^3.0"
+spacy = { version = "^3.0", optional = true }
 torchvision = { version = "^0.17.0", optional = true}
 pillow = { version= "^10.2.0", optional = true}
 tiktoken = "^0.6.0"
@@ -45,7 +45,7 @@ fastembed = ["fastembed"]
 local = ["torch", "transformers", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
-processing = ["matplotlib"]
+processing = ["matplotlib", "spacy"]
 mistralai = ["mistralai"]
 
 [tool.poetry.group.dev.dependencies]

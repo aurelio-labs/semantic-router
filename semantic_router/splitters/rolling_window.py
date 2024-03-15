@@ -85,8 +85,7 @@ class RollingWindowSplitter(BaseSplitter):
                 )
             try:
                 if self.pre_splitter == "spacy":
-                    check_and_download_spacy_model(self.spacy_model)
-                    docs = split_to_sentences_spacy(docs[0])
+                    docs = split_to_sentences_spacy(docs[0], self.spacy_model)
                 elif self.pre_splitter == "regex":
                     docs = split_to_sentences(docs[0])
             except Exception as e:
