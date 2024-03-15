@@ -92,7 +92,6 @@ class RollingWindowSplitter(BaseSplitter):
             except Exception as e:
                 logger.error(f"Error splitting document to sentences: {e}")
                 raise    
-            docs = split_to_sentences(docs[0])
         encoded_docs = self._encode_documents(docs)
         similarities = self._calculate_similarity_scores(encoded_docs)
         if self.dynamic_threshold:
@@ -415,10 +414,11 @@ class RollingWindowSplitter(BaseSplitter):
         a specified threshold.
         """
         if self.pre_splitter == "spacy":
-            docs = split_to_sentences_spacy(docs)
+            sentences = [sentence for doc in docs for sentence in split_to_sentences_spacy(doc)]
         elif self.pre_splitter == "regex":
-            docs = split_to_sentences(docs)
-        sentences = [sentence for doc in docs for sentence in split_to_sentences(doc)]
+            sentences = [sentence for doc in docs for sentence in split_to_sentences(doc)]
+        else:
+            raise ValueError("Invalid pre_splitter value. Supported values are 'spacy' and 'regex'.")
         encoded_sentences = self._encode_documents(sentences)
         similarity_scores = []
 
