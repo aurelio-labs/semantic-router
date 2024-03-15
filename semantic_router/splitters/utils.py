@@ -1,4 +1,5 @@
 import regex
+import spacy
 import tiktoken
 
 
@@ -54,6 +55,22 @@ def split_to_sentences(text: str) -> list[str]:
     """
     sentences = regex.split(regex_pattern, text, flags=regex.VERBOSE)
     sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+    return sentences
+
+
+def split_to_sentences_spacy(text: str) -> list[str]:
+    """
+    Use SpaCy to split a given text into sentences. Supported languages: English.
+
+    Args:
+        text (str): The text to split into sentences.
+
+    Returns:
+        list: A list of sentences extracted from the text.
+    """ 
+    nlp = spacy.load("en_core_web_sm") 
+    doc = nlp(text)
+    sentences = [sentence.text.strip() for sentence in doc.sents]
     return sentences
 
 
