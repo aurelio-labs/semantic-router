@@ -2124,6 +2124,7 @@ description = "Nvidia JIT LTO Library"
 optional = true
 python-versions = ">=3"
 files = [
+    {file = "nvidia_nvjitlink_cu12-12.4.99-py3-none-manylinux2014_aarch64.whl", hash = "sha256:75d6498c96d9adb9435f2bbdbddb479805ddfb97b5c1b32395c694185c20ca57"},
     {file = "nvidia_nvjitlink_cu12-12.4.99-py3-none-manylinux2014_x86_64.whl", hash = "sha256:c6428836d20fe7e327191c175791d38570e10762edc588fb46749217cd444c74"},
     {file = "nvidia_nvjitlink_cu12-12.4.99-py3-none-win_amd64.whl", hash = "sha256:991905ffa2144cb603d8ca7962d75c35334ae82bf92820b6ba78157277da1ad2"},
 ]
@@ -4038,4 +4039,4 @@ vision = ["pillow", "torch", "torchvision", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "425657388dd87ef9d26df4ee3518d723c25230bdd5284d3043a35610941e632d"
+content-hash = "b02bb06cd8c09237dafe711992b1cbe9e190a63ad8510e6478b94d052a141901"
