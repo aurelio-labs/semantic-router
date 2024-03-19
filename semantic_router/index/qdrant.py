@@ -18,15 +18,18 @@ class QdrantIndex(BaseIndex):
 
     index_name: str = Field(
         default=DEFAULT_COLLECTION_NAME,
-        description=f"The name of the Qdrant collection to use. Defaults to '{DEFAULT_COLLECTION_NAME}'",
+        description="Name of the Qdrant collection."
+        f"Default: '{DEFAULT_COLLECTION_NAME}'",
     )
     location: Optional[str] = Field(
         default=":memory:",
-        description="If ':memory:' - use an in-memory Qdrant instance. Used as 'url' value otherwise",
+        description="If ':memory:' - use an in-memory Qdrant instance."
+        "Used as 'url' value otherwise",
     )
     url: Optional[str] = Field(
         default=None,
-        description="Qualified URL of the Qdrant instance. Optional[scheme], host, Optional[port], Optional[prefix]",
+        description="Qualified URL of the Qdrant instance."
+        "Optional[scheme], host, Optional[port], Optional[prefix]",
     )
     port: Optional[int] = Field(
         default=6333,
@@ -58,7 +61,8 @@ class QdrantIndex(BaseIndex):
     )
     host: Optional[str] = Field(
         default=None,
-        description="Host name of Qdrant service. If url and host are None, set to 'localhost'.",
+        description="Host name of Qdrant service."
+        "If url and host are None, set to 'localhost'.",
     )
     path: Optional[str] = Field(
         default=None,
@@ -66,24 +70,25 @@ class QdrantIndex(BaseIndex):
     )
     grpc_options: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Options to be passed to the low-level Qdrant GRPC client, if used.",
+        description="Options to be passed to the low-level GRPC client, if used.",
     )
     dimensions: Union[int, None] = Field(
         default=None,
-        description="Embedding dimensions. Defaults to the embedding length of the configured encoder.",
+        description="Embedding dimensions."
+        "Defaults to the embedding length of the configured encoder.",
     )
     metric: Metric = Field(
         default=Metric.COSINE,
         description="Distance metric to use for similarity search.",
     )
-    collection_options: Optional[Dict[str, Any]] = Field(
+    config: Optional[Dict[str, Any]] = Field(
         default={},
-        description="Additonal options to be passed to `QdrantClient#create_collection`.",
+        description="Collection options passed to `QdrantClient#create_collection`.",
     )
     client: Any = Field(default=None, exclude=True)
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.type = "qdrant"
         self.client = self._initialize_client()
 
@@ -128,7 +133,7 @@ class QdrantIndex(BaseIndex):
                 vectors_config=models.VectorParams(
                     size=self.dimensions, distance=self.convert_metric(self.metric)
                 ),
-                **self.collection_options,
+                **self.config,
             )
 
     def add(
