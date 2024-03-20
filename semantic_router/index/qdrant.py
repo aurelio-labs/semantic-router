@@ -217,9 +217,34 @@ class QdrantIndex(BaseIndex):
             "vectors": collection_info.points_count,
         }
 
-    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
+        from qdrant_client import models
+
         results = self.client.search(
             self.index_name, query_vector=vector, limit=top_k, with_payload=True
+        )
+        filter = None
+        if route_filter is not None:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key=SR_ROUTE_PAYLOAD_KEY,
+                        values=route_filter,
+                    )
+                ]
+            )
+
+        results = self.client.search(
+            self.index_name,
+            query_vector=vector,
+            limit=top_k,
+            with_payload=True,
+            filter=filter,
         )
         scores = [result.score for result in results]
         route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
