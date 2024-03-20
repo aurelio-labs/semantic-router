@@ -222,7 +222,7 @@ class QdrantIndex(BaseIndex):
             self.index_name, query_vector=vector, limit=top_k, with_payload=True
         )
         scores = [result.score for result in results]
-        route_names = [result.payload["sr_route"] for result in results]
+        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
         return np.array(scores), route_names
 
     def delete_index(self):
