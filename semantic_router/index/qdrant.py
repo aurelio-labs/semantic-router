@@ -244,7 +244,7 @@ class QdrantIndex(BaseIndex):
             query_vector=vector,
             limit=top_k,
             with_payload=True,
-            filter=filter,
+            query_filter=filter,
         )
         scores = [result.score for result in results]
         route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
