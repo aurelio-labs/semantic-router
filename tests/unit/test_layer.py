@@ -8,6 +8,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
+from semantic_router.index.pinecone import PineconeIndex
 
 
 def mock_encoder_call(utterances):
@@ -220,10 +221,10 @@ class TestRouteLayer:
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
         assert query_result in ["Route 1"]
 
-    # def test_query_filter_openai_index(self, openai_encoder, routes):
-    #     route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=PineconeIndex)
-    #     query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-    #     assert query_result in ["Route 1"]
+    def test_query_filter_openai_index(self, openai_encoder, routes):
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=PineconeIndex())
+        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+        assert query_result in ["Route 1"]
 
     def test_query_with_no_index(self, openai_encoder):
         route_layer = RouteLayer(encoder=openai_encoder)
