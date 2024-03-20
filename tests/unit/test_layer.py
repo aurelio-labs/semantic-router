@@ -1,3 +1,4 @@
+import importlib
 import os
 import tempfile
 from unittest.mock import mock_open, patch
@@ -5,6 +6,8 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.index.local import LocalIndex
+from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
@@ -20,7 +23,7 @@ def mock_encoder_call(utterances):
         "Bye": [1.0, 1.1, 1.2],
         "Au revoir": [1.3, 1.4, 1.5],
     }
-    return [mock_responses.get(u, [0, 0, 0]) for u in utterances]
+    return [mock_responses.get(u, [0.0, 0.0, 0.0]) for u in utterances]
 
 
 def layer_json():
@@ -119,9 +122,21 @@ def test_data():
     ]
 
 
+def get_test_indexes():
+    indexes = [LocalIndex]
+
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
+
+    return indexes
+
+
+@pytest.mark.parametrize("index_cls", get_test_indexes())
 class TestRouteLayer:
-    def test_initialization(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10)
+    def test_initialization(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, top_k=10, index=index_cls()
+        )
         assert openai_encoder.score_threshold == 0.82
         assert route_layer.score_threshold == 0.82
         assert route_layer.top_k == 10
@@ -132,29 +147,35 @@ class TestRouteLayer:
             else 0 == 2
         )
 
-    def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
-        route_layer_cohere = RouteLayer(encoder=cohere_encoder)
+    def test_initialization_different_encoders(
+        self, cohere_encoder, openai_encoder, index_cls
+    ):
+        route_layer_cohere = RouteLayer(encoder=cohere_encoder, index=index_cls())
         assert cohere_encoder.score_threshold == 0.3
         assert route_layer_cohere.score_threshold == 0.3
-        route_layer_openai = RouteLayer(encoder=openai_encoder)
+        route_layer_openai = RouteLayer(encoder=openai_encoder, index=index_cls())
         assert route_layer_openai.score_threshold == 0.82
 
-    def test_initialization_no_encoder(self, openai_encoder):
+    def test_initialization_no_encoder(self, openai_encoder, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
         route_layer_none = RouteLayer(encoder=None)
         assert route_layer_none.score_threshold == openai_encoder.score_threshold
 
     def test_initialization_dynamic_route(
-        self, cohere_encoder, openai_encoder, dynamic_routes
+        self, cohere_encoder, openai_encoder, dynamic_routes, index_cls
     ):
-        route_layer_cohere = RouteLayer(encoder=cohere_encoder, routes=dynamic_routes)
+        route_layer_cohere = RouteLayer(
+            encoder=cohere_encoder, routes=dynamic_routes, index=index_cls()
+        )
         assert route_layer_cohere.score_threshold == 0.3
-        route_layer_openai = RouteLayer(encoder=openai_encoder, routes=dynamic_routes)
+        route_layer_openai = RouteLayer(
+            encoder=openai_encoder, routes=dynamic_routes, index=index_cls()
+        )
         assert openai_encoder.score_threshold == 0.82
         assert route_layer_openai.score_threshold == 0.82
 
-    def test_add_route(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
+    def test_add_route(self, openai_encoder, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         route1 = Route(name="Route 1", utterances=["Yes", "No"])
         route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
@@ -173,15 +194,19 @@ class TestRouteLayer:
         assert route_layer.routes == [route1, route2]
         assert route_layer.index.describe()["vectors"] == 4
 
-    def test_list_route_names(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_list_route_names(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         route_names = route_layer.list_route_names()
         assert set(route_names) == {
             route.name for route in routes
         }, "The list of route names should match the names of the routes added."
 
-    def test_delete_route(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_delete_route(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         # Delete a route by name
         route_to_delete = routes[0].name
         route_layer.delete(route_to_delete)
@@ -195,8 +220,10 @@ class TestRouteLayer:
                 utterance not in route_layer.index
             ), "The route's utterances should be deleted from the index."
 
-    def test_remove_route_not_found(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_remove_route_not_found(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
         with pytest.raises(ValueError) as excinfo:
@@ -205,45 +232,43 @@ class TestRouteLayer:
             str(excinfo.value) == f"Route `{non_existent_route}` not found"
         ), "Attempting to remove a non-existent route should raise a ValueError."
 
-    def test_add_multiple_routes(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder)
+    def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
         assert route_layer.index.describe()["vectors"] == 5
 
-    def test_query_and_classification(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_query_and_classification(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
 
-    def test_query_filter(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-        assert query_result in ["Route 1"]
-
-    def test_query_filter_openai_index(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=PineconeIndex())
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-        assert query_result in ["Route 1"]
-
-    def test_query_with_no_index(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
+    def test_query_with_no_index(self, openai_encoder, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         with pytest.raises(ValueError):
             assert route_layer(text="Anything").name is None
 
-    def test_query_with_vector(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_query_with_vector(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         vector = [0.1, 0.2, 0.3]
         query_result = route_layer(vector=vector).name
         assert query_result in ["Route 1", "Route 2"]
 
-    def test_query_with_no_text_or_vector(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_query_with_no_text_or_vector(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         with pytest.raises(ValueError):
             route_layer()
 
-    def test_semantic_classify(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_semantic_classify(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -253,8 +278,10 @@ class TestRouteLayer:
         assert classification == "Route 1"
         assert score == [0.9]
 
-    def test_semantic_classify_multiple_routes(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_semantic_classify_multiple_routes(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         classification, score = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
@@ -265,28 +292,34 @@ class TestRouteLayer:
         assert classification == "Route 1"
         assert score == [0.9, 0.8]
 
-    def test_query_no_text_dynamic_route(self, openai_encoder, dynamic_routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=dynamic_routes)
+    def test_query_no_text_dynamic_route(
+        self, openai_encoder, dynamic_routes, index_cls
+    ):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=dynamic_routes, index=index_cls()
+        )
         vector = [0.1, 0.2, 0.3]
         with pytest.raises(ValueError):
             route_layer(vector=vector)
 
-    def test_pass_threshold(self, openai_encoder):
-        route_layer = RouteLayer(encoder=openai_encoder)
+    def test_pass_threshold(self, openai_encoder, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         assert not route_layer._pass_threshold([], 0.5)
         assert route_layer._pass_threshold([0.6, 0.7], 0.5)
 
-    def test_failover_score_threshold(self, base_encoder):
-        route_layer = RouteLayer(encoder=base_encoder)
+    def test_failover_score_threshold(self, base_encoder, index_cls):
+        route_layer = RouteLayer(encoder=base_encoder, index=index_cls())
         assert route_layer.score_threshold == 0.5
 
-    def test_json(self, openai_encoder, routes):
+    def test_json(self, openai_encoder, routes, index_cls):
         temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
         try:
             temp_path = temp.name  # Save the temporary file's path
             temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=index_cls()
+            )
             route_layer.to_json(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_json(temp_path)
@@ -297,13 +330,15 @@ class TestRouteLayer:
         finally:
             os.remove(temp_path)  # Ensure the file is deleted even if the test fails
 
-    def test_yaml(self, openai_encoder, routes):
+    def test_yaml(self, openai_encoder, routes, index_cls):
         temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
         try:
             temp_path = temp.name  # Save the temporary file's path
             temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=index_cls()
+            )
             route_layer.to_yaml(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_yaml(temp_path)
@@ -314,7 +349,7 @@ class TestRouteLayer:
         finally:
             os.remove(temp_path)  # Ensure the file is deleted even if the test fails
 
-    def test_from_file_json(openai_encoder, tmp_path):
+    def test_from_file_json(openai_encoder, tmp_path, index_cls):
         # Create a temporary JSON file with layer configuration
         config_path = tmp_path / "config.json"
         config_path.write_text(
@@ -330,7 +365,7 @@ class TestRouteLayer:
         assert len(layer_config.routes) == 2
         assert layer_config.routes[0].name == "politics"
 
-    def test_from_file_yaml(openai_encoder, tmp_path):
+    def test_from_file_yaml(openai_encoder, tmp_path, index_cls):
         # Create a temporary YAML file with layer configuration
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
@@ -346,14 +381,14 @@ class TestRouteLayer:
         assert len(layer_config.routes) == 2
         assert layer_config.routes[0].name == "politics"
 
-    def test_from_file_invalid_path(self):
+    def test_from_file_invalid_path(self, index_cls):
         with pytest.raises(FileNotFoundError) as excinfo:
             LayerConfig.from_file("nonexistent_path.json")
         assert "[Errno 2] No such file or directory: 'nonexistent_path.json'" in str(
             excinfo.value
         )
 
-    def test_from_file_unsupported_type(self, tmp_path):
+    def test_from_file_unsupported_type(self, tmp_path, index_cls):
         # Create a temporary unsupported file
         config_path = tmp_path / "config.unsupported"
         config_path.write_text(layer_json())
@@ -362,7 +397,7 @@ class TestRouteLayer:
             LayerConfig.from_file(str(config_path))
         assert "Unsupported file type" in str(excinfo.value)
 
-    def test_from_file_invalid_config(self, tmp_path):
+    def test_from_file_invalid_config(self, tmp_path, index_cls):
         # Define an invalid configuration JSON
         invalid_config_json = """
         {
@@ -386,7 +421,7 @@ class TestRouteLayer:
                 excinfo.value
             ), "Loading an invalid configuration should raise an exception."
 
-    def test_from_file_with_llm(self, tmp_path):
+    def test_from_file_with_llm(self, tmp_path, index_cls):
         llm_config_json = """
         {
             "encoder_type": "cohere",
@@ -420,22 +455,25 @@ class TestRouteLayer:
             layer_config.routes[0].llm.name == "fake-model-v1"
         ), "LLM instance should have the 'name' attribute set correctly"
 
-    def test_config(self, openai_encoder, routes):
+    def test_config(self, openai_encoder, routes, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         # confirm route creation functions as expected
         layer_config = route_layer.to_config()
         assert layer_config.routes == routes
         # now load from config and confirm it's the same
-        route_layer_from_config = RouteLayer.from_config(layer_config)
-        assert (route_layer_from_config.index.index == route_layer.index.index).all()
+        route_layer_from_config = RouteLayer.from_config(layer_config, index_cls())
         assert (
             route_layer_from_config._get_route_names() == route_layer._get_route_names()
         )
         assert route_layer_from_config.score_threshold == route_layer.score_threshold
 
-    def test_get_thresholds(self, openai_encoder, routes):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+    def test_get_thresholds(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
         assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
 
 

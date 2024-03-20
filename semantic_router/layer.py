@@ -322,9 +322,9 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig):
+    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
