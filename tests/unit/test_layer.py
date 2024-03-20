@@ -11,7 +11,6 @@ from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
-from semantic_router.index.pinecone import PineconeIndex
 
 
 def mock_encoder_call(utterances):
@@ -244,6 +243,12 @@ class TestRouteLayer:
         )
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
+
+
+    def test_query_filter(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index_cls())
+        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+        assert query_result in ["Route 1"]
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
