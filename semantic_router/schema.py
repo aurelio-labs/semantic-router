@@ -85,3 +85,10 @@ class DocumentSplit(BaseModel):
     @property
     def content(self) -> str:
         return " ".join(self.docs)
+
+
+class Metric(Enum):
+    COSINE = "cosine"
+    DOTPRODUCT = "dotproduct"
+    EUCLIDEAN = "euclidean"
+    MANHATTAN = "manhattan"
