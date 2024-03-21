@@ -6,7 +6,7 @@ import numpy as np
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.schema import DocumentSplit
 from semantic_router.splitters.base import BaseSplitter
-from semantic_router.splitters.utils import split_to_sentences, tiktoken_length
+from semantic_router.splitters.utils import split_to_sentences, split_to_sentences_spacy, tiktoken_length
 from semantic_router.utils.logger import logger
 
 
@@ -39,6 +39,8 @@ class RollingWindowSplitter(BaseSplitter):
     def __init__(
         self,
         encoder: BaseEncoder,
+        pre_splitter: str = "regex",
+        spacy_model: str = "en_core_web_sm",
         threshold_adjustment=0.01,
         dynamic_threshold: bool = True,
         window_size=5,
@@ -51,6 +53,8 @@ class RollingWindowSplitter(BaseSplitter):
         super().__init__(name=name, encoder=encoder)
         self.calculated_threshold: float
         self.encoder = encoder
+        self.pre_splitter = pre_splitter
+        self.spacy_model = spacy_model
         self.threshold_adjustment = threshold_adjustment
         self.dynamic_threshold = dynamic_threshold
         self.window_size = window_size
@@ -79,7 +83,14 @@ class RollingWindowSplitter(BaseSplitter):
                     f"of {self.max_split_tokens}. "
                     "Splitting to sentences before semantically splitting."
                 )
-            docs = split_to_sentences(docs[0])
+            try:
+                if self.pre_splitter == "spacy":
+                    docs = split_to_sentences_spacy(docs[0], self.spacy_model)
+                elif self.pre_splitter == "regex":
+                    docs = split_to_sentences(docs[0])
+            except Exception as e:
+                logger.error(f"Error splitting document to sentences: {e}")
+                raise    
         encoded_docs = self._encode_documents(docs)
         similarities = self._calculate_similarity_scores(encoded_docs)
         if self.dynamic_threshold:
@@ -401,7 +412,12 @@ class RollingWindowSplitter(BaseSplitter):
         sentence after a similarity score below
         a specified threshold.
         """
-        sentences = [sentence for doc in docs for sentence in split_to_sentences(doc)]
+        if self.pre_splitter == "spacy":
+            sentences = [sentence for doc in docs for sentence in split_to_sentences_spacy(doc)]
+        elif self.pre_splitter == "regex":
+            sentences = [sentence for doc in docs for sentence in split_to_sentences(doc)]
+        else:
+            raise ValueError("Invalid pre_splitter value. Supported values are 'spacy' and 'regex'.")
         encoded_sentences = self._encode_documents(sentences)
         similarity_scores = []
 
