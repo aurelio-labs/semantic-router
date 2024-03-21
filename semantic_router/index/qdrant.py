@@ -234,9 +234,7 @@ class QdrantIndex(BaseIndex):
                 must=[
                     models.FieldCondition(
                         key=SR_ROUTE_PAYLOAD_KEY,
-                        match=models.MatchKeyword(
-                            keyword=route_filter,
-                        ),
+                        match=models.MatchValue(value=route_filter),
                     )
                 ]
             )
