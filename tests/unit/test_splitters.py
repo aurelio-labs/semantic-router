@@ -9,6 +9,7 @@ from semantic_router.schema import Message
 from semantic_router.splitters.base import BaseSplitter
 from semantic_router.splitters.consecutive_sim import ConsecutiveSimSplitter
 from semantic_router.splitters.cumulative_sim import CumulativeSimSplitter
+from semantic_router.splitters.rolling_window import RollingWindowSplitter
 from semantic_router.text import Conversation
 
 
@@ -195,3 +196,67 @@ def base_splitter_instance():
 def test_base_splitter_call_not_implemented(base_splitter_instance):
     with pytest.raises(NotImplementedError):
         base_splitter_instance(["document"])
+
+
+def test_split_documents_rolling_window_splitter():
+    # Mock the BaseEncoder
+    mock_encoder = Mock()
+
+    # Simulate encoding by returning an array of vectors
+    mock_encoder.return_value = np.array(
+        [[0.2, 0.8], [0.2, 0.8], [1, 0], [0, 1], [0, 0], [0.2, 0.8]]
+    )
+
+    cohere_encoder = CohereEncoder(
+        name="",
+        cohere_api_key="a",
+        input_type="",
+    )
+    test_doc = [
+        """
+        The ancient oak tree. The tree is a silent witness to centuries, stood majestically at the crest of the rolling hill, its leaves whispering the secrets of a bygone era.
+        The quick brown fox jumps over the lazy dog.
+        Innovative technologies in renewable energy are revolutionizing the way we power our cities, significantly reducing the carbon footprint and fostering a sustainable future.
+        The art of sushi-making demands precision and patience, with each roll a delicate balance of flavors, textures, and aesthetics, reflecting the culinary heritage of Japan.
+        """
+    ]
+
+    splitter = RollingWindowSplitter(
+        encoder=cohere_encoder, window_size=5, min_split_tokens=1
+    )
+    splitter.encoder = mock_encoder
+    splits = splitter(test_doc)
+    print(splits)
+    assert len(splits) == 3
+
+
+def test_split_documents_rolling_window_splitter_with_spacy():
+    # Mock the BaseEncoder
+    mock_encoder = Mock()
+
+    # Simulate encoding by returning an array of vectors
+    mock_encoder.return_value = np.array(
+        [[0.2, 0.8], [0.2, 0.8], [1, 0], [0, 1], [0, 0], [0.2, 0.8]]
+    )
+
+    cohere_encoder = CohereEncoder(
+        name="",
+        cohere_api_key="a",
+        input_type="",
+    )
+    test_doc = [
+        """
+        The ancient oak tree. The tree is a silent witness to centuries, stood majestically at the crest of the rolling hill, its leaves whispering the secrets of a bygone era.
+        The quick brown fox jumps over the lazy dog.
+        Innovative technologies in renewable energy are revolutionizing the way we power our cities, significantly reducing the carbon footprint and fostering a sustainable future.
+        The art of sushi-making demands precision and patience, with each roll a delicate balance of flavors, textures, and aesthetics, reflecting the culinary heritage of Japan.
+        """
+    ]
+
+    splitter = RollingWindowSplitter(
+        encoder=cohere_encoder, window_size=5, min_split_tokens=1, pre_splitter="spacy"
+    )
+    splitter.encoder = mock_encoder
+    splits = splitter(test_doc)
+    print(splits)
+    assert len(splits) == 3
