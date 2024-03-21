@@ -41,8 +41,6 @@ class LlamaCppLLM(BaseLLM):
                 "`pip install 'semantic-router[local]'`"
             )
         self._llama_cpp = llama_cpp
-        llm = self._llama_cpp.Llama
-        grammar = self._llama_cpp.LlamaGrammar
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens
