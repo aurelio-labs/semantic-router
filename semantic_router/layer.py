@@ -4,7 +4,6 @@ import os
 import random
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from datasets import load_dataset, Dataset
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
@@ -20,6 +19,7 @@ from semantic_router.utils.logger import logger
 from huggingface_hub import HfApi, Repository, hf_hub_download
 import shutil
 import stat
+
 
 def is_valid(layer_config: str) -> bool:
     """Make sure the given string is json format and contains the 3 keys:
@@ -324,9 +324,11 @@ class RouteLayer:
     def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
-    
+
     @classmethod
-    def from_hub(cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None):
+    def from_hub(
+        cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None
+    ):
         # Load the dataset from Hugging Face Hub
         full_dataset_id = f"{namespace}/{route_layer_id}"
 
@@ -334,33 +336,33 @@ class RouteLayer:
 
         # Assuming the file is directly accessible and you know its filename
         file_path = hf_hub_download(
-            repo_id=full_dataset_id, 
-            filename="route_layer_data.json", 
+            repo_id=full_dataset_id,
+            filename="route_layer_data.json",
             repo_type="dataset",
             revision="main",  # Ensure you're targeting the latest version in the main branch.
             force_download=True,  # Force re-downloading the file, incase the cached version is outdated.
-            use_auth_token=access_token  # Optional: only if required for private repositories.
-            )
+            use_auth_token=access_token,  # Optional: only if required for private repositories.
+        )
         # Load the file content
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             serialized_data = json.load(file)
-        
+
         # Deserialize encoder
-        encoder_data = serialized_data['encoder']
-        encoder_type = encoder_data['type']
-        encoder_name = encoder_data.get('name', None)
-        encoder_score_threshold = encoder_data.get('score_threshold', None)
-        
+        encoder_data = serialized_data["encoder"]
+        encoder_type = encoder_data["type"]
+        encoder_name = encoder_data.get("name", None)
+        encoder_score_threshold = encoder_data.get("score_threshold", None)
+
         # Dynamically import and instantiate the encoder
         encoder = Encoder(encoder_type, name=encoder_name).model
         encoder.score_threshold = encoder_score_threshold
-        
+
         # Deserialize routes
         routes = []
-        for route_data in serialized_data['routes']:
+        for route_data in serialized_data["routes"]:
             route_instance = Route.from_dict(route_data)
             routes.append(route_instance)
-        
+
         # Create a new instance with the deserialized data
         return cls(encoder=encoder, routes=routes)
 
@@ -525,32 +527,42 @@ class RouteLayer:
             "routes": serialized_routes,
             "encoder": encoder_info,
             # Add tags for Hugging Face Hub
-            "tags": [ "semantic-router", "RouteLayer", getattr(self.encoder, "type", "base")],
+            "tags": [
+                "semantic-router",
+                "RouteLayer",
+                getattr(self.encoder, "type", "base"),
+            ],
         }
         return serialized_data
 
-    def _create_hub_repo(self, namespace: str, route_layer_id: str, access_token: str) -> str:
+    def _create_hub_repo(
+        self, namespace: str, route_layer_id: str, access_token: str
+    ) -> str:
         """
         Create a new dataset repository on the Hugging Face Hub or use an existing one, ensuring the local directory is a fresh clone of the remote repository.
 
-        This method attempts to create a repository named `route_layer_id` on the Hugging Face Hub, specifically as a dataset repository. 
-        If a repository with this name already exists, the method proceeds without error due to 'exist_ok=True'. 
-        Regardless of the existing state, this method ensures that the local directory named after `route_layer_id` is a fresh clone of the repository, 
+        This method attempts to create a repository named `route_layer_id` on the Hugging Face Hub, specifically as a dataset repository.
+        If a repository with this name already exists, the method proceeds without error due to 'exist_ok=True'.
+        Regardless of the existing state, this method ensures that the local directory named after `route_layer_id` is a fresh clone of the repository,
         reflecting its current state on the Hub. This is achieved by deleting the local directory if it exists, and then cloning the repository from the Hub.
         """
         repo_id = f"{namespace}/{route_layer_id}"
-        
+
         hf_api = HfApi(token=access_token)
-        repo_url = hf_api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True).url
+        repo_url = hf_api.create_repo(
+            repo_id=repo_id, repo_type="dataset", exist_ok=True
+        ).url
         repo_local_path = f"./{route_layer_id}"
 
         if os.path.exists(repo_local_path):
             shutil.rmtree(repo_local_path)
 
-        _ = Repository(local_dir=repo_local_path, clone_from=repo_url, use_auth_token=access_token)
+        _ = Repository(
+            local_dir=repo_local_path, clone_from=repo_url, use_auth_token=access_token
+        )
 
         return repo_local_path
-    
+
     def _json_to_hub(self, repo_local_path: str, json_data: str):
         """
         Save the JSON data to a file in the repository.
@@ -577,21 +589,26 @@ class RouteLayer:
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
-
-    def to_hub(self, namespace: str, route_layer_id: str, access_token: str = None):
+    def to_hub(
+        self, namespace: str, route_layer_id: str, access_token: Optional[str] = None
+    ):
         """
         Serialize data and upload to the Hugging Face Hub using the User Access Token.
         """
         serialized_data = self.serialize()
         json_data = json.dumps(serialized_data, indent=4)
         access_token = access_token or os.getenv("HUGGING_FACE_ACCESS_TOKEN")
-        
+
         if not access_token:
-            raise ValueError("No Hugging Face access token provided. Please provide an access token or set the HUGGING_FACE_ACCESS_TOKEN environment variable.")
-        
+            raise ValueError(
+                "No Hugging Face access token provided. Please provide an access token or set the HUGGING_FACE_ACCESS_TOKEN environment variable."
+            )
+
         repo_local_path = None
         try:
-            repo_local_path = self._create_hub_repo(namespace, route_layer_id, access_token)
+            repo_local_path = self._create_hub_repo(
+                namespace, route_layer_id, access_token
+            )
             self._json_to_hub(repo_local_path, json_data)
             self._commit_push_to_hub(repo_local_path)
         finally:

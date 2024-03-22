@@ -9,6 +9,7 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 import importlib
+
 try:
     from PIL.Image import Image
 except ImportError:
@@ -98,8 +99,10 @@ class Route(BaseModel):
             LLMClass = getattr(module, llm_info["class"])
             # Instantiate the LLM class with the provided model name
             llm_instance = LLMClass(name=llm_info["model"])
-            data["llm"] = llm_instance  # Replace the dictionary with the actual LLM instance
-        
+            data[
+                "llm"
+            ] = llm_instance  # Replace the dictionary with the actual LLM instance
+
         return cls(**data)
 
     @classmethod
