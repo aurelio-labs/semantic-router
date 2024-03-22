@@ -2689,13 +2689,13 @@ xmp = ["defusedxml"]
 
 [[package]]
 name = "pinecone-client"
-version = "3.1.0"
+version = "3.2.0"
 description = "Pinecone client and SDK"
 optional = true
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "pinecone_client-3.1.0-py3-none-any.whl", hash = "sha256:66dfe9859ed5b3412c3b59c68c9706c0f522cafd1a15c5d05e28d5664c2c48a4"},
-    {file = "pinecone_client-3.1.0.tar.gz", hash = "sha256:45b8206013f91a982b994f1fbaa39e7e8c99d30ef3778a9f319c43b8c992fc42"},
+    {file = "pinecone_client-3.2.0-py3-none-any.whl", hash = "sha256:c85fd61b39d3238bb9374f5741abc41edf38af52678704b62fcb49cc9080cf83"},
+    {file = "pinecone_client-3.2.0.tar.gz", hash = "sha256:3da4623d263e87a512bd3c29f42212e712870f19061fe9dd7e194cdc4a39206a"},
 ]
 
 [package.dependencies]
@@ -3125,13 +3125,13 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtuale
 
 [[package]]
 name = "pytest-mock"
-version = "3.13.0"
+version = "3.14.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest-mock-3.13.0.tar.gz", hash = "sha256:58c73e7eae1fc05aebe7bd4b3b59eb5beb5c0b644c7e2dd3cc652a749f0056e3"},
-    {file = "pytest_mock-3.13.0-py3-none-any.whl", hash = "sha256:158462fe2124763df267f20c81f098bdccf8928e2649e5e1093955ad1e515f80"},
+    {file = "pytest-mock-3.14.0.tar.gz", hash = "sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0"},
+    {file = "pytest_mock-3.14.0-py3-none-any.whl", hash = "sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f"},
 ]
 
 [package.dependencies]
