@@ -25,7 +25,6 @@ class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[dict] = None
     similarity_score: Optional[float] = None
-    trigger: Optional[bool] = None
 
 
 @dataclass
@@ -86,3 +85,10 @@ class DocumentSplit(BaseModel):
     @property
     def content(self) -> str:
         return " ".join(self.docs)
+
+
+class Metric(Enum):
+    COSINE = "cosine"
+    DOTPRODUCT = "dotproduct"
+    EUCLIDEAN = "euclidean"
+    MANHATTAN = "manhattan"

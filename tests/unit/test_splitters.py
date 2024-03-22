@@ -47,10 +47,8 @@ def test_cumulative_sim_splitter():
     # Adjust the side_effect to simulate the encoder's behavior for cumulative document comparisons
     # This simplistic simulation assumes binary embeddings for demonstration purposes
     # Define a side_effect function for the mock encoder
-    mock_encoder.side_effect = (
-        lambda x: [[0.5, 0]]
-        if "doc1" in x or "doc1\ndoc2" in x or "doc2" in x
-        else [[0, 0.5]]
+    mock_encoder.side_effect = lambda x: (
+        [[0.5, 0]] if "doc1" in x or "doc1\ndoc2" in x or "doc2" in x else [[0, 0.5]]
     )
 
     # Instantiate the CumulativeSimSplitter with the mock encoder
@@ -112,8 +110,8 @@ def test_split_by_topic_consecutive_similarity():
 
 def test_split_by_topic_cumulative_similarity():
     mock_encoder = Mock()
-    mock_encoder.side_effect = (
-        lambda x: [[0.5, 0]] if "User: What is the latest news?" in x else [[0, 0.5]]
+    mock_encoder.side_effect = lambda x: (
+        [[0.5, 0]] if "User: What is the latest news?" in x else [[0, 0.5]]
     )
 
     messages = [

@@ -114,9 +114,8 @@ class LayerConfig:
                     llm_class = getattr(llm_module, llm_data["class"])
                     # Instantiate the LLM class with the provided model name
                     llm = llm_class(name=llm_data["model"])
-                    route_data[
-                        "llm"
-                    ] = llm  # Reassign the instantiated llm object back to route_data
+                    # Reassign the instantiated llm object back to route_data
+                    route_data["llm"] = llm
 
                 # Dynamically create the Route object using the remaining route_data
                 route = Route(**route_data)
@@ -186,6 +185,8 @@ class RouteLayer:
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
+        top_k: int = 5,
+        aggregation: str = "sum",
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -200,6 +201,16 @@ class RouteLayer:
         self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
+        self.top_k = top_k
+        if self.top_k < 1:
+            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
+        self.aggregation = aggregation
+        if self.aggregation not in ["sum", "mean", "max"]:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
+        self.aggregation_method = self._set_aggregation_method(self.aggregation)
+
         # set route score thresholds if not already set
         for route in self.routes:
             if route.score_threshold is None:
@@ -223,29 +234,18 @@ class RouteLayer:
         self,
         text: Optional[str] = None,
         vector: Optional[List[float]] = None,
+        simulate_static: bool = False,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector_arr = self._encode(text=text)
-        else:
-            vector_arr = np.array(vector)
-        # get relevant results (scores and routes)
-        results = self._retrieve(xq=vector_arr)
-        # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        if route is None:
-            return RouteChoice()
-        threshold = (
-            route.score_threshold
-            if route.score_threshold is not None
-            else self.score_threshold
-        )
-        passed = self._pass_threshold(top_class_scores, threshold)
-        if passed:
+            vector = self._encode(text=text)
+
+        route, top_class_scores = self._retrieve_top_route(vector)
+        passed = self._check_threshold(top_class_scores, route)
+
+        if passed and route is not None and not simulate_static:
             if route.function_schema and text is None:
                 raise ValueError(
                     "Route has a function schema, but no text was provided."
@@ -263,9 +263,43 @@ class RouteLayer:
                 else:
                     route.llm = self.llm
             return route(text)
+        elif passed and route is not None and simulate_static:
+            return RouteChoice(
+                name=route.name,
+                function_call=None,
+                similarity_score=None,
+            )
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
+
+    def _retrieve_top_route(
+        self, vector: List[float]
+    ) -> Tuple[Optional[Route], List[float]]:
+        """
+        Retrieve the top matching route based on the given vector.
+        Returns a tuple of the route (if any) and the scores of the top class.
+        """
+        # get relevant results (scores and routes)
+        results = self._retrieve(xq=np.array(vector), top_k=self.top_k)
+        # decide most relevant routes
+        top_class, top_class_scores = self._semantic_classify(results)
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
+        return route, top_class_scores
+
+    def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
+        """
+        Check if the route's score passes the specified threshold.
+        """
+        if route is None:
+            return False
+        threshold = (
+            route.score_threshold
+            if route.score_threshold is not None
+            else self.score_threshold
+        )
+        return self._pass_threshold(scores, threshold)
 
     def __str__(self):
         return (
@@ -287,9 +321,9 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig):
+    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        return cls(encoder=encoder, routes=config.routes, index=index)
     
     @classmethod
     def from_hub(cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None):
@@ -411,6 +445,18 @@ class RouteLayer:
         scores, routes = self.index.query(vector=xq, top_k=top_k)
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
+    def _set_aggregation_method(self, aggregation: str = "sum"):
+        if aggregation == "sum":
+            return lambda x: sum(x)
+        elif aggregation == "mean":
+            return lambda x: np.mean(x)
+        elif aggregation == "max":
+            return lambda x: max(x)
+        else:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
+
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
@@ -422,7 +468,10 @@ class RouteLayer:
                 scores_by_class[route] = [score]
 
         # Calculate total score for each class
-        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
@@ -610,7 +659,8 @@ class RouteLayer:
         """
         correct = 0
         for xq, target_route in zip(Xq, y):
-            route_choice = self(vector=xq)
+            # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
+            route_choice = self(vector=xq, simulate_static=True)
             if route_choice.name == target_route:
                 correct += 1
         accuracy = correct / len(Xq)

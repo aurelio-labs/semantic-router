@@ -2,7 +2,6 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from PIL.Image import Image
 from pydantic.v1 import BaseModel
 
 from semantic_router.llms import BaseLLM
@@ -10,6 +9,11 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 import importlib
+try:
+    from PIL.Image import Image
+except ImportError:
+    pass
+
 
 def is_valid(route_config: str) -> bool:
     try:
@@ -41,7 +45,7 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: Union[List[str], List[Image]]
+    utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None

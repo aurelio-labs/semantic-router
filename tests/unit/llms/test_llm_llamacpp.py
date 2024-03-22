@@ -4,6 +4,8 @@ from llama_cpp import Llama
 from semantic_router.llms.llamacpp import LlamaCppLLM
 from semantic_router.schema import Message
 
+from unittest.mock import patch
+
 
 @pytest.fixture
 def llamacpp_llm(mocker):
@@ -13,6 +15,17 @@ def llamacpp_llm(mocker):
 
 
 class TestLlamaCppLLM:
+    def test_llama_cpp_import_errors(self, llamacpp_llm):
+        with patch.dict("sys.modules", {"llama_cpp": None}):
+            with pytest.raises(ImportError) as error:
+                LlamaCppLLM(llamacpp_llm.llm)
+
+        assert (
+            "Please install LlamaCPP to use Llama CPP llm. "
+            "You can install it with: "
+            "`pip install 'semantic-router[local]'`" in str(error.value)
+        )
+
     def test_llamacpp_llm_init_success(self, llamacpp_llm):
         assert llamacpp_llm.name == "llama.cpp"
         assert llamacpp_llm.temperature == 0.2

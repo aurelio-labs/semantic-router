@@ -66,10 +66,12 @@ class AzureOpenAIEncoder(BaseEncoder):
 
         try:
             self.client = openai.AzureOpenAI(
-                azure_deployment=str(deployment_name) if deployment_name else None,
-                api_key=str(api_key),
-                azure_endpoint=str(azure_endpoint),
-                api_version=str(api_version),
+                azure_deployment=(
+                    str(self.deployment_name) if self.deployment_name else None
+                ),
+                api_key=str(self.api_key),
+                azure_endpoint=str(self.azure_endpoint),
+                api_version=str(self.api_version),
                 # _strict_response_validation=True,
             )
         except Exception as e:
