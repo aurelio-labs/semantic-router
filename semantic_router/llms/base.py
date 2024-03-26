@@ -1,7 +1,7 @@
 import json
 from typing import Any, List, Optional
 
-from pydantic.v1 import BaseModel
+from pydantic import ConfigDict, BaseModel
 
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
@@ -9,9 +9,7 @@ from semantic_router.utils.logger import logger
 
 class BaseLLM(BaseModel):
     name: str
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, name: str, **kwargs):
         super().__init__(name=name, **kwargs)

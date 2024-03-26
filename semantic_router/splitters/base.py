@@ -1,7 +1,7 @@
 from typing import List
 
 from colorama import Fore, Style
-from pydantic.v1 import BaseModel, Extra
+from pydantic import ConfigDict, BaseModel
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import DocumentSplit
@@ -10,9 +10,7 @@ from semantic_router.schema import DocumentSplit
 class BaseSplitter(BaseModel):
     name: str
     encoder: BaseEncoder
-
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     def __call__(self, docs: List[str]) -> List[DocumentSplit]:
         raise NotImplementedError("Subclasses must implement this method")

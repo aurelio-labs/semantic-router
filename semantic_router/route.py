@@ -2,7 +2,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic.v1 import BaseModel
+from pydantic import ConfigDict, BaseModel
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
@@ -50,9 +50,7 @@ class Route(BaseModel):
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
         if self.function_schema:

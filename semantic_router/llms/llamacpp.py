@@ -6,11 +6,11 @@ from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 
 class LlamaCppLLM(BaseLLM):
-    llm: Any
+    llm: Any = None
     temperature: float
     max_tokens: Optional[int] = 200
     grammar: Optional[Any] = None

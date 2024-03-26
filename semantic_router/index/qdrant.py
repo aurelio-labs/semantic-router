@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic.v1 import Field
+from pydantic import Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import Metric

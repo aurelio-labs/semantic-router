@@ -1,19 +1,18 @@
-import os
-from time import sleep
-from typing import List, Optional, Union
-
+from typing import Optional, Union, List
 import openai
 from openai import OpenAIError
 from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
-
+from pydantic import PrivateAttr
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
+import os
+from time import sleep
 
 
 class OpenAIEncoder(BaseEncoder):
-    client: Optional[openai.Client]
+    _client: Optional[openai.Client] = PrivateAttr(default=None)
     dimensions: Union[int, NotGiven] = NotGiven()
     type: str = "openai"
 
@@ -28,25 +27,24 @@ class OpenAIEncoder(BaseEncoder):
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
-        super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
+
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
+
+        super().__init__(name=name, score_threshold=score_threshold)
+        self.dimensions = dimensions
         try:
-            self.client = openai.Client(
-                base_url=base_url, api_key=api_key, organization=openai_org_id
+            self._client = openai.Client(
+                api_key=api_key, base_url=base_url, organization=openai_org_id
             )
         except Exception as e:
-            raise ValueError(
-                f"OpenAI API client failed to initialize. Error: {e}"
-            ) from e
-        # set dimensions to support openai embed 3 dimensions param
-        self.dimensions = dimensions
+            raise ValueError(f"OpenAI API client failed to initialize. Error: {e}")
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None
         error_message = ""
@@ -54,7 +52,7 @@ class OpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(3):
             try:
-                embeds = self.client.embeddings.create(
+                embeds = self._client.embeddings.create(
                     input=docs,
                     model=self.name,
                     dimensions=self.dimensions,
