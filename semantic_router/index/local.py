@@ -68,7 +68,6 @@ class LocalIndex(BaseIndex):
         if self.index is None or self.routes is None:
             raise ValueError("Index or routes are not populated.")
         if route_filter is not None:
-            print(f"Filtering routes with filter: {route_filter}")
             filtered_index = []
             filtered_routes = []
             for route, vec in zip(self.routes, self.index):
@@ -84,7 +83,6 @@ class LocalIndex(BaseIndex):
             sim = similarity_matrix(vector, self.index)
             scores, idx = top_scores(sim, top_k)
             route_names = [self.routes[i] for i in idx]
-        print(f"Routes considered for similarity calculation: {route_names}")
         return scores, route_names
 
     def delete(self, route_name: str):

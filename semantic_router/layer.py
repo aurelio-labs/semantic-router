@@ -241,7 +241,6 @@ class RouteLayer:
             vector = self._encode(text=text)
 
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
-        print(f"Selected route: {route.name if route else 'None'}")
         passed = self._check_threshold(top_class_scores, route)
 
         if passed and route is not None and not simulate_static:
