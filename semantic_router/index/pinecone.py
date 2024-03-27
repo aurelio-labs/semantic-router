@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger

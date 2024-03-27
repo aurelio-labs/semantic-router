@@ -1,31 +1,32 @@
 from typing import List, Optional
-
 import requests
 
-from semantic_router.llms import BaseLLM
+from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
 
 class OllamaLLM(BaseLLM):
-    temperature: Optional[float]
-    llm_name: Optional[str]
-    max_tokens: Optional[int]
-    stream: Optional[bool]
+    temperature: float = 0.2
+    llm_name: str = "openhermes"
+    max_tokens: int = 200
+    stream: bool = False
 
     def __init__(
         self,
         name: str = "ollama",
         temperature: float = 0.2,
         llm_name: str = "openhermes",
-        max_tokens: Optional[int] = 200,
+        max_tokens: int = 200,
         stream: bool = False,
     ):
-        super().__init__(name=name)
-        self.temperature = temperature
-        self.llm_name = llm_name
-        self.max_tokens = max_tokens
-        self.stream = stream
+        super().__init__(
+            name=name,
+            temperature=temperature,
+            llm_name=llm_name,
+            max_tokens=max_tokens,
+            stream=stream,
+        )
 
     def __call__(
         self,

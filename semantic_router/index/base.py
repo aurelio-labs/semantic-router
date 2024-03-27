@@ -1,7 +1,7 @@
 from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic.v1 import BaseModel
+from pydantic import ConfigDict, BaseModel
 
 
 class BaseIndex(BaseModel):
@@ -57,5 +57,4 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

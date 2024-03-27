@@ -18,7 +18,7 @@ class TestOpenAIEncoder:
         side_effect = ["fake-model-name", "fake-api-key", "fake-org-id"]
         mocker.patch("os.getenv", side_effect=side_effect)
         encoder = OpenAIEncoder()
-        assert encoder.client is not None
+        assert encoder._client is not None
 
     def test_openai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
@@ -26,8 +26,8 @@ class TestOpenAIEncoder:
             OpenAIEncoder()
 
     def test_openai_encoder_call_uninitialized_client(self, openai_encoder):
-        # Set the client to None to simulate an uninitialized client
-        openai_encoder.client = None
+        # Set the client to None to simulate an uninitialized _client
+        openai_encoder._client = None
         with pytest.raises(ValueError) as e:
             openai_encoder(["test document"])
         assert "OpenAI client is not initialized." in str(e.value)
@@ -62,7 +62,7 @@ class TestOpenAIEncoder:
 
         responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
-            openai_encoder.client.embeddings, "create", side_effect=responses
+            openai_encoder._client.embeddings, "create", side_effect=responses
         )
         embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -71,7 +71,7 @@ class TestOpenAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            openai_encoder.client.embeddings,
+            openai_encoder._client.embeddings,
             "create",
             side_effect=OpenAIError("Test error"),
         )
@@ -83,7 +83,7 @@ class TestOpenAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
         mocker.patch.object(
-            openai_encoder.client.embeddings,
+            openai_encoder._client.embeddings,
             "create",
             side_effect=Exception("Non-OpenAIError"),
         )
@@ -112,7 +112,7 @@ class TestOpenAIEncoder:
 
         responses = [OpenAIError("OpenAI error"), mock_response]
         mocker.patch.object(
-            openai_encoder.client.embeddings, "create", side_effect=responses
+            openai_encoder._client.embeddings, "create", side_effect=responses
         )
         embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]

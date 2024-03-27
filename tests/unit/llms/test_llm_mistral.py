@@ -1,5 +1,4 @@
 import pytest
-
 from semantic_router.llms import MistralAILLM
 from semantic_router.schema import Message
 

@@ -10,9 +10,9 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAILLM(BaseLLM):
-    client: Optional[openai.AzureOpenAI]
-    temperature: Optional[float]
-    max_tokens: Optional[int]
+    client: Optional[openai.AzureOpenAI] = None
+    temperature: float = 0.01
+    max_tokens: int = 200
 
     def __init__(
         self,
@@ -25,7 +25,9 @@ class AzureOpenAILLM(BaseLLM):
     ):
         if name is None:
             name = EncoderDefault.AZURE.value["language_model"]
-        super().__init__(name=name)
+        super().__init__(
+            name=name, temperature=temperature, max_tokens=max_tokens, client=None
+        )
         api_key = openai_api_key or os.getenv("AZURE_OPENAI_API_KEY")
         if api_key is None:
             raise ValueError("AzureOpenAI API key cannot be 'None'.")
@@ -38,8 +40,6 @@ class AzureOpenAILLM(BaseLLM):
             )
         except Exception as e:
             raise ValueError(f"AzureOpenAI API client failed to initialize. Error: {e}")
-        self.temperature = temperature
-        self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:

@@ -1,19 +1,16 @@
-import os
 from typing import List, Optional, Any
-
-
-from semantic_router.llms import BaseLLM
+from pydantic import PrivateAttr
+import os
+from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
-from pydantic.v1 import PrivateAttr
-
 
 class MistralAILLM(BaseLLM):
     _client: Any = PrivateAttr()
-    temperature: Optional[float]
-    max_tokens: Optional[int]
+    temperature: float = 0.01
+    max_tokens: int = 200
     _mistralai: Any = PrivateAttr()
 
     def __init__(
@@ -25,10 +22,8 @@ class MistralAILLM(BaseLLM):
     ):
         if name is None:
             name = EncoderDefault.MISTRAL.value["language_model"]
-        super().__init__(name=name)
+        super().__init__(name=name, temperature=temperature, max_tokens=max_tokens)
         self._client, self._mistralai = self._initialize_client(mistralai_api_key)
-        self.temperature = temperature
-        self.max_tokens = max_tokens
 
     def _initialize_client(self, api_key):
         try:

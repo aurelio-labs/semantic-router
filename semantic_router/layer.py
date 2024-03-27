@@ -16,6 +16,9 @@ from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
+from huggingface_hub import HfApi, Repository, hf_hub_download
+import shutil
+import stat
 
 
 def is_valid(layer_config: str) -> bool:
@@ -59,7 +62,7 @@ class LayerConfig:
     def __init__(
         self,
         routes: List[Route] = [],
-        encoder_type: str = "openai",
+        encoder_type: EncoderType = EncoderType.OPENAI,
         encoder_name: Optional[str] = None,
     ):
         self.encoder_type = encoder_type
@@ -124,7 +127,9 @@ class LayerConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "encoder_type": self.encoder_type,
+            "encoder_type": self.encoder_type.value
+            if isinstance(self.encoder_type, EncoderType)
+            else self.encoder_type,
             "encoder_name": self.encoder_name,
             "routes": [route.to_dict() for route in self.routes],
         }
@@ -322,6 +327,48 @@ class RouteLayer:
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
 
+    @classmethod
+    def from_hub(
+        cls, namespace: str, route_layer_id: str, access_token: Optional[str] = None
+    ):
+        # Load the dataset from Hugging Face Hub
+        full_dataset_id = f"{namespace}/{route_layer_id}"
+
+        # data = load_dataset(full_dataset_id, use_auth_token=access_token) # TODO: Couldn't get this to work. Revisit.
+
+        # Assuming the file is directly accessible and you know its filename
+        file_path = hf_hub_download(
+            repo_id=full_dataset_id,
+            filename="route_layer_data.json",
+            repo_type="dataset",
+            revision="main",  # Ensure you're targeting the latest version in the main branch.
+            force_download=True,  # Force re-downloading the file, incase the cached version is outdated.
+            use_auth_token=access_token,  # Optional: only if required for private repositories.
+        )
+        # Load the file content
+        with open(file_path, "r") as file:
+            serialized_data = json.load(file)
+
+        # Deserialize encoder
+        encoder_data = serialized_data["encoder"]
+        encoder_type = encoder_data["type"]
+        encoder_name = encoder_data.get("name", None)
+        encoder_score_threshold = encoder_data.get("score_threshold", None)
+
+        # Dynamically import and instantiate the encoder
+        encoder = Encoder(encoder_type, name=encoder_name).model
+        if encoder is not None:
+            encoder.score_threshold = encoder_score_threshold
+
+        # Deserialize routes
+        routes = []
+        for route_data in serialized_data["routes"]:
+            route_instance = Route.from_dict(route_data)
+            routes.append(route_instance)
+
+        # Create a new instance with the deserialized data
+        return cls(encoder=encoder, routes=routes)
+
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
@@ -456,8 +503,11 @@ class RouteLayer:
                 )
 
     def to_config(self) -> LayerConfig:
+        encoder_type = EncoderType(
+            self.encoder.type
+        )  # Convert string to EncoderType enum
         return LayerConfig(
-            encoder_type=self.encoder.type,
+            encoder_type=encoder_type,
             encoder_name=self.encoder.name,
             routes=self.routes,
         )
@@ -469,6 +519,108 @@ class RouteLayer:
     def to_yaml(self, file_path: str):
         config = self.to_config()
         config.to_file(file_path)
+
+    def serialize(self):
+        serialized_routes = [route.to_dict() for route in self.routes]
+        # Serialize encoder information correctly
+        encoder_info = {
+            "type": getattr(self.encoder, "type", "base"),
+            "name": getattr(self.encoder, "name", None),
+            "score_threshold": getattr(self.encoder, "score_threshold", None),
+        }
+        # Prepare the complete serialization including routes and encoder info
+        serialized_data = {
+            "routes": serialized_routes,
+            "encoder": encoder_info,
+            # Add tags for Hugging Face Hub
+            "tags": [
+                "semantic-router",
+                "RouteLayer",
+                getattr(self.encoder, "type", "base"),
+            ],
+        }
+        return serialized_data
+
+    def _create_hub_repo(
+        self, namespace: str, route_layer_id: str, access_token: str
+    ) -> str:
+        """
+        Create a new dataset repository on the Hugging Face Hub or use an existing one, ensuring the local directory is a fresh clone of the remote repository.
+
+        This method attempts to create a repository named `route_layer_id` on the Hugging Face Hub, specifically as a dataset repository.
+        If a repository with this name already exists, the method proceeds without error due to 'exist_ok=True'.
+        Regardless of the existing state, this method ensures that the local directory named after `route_layer_id` is a fresh clone of the repository,
+        reflecting its current state on the Hub. This is achieved by deleting the local directory if it exists, and then cloning the repository from the Hub.
+        """
+        repo_id = f"{namespace}/{route_layer_id}"
+
+        hf_api = HfApi(token=access_token)
+        repo_url = hf_api.create_repo(
+            repo_id=repo_id, repo_type="dataset", exist_ok=True
+        ).url
+        repo_local_path = f"./{route_layer_id}"
+
+        if os.path.exists(repo_local_path):
+            shutil.rmtree(repo_local_path)
+
+        _ = Repository(
+            local_dir=repo_local_path, clone_from=repo_url, use_auth_token=access_token
+        )
+
+        return repo_local_path
+
+    def _json_to_hub(self, repo_local_path: str, json_data: str):
+        """
+        Save the JSON data to a file in the repository.
+        """
+        json_file_path = os.path.join(repo_local_path, "route_layer_data.json")
+        with open(json_file_path, "w") as json_file:
+            json_file.write(json_data)
+
+    def _commit_push_to_hub(self, repo_local_path: str):
+        """
+        Commit and push the changes to the repository.
+        """
+        repo = Repository(repo_local_path, use_auth_token=True)
+        repo.git_add("route_layer_data.json")
+        try:
+            repo.git_commit("Update route layer data")
+            repo.git_push()
+        except Exception as e:
+            # Handle or log the exception as needed
+            print(f"Error during commit/push in {repo_local_path}: {e}")
+
+    def remove_readonly(self, func, path, _):
+        """Needed to stop error about local repo being in use, so that we can delete it."""
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+    def to_hub(
+        self, namespace: str, route_layer_id: str, access_token: Optional[str] = None
+    ):
+        """
+        Serialize data and upload to the Hugging Face Hub using the User Access Token.
+        """
+        serialized_data = self.serialize()
+        json_data = json.dumps(serialized_data, indent=4)
+        access_token = access_token or os.getenv("HUGGING_FACE_ACCESS_TOKEN")
+
+        if not access_token:
+            raise ValueError(
+                "No Hugging Face access token provided. Please provide an access token or set the HUGGING_FACE_ACCESS_TOKEN environment variable."
+            )
+
+        repo_local_path = None
+        try:
+            repo_local_path = self._create_hub_repo(
+                namespace, route_layer_id, access_token
+            )
+            self._json_to_hub(repo_local_path, json_data)
+            self._commit_push_to_hub(repo_local_path)
+        finally:
+            # Cleanup: Delete the local repository directory if it exists
+            if repo_local_path and os.path.exists(repo_local_path):
+                shutil.rmtree(repo_local_path, onerror=self.remove_readonly)
 
     def get_thresholds(self) -> Dict[str, float]:
         # TODO: float() below is hacky fix for lint, fix this with new type?
