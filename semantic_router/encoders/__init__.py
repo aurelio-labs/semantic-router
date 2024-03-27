@@ -8,7 +8,7 @@ from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
-from semantic_router.encoders.zure import AzureOpenAIEncoder
+from semantic_router.encoders.azure import AzureOpenAIEncoder
 
 __all__ = [
     "BaseEncoder",
