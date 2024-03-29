@@ -37,6 +37,7 @@ pillow = { version= "^10.2.0", optional = true}
 tiktoken = "^0.6.0"
 matplotlib = { version="^3.8.3", optional = true}
 qdrant-client = {version="^1.8.0", optional = true}
+google-cloud-aiplatform = "^1.45.0"
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
