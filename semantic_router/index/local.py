@@ -56,17 +56,33 @@ class LocalIndex(BaseIndex):
             "vectors": self.index.shape[0] if self.index is not None else 0,
         }
 
-    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query and return top_k results.
         """
         if self.index is None or self.routes is None:
             raise ValueError("Index or routes are not populated.")
-        sim = similarity_matrix(vector, self.index)
-        # extract the index values of top scoring vectors
-        scores, idx = top_scores(sim, top_k)
-        # get routes from index values
-        route_names = self.routes[idx].copy()
+        if route_filter is not None:
+            filtered_index = []
+            filtered_routes = []
+            for route, vec in zip(self.routes, self.index):
+                if route in route_filter:
+                    filtered_index.append(vec)
+                    filtered_routes.append(route)
+            if not filtered_routes:
+                raise ValueError("No routes found matching the filter criteria.")
+            sim = similarity_matrix(vector, np.array(filtered_index))
+            scores, idx = top_scores(sim, top_k)
+            route_names = [filtered_routes[i] for i in idx]
+        else:
+            sim = similarity_matrix(vector, self.index)
+            scores, idx = top_scores(sim, top_k)
+            route_names = [self.routes[i] for i in idx]
         return scores, route_names
 
     def delete(self, route_name: str):

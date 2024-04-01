@@ -232,6 +232,7 @@ class RouteLayer:
         text: Optional[str] = None,
         vector: Optional[List[float]] = None,
         simulate_static: bool = False,
+        route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -239,7 +240,7 @@ class RouteLayer:
                 raise ValueError("Either text or vector must be provided")
             vector = self._encode(text=text)
 
-        route, top_class_scores = self._retrieve_top_route(vector)
+        route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
 
         if passed and route is not None and not simulate_static:
@@ -271,14 +272,16 @@ class RouteLayer:
             return RouteChoice()
 
     def _retrieve_top_route(
-        self, vector: List[float]
+        self, vector: List[float], route_filter: Optional[List[str]] = None
     ) -> Tuple[Optional[Route], List[float]]:
         """
         Retrieve the top matching route based on the given vector.
         Returns a tuple of the route (if any) and the scores of the top class.
         """
         # get relevant results (scores and routes)
-        results = self._retrieve(xq=np.array(vector), top_k=self.top_k)
+        results = self._retrieve(
+            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+        )
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
         # TODO do we need this check?
@@ -397,10 +400,14 @@ class RouteLayer:
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
-    def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
+    def _retrieve(
+        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
+    ) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
         # get scores and routes
-        scores, routes = self.index.query(vector=xq, top_k=top_k)
+        scores, routes = self.index.query(
+            vector=xq, top_k=top_k, route_filter=route_filter
+        )
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _set_aggregation_method(self, aggregation: str = "sum"):

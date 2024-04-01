@@ -219,13 +219,23 @@ class PineconeIndex(BaseIndex):
         else:
             raise ValueError("Index is None, cannot describe index stats.")
 
-    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
         if self.index is None:
             raise ValueError("Index is not populated.")
         query_vector_list = vector.tolist()
+        if route_filter is not None:
+            filter_query = {"sr_route": {"$in": route_filter}}
+        else:
+            filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
             top_k=top_k,
+            filter=filter_query,
             include_metadata=True,
         )
         scores = [result["score"] for result in results["matches"]]
