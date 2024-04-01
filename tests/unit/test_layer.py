@@ -7,6 +7,7 @@ import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
+from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
@@ -126,7 +127,6 @@ def get_test_indexes():
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
-
     return indexes
 
 
@@ -243,6 +243,33 @@ class TestRouteLayer:
         )
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
+
+    def test_query_filter(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
+        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+
+        try:
+            route_layer(text="Hello", route_filter=["Route 8"]).name
+        except ValueError:
+            assert True
+
+        assert query_result in ["Route 1"]
+
+    def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
+        pineconeindex = PineconeIndex()
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=pineconeindex
+        )
+        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+
+        try:
+            route_layer(text="Hello", route_filter=["Route 8"]).name
+        except ValueError:
+            assert True
+
+        assert query_result in ["Route 1"]
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
