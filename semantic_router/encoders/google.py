@@ -39,7 +39,7 @@ class GoogleEncoder(BaseEncoder):
     def __init__(
         self,
         name: Optional[str] = None,
-        score_threshold: float = 0.3,
+        score_threshold: float = 0.75,
         project_id: Optional[str] = None,
         location: Optional[str] = None,
         api_endpoint: Optional[str] = None,
