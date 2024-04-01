@@ -167,7 +167,7 @@ class QdrantIndex(BaseIndex):
             List[Tuple]: A list of (route_name, utterance) objects.
         """
 
-        import grpc
+        from qdrant_client import grpc
 
         results = []
         next_offset = None
