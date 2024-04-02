@@ -640,6 +640,28 @@ class TestRouteLayer:
         assert "Route 1" in matched_routes, "Expected 'Route 1' to be a match"
         assert "Route 2" in matched_routes, "Expected 'Route 2' to be a match"
 
+    def test_set_aggregation_method_with_unsupported_value(
+        self, openai_encoder, routes, index_cls
+    ):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
+        unsupported_aggregation = "unsupported_aggregation_method"
+        with pytest.raises(
+            ValueError,
+            match=f"Unsupported aggregation method chosen: {unsupported_aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.",
+        ):
+            route_layer._set_aggregation_method(unsupported_aggregation)
+
+    def test_refresh_routes_not_implemented(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
+        with pytest.raises(
+            NotImplementedError, match="This method has not yet been implemented."
+        ):
+            route_layer._refresh_routes()
+
 
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
