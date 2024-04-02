@@ -577,7 +577,7 @@ class TestRouteLayer:
 
     def test_retrieve_with_text(self, mock_route_layer):
         with patch.object(
-            mock_route_layer, "_encode", return_value=[0.1, 0.2, 0.3]
+            mock_route_layer, "_encode", side_effect=mock_encoder_call
         ) as mock_encode, patch.object(
             mock_route_layer,
             "_retrieve",
@@ -586,6 +586,7 @@ class TestRouteLayer:
             results = mock_route_layer.retrieve_multiple_routes(text="Hello")
             assert len(results) == 1
             assert results[0].name == "Route 1"
+            # Ensure "Hello" is encoded to [0.1, 0.2, 0.3] as per mock_encoder_call
             mock_encode.assert_called_once_with(text="Hello")
             mock_retrieve.assert_called()
 
