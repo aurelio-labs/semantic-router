@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List, Optional
 
-from pydantic.v1 import BaseModel
-from pydantic.v1.dataclasses import dataclass
+from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -31,25 +31,25 @@ class RouteChoice(BaseModel):
 class Encoder:
     type: EncoderType
     name: Optional[str]
-    model: BaseEncoder
+    model: Optional[BaseEncoder] = None
 
-    def __init__(self, type: str, name: Optional[str]):
-        self.type = EncoderType(type)
-        self.name = name
+    def __post_init__(self):
         if self.type == EncoderType.HUGGINGFACE:
             raise NotImplementedError
         elif self.type == EncoderType.FASTEMBED:
-            self.model = FastEmbedEncoder(name=name)
+            self.model = FastEmbedEncoder(name=self.name)
         elif self.type == EncoderType.OPENAI:
-            self.model = OpenAIEncoder(name=name)
+            self.model = OpenAIEncoder(name=self.name)
         elif self.type == EncoderType.COHERE:
-            self.model = CohereEncoder(name=name)
+            self.model = CohereEncoder(name=self.name)
         elif self.type == EncoderType.MISTRAL:
-            self.model = MistralEncoder(name=name)
+            self.model = MistralEncoder(name=self.name)
         else:
-            raise ValueError
+            raise ValueError(f"Unsupported encoder type: {self.type}")
 
     def __call__(self, texts: List[str]) -> List[List[float]]:
+        if self.model is None:
+            raise ValueError("Encoder model is not initialized.")
         return self.model(texts)
 
 

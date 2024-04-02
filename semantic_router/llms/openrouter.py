@@ -9,10 +9,10 @@ from semantic_router.utils.logger import logger
 
 
 class OpenRouterLLM(BaseLLM):
-    client: Optional[openai.OpenAI]
-    base_url: Optional[str]
-    temperature: Optional[float]
-    max_tokens: Optional[int]
+    _client: Optional[openai.OpenAI]
+    base_url: str
+    temperature: float
+    max_tokens: int
 
     def __init__(
         self,
@@ -26,25 +26,24 @@ class OpenRouterLLM(BaseLLM):
             name = os.getenv(
                 "OPENROUTER_CHAT_MODEL_NAME", "mistralai/mistral-7b-instruct"
             )
-        super().__init__(name=name)
-        self.base_url = base_url
+        super().__init__(
+            name=name, base_url=base_url, temperature=temperature, max_tokens=max_tokens
+        )
         api_key = openrouter_api_key or os.getenv("OPENROUTER_API_KEY")
         if api_key is None:
             raise ValueError("OpenRouter API key cannot be 'None'.")
         try:
-            self.client = openai.OpenAI(api_key=api_key, base_url=self.base_url)
+            self._client = openai.OpenAI(api_key=api_key, base_url=self.base_url)
         except Exception as e:
             raise ValueError(
                 f"OpenRouter API client failed to initialize. Error: {e}"
             ) from e
-        self.temperature = temperature
-        self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("OpenRouter client is not initialized.")
         try:
-            completion = self.client.chat.completions.create(
+            completion = self._client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,

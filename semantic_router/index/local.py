@@ -4,6 +4,7 @@ import numpy as np
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
+from pydantic import ConfigDict
 
 
 class LocalIndex(BaseIndex):
@@ -16,9 +17,7 @@ class LocalIndex(BaseIndex):
         super().__init__(index=index, routes=routes, utterances=utterances)
         self.type = "local"
 
-    class Config:
-        # Stop pydantic from complaining about Optional[np.ndarray]type hints.
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def add(
         self, embeddings: List[List[float]], routes: List[str], utterances: List[str]

@@ -12,7 +12,7 @@ def openrouter_llm(mocker):
 
 class TestOpenRouterLLM:
     def test_openrouter_llm_init_with_api_key(self, openrouter_llm):
-        assert openrouter_llm.client is not None, "Client should be initialized"
+        assert openrouter_llm._client is not None, "Client should be initialized"
         assert (
             openrouter_llm.name == "mistralai/mistral-7b-instruct"
         ), "Default name not set correctly"
@@ -20,7 +20,7 @@ class TestOpenRouterLLM:
     def test_openrouter_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
         llm = OpenRouterLLM()
-        assert llm.client is not None
+        assert llm._client is not None
 
     def test_openrouter_llm_init_without_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
@@ -29,7 +29,7 @@ class TestOpenRouterLLM:
 
     def test_openrouter_llm_call_uninitialized_client(self, openrouter_llm):
         # Set the client to None to simulate an uninitialized client
-        openrouter_llm.client = None
+        openrouter_llm._client = None
         with pytest.raises(ValueError) as e:
             llm_input = [Message(role="user", content="test")]
             openrouter_llm(llm_input)
@@ -51,7 +51,7 @@ class TestOpenRouterLLM:
 
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch.object(
-            openrouter_llm.client.chat.completions,
+            openrouter_llm._client.chat.completions,
             "create",
             return_value=mock_completion,
         )
