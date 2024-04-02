@@ -22,7 +22,7 @@ class FastEmbedEncoder(BaseEncoder):
 
     def _initialize_client(self):
         try:
-            from fastembed.embedding import FlagEmbedding as Embedding
+            from fastembed import TextEmbedding
         except ImportError:
             raise ImportError(
                 "Please install fastembed to use FastEmbedEncoder. "
@@ -39,7 +39,7 @@ class FastEmbedEncoder(BaseEncoder):
 
         embedding_args = {k: v for k, v in embedding_args.items() if v is not None}
 
-        embedding = Embedding(**embedding_args)
+        embedding = TextEmbedding(**embedding_args)
         return embedding
 
     def __call__(self, docs: List[str]) -> List[List[float]]:

@@ -46,33 +46,55 @@ class BaseLLM(BaseModel):
         logger.info("Extracting function input...")
 
         prompt = f"""
-        You are a helpful assistant designed to output JSON.
-        Given the following function schema
-        << {function_schema} >>
-        and query
-        << {query} >>
-        extract the parameters values from the query, in a valid JSON format.
-        Example:
-        Input:
-        query: "How is the weather in Hawaii right now in International units?"
-        schema:
-        {{
-            "name": "get_weather",
-            "description": "Useful to get the weather in a specific location",
-            "signature": "(location: str, degree: str) -> str",
-            "output": "<class 'str'>",
-        }}
+You are an accurate and reliable computer program that only outputs valid JSON. 
+Your task is to output JSON representing the input arguments of a Python function.
 
-        Result: {{
-            "location": "London",
-            "degree": "Celsius",
-        }}
+This is the Python function's schema:
 
-        Input:
-        query: {query}
-        schema: {function_schema}
-        Result:
-        """
+### FUNCTION_SCHEMA Start ###
+	{function_schema}
+### FUNCTION_SCHEMA End ###
+
+This is the input query.
+
+### QUERY Start ###
+	{query}
+### QUERY End ###
+
+The arguments that you need to provide values for, together with their datatypes, are stated in "signature" in the FUNCTION_SCHEMA.
+The values these arguments must take are made clear by the QUERY.
+Use the FUNCTION_SCHEMA "description" too, as this might provide helpful clues about the arguments and their values.
+Return only JSON, stating the argument names and their corresponding values.
+
+### FORMATTING_INSTRUCTIONS Start ###
+	Return a respones in valid JSON format. Do not return any other explanation or text, just the JSON.
+	The JSON-Keys are the names of the arguments, and JSON-values are the values those arguments should take.
+### FORMATTING_INSTRUCTIONS End ###
+
+### EXAMPLE Start ###
+	=== EXAMPLE_INPUT_QUERY Start ===
+		"How is the weather in Hawaii right now in International units?"
+	=== EXAMPLE_INPUT_QUERY End ===
+	=== EXAMPLE_INPUT_SCHEMA Start ===
+		{{
+			"name": "get_weather",
+			"description": "Useful to get the weather in a specific location",
+			"signature": "(location: str, degree: str) -> str",
+			"output": "<class 'str'>",
+		}}
+	=== EXAMPLE_INPUT_QUERY End ===
+	=== EXAMPLE_OUTPUT Start ===
+		{{
+			"location": "Hawaii",
+			"degree": "Celsius",
+		}}
+	=== EXAMPLE_OUTPUT End ===
+### EXAMPLE End ###
+
+Note: I will tip $500 for and accurate JSON output. You will be penalized for an inaccurate JSON output.
+
+Provide JSON output now:
+"""
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
 

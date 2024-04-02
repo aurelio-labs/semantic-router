@@ -5,7 +5,8 @@ import pytest
 
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
 
-encoder = HuggingFaceEncoder()
+test_model_name = "hf-internal-testing/tiny-bert"
+encoder = HuggingFaceEncoder(name=test_model_name)
 
 
 class TestHuggingFaceEncoder:

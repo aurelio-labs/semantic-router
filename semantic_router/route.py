@@ -9,6 +9,11 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 
+try:
+    from PIL.Image import Image
+except ImportError:
+    pass
+
 
 def is_valid(route_config: str) -> bool:
     try:
@@ -40,11 +45,14 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: List[str]
+    utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
         if self.function_schema:
@@ -68,8 +76,18 @@ class Route(BaseModel):
             func_call = None
         return RouteChoice(name=self.name, function_call=func_call)
 
+    # def to_dict(self) -> Dict[str, Any]:
+    #     return self.dict()
+
     def to_dict(self) -> Dict[str, Any]:
-        return self.dict()
+        data = self.dict()
+        if self.llm is not None:
+            data["llm"] = {
+                "module": self.llm.__module__,
+                "class": self.llm.__class__.__name__,
+                "model": self.llm.name,
+            }
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]):

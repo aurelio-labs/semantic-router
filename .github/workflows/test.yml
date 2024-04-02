@@ -46,6 +46,8 @@ jobs:
         run: |
           python -m nltk.downloader punkt stopwords wordnet
       - name: Pytest
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         run: |
           make test
       - name: Upload coverage to Codecov

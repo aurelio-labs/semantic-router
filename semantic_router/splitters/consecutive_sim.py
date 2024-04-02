@@ -1,12 +1,13 @@
-from typing import List
-from semantic_router.splitters.base import BaseSplitter
-from semantic_router.encoders import BaseEncoder
+from typing import Any, List
+
 import numpy as np
+
+from semantic_router.encoders import BaseEncoder
 from semantic_router.schema import DocumentSplit
+from semantic_router.splitters.base import BaseSplitter
 
 
 class ConsecutiveSimSplitter(BaseSplitter):
-
     """
     Called "consecutive sim splitter" because we check the similarities of consecutive document embeddings (compare ith to i+1th document embedding).
     """
@@ -17,10 +18,18 @@ class ConsecutiveSimSplitter(BaseSplitter):
         name: str = "consecutive_similarity_splitter",
         score_threshold: float = 0.45,
     ):
-        super().__init__(name=name, score_threshold=score_threshold, encoder=encoder)
+        super().__init__(name=name, encoder=encoder)
         encoder.score_threshold = score_threshold
+        self.score_threshold = score_threshold
 
-    def __call__(self, docs: List[str]):
+    def __call__(self, docs: List[Any]) -> List[DocumentSplit]:
+        """Split documents into smaller chunks based on semantic similarity.
+
+        :param docs: list of text documents to be split, if only wanted to
+            split a single document, pass it as a list with a single element.
+
+        :return: list of DocumentSplit objects containing the split documents.
+        """
         # Check if there's only a single document
         if len(docs) == 1:
             raise ValueError(

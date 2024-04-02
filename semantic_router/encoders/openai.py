@@ -8,6 +8,7 @@ from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -19,18 +20,24 @@ class OpenAIEncoder(BaseEncoder):
     def __init__(
         self,
         name: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
         openai_api_key: Optional[str] = None,
+        openai_org_id: Optional[str] = None,
         score_threshold: float = 0.82,
         dimensions: Union[int, NotGiven] = NotGiven(),
     ):
         if name is None:
-            name = os.getenv("OPENAI_MODEL_NAME", "text-embedding-ada-002")
+            name = EncoderDefault.OPENAI.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
+        openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
-            self.client = openai.Client(api_key=api_key)
+            self.client = openai.Client(
+                base_url=base_url, api_key=api_key, organization=openai_org_id
+            )
         except Exception as e:
             raise ValueError(
                 f"OpenAI API client failed to initialize. Error: {e}"

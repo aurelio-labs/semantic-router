@@ -7,6 +7,7 @@ from openai import OpenAIError
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -30,7 +31,7 @@ class AzureOpenAIEncoder(BaseEncoder):
     ):
         name = deployment_name
         if name is None:
-            name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "text-embedding-ada-002")
+            name = EncoderDefault.AZURE.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         self.api_key = api_key
         self.deployment_name = deployment_name
@@ -42,9 +43,7 @@ class AzureOpenAIEncoder(BaseEncoder):
             if self.api_key is None:
                 raise ValueError("No Azure OpenAI API key provided.")
         if self.deployment_name is None:
-            self.deployment_name = os.getenv(
-                "AZURE_OPENAI_DEPLOYMENT_NAME", "text-embedding-ada-002"
-            )
+            self.deployment_name = EncoderDefault.AZURE.value["deployment_name"]
         # deployment_name may still be None, but it is optional in the API
         if self.azure_endpoint is None:
             self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -67,10 +66,12 @@ class AzureOpenAIEncoder(BaseEncoder):
 
         try:
             self.client = openai.AzureOpenAI(
-                azure_deployment=str(deployment_name) if deployment_name else None,
-                api_key=str(api_key),
-                azure_endpoint=str(azure_endpoint),
-                api_version=str(api_version),
+                azure_deployment=(
+                    str(self.deployment_name) if self.deployment_name else None
+                ),
+                api_key=str(self.api_key),
+                azure_endpoint=str(self.azure_endpoint),
+                api_version=str(self.api_version),
                 # _strict_response_validation=True,
             )
         except Exception as e:

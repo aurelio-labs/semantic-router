@@ -8,6 +8,7 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     FastEmbedEncoder,
+    MistralEncoder,
     OpenAIEncoder,
 )
 
@@ -17,13 +18,13 @@ class EncoderType(Enum):
     FASTEMBED = "fastembed"
     OPENAI = "openai"
     COHERE = "cohere"
+    MISTRAL = "mistral"
 
 
 class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[dict] = None
     similarity_score: Optional[float] = None
-    trigger: Optional[bool] = None
 
 
 @dataclass
@@ -43,6 +44,8 @@ class Encoder:
             self.model = OpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name=name)
+        elif self.type == EncoderType.MISTRAL:
+            self.model = MistralEncoder(name=name)
         else:
             raise ValueError
 
@@ -65,6 +68,9 @@ class Message(BaseModel):
     def to_llamacpp(self):
         return {"role": self.role, "content": self.content}
 
+    def to_mistral(self):
+        return {"role": self.role, "content": self.content}
+
     def __str__(self):
         return f"{self.role}: {self.content}"
 
@@ -73,3 +79,16 @@ class DocumentSplit(BaseModel):
     docs: List[str]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
+    token_count: Optional[int] = None
+    metadata: Optional[dict] = None
+
+    @property
+    def content(self) -> str:
+        return " ".join(self.docs)
+
+
+class Metric(Enum):
+    COSINE = "cosine"
+    DOTPRODUCT = "dotproduct"
+    EUCLIDEAN = "euclidean"
+    MANHATTAN = "manhattan"

@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import random
@@ -8,15 +9,18 @@ import yaml
 from tqdm.auto import tqdm
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
-from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.index.base import BaseIndex
+from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import Encoder, EncoderType, RouteChoice
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
 def is_valid(layer_config: str) -> bool:
-    """Make sure the given string is json format and contains the 3 keys: ["encoder_name", "encoder_type", "routes"]"""
+    """Make sure the given string is json format and contains the 3 keys:
+    ["encoder_name", "encoder_type", "routes"]"""
     try:
         output_json = json.loads(layer_config)
         required_keys = ["encoder_name", "encoder_type", "routes"]
@@ -60,24 +64,22 @@ class LayerConfig:
     ):
         self.encoder_type = encoder_type
         if encoder_name is None:
-            # if encoder_name is not provided, use the default encoder for type
-            # TODO base these values on default values in encoders themselves..
-            # TODO without initializing them (as this is just config)
-            if encoder_type == EncoderType.OPENAI:
-                encoder_name = "text-embedding-ada-002"
-            elif encoder_type == EncoderType.COHERE:
-                encoder_name = "embed-english-v3.0"
-            elif encoder_type == EncoderType.FASTEMBED:
-                encoder_name = "BAAI/bge-small-en-v1.5"
-            elif encoder_type == EncoderType.HUGGINGFACE:
-                raise NotImplementedError
+            for encode_type in EncoderType:
+                if encode_type.value == self.encoder_type:
+                    if self.encoder_type == EncoderType.HUGGINGFACE.value:
+                        raise NotImplementedError(
+                            "HuggingFace encoder not supported by LayerConfig yet."
+                        )
+                    encoder_name = EncoderDefault[encode_type.name].value[
+                        "embedding_model"
+                    ]
+                    break
             logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
         self.encoder_name = encoder_name
         self.routes = routes
 
     @classmethod
     def from_file(cls, path: str) -> "LayerConfig":
-        """Load the routes from a file in JSON or YAML format"""
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
@@ -90,16 +92,35 @@ class LayerConfig:
                     "Unsupported file type. Only .json and .yaml are supported"
                 )
 
-            route_config_str = json.dumps(layer)
-            if is_valid(route_config_str):
-                encoder_type = layer["encoder_type"]
-                encoder_name = layer["encoder_name"]
-                routes = [Route.from_dict(route) for route in layer["routes"]]
-                return cls(
-                    encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
-                )
-            else:
+            if not is_valid(json.dumps(layer)):
                 raise Exception("Invalid config JSON or YAML")
+
+            encoder_type = layer["encoder_type"]
+            encoder_name = layer["encoder_name"]
+            routes = []
+            for route_data in layer["routes"]:
+                # Handle the 'llm' field specially if it exists
+                if "llm" in route_data and route_data["llm"] is not None:
+                    llm_data = route_data.pop(
+                        "llm"
+                    )  # Remove 'llm' from route_data and handle it separately
+                    # Use the module path directly from llm_data without modification
+                    llm_module_path = llm_data["module"]
+                    # Dynamically import the module and then the class from that module
+                    llm_module = importlib.import_module(llm_module_path)
+                    llm_class = getattr(llm_module, llm_data["class"])
+                    # Instantiate the LLM class with the provided model name
+                    llm = llm_class(name=llm_data["model"])
+                    # Reassign the instantiated llm object back to route_data
+                    route_data["llm"] = llm
+
+                # Dynamically create the Route object using the remaining route_data
+                route = Route(**route_data)
+                routes.append(route)
+
+            return cls(
+                encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -151,20 +172,21 @@ class LayerConfig:
 
 
 class RouteLayer:
-    index: Optional[np.ndarray] = None
-    categories: Optional[np.ndarray] = None
     score_threshold: float
     encoder: BaseEncoder
+    index: BaseIndex
 
     def __init__(
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
+        index: Optional[BaseIndex] = None,  # type: ignore
+        top_k: int = 5,
+        aggregation: str = "sum",
     ):
-        logger.info("Initializing RouteLayer")
-        self.index = None
-        self.categories = None
+        logger.info("local")
+        self.index: BaseIndex = index if index is not None else LocalIndex()
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -176,6 +198,16 @@ class RouteLayer:
         self.llm = llm
         self.routes: list[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
+        self.top_k = top_k
+        if self.top_k < 1:
+            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
+        self.aggregation = aggregation
+        if self.aggregation not in ["sum", "mean", "max"]:
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
+        self.aggregation_method = self._set_aggregation_method(self.aggregation)
+
         # set route score thresholds if not already set
         for route in self.routes:
             if route.score_threshold is None:
@@ -189,7 +221,8 @@ class RouteLayer:
         matching_routes = [route for route in self.routes if route.name == top_class]
         if not matching_routes:
             logger.error(
-                f"No route found with name {top_class}. Check to see if any Routes have been defined."
+                f"No route found with name {top_class}. Check to see if any Routes "
+                "have been defined."
             )
             return None
         return matching_routes[0]
@@ -198,29 +231,19 @@ class RouteLayer:
         self,
         text: Optional[str] = None,
         vector: Optional[List[float]] = None,
+        simulate_static: bool = False,
+        route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector_arr = self._encode(text=text)
-        else:
-            vector_arr = np.array(vector)
-        # get relevant utterances
-        results = self._retrieve(xq=vector_arr)
-        # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        if route is None:
-            return RouteChoice()
-        threshold = (
-            route.score_threshold
-            if route.score_threshold is not None
-            else self.score_threshold
-        )
-        passed = self._pass_threshold(top_class_scores, threshold)
-        if passed:
+            vector = self._encode(text=text)
+
+        route, top_class_scores = self._retrieve_top_route(vector, route_filter)
+        passed = self._check_threshold(top_class_scores, route)
+
+        if passed and route is not None and not simulate_static:
             if route.function_schema and text is None:
                 raise ValueError(
                     "Route has a function schema, but no text was provided."
@@ -238,6 +261,12 @@ class RouteLayer:
                 else:
                     route.llm = self.llm
             return route(text)
+        elif passed and route is not None and simulate_static:
+            return RouteChoice(
+                name=route.name,
+                function_call=None,
+                similarity_score=None,
+            )
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
@@ -270,6 +299,36 @@ class RouteLayer:
 
         return route_choices
 
+    def _retrieve_top_route(
+        self, vector: List[float], route_filter: Optional[List[str]] = None
+    ) -> Tuple[Optional[Route], List[float]]:
+        """
+        Retrieve the top matching route based on the given vector.
+        Returns a tuple of the route (if any) and the scores of the top class.
+        """
+        # get relevant results (scores and routes)
+        results = self._retrieve(
+            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+        )
+        # decide most relevant routes
+        top_class, top_class_scores = self._semantic_classify(results)
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
+        return route, top_class_scores
+
+    def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
+        """
+        Check if the route's score passes the specified threshold.
+        """
+        if route is None:
+            return False
+        threshold = (
+            route.score_threshold
+            if route.score_threshold is not None
+            else self.score_threshold
+        )
+        return self._pass_threshold(scores, threshold)
+
     def __str__(self):
         return (
             f"RouteLayer(encoder={self.encoder}, "
@@ -290,9 +349,9 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig):
+    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
         encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
@@ -302,64 +361,64 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # create route array
-        if self.categories is None:
-            self.categories = np.array([route.name] * len(embeds))
-        else:
-            str_arr = np.array([route.name] * len(embeds))
-            self.categories = np.concatenate([self.categories, str_arr])
-        # create utterance array (the index)
-        if self.index is None:
-            self.index = np.array(embeds)
-        else:
-            embed_arr = np.array(embeds)
-            self.index = np.concatenate([self.index, embed_arr])
-        # add route to routes list
+        # add routes to the index
+        self.index.add(
+            embeddings=embeds,
+            routes=[route.name] * len(route.utterances),
+            utterances=route.utterances,
+        )
         self.routes.append(route)
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
-    def remove(self, name: str):
-        if name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{name}` not found"
+    def update(self, route_name: str, utterances: List[str]):
+        raise NotImplementedError("This method has not yet been implemented.")
+
+    def delete(self, route_name: str):
+        """Deletes a route given a specific route name.
+
+        :param route_name: the name of the route to be deleted
+        :type str:
+        """
+        if route_name not in [route.name for route in self.routes]:
+            err_msg = f"Route `{route_name}` not found"
             logger.error(err_msg)
             raise ValueError(err_msg)
         else:
-            self.routes = [route for route in self.routes if route.name != name]
-            logger.info(f"Removed route `{name}`")
-            # Also remove from index and categories
-            if self.categories is not None and self.index is not None:
-                indices_to_remove = [
-                    i
-                    for i, route_name in enumerate(self.categories)
-                    if route_name == name
-                ]
-                self.index = np.delete(self.index, indices_to_remove, axis=0)
-                self.categories = np.delete(self.categories, indices_to_remove, axis=0)
+            self.routes = [route for route in self.routes if route.name != route_name]
+            self.index.delete(route_name=route_name)
+
+    def _refresh_routes(self):
+        """Pulls out the latest routes from the index."""
+        raise NotImplementedError("This method has not yet been implemented.")
+        route_mapping = {route.name: route for route in self.routes}
+        index_routes = self.index.get_routes()
+        new_routes_names = []
+        new_routes = []
+        for route_name, utterance in index_routes:
+            if route_name in route_mapping:
+                if route_name not in new_routes_names:
+                    existing_route = route_mapping[route_name]
+                    new_routes.append(existing_route)
+
+                new_routes.append(Route(name=route_name, utterances=[utterance]))
+            route = route_mapping[route_name]
+            self.routes.append(route)
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterance = self.encoder(all_utterances)
-
+        embedded_utterances = self.encoder(all_utterances)
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
-        route_array = np.array(route_names)
-        self.categories = (
-            np.concatenate([self.categories, route_array])
-            if self.categories is not None
-            else route_array
-        )
-
-        # create utterance array (the index)
-        embed_utterance_arr = np.array(embedded_utterance)
-        self.index = (
-            np.concatenate([self.index, embed_utterance_arr])
-            if self.index is not None
-            else embed_utterance_arr
+        # add everything to the index
+        self.index.add(
+            embeddings=embedded_utterances,
+            routes=route_names,
+            utterances=all_utterances,
         )
 
     def _encode(self, text: str) -> Any:
@@ -369,24 +428,36 @@ class RouteLayer:
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
-    def _retrieve(self, xq: Any, top_k: int = 5) -> List[dict]:
+    def _retrieve(
+        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
+    ) -> List[dict]:
         """Given a query vector, retrieve the top_k most similar records."""
-        if self.index is not None:
-            # calculate similarity matrix
-            sim = similarity_matrix(xq, self.index)
-            scores, idx = top_scores(sim, top_k)
-            # get the utterance categories (route names)
-            routes = self.categories[idx] if self.categories is not None else []
-            return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
+        # get scores and routes
+        scores, routes = self.index.query(
+            vector=xq, top_k=top_k, route_filter=route_filter
+        )
+        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
+
+    def _set_aggregation_method(self, aggregation: str = "sum"):
+        if aggregation == "sum":
+            return lambda x: sum(x)
+        elif aggregation == "mean":
+            return lambda x: np.mean(x)
+        elif aggregation == "max":
+            return lambda x: max(x)
         else:
-            logger.warning("No index found for route layer.")
-            return []
+            raise ValueError(
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+            )
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
         # Calculate total score for each class
-        total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
         top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
         # Return the top class and its associated scores
@@ -482,15 +553,19 @@ class RouteLayer:
         self,
         X: List[str],
         y: List[str],
+        batch_size: int = 500,
         max_iter: int = 500,
     ):
         # convert inputs into array
-        Xq: Any = np.array(self.encoder(X))
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
         # initial eval (we will iterate from here)
-        best_acc = self._vec_evaluate(Xq=Xq, y=y)
+        best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
         best_thresholds = self.get_thresholds()
         # begin fit
-        for _ in (pbar := tqdm(range(max_iter))):
+        for _ in (pbar := tqdm(range(max_iter), desc="Training")):
             pbar.set_postfix({"acc": round(best_acc, 2)})
             # Find the best score threshold for each route
             thresholds = threshold_random_search(
@@ -508,12 +583,16 @@ class RouteLayer:
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
 
-    def evaluate(self, X: List[str], y: List[str]) -> float:
+    def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
-        Xq = np.array(self.encoder(X))
-        accuracy = self._vec_evaluate(Xq=Xq, y=y)
+        Xq: List[List[float]] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb = np.array(self.encoder(X[i : i + batch_size]))
+            Xq.extend(emb)
+
+        accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
         return accuracy
 
     def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:
@@ -522,11 +601,15 @@ class RouteLayer:
         """
         correct = 0
         for xq, target_route in zip(Xq, y):
-            route_choice = self(vector=xq)
+            # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
+            route_choice = self(vector=xq, simulate_static=True)
             if route_choice.name == target_route:
                 correct += 1
         accuracy = correct / len(Xq)
         return accuracy
+
+    def _get_route_names(self) -> List[str]:
+        return [route.name for route in self.routes]
 
 
 def threshold_random_search(

@@ -1,14 +1,16 @@
 from typing import List
-from semantic_router.splitters.base import BaseSplitter
+
 import numpy as np
-from semantic_router.schema import DocumentSplit
+
 from semantic_router.encoders import BaseEncoder
+from semantic_router.schema import DocumentSplit
+from semantic_router.splitters.base import BaseSplitter
 
 
 class CumulativeSimSplitter(BaseSplitter):
-
     """
-    Called "cumulative sim" because we check the similarities of the embeddings of cumulative concatenated documents with the next document.
+    Called "cumulative sim" because we check the similarities of the
+    embeddings of cumulative concatenated documents with the next document.
     """
 
     def __init__(
@@ -17,15 +19,24 @@ class CumulativeSimSplitter(BaseSplitter):
         name: str = "cumulative_similarity_splitter",
         score_threshold: float = 0.45,
     ):
-        super().__init__(name=name, score_threshold=score_threshold, encoder=encoder)
+        super().__init__(name=name, encoder=encoder)
         encoder.score_threshold = score_threshold
+        self.score_threshold = score_threshold
 
-    def __call__(self, docs: List[str]):
+    def __call__(self, docs: List[str]) -> List[DocumentSplit]:
+        """Split documents into smaller chunks based on semantic similarity.
+
+        :param docs: list of text documents to be split, if only wanted to
+            split a single document, pass it as a list with a single element.
+
+        :return: list of DocumentSplit objects containing the split documents.
+        """
         total_docs = len(docs)
         # Check if there's only a single document
         if total_docs == 1:
             raise ValueError(
-                "There is only one document provided; at least two are required to determine topics based on similarity."
+                "There is only one document provided; at least two are required "
+                "to determine topics based on similarity."
             )
         splits = []
         curr_split_start_idx = 0
@@ -33,10 +44,12 @@ class CumulativeSimSplitter(BaseSplitter):
         for idx in range(0, total_docs):
             if idx + 1 < total_docs:  # Ensure there is a next document to compare with.
                 if idx == 0:
-                    # On the first iteration, compare the first document directly to the second.
+                    # On the first iteration, compare the
+                    # first document directly to the second.
                     curr_split_docs = docs[idx]
                 else:
-                    # For subsequent iterations, compare cumulative documents up to the current one with the next.
+                    # For subsequent iterations, compare cumulative
+                    # documents up to the current one with the next.
                     curr_split_docs = "\n".join(docs[curr_split_start_idx : idx + 1])
                 next_doc = docs[idx + 1]
 

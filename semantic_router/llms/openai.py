@@ -5,6 +5,7 @@ import openai
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
+from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -21,7 +22,7 @@ class OpenAILLM(BaseLLM):
         max_tokens: int = 200,
     ):
         if name is None:
-            name = os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-3.5-turbo")
+            name = EncoderDefault.OPENAI.value["language_model"]
         super().__init__(name=name)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key is None:
