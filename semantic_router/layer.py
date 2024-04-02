@@ -292,9 +292,7 @@ class RouteLayer:
         for category, score in categories_with_scores:
             route = self.check_for_matching_routes(category)
             if route:
-                route_choice = RouteChoice(
-                    name=route.name, similarity_score=score
-                )
+                route_choice = RouteChoice(name=route.name, similarity_score=score)
                 route_choices.append(route_choice)
 
         return route_choices
