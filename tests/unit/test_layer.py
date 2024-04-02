@@ -96,6 +96,7 @@ def routes():
         Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
     ]
 
+
 @pytest.fixture
 def routes_2():
     return [
@@ -103,12 +104,14 @@ def routes_2():
         Route(name="Route 2", utterances=["Hello"]),
     ]
 
+
 @pytest.fixture
 def routes_3():
     return [
         Route(name="Route 1", utterances=["Hello"]),
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
+
 
 @pytest.fixture
 def dynamic_routes():
@@ -602,7 +605,6 @@ class TestRouteLayer:
             result.name in ["Route 1", "Route 2"] for result in results
         ), "Expected the result to be either 'Route 1' or 'Route 2'"
 
-
     def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
@@ -621,7 +623,9 @@ class TestRouteLayer:
         matched_routes = [result.name for result in results]
         assert "Route 1" in matched_routes, "Expected 'Route 1' to be a match"
 
-    def test_retrieve_with_text_for_multiple_matches(self, openai_encoder, routes_2, index_cls):
+    def test_retrieve_with_text_for_multiple_matches(
+        self, openai_encoder, routes_2, index_cls
+    ):
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes_2, index=index_cls()
         )
@@ -631,6 +635,7 @@ class TestRouteLayer:
         matched_routes = [result.name for result in results]
         assert "Route 1" in matched_routes, "Expected 'Route 1' to be a match"
         assert "Route 2" in matched_routes, "Expected 'Route 2' to be a match"
+
 
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
