@@ -504,6 +504,52 @@ class TestRouteLayer:
         assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
 
 
+    @pytest.fixture
+    def route_layer(self, routes, index_cls):
+        # Initialize RouteLayer with actual routes and a mock index class
+        route_layer = RouteLayer(encoder=None, routes=routes, index=index_cls())
+        # Manually set the score_threshold for testing
+        route_layer.score_threshold = 0.5
+        return route_layer
+
+    def test_with_multiple_routes_passing_threshold(self, route_layer, index_cls):
+        # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
+        query_results = [
+            {"route": "Route 1", "score": 0.6},
+            {"route": "Route 2", "score": 0.7},
+            {"route": "Route 1", "score": 0.8},
+        ]
+        # Override _pass_threshold to always return True for this test
+        route_layer._pass_threshold = lambda scores, threshold: True
+        expected = [("Route 1", 0.8), ("Route 2", 0.7)]
+        results = route_layer._semantic_classify_multiple_routes(query_results)
+        assert sorted(results) == sorted(expected), "Should classify and return routes above their thresholds"
+
+    def test_with_no_routes_passing_threshold(self, route_layer, index_cls):
+        # Override _pass_threshold to always return False for this test
+        route_layer._pass_threshold = lambda scores, threshold: False
+        query_results = [
+            {"route": "Route 1", "score": 0.3},
+            {"route": "Route 2", "score": 0.2},
+        ]
+        expected = []
+        results = route_layer._semantic_classify_multiple_routes(query_results)
+        assert results == expected, "Should return an empty list when no routes pass their thresholds"
+
+    def test_with_no_query_results(self, route_layer, index_cls):
+        query_results = []
+        expected = []
+        results = route_layer._semantic_classify_multiple_routes(query_results)
+        assert results == expected, "Should return an empty list when there are no query results"
+
+    def test_with_unrecognized_route(self, route_layer, index_cls):
+        # Test with a route name that does not exist in the route_layer's routes
+        query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
+        expected = []
+        results = route_layer._semantic_classify_multiple_routes(query_results)
+        assert results == expected, "Should ignore and not return unrecognized routes"
+
+
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
