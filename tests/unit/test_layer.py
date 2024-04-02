@@ -498,9 +498,6 @@ class TestRouteLayer:
             layer_config.routes[0].llm.name == "fake-model-v1"
         ), "LLM instance should have the 'name' attribute set correctly"
 
-    def debug_test():
-        assert 1 == 0
-
     def test_config(self, openai_encoder, routes, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
         route_layer = RouteLayer(
