@@ -258,7 +258,8 @@ class TestRouteLayer:
         assert query_result in ["Route 1"]
 
     def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
-        pineconeindex = PineconeIndex()
+        pinecone_api_key = os.environ["PINECONE_API_KEY"]
+        pineconeindex = PineconeIndex(api_key=pinecone_api_key)
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=pineconeindex
         )
