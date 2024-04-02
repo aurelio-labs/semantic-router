@@ -504,9 +504,9 @@ class TestRouteLayer:
         assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
 
     @pytest.fixture
-    def route_layer(self, routes, index_cls):
-        # Initialize RouteLayer with actual routes and a mock index class
-        route_layer = RouteLayer(encoder=None, routes=routes, index=index_cls())
+    def route_layer(self, openai_encoder, routes, index_cls):
+        # Initialize RouteLayer with mocked routes and a mock index class
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index_cls())
         # Manually set the score_threshold for testing
         route_layer.score_threshold = 0.5
         return route_layer
