@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import cohere
 
@@ -37,12 +37,17 @@ class CohereEncoder(BaseEncoder):
                 f"Cohere API client failed to initialize. Error: {e}"
             ) from e
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(
+        self, docs: List[str], embedding_types: Optional[List[str]] = None
+    ) -> Union[List[List[float]], cohere.EmbeddingType]:
         if self.client is None:
             raise ValueError("Cohere client is not initialized.")
         try:
             embeds = self.client.embed(
-                docs, input_type=self.input_type, model=self.name
+                texts=docs,
+                input_type=self.input_type,
+                model=self.name,
+                embedding_types=embedding_types,
             )
             return embeds.embeddings
         except Exception as e:
