@@ -18,7 +18,7 @@ packages = [{include = "semantic_router"}]
 python = ">=3.9,<3.13"
 pydantic = "^2.5.3"
 openai = "^1.10.0"
-cohere = "^4.32"
+cohere = "^5.1.7"
 mistralai= {version = "^0.0.12", optional = true}
 numpy = "^1.25.2"
 colorlog = "^6.8.0"
