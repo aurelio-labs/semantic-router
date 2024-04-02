@@ -564,6 +564,7 @@ class TestRouteLayer:
         results = route_layer._semantic_classify_multiple_routes(query_results)
         assert results == expected, "Should ignore and not return unrecognized routes"
 
+
     @pytest.fixture
     def mock_route_layer(self, openai_encoder, index_cls):
         routes = [
