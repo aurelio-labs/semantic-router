@@ -564,6 +564,66 @@ class TestRouteLayer:
         results = route_layer._semantic_classify_multiple_routes(query_results)
         assert results == expected, "Should ignore and not return unrecognized routes"
 
+    @pytest.fixture
+    def mock_route_layer(self, openai_encoder, index_cls):
+        routes = [
+            Route(name="Route 1", utterances=["Hello", "Hi"]),
+            Route(name="Route 2", utterances=["Goodbye", "Bye"]),
+        ]
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
+        return route_layer
+
+    def test_retrieve_with_text(self, mock_route_layer):
+        with patch.object(
+            mock_route_layer, "_encode", return_value=[0.1, 0.2, 0.3]
+        ) as mock_encode, patch.object(
+            mock_route_layer,
+            "_retrieve",
+            return_value=[{"route": "Route 1", "score": 0.9}],
+        ) as mock_retrieve:
+            results = mock_route_layer.retrieve_multiple_routes(text="Hello")
+            assert len(results) == 1
+            assert results[0].name == "Route 1"
+            mock_encode.assert_called_once_with(text="Hello")
+            mock_retrieve.assert_called()
+
+    def test_retrieve_with_vector(self, mock_route_layer):
+        vector = [0.1, 0.2, 0.3]
+        with patch.object(
+            mock_route_layer,
+            "_retrieve",
+            return_value=[{"route": "Route 2", "score": 0.8}],
+        ) as mock_retrieve:
+            results = mock_route_layer.retrieve_multiple_routes(vector=vector)
+            assert len(results) == 1
+            assert results[0].name == "Route 2"
+            mock_retrieve.assert_called()
+
+    def test_retrieve_no_matches(self, mock_route_layer):
+        with patch.object(
+            mock_route_layer, "_retrieve", return_value=[]
+        ) as mock_retrieve:
+            results = mock_route_layer.retrieve_multiple_routes(text="Unknown")
+            assert len(results) == 0
+            mock_retrieve.assert_called()
+
+    def test_retrieve_multiple_matches(self, mock_route_layer):
+        with patch.object(
+            mock_route_layer,
+            "_retrieve",
+            return_value=[
+                {"route": "Route 1", "score": 0.7},
+                {"route": "Route 2", "score": 0.6},
+            ],
+        ) as mock_retrieve:
+            results = mock_route_layer.retrieve_multiple_routes(text="Mixed")
+            assert len(results) == 2
+            assert results[0].name in ["Route 1", "Route 2"]
+            assert results[1].name in ["Route 1", "Route 2"]
+            mock_retrieve.assert_called()
+
 
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
