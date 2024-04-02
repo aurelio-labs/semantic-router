@@ -264,7 +264,7 @@ class RouteLayer:
             route = self.check_for_matching_routes(category)
             if route:
                 route_choice = RouteChoice(
-                    name=route.name, similarity_score=score, route=route
+                    name=route.name, similarity_score=score
                 )
                 route_choices.append(route_choice)
 
@@ -395,7 +395,7 @@ class RouteLayer:
         else:
             logger.warning("No classification found for semantic classifier.")
             return "", []
-        
+
     def get(self, name: str) -> Optional[Route]:
         for route in self.routes:
             if route.name == name:
@@ -415,14 +415,20 @@ class RouteLayer:
             route_obj = self.get(route_name)
             if route_obj is not None:
                 # Use the Route object's threshold if it exists, otherwise use the provided threshold
-                _threshold = route_obj.score_threshold if route_obj.score_threshold is not None else self.score_threshold
+                _threshold = (
+                    route_obj.score_threshold
+                    if route_obj.score_threshold is not None
+                    else self.score_threshold
+                )
                 if self._pass_threshold(scores, _threshold):
                     max_score = max(scores)
                     classes_above_threshold.append((route_name, max_score))
 
         return classes_above_threshold
-    
-    def group_scores_by_class(self, query_results: List[dict]) -> Dict[str, List[float]]:
+
+    def group_scores_by_class(
+        self, query_results: List[dict]
+    ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
@@ -432,7 +438,6 @@ class RouteLayer:
             else:
                 scores_by_class[route] = [score]
         return scores_by_class
-
 
     def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
