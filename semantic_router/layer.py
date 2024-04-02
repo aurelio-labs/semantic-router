@@ -385,14 +385,7 @@ class RouteLayer:
             return []
 
     def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
-        scores_by_class: Dict[str, List[float]] = {}
-        for result in query_results:
-            score = result["score"]
-            route = result["route"]
-            if route in scores_by_class:
-                scores_by_class[route].append(score)
-            else:
-                scores_by_class[route] = [score]
+        scores_by_class = self.group_scores_by_class(query_results)
 
         # Calculate total score for each class
         total_scores = {route: sum(scores) for route, scores in scores_by_class.items()}
@@ -408,14 +401,7 @@ class RouteLayer:
     def _semantic_classify_multiple_routes(
         self, query_results: List[dict], threshold: float
     ) -> List[Tuple[str, float]]:
-        scores_by_class: Dict[str, List[float]] = {}
-        for result in query_results:
-            score = result["score"]
-            route = result["route"]
-            if route in scores_by_class:
-                scores_by_class[route].append(score)
-            else:
-                scores_by_class[route] = [score]
+        scores_by_class = self.group_scores_by_class(query_results)
 
         # Filter classes based on threshold and find max score for each
         classes_above_threshold = []
@@ -425,6 +411,18 @@ class RouteLayer:
                 classes_above_threshold.append((route, max_score))
 
         return classes_above_threshold
+    
+    def group_scores_by_class(self, query_results: List[dict]) -> Dict[str, List[float]]:
+        scores_by_class: Dict[str, List[float]] = {}
+        for result in query_results:
+            score = result["score"]
+            route = result["route"]
+            if route in scores_by_class:
+                scores_by_class[route].append(score)
+            else:
+                scores_by_class[route] = [score]
+        return scores_by_class
+
 
     def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
