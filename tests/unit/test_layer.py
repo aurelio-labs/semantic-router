@@ -602,6 +602,13 @@ class TestRouteLayer:
             result.name in ["Route 1", "Route 2"] for result in results
         ), "Expected the result to be either 'Route 1' or 'Route 2'"
 
+    def test_retrieve_without_text_or_vector(self, openai_encoder, routes, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index_cls()
+        )
+        with pytest.raises(ValueError, match="Either text or vector must be provided"):
+            route_layer.retrieve_multiple_routes()
+
     def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
