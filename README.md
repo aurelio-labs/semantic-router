@@ -15,7 +15,6 @@
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
-
 ---
 
 ## Quickstart
@@ -116,6 +115,12 @@ rl("I'm interested in learning about llama 2").name
 ```
 
 In this case, no decision could be made as we had no matches — so our route layer returned `None`!
+
+## Integrations
+
+The _encoders_ of semantic router include easy-to-use integrations with [Cohere](https://github.com/aurelio-labs/semantic-router/blob/main/semantic_router/encoders/cohere.py), [OpenAI](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/openai-embed-3.ipynb), [Hugging Face](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/huggingface.ipynb), [FastEmbed](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/fastembed.ipynb), and [more](https://github.com/aurelio-labs/semantic-router/tree/main/semantic_router/encoders) — we even support [multi-modality](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb)!.
+
+Our utterance vector space also integrates with [Pinecone](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb) and [Qdrant](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb)!
 
 ---
 
