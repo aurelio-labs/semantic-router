@@ -26,3 +26,8 @@ class EncoderDefault(Enum):
             "AZURE_OPENAI_DEPLOYMENT_NAME", "text-embedding-ada-002"
         ),
     }
+    GOOGLE = {
+        "embedding_model": os.getenv(
+            "GOOGLE_EMBEDDING_MODEL", "textembedding-gecko@003"
+        ),
+    }
