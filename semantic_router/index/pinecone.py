@@ -68,7 +68,7 @@ class PineconeIndex(BaseIndex):
         api_key = api_key or os.getenv("PINECONE_API_KEY")
         if api_key is None:
             raise ValueError("Pinecone API key is required.")
-        return Pinecone(api_key=api_key)
+        return Pinecone(api_key=api_key, source_tag="semantic-router")
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         index_exists = self.index_name in self.client.list_indexes().names()
