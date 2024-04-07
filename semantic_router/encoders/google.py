@@ -15,6 +15,7 @@ Example usage:
 Classes:
     GoogleEncoder: A class for generating embeddings using Google's AI Platform.
 """
+
 import os
 from typing import List, Optional
 
