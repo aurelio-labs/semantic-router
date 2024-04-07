@@ -33,7 +33,7 @@ jobs:
         python-version: '3.11'
     - name: Install Poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python - -y --version 1.5.1
+        curl -sSL https:/install.python-poetry.org | python - -y --version 1.5.1
     - name: Publish to PyPI
       run: |
         poetry config repositories.remote https://upload.pypi.org/legacy/
