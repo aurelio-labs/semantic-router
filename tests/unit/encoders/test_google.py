@@ -1,7 +1,7 @@
 import pytest
+from google.api_core.exceptions import GoogleAPICallError
 from vertexai.language_models import TextEmbedding
 from vertexai.language_models._language_models import TextEmbeddingStatistics
-from google.api_core.exceptions import GoogleAPICallError
 
 from semantic_router.encoders import GoogleEncoder
 

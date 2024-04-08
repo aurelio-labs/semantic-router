@@ -8,9 +8,9 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     FastEmbedEncoder,
+    GoogleEncoder,
     MistralEncoder,
     OpenAIEncoder,
-    GoogleEncoder,
 )
 
 
