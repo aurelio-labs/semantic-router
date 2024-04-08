@@ -1,10 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 from mistralai.exceptions import MistralException
 from mistralai.models.embeddings import EmbeddingObject, EmbeddingResponse, UsageInfo
 
 from semantic_router.encoders import MistralEncoder
-
-from unittest.mock import patch
 
 
 @pytest.fixture
