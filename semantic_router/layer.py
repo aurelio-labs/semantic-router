@@ -5,7 +5,7 @@ import random
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-import yaml
+import yaml  # type: ignore
 from tqdm.auto import tqdm
 
 from semantic_router.encoders import BaseEncoder, OpenAIEncoder
@@ -328,7 +328,7 @@ class RouteLayer:
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
-        embeds = self.encoder(route.utterances)
+        embeds = self.encoder(route.utterances)  # type: ignore
         # if route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
@@ -337,7 +337,7 @@ class RouteLayer:
         self.index.add(
             embeddings=embeds,
             routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,
+            utterances=route.utterances,  # type: ignore
         )
         self.routes.append(route)
 
@@ -383,14 +383,14 @@ class RouteLayer:
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterances = self.encoder(all_utterances)
+        embedded_utterances = self.encoder(all_utterances)  # type: ignore
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
         self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
-            utterances=all_utterances,
+            utterances=all_utterances,  # type: ignore
         )
 
     def _encode(self, text: str) -> Any:

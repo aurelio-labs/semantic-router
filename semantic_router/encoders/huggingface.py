@@ -150,7 +150,7 @@ class HFEndpointEncoder(BaseEncoder):
         score_threshold (float): A threshold value used for filtering or processing the embeddings.
     """
 
-    name: Optional[str] = "hugging_face_custom_endpoint"
+    name: str = "hugging_face_custom_endpoint"
     huggingface_url: Optional[str] = None
     huggingface_api_key: Optional[str] = None
     score_threshold: float = 0.8
@@ -181,17 +181,15 @@ class HFEndpointEncoder(BaseEncoder):
         huggingface_url = huggingface_url or os.getenv("HF_API_URL")
         huggingface_api_key = huggingface_api_key or os.getenv("HF_API_KEY")
 
+        super().__init__(name=name, score_threshold=score_threshold)  # type: ignore
+
         if huggingface_url is None:
             raise ValueError("HuggingFace endpoint url cannot be 'None'.")
         if huggingface_api_key is None:
             raise ValueError("HuggingFace API key cannot be 'None'.")
 
-        super().__init__(
-            name=name,
-            huggingface_url=huggingface_url,
-            huggingface_api_key=huggingface_api_key,
-            score_threshold=score_threshold,
-        )
+        self.huggingface_url = huggingface_url or os.getenv("HF_API_URL")
+        self.huggingface_api_key = huggingface_api_key or os.getenv("HF_API_KEY")
 
         try:
             self.query({"inputs": "Hello World!", "parameters": {}})
