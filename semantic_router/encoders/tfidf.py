@@ -35,7 +35,7 @@ class TfidfEncoder(BaseEncoder):
         docs = []
         for route in routes:
             for doc in route.utterances:
-                docs.append(self._preprocess(doc))
+                docs.append(self._preprocess(doc))  # type: ignore
         self.word_index = self._build_word_index(docs)
         self.idf = self._compute_idf(docs)
 
