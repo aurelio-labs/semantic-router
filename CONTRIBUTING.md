@@ -40,7 +40,7 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
     # Move into the cloned folder
     cd semantic-router/
 
-    # Create a virtual environment
+    # Create a virtual environment. NOTE: Use Python 3.11 or below until fastembed is updated to version 0.2.6.
     python3 -m venv venv
 
     # Activate the environment

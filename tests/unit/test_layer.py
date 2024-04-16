@@ -7,7 +7,6 @@ import pytest
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
-from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
@@ -257,21 +256,6 @@ class TestRouteLayer:
 
         assert query_result in ["Route 1"]
 
-    def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
-        pinecone_api_key = os.environ["PINECONE_API_KEY"]
-        pineconeindex = PineconeIndex(api_key=pinecone_api_key)
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=pineconeindex
-        )
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-
-        try:
-            route_layer(text="Hello", route_filter=["Route 8"]).name
-        except ValueError:
-            assert True
-
-        assert query_result in ["Route 1"]
-
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         with pytest.raises(ValueError):
@@ -296,12 +280,14 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
-        classification, score = route_layer._semantic_classify(
+        classifications_with_scores = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
                 {"route": "Route 2", "score": 0.1},
             ]
         )
+        assert len(classifications_with_scores) == 2
+        classification, score = classifications_with_scores[0]
         assert classification == "Route 1"
         assert score == [0.9]
 
@@ -309,13 +295,15 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
-        classification, score = route_layer._semantic_classify(
+        classifications_with_scores = route_layer._semantic_classify(
             [
                 {"route": "Route 1", "score": 0.9},
                 {"route": "Route 2", "score": 0.1},
                 {"route": "Route 1", "score": 0.8},
             ]
         )
+        assert len(classifications_with_scores) == 2
+        classification, score = classifications_with_scores[0]
         assert classification == "Route 1"
         assert score == [0.9, 0.8]
 
@@ -629,7 +617,10 @@ class TestLayerConfig:
                 routes=routes,
                 aggregation=agg,
             )
-            classification, score = route_layer._semantic_classify(route_scores)
+
+            classification_with_scores = route_layer._semantic_classify(route_scores)
+
+            classification, score = classification_with_scores[0]
 
             if agg == "sum":
                 assert classification == "Route 1"

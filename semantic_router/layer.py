@@ -233,60 +233,101 @@ class RouteLayer:
         vector: Optional[List[float]] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
-    ) -> RouteChoice:
+        top_k: int = 1,
+        aggregation: str = "sum",
+    ) -> Union[RouteChoice, List[RouteChoice]]:
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = self._encode(text=text)
 
-        route, top_class_scores = self._retrieve_top_route(vector, route_filter)
-        passed = self._check_threshold(top_class_scores, route)
+        routes_with_top_class_scores = self._retrieve_top_routes(
+            vector, route_filter, top_k=top_k
+        )
+        route_choices = []
+        for route, top_class_scores in routes_with_top_class_scores:
+            passed = self._check_threshold(top_class_scores, route)
 
-        if passed and route is not None and not simulate_static:
-            if route.function_schema and text is None:
-                raise ValueError(
-                    "Route has a function schema, but no text was provided."
-                )
-            if route.function_schema and not isinstance(route.llm, BaseLLM):
-                if not self.llm:
-                    logger.warning(
-                        "No LLM provided for dynamic route, will use OpenAI LLM "
-                        "default. Ensure API key is set in OPENAI_API_KEY environment "
-                        "variable."
+            if passed and route is not None and not simulate_static:
+                if route.function_schema and text is None:
+                    raise ValueError(
+                        "Route has a function schema, but no text was provided."
                     )
+                if route.function_schema and not isinstance(route.llm, BaseLLM):
+                    if not self.llm:
+                        logger.warning(
+                            "No LLM provided for dynamic route, will use OpenAI LLM "
+                            "default. Ensure API key is set in OPENAI_API_KEY environment "
+                            "variable."
+                        )
 
-                    self.llm = OpenAILLM()
-                    route.llm = self.llm
-                else:
-                    route.llm = self.llm
-            return route(text)
-        elif passed and route is not None and simulate_static:
-            return RouteChoice(
-                name=route.name,
-                function_call=None,
-                similarity_score=None,
-            )
-        else:
-            # if no route passes threshold, return empty route choice
-            return RouteChoice()
+                        self.llm = OpenAILLM()
+                        route.llm = self.llm
+                    else:
+                        route.llm = self.llm
+                route_choices.append(route(text))
+            elif passed and route is not None and simulate_static:
+                route_choices.append(
+                    RouteChoice(
+                        name=route.name,
+                        function_call=None,
+                        similarity_score=None,
+                    )
+                )
+
+        # if no route passes threshold, return empty route choice
+        if len(route_choices) == 0:
+            route_choices.append(RouteChoice())
+
+        # Return a single value if top_k is not set to above 1 for backward compatibility
+        if top_k == 1:
+            return route_choices[0]
+        return route_choices
 
     def _retrieve_top_route(
-        self, vector: List[float], route_filter: Optional[List[str]] = None
+        self,
+        vector: List[float],
+        route_filter: Optional[List[str]] = None,
     ) -> Tuple[Optional[Route], List[float]]:
         """
         Retrieve the top matching route based on the given vector.
-        Returns a tuple of the route (if any) and the scores of the top class.
+        Returns a tuple with the route (if any) and the scores of the top class.
+        """
+        top_routes = self._retrieve_top_routes(
+            vector=vector, route_filter=route_filter, top_k=1
+        )
+        return top_routes[0] if len(top_routes) > 0 else (None, [])
+
+    def _retrieve_top_routes(
+        self,
+        vector: List[float],
+        route_filter: Optional[List[str]] = None,
+        top_k: int = 1,
+    ) -> List[Tuple[Route, List[float]]]:
+        """
+        Retrieve the top matching routes based on the given vector.
+        Returns a list of tuples, each with the route (if any) and the scores of the top class.
         """
         # get relevant results (scores and routes)
         results = self._retrieve(
             xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
         )
         # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
+        classes_and_scores = self._semantic_classify(results)
+
+        # take up to the top_k classes
+        classes_and_scores = classes_and_scores[:top_k]
+
+        # Gather the routes found for the classes
+        res = []
+        for class_, scores in classes_and_scores:
+            # TODO do we need this check?
+            route = self.check_for_matching_routes(class_)
+            if route is not None:
+                res.append((route, scores))
+
+        return res
 
     def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
         """
@@ -422,7 +463,9 @@ class RouteLayer:
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
-    def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
+    def _semantic_classify(
+        self, query_results: List[dict]
+    ) -> List[Tuple[str, List[float]]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
@@ -437,14 +480,20 @@ class RouteLayer:
             route: self.aggregation_method(scores)
             for route, scores in scores_by_class.items()
         }
-        top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
 
-        # Return the top class and its associated scores
-        if top_class is not None:
-            return str(top_class), scores_by_class.get(top_class, [])
+        # Sort the classes by total score, descending
+        sorted_classes = sorted(
+            total_scores.keys(), key=lambda x: total_scores[x], reverse=True
+        )
+        # Return the classes and their associated scores
+        if len(sorted_classes) > 0:
+            return [
+                (str(top_class), scores_by_class.get(top_class, []))
+                for top_class in sorted_classes
+            ]
         else:
             logger.warning("No classification found for semantic classifier.")
-            return "", []
+            return []
 
     def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
         if scores:
