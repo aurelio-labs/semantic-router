@@ -215,7 +215,11 @@ class RollingWindowSplitter(BaseSplitter):
             logger.debug(f"Document token count: {doc_token_count} tokens")
             # Check if current index is a split point based on similarity
             if doc_idx + 1 in split_indices:
-                if current_tokens_count + doc_token_count >= self.min_split_tokens:
+                if (
+                    self.min_split_tokens
+                    <= current_tokens_count + doc_token_count
+                    < self.max_split_tokens
+                ):
                     # Include the current document before splitting
                     # if it doesn't exceed the max limit
                     current_split.append(doc)
