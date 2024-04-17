@@ -76,7 +76,7 @@ class RollingWindowSplitter(BaseSplitter):
         if len(docs) == 1:
             token_count = tiktoken_length(docs[0])
             if token_count > self.max_split_tokens:
-                logger.warning(
+                logger.info(
                     f"Single document exceeds the maximum token limit "
                     f"of {self.max_split_tokens}. "
                     "Splitting to sentences before semantically splitting."
