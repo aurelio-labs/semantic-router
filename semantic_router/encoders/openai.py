@@ -52,7 +52,7 @@ class OpenAIEncoder(BaseEncoder):
         error_message = ""
 
         # Exponential backoff
-        for j in range(3):
+        for j in range(1, 7):
             try:
                 embeds = self.client.embeddings.create(
                     input=docs,
