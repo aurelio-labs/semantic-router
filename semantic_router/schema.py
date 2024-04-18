@@ -11,6 +11,12 @@ from semantic_router.encoders import (
     GoogleEncoder,
     MistralEncoder,
     OpenAIEncoder,
+    AzureOpenAIEncoder,
+    BM25Encoder,
+    TfidfEncoder,
+    HFEndpointEncoder,
+    VitEncoder,
+    CLIPEncoder,
 )
 
 
@@ -21,6 +27,12 @@ class EncoderType(Enum):
     COHERE = "cohere"
     MISTRAL = "mistral"
     GOOGLE = "google"
+    AZURE = "azure"
+    BM25 = "bm25"
+    Tfid = "tfid"
+    HFEndpoint = "hfendpoint"
+    Vit = "vit"
+    CLIP = "clip"
 
 
 class RouteChoice(BaseModel):
@@ -50,6 +62,18 @@ class Encoder:
             self.model = MistralEncoder(name=name)
         elif self.type == EncoderType.GOOGLE:
             self.model = GoogleEncoder(name=name)
+        elif self.type == EncoderType.AZURE:
+            self.model = AzureOpenAIEncoder()
+        elif self.type == EncoderType.BM25:
+            self.model = BM25Encoder()
+        elif self.type == EncoderType.Tfid:
+            self.model = TfidfEncoder()
+        elif self.type == EncoderType.HFEndpoint:
+            self.model = HFEndpointEncoder(name=name)
+        elif self.type == EncoderType.Vit:
+            self.model = VitEncoder(name=name)
+        elif self.type == EncoderType.CLIP:
+            self.model = CLIPEncoder(name=name)
         else:
             raise ValueError
 
