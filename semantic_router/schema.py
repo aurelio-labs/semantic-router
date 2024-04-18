@@ -11,12 +11,9 @@ from semantic_router.encoders import (
     GoogleEncoder,
     MistralEncoder,
     OpenAIEncoder,
-    AzureOpenAIEncoder,
-    BM25Encoder,
-    TfidfEncoder,
     HFEndpointEncoder,
-    VitEncoder,
     CLIPEncoder,
+    BM25Encoder,
 )
 
 
@@ -48,6 +45,12 @@ class Encoder:
     model: BaseEncoder
 
     def __init__(self, type: str, name: Optional[str]):
+        from semantic_router.encoders import (
+            AzureOpenAIEncoder,
+            VitEncoder,
+            TfidfEncoder,
+        )
+
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.HUGGINGFACE:
@@ -63,7 +66,7 @@ class Encoder:
         elif self.type == EncoderType.GOOGLE:
             self.model = GoogleEncoder(name=name)
         elif self.type == EncoderType.AZURE:
-            self.model = AzureOpenAIEncoder()
+            self.model = AzureOpenAIEncoder(deployment_name=name)
         elif self.type == EncoderType.BM25:
             self.model = BM25Encoder()
         elif self.type == EncoderType.Tfid:
