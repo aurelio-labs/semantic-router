@@ -8,6 +8,7 @@ from semantic_router.encoders import (
     BaseEncoder,
     CohereEncoder,
     FastEmbedEncoder,
+    GoogleEncoder,
     MistralEncoder,
     OpenAIEncoder,
 )
@@ -19,6 +20,7 @@ class EncoderType(Enum):
     OPENAI = "openai"
     COHERE = "cohere"
     MISTRAL = "mistral"
+    GOOGLE = "google"
 
 
 class RouteChoice(BaseModel):
@@ -46,6 +48,8 @@ class Encoder:
             self.model = CohereEncoder(name=name)
         elif self.type == EncoderType.MISTRAL:
             self.model = MistralEncoder(name=name)
+        elif self.type == EncoderType.GOOGLE:
+            self.model = GoogleEncoder(name=name)
         else:
             raise ValueError
 
