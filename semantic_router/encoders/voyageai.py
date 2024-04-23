@@ -1,6 +1,6 @@
 import os
 from time import sleep
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import voyageai
 from voyageai import VoyageError
@@ -44,21 +44,20 @@ class VoyageAIEncoder(BaseEncoder):
                 embeds = self.client.embed(
                     texts=docs,
                     model=self.name,
-                    input_type="query", #query or document
+                    input_type="query",  # query or document
                 )
                 if embeds.embeddings:
                     break
             except VoyageError as e:
                 sleep(2**j)
                 error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")    
-                    
+                logger.warning(f"Retrying in {2**j} seconds...")
+
             except Exception as e:
                 logger.error(f"VoyageAI API call failed. Error: {error_message}")
                 raise ValueError(f"VoyageAI API call failed. Error: {e}") from e
-        
-        if (not embeds
-            or not embeds.embeddings):
+
+        if not embeds or not embeds.embeddings:
             raise ValueError("VoyageAI API call failed. Error: No embeddings found.")
 
         return embeds.embeddings

@@ -3,9 +3,7 @@ from enum import Enum
 
 
 class EncoderDefault(Enum):
-    VOYAGE = {
-        "embedding_model": "voyage-lite-02-instruct"
-    }
+    VOYAGE = {"embedding_model": "voyage-lite-02-instruct"}
     FASTEMBED = {
         "embedding_model": "BAAI/bge-small-en-v1.5",
         "language_model": "BAAI/bge-small-en-v1.5",

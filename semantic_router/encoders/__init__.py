@@ -27,5 +27,5 @@ __all__ = [
     "VitEncoder",
     "CLIPEncoder",
     "GoogleEncoder",
-    "VoyageAIEncoder"
+    "VoyageAIEncoder",
 ]

@@ -6,8 +6,8 @@ from semantic_router.encoders import VoyageAIEncoder
 
 @pytest.fixture
 def voyageai_encoder(mocker):
-    mocker.patch('voyageai.Client')
-    return VoyageAIEncoder(voyage_api_key='test_api_key')
+    mocker.patch("voyageai.Client")
+    return VoyageAIEncoder(voyage_api_key="test_api_key")
 
 
 class TestVoyageAIEncoder:
@@ -46,9 +46,7 @@ class TestVoyageAIEncoder:
         mocker.patch("time.sleep", return_value=None)
 
         responses = [VoyageError("VoyageAI error"), mock_response]
-        mocker.patch.object(
-            voyageai_encoder.client, "embed", side_effect=responses
-        )
+        mocker.patch.object(voyageai_encoder.client, "embed", side_effect=responses)
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
 
@@ -56,21 +54,21 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client,
-            "embed",
-            side_effect=VoyageError("Test error")
+            voyageai_encoder.client, "embed", side_effect=VoyageError("Test error")
         )
         with pytest.raises(ValueError) as e:
             voyageai_encoder(["test document"])
         assert "VoyageAI API call failed. Error: " in str(e.value)
 
-    def test_voyageai_encoder_call_failure_non_voyage_error(self, voyageai_encoder, mocker):
+    def test_voyageai_encoder_call_failure_non_voyage_error(
+        self, voyageai_encoder, mocker
+    ):
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
             voyageai_encoder.client.embeddings,
             "embed",
-            side_effect=Exception("Non-VoyageError")
+            side_effect=Exception("Non-VoyageError"),
         )
         with pytest.raises(ValueError) as e:
             voyageai_encoder(["test document"])
@@ -84,8 +82,6 @@ class TestVoyageAIEncoder:
         mocker.patch("time.sleep", return_value=None)
 
         responses = [VoyageError("VoyageAI error"), mock_response]
-        mocker.patch.object(
-            voyageai_encoder.client, "embed", side_effect=responses
-        )
+        mocker.patch.object(voyageai_encoder.client, "embed", side_effect=responses)
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
