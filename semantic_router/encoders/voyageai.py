@@ -3,7 +3,6 @@ from time import sleep
 from typing import List, Optional
 
 import voyageai
-from voyageai import VoyageError
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
@@ -48,10 +47,10 @@ class VoyageAIEncoder(BaseEncoder):
                 )
                 if embeds.embeddings:
                     break
-            except VoyageError as e:
-                sleep(2**j)
-                error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")
+                else:
+                    sleep(2**j)
+                    error_message = str(e)
+                    logger.warning(f"Retrying in {2**j} seconds...")
 
             except Exception as e:
                 logger.error(f"VoyageAI API call failed. Error: {error_message}")
