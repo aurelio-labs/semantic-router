@@ -49,7 +49,6 @@ class VoyageAIEncoder(BaseEncoder):
                     break
                 else:
                     sleep(2**j)
-                    error_message = str(e)
                     logger.warning(f"Retrying in {2**j} seconds...")
 
             except Exception as e:

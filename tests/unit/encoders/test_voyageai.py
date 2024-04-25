@@ -44,7 +44,9 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key", autospec=True)
         mocker.patch("time.sleep", return_value=None)
 
-        mocker.patch.object(voyageai_encoder.client, "embed", return_value=mock_response)
+        mocker.patch.object(
+            voyageai_encoder.client, "embed", return_value=mock_response
+        )
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
 
@@ -53,7 +55,9 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client, "embed", side_effect=[error, error, mocker.Mock(embeddings=[[0.1, 0.2]])]
+            voyageai_encoder.client,
+            "embed",
+            side_effect=[error, error, mocker.Mock(embeddings=[[0.1, 0.2]])],
         )
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -64,7 +68,8 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client, "embed",
+            voyageai_encoder.client,
+            "embed",
             side_effect=Exception("General error"),
         )
         with pytest.raises(ValueError) as e:
