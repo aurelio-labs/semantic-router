@@ -1,5 +1,4 @@
 import pytest
-from voyageai import VoyageError
 
 from semantic_router.encoders import VoyageAIEncoder
 
@@ -45,20 +44,19 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key", autospec=True)
         mocker.patch("time.sleep", return_value=None)
 
-        responses = [VoyageError("VoyageAI error"), mock_response]
-        mocker.patch.object(voyageai_encoder.client, "embed", side_effect=responses)
+        mocker.patch.object(voyageai_encoder.client, "embed", return_value=mock_response)
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
 
     def test_voyageai_encoder_call_with_retries(self, voyageai_encoder, mocker):
+        error = Exception("Network error")
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client, "embed", side_effect=VoyageError("Test error")
+            voyageai_encoder.client, "embed", side_effect=[error, error, mocker.Mock(embeddings=[[0.1, 0.2]])]
         )
-        with pytest.raises(ValueError) as e:
-            voyageai_encoder(["test document"])
-        assert "VoyageAI API call failed. Error: " in str(e.value)
+        embeddings = voyageai_encoder(["test document"])
+        assert embeddings == [[0.1, 0.2]]
 
     def test_voyageai_encoder_call_failure_non_voyage_error(
         self, voyageai_encoder, mocker
@@ -66,13 +64,12 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client.embeddings,
-            "embed",
-            side_effect=Exception("Non-VoyageError"),
+            voyageai_encoder.client, "embed",
+            side_effect=Exception("General error"),
         )
         with pytest.raises(ValueError) as e:
             voyageai_encoder(["test document"])
-        assert "VoyageAI API call failed. Error: Non-VoyageError" in str(e.value)
+        assert "VoyageAI API call failed. Error: General error" in str(e.value)
 
     def test_voyageai_encoder_call_successful_retry(self, voyageai_encoder, mocker):
         mock_response = mocker.Mock()
@@ -81,7 +78,7 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
 
-        responses = [VoyageError("VoyageAI error"), mock_response]
+        responses = [Exception("Temporary error"), mock_response]
         mocker.patch.object(voyageai_encoder.client, "embed", side_effect=responses)
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
