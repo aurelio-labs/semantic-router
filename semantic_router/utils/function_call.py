@@ -6,7 +6,7 @@ from pydantic.v1 import BaseModel
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
-
+import re
 
 def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
     if isinstance(item, BaseModel):
@@ -39,6 +39,63 @@ def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
         }
     return schema
 
+def convert_param_type_to_json_type(param_type: str) -> str:
+    if param_type == "int":
+        return "number"
+    if param_type == "float":
+        return "number"
+    if param_type == "str":
+        return "string"
+    if param_type == "bool":
+        return "boolean"
+    if param_type == "NoneType":
+        return "null"
+    if param_type == "list":
+        return "array"
+    else:
+        return "object"
+
+def get_schema_openai_func_calling(item: Callable) -> Dict[str, Any]:
+    if not callable(item):
+        raise ValueError("Provided item must be a callable function.")
+    
+    docstring = inspect.getdoc(item)
+    signature = inspect.signature(item)
+    
+    schema = {
+        "type": "function",
+        "function": {
+            "name": item.__name__,
+            "description": docstring if docstring else "No description available.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    }
+    
+    for param_name, param in signature.parameters.items():
+        param_type = param.annotation.__name__ if param.annotation != inspect.Parameter.empty else "Any"
+        param_description = "No description available."
+        param_required = param.default is inspect.Parameter.empty
+        
+        # Attempt to extract the parameter description from the docstring
+        if docstring:
+            param_doc_regex = re.compile(rf":param {param_name}:(.*?)\n(?=:\w|$)", re.S)
+            match = param_doc_regex.search(docstring)
+            if match:
+                param_description = match.group(1).strip()
+        
+        schema["function"]["parameters"]["properties"][param_name] = {
+            "type": convert_param_type_to_json_type(param_type),
+            "description": param_description
+        }
+        
+        if param_required:
+            schema["function"]["parameters"]["required"].append(param_name)
+    
+    return schema
 
 # TODO: Add route layer object to the input, solve circular import issue
 async def route_and_execute(

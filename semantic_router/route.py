@@ -8,6 +8,7 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
+from semantic_router.llms import OpenAILLM
 
 try:
     from PIL.Image import Image
@@ -48,6 +49,7 @@ class Route(BaseModel):
     utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
+    openai_function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
@@ -55,7 +57,11 @@ class Route(BaseModel):
         arbitrary_types_allowed = True
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
-        if self.function_schema:
+        if self.function_schema and self.openai_function_schema:
+            raise ValueError(
+                "Both function_schema and openai_function_schema cannot be provided. Please provide only one."
+            )
+        if self.function_schema or self.openai_function_schema:
             if not self.llm:
                 raise ValueError(
                     "LLM is required for dynamic routes. Please ensure the `llm` "
@@ -66,9 +72,22 @@ class Route(BaseModel):
                     "Query is required for dynamic routes. Please ensure the `query` "
                     "argument is passed."
                 )
-            # if a function schema is provided we generate the inputs
+        if self.function_schema:
             extracted_inputs = self.llm.extract_function_inputs(
                 query=query, function_schema=self.function_schema
+            )
+            # DEBUGGING: Start.
+            print('#'*50)
+            print('extracted_inputs')
+            print(extracted_inputs)
+            print('#'*50)
+            # DEBUGGING: End.
+            func_call = extracted_inputs
+        elif self.openai_function_schema:
+            if not isinstance(self.llm, OpenAILLM):
+                raise TypeError("LLM must be an instance of OpenAILLM for openai_function_schema.")
+            extracted_inputs = self.llm.extract_function_inputs_openai(
+                query=query, function_schema=self.openai_function_schema
             )
             func_call = extracted_inputs
         else:
