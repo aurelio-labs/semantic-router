@@ -289,7 +289,7 @@ class TestRouteLayer:
             route_layer(text="Hello", route_filter=["Route 8"]).name
         except ValueError:
             assert True
-        
+
         # delete index
         pineconeindex.delete_index()
 
