@@ -38,7 +38,7 @@ matplotlib = { version = "^3.8.3", optional = true}
 qdrant-client = {version = "^1.8.0", optional = true}
 google-cloud-aiplatform = {version = "^1.45.0", optional = true}
 requests-mock = "^1.12.1"
-voyageai = "^0.2.2"
+voyageai = {version = "^0.2.2", optional = true}
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
@@ -50,6 +50,7 @@ processing = ["matplotlib"]
 mistralai = ["mistralai"]
 qdrant = ["qdrant-client"]
 google = ["google-cloud-aiplatform"]
+voyageai = ["voyageai"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"

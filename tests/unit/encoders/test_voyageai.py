@@ -1,4 +1,8 @@
+from unittest.mock import patch
+
 import pytest
+
+from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import VoyageAIEncoder
 
@@ -6,15 +10,23 @@ from semantic_router.encoders import VoyageAIEncoder
 @pytest.fixture
 def voyageai_encoder(mocker):
     mocker.patch("voyageai.Client")
+    mocker.patch("voyageai.Client.embed", return_value=[[0.1, 0.2]])
     return VoyageAIEncoder(voyage_api_key="test_api_key")
 
 
 class TestVoyageAIEncoder:
+    def test_voyageai_encoder_import_error(self):
+        with patch.dict("sys.modules", {"voyageai": None}):
+            with pytest.raises(ImportError) as error:
+                VoyageAIEncoder()
+            
+        assert "pip install 'semantic-router[voyageai]'" in str(error.value)
+
     def test_voyageai_encoder_init_success(self, mocker):
-        side_effect = ["fake-model-name", "fake-api-key"]
-        mocker.patch("os.getenv", side_effect=side_effect)
+        #side_effect = ["fake-model-name", "fake-api-key"]
+        #mocker.patch("os.getenv", side_effect=side_effect)
         encoder = VoyageAIEncoder()
-        assert encoder.client is not None
+        assert encoder._client is not PrivateAttr()
 
     def test_voyageai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
@@ -22,7 +34,7 @@ class TestVoyageAIEncoder:
             VoyageAIEncoder()
 
     def test_voyageai_encoder_call_uninitialized_client(self, voyageai_encoder):
-        voyageai_encoder.client = None
+        voyageai_encoder._client = PrivateAttr()
         with pytest.raises(ValueError) as e:
             voyageai_encoder(["test document"])
         assert "VoyageAI client is not initialized." in str(e.value)
@@ -45,7 +57,7 @@ class TestVoyageAIEncoder:
         mocker.patch("time.sleep", return_value=None)
 
         mocker.patch.object(
-            voyageai_encoder.client, "embed", return_value=mock_response
+            voyageai_encoder._client, "embed", return_value=mock_response
         )
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
@@ -55,7 +67,7 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client,
+            voyageai_encoder._client,
             "embed",
             side_effect=[error, error, mocker.Mock(embeddings=[[0.1, 0.2]])],
         )
@@ -68,7 +80,7 @@ class TestVoyageAIEncoder:
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch("time.sleep", return_value=None)
         mocker.patch.object(
-            voyageai_encoder.client,
+            voyageai_encoder._client,
             "embed",
             side_effect=Exception("General error"),
         )
@@ -84,6 +96,6 @@ class TestVoyageAIEncoder:
         mocker.patch("time.sleep", return_value=None)
 
         responses = [Exception("Temporary error"), mock_response]
-        mocker.patch.object(voyageai_encoder.client, "embed", side_effect=responses)
+        mocker.patch.object(voyageai_encoder._client, "embed", side_effect=responses)
         embeddings = voyageai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]

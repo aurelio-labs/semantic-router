@@ -1,15 +1,16 @@
 import os
 from time import sleep
-from typing import List, Optional
+from typing import Any, List, Optional
 
-import voyageai
+from pydantic.v1 import PrivateAttr
+
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
 class VoyageAIEncoder(BaseEncoder):
-    client: Optional[voyageai.Client]
+    _client: Any = PrivateAttr()
     type: str = "voyageai"
 
     def __init__(
@@ -21,18 +22,29 @@ class VoyageAIEncoder(BaseEncoder):
         if name is None:
             name = EncoderDefault.VOYAGE.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
-        api_key = voyage_api_key or os.environ.get("VOYAGE_API_KEY")
-        if api_key is None:
-            raise ValueError("VOYAGEAI API key cannot be 'None'.")
+        self._client = self._initialize_client(api_key=voyage_api_key)
+        
+    def _initialize_client(self, api_key: str):
         try:
-            self.client = voyageai.Client(api_key)
+            import voyageai
+        except ImportError:
+            raise ImportError(
+                "Please install VoyageAI to use VoyageAIEncoder. "
+                "You can install it with: "
+                "`pip install 'semantic-router[voyageai]'`"
+            )
+
+        api_key = api_key or os.getenv("VOYAGEAI_API_KEY")
+        if api_key is None:
+            raise ValueError("VoyageAI API key not provided")
+        try:
+            client = voyageai.Client(api_key=api_key)
         except Exception as e:
-            raise ValueError(
-                f"VOYAGE API client failed to initialize. Error: {e}"
-            ) from e
+            raise ValueError(f"Unable to connect to VoyageAI {e.args}: {e}") from e
+        return client
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        if self.client is None:
+        if self._client == PrivateAttr():
             raise ValueError("VoyageAI client is not initialized.")
         embeds = None
         error_message = ""
@@ -40,7 +52,7 @@ class VoyageAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(1, 7):
             try:
-                embeds = self.client.embed(
+                embeds = self._client.embed(
                     texts=docs,
                     model=self.name,
                     input_type="query",  # query or document

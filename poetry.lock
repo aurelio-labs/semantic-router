@@ -100,7 +100,7 @@ speedups = ["Brotli", "aiodns", "brotlicffi"]
 name = "aiolimiter"
 version = "1.1.0"
 description = "asyncio rate limiter, a leaky bucket implementation"
-optional = false
+optional = true
 python-versions = ">=3.7,<4.0"
 files = [
     {file = "aiolimiter-1.1.0-py3-none-any.whl", hash = "sha256:0b4997961fc58b8df40279e739f9cf0d3e255e63e9a44f64df567a8c17241e24"},
@@ -4129,7 +4129,7 @@ mpmath = ">=0.19"
 name = "tenacity"
 version = "8.2.3"
 description = "Retry code until it succeeds"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "tenacity-8.2.3-py3-none-any.whl", hash = "sha256:ce510e327a630c9e1beaf17d42e6ffacc88185044ad85cf74c0a8887c6a0f88c"},
@@ -4632,7 +4632,7 @@ zstd = ["zstandard (>=0.18.0)"]
 name = "voyageai"
 version = "0.2.2"
 description = ""
-optional = false
+optional = true
 python-versions = "<4.0.0,>=3.7.1"
 files = [
     {file = "voyageai-0.2.2-py3-none-any.whl", hash = "sha256:caba84fa448bb82eeb39a4c4479978dc08bff9e2473773fea9cdcdd737560e4d"},
@@ -4809,8 +4809,9 @@ pinecone = ["pinecone-client"]
 processing = ["matplotlib"]
 qdrant = ["qdrant-client"]
 vision = ["pillow", "torch", "torchvision", "transformers"]
+voyageai = ["voyageai"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "a8b93545f2fda29525ca5230d4d983c1587e8b93145793fcd45ba2ecbd0f41a7"
+content-hash = "47ff8ab6a9e699117161a0c4a30beb6d47eebb298a3f5020bab6c8575d9f96d9"
