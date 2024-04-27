@@ -100,12 +100,27 @@ class RollingWindowSplitter(BaseSplitter):
         return splits
 
     def _encode_documents(self, docs: List[str]) -> np.ndarray:
-        try:
-            embeddings = self.encoder(docs)
-            return np.array(embeddings)
-        except Exception as e:
-            logger.error(f"Error encoding documents {docs}: {e}")
-            raise
+        """
+        Encodes a list of documents into embeddings. If the number of documents exceeds 2000,
+        the documents are split into batches to avoid overloading the encoder. OpenAI has a
+        limit of len(array) < 2048.
+
+        :param docs: List of text documents to be encoded.
+        :return: A numpy array of embeddings for the given documents.
+        """
+        max_docs_per_batch = 2000
+        embeddings = []
+
+        for i in range(0, len(docs), max_docs_per_batch):
+            batch_docs = docs[i : i + max_docs_per_batch]
+            try:
+                batch_embeddings = self.encoder(batch_docs)
+                embeddings.extend(batch_embeddings)
+            except Exception as e:
+                logger.error(f"Error encoding documents {batch_docs}: {e}")
+                raise
+
+        return np.array(embeddings)
 
     def _calculate_similarity_scores(self, encoded_docs: np.ndarray) -> List[float]:
         raw_similarities = []
