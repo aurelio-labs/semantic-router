@@ -18,7 +18,7 @@ class TestVoyageAIEncoder:
         with patch.dict("sys.modules", {"voyageai": None}):
             with pytest.raises(ImportError) as error:
                 VoyageAIEncoder()
-            
+
         assert "pip install 'semantic-router[voyageai]'" in str(error.value)
 
     def test_voyageai_encoder_init_success(self, mocker):
