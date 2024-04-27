@@ -10,7 +10,6 @@ from semantic_router.encoders import VoyageAIEncoder
 @pytest.fixture
 def voyageai_encoder(mocker):
     mocker.patch("voyageai.Client")
-    mocker.patch("voyageai.Client.embed", return_value=[[0.1, 0.2]])
     return VoyageAIEncoder(voyage_api_key="test_api_key")
 
 

@@ -23,8 +23,8 @@ class VoyageAIEncoder(BaseEncoder):
             name = EncoderDefault.VOYAGE.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         self._client = self._initialize_client(api_key=voyage_api_key)
-        
-    def _initialize_client(self, api_key: str):
+
+    def _initialize_client(self, api_key: Optional[str] = None):
         try:
             import voyageai
         except ImportError:
