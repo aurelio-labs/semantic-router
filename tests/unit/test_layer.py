@@ -288,9 +288,6 @@ class TestRouteLayer:
         except ValueError:
             assert True
 
-        # delete index
-        pineconeindex.delete_index()
-
         assert query_result in ["Route 1"]
 
     def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
@@ -306,9 +303,6 @@ class TestRouteLayer:
             route_layer(text="Hello", route_filter=["Route 8"]).name
         except ValueError:
             assert True
-
-        # delete index
-        pineconeindex.delete_index()
 
         assert query_result in ["Route 1"]
 
