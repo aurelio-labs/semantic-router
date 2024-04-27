@@ -281,9 +281,7 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes, index=pineconeindex
         )
         time.sleep(5)  # allow for index to be populated
-        print(routes)
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-        print(query_result)
 
         try:
             route_layer(text="Hello", route_filter=["Route 8"]).name

@@ -122,7 +122,7 @@ class PineconeIndex(BaseIndex):
             time.sleep(0.5)
         elif index_exists:
             # if the index exists we just return it
-            index = self.client.Index(self.index_name, namespace=self.namespace)
+            index = self.client.Index(self.index_name)
             # grab the dimensions from the index
             self.dimensions = index.describe_index_stats()["dimension"]
         elif force_create and not dimensions_given:
@@ -234,7 +234,7 @@ class PineconeIndex(BaseIndex):
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
-            self.index.delete(ids=route_vec_ids)
+            self.index.delete(ids=route_vec_ids, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not delete.")
 
