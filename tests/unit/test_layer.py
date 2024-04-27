@@ -280,13 +280,16 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=pineconeindex
         )
-        time.sleep(5)  # allow for index to be populated
+        time.sleep(10)  # allow for index to be populated
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
         try:
             route_layer(text="Hello", route_filter=["Route 8"]).name
         except ValueError:
             assert True
+
+        # delete index
+        pineconeindex.delete_index()
 
         assert query_result in ["Route 1"]
 
@@ -296,13 +299,16 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=pineconeindex
         )
-        time.sleep(5)  # allow for index to be populated
+        time.sleep(10)  # allow for index to be populated
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
         try:
             route_layer(text="Hello", route_filter=["Route 8"]).name
         except ValueError:
             assert True
+
+        # delete index
+        pineconeindex.delete_index()
 
         assert query_result in ["Route 1"]
 
