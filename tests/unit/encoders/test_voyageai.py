@@ -22,8 +22,8 @@ class TestVoyageAIEncoder:
         assert "pip install 'semantic-router[voyageai]'" in str(error.value)
 
     def test_voyageai_encoder_init_success(self, mocker):
-        #side_effect = ["fake-model-name", "fake-api-key"]
-        #mocker.patch("os.getenv", side_effect=side_effect)
+        side_effect = ["fake-model-name", "fake-api-key"]
+        mocker.patch("os.getenv", side_effect=side_effect)
         encoder = VoyageAIEncoder()
         assert encoder._client is not PrivateAttr()
 
