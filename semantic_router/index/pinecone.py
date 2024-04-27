@@ -49,12 +49,27 @@ class PineconeIndex(BaseIndex):
     ServerlessSpec: Any = Field(default=None, exclude=True)
     namespace: Optional[str] = ""
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._initialize_client()
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        index_name: str = "index",
+        dimensions: Optional[int] = None,
+        metric: str = "cosine",
+        cloud: str = "aws",
+        region: str = "us-west-2",
+        host: str = "",
+        namespace: Optional[str] = "",
+    ):
+        super().__init__()
+        self.index_name = index_name
+        self.dimensions = dimensions
+        self.metric = metric
+        self.cloud = cloud
+        self.region = region
+        self.host = host
+        self.namespace = namespace
         self.type = "pinecone"
-        self.client = self._initialize_client()
-        self.index = self._init_index(force_create=True)
+        self.client = self._initialize_client(api_key=api_key)
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
@@ -77,6 +92,18 @@ class PineconeIndex(BaseIndex):
         return Pinecone(**pinecone_args)
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
         index_exists = self.index_name in self.client.list_indexes().names()
         dimensions_given = self.dimensions is not None
         if dimensions_given and not index_exists:
@@ -95,7 +122,7 @@ class PineconeIndex(BaseIndex):
             time.sleep(0.5)
         elif index_exists:
             # if the index exists we just return it
-            index = self.client.Index(self.index_name, namespace=self.namespace)
+            index = self.client.Index(self.index_name)
             # grab the dimensions from the index
             self.dimensions = index.describe_index_stats()["dimension"]
         elif force_create and not dimensions_given:
@@ -207,7 +234,7 @@ class PineconeIndex(BaseIndex):
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
-            self.index.delete(ids=route_vec_ids)
+            self.index.delete(ids=route_vec_ids, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not delete.")
 
