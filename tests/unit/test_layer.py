@@ -4,6 +4,7 @@ import tempfile
 from unittest.mock import mock_open, patch
 
 import pytest
+import time
 
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
@@ -279,12 +280,37 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=pineconeindex
         )
+        time.sleep(5)  # allow for index to be populated
+        print(routes)
+        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+        print(query_result)
+
+        try:
+            route_layer(text="Hello", route_filter=["Route 8"]).name
+        except ValueError:
+            assert True
+        
+        # delete index
+        pineconeindex.delete_index()
+
+        assert query_result in ["Route 1"]
+
+    def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
+        pinecone_api_key = os.environ["PINECONE_API_KEY"]
+        pineconeindex = PineconeIndex(api_key=pinecone_api_key, namespace="test")
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=pineconeindex
+        )
+        time.sleep(5)  # allow for index to be populated
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
         try:
             route_layer(text="Hello", route_filter=["Route 8"]).name
         except ValueError:
             assert True
+
+        # delete index
+        pineconeindex.delete_index()
 
         assert query_result in ["Route 1"]
 

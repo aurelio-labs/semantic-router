@@ -354,7 +354,7 @@ class RouteLayer:
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
-        embeds = self.encoder(route.utterances)  # type: ignore
+        embeds = self.encoder(route.utterances)
         # if route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
@@ -363,7 +363,7 @@ class RouteLayer:
         self.index.add(
             embeddings=embeds,
             routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,  # type: ignore
+            utterances=route.utterances,
         )
         self.routes.append(route)
 
@@ -409,14 +409,14 @@ class RouteLayer:
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterances = self.encoder(all_utterances)  # type: ignore
+        embedded_utterances = self.encoder(all_utterances)
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
         self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
-            utterances=all_utterances,  # type: ignore
+            utterances=all_utterances,
         )
 
     def _encode(self, text: str) -> Any:
