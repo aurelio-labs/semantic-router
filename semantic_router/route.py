@@ -76,12 +76,6 @@ class Route(BaseModel):
             extracted_inputs = self.llm.extract_function_inputs(
                 query=query, function_schema=self.function_schema
             )
-            # DEBUGGING: Start.
-            print('#'*50)
-            print('extracted_inputs')
-            print(extracted_inputs)
-            print('#'*50)
-            # DEBUGGING: End.
             func_call = extracted_inputs
         elif self.openai_function_schema:
             if not isinstance(self.llm, OpenAILLM):

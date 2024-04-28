@@ -44,12 +44,6 @@ class OpenAILLM(BaseLLM):
                 tools = [function_schema] 
             else:
                 tools = None
-            # DEBUGGING: Start.
-            print('#'*50)
-            print('tools')
-            print(tools)
-            print('#'*50)
-            # DEBUGGING: End.
             completion = self.client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
@@ -59,14 +53,6 @@ class OpenAILLM(BaseLLM):
             )
 
             output = completion.choices[0].message.content
-            # DEBUGGING: Start.
-            print('#'*50)
-            # print('print(completion.choices[0].message.function_call)')
-            # print(print(completion.choices[0].message.function_call))
-            print('completion.choices[0].message.tool_calls')
-            print(completion.choices[0].message.tool_calls)
-            print('#'*50)
-            # DEBUGGING: End.
 
             if function_schema:
                 return completion.choices[0].message.tool_calls
@@ -93,24 +79,10 @@ class OpenAILLM(BaseLLM):
         output = self(messages=messages, function_schema=function_schema)
         if not output:
             raise Exception("No output generated for extract function input")
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('output')
-        print(output)
-        print('#'*50)
-        # DEBUGGING: End.
         if len(output) != 1:
             raise ValueError("Invalid output, expected a single tool to be called")
         tool_call = output[0]
         arguments_json = tool_call.function.arguments
         function_inputs = json.loads(arguments_json)
-
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('function_inputs')
-        print(function_inputs)
-        print('#'*50)
-        # DEBUGGING: End.
-
         return function_inputs
                 
