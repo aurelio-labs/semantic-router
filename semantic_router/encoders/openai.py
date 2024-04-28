@@ -114,7 +114,8 @@ class OpenAIEncoder(BaseEncoder):
         return embeddings
 
     def _truncate(self, text: str) -> str:
-        tokens = self._token_encoder.encode(text)
+        # we use encode_ordinary as faster equivalent to encode(text, disallowed_special=())
+        tokens = self._token_encoder.encode_ordinary(text)
         if len(tokens) > self.token_limit:
             logger.warning(
                 f"Document exceeds token limit: {len(tokens)} > {self.token_limit}"
