@@ -87,7 +87,6 @@ class OpenAILLM(BaseLLM):
 #
     def extract_function_inputs_openai(self, query: str, function_schema: dict) -> dict:
         messages = []
-        # TODO: Finish system prompt.
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
