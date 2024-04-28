@@ -1,5 +1,5 @@
 import os
-from typing import Any, List, Optional
+from typing import List, Optional, Any
 
 import openai
 
@@ -8,6 +8,7 @@ from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 import json
+from openai.types.chat import ChatCompletionMessageToolCall
 
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
@@ -36,12 +37,12 @@ class OpenAILLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def __call__(self, messages: List[Message], function_schema: dict = None) -> str:
+    def __call__(self, messages: List[Message], openai_function_schema: Optional[dict[str, Any]] = None) -> str:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
-            if function_schema:
-                tools = [function_schema] 
+            if openai_function_schema:
+                tools = [openai_function_schema]
             else:
                 tools = None
             completion = self.client.chat.completions.create(
@@ -49,34 +50,27 @@ class OpenAILLM(BaseLLM):
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                tools=tools,
+                tools=tools, # type: ignore # MyPy expecting Iterable[ChatCompletionToolParam] | NotGiven, but dict is accepted by OpenAI.
             )
 
             output = completion.choices[0].message.content
 
-            if function_schema:
+            if openai_function_schema:
                 return completion.choices[0].message.tool_calls
-                # tool_calls = completion.choices[0].message.tool_calls
-                # if not tool_calls:
-                #     raise Exception("No tool calls available in the completion response.")
-                # tool_call = tool_calls[0]
-                # arguments_json = tool_call.function.arguments
-                # arguments_dict = json.loads(arguments_json)
-                # return arguments_dict
-
             if not output:
                 raise Exception("No output generated")
             return output
         except Exception as e:
             logger.error(f"LLM error: {e}")
             raise Exception(f"LLM error: {e}") from e
-#
-    def extract_function_inputs_openai(self, query: str, function_schema: dict) -> dict:
+
+
+    def extract_function_inputs_openai(self, query: str, openai_function_schema: dict[str, Any]) -> dict:
         messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        output = self(messages=messages, function_schema=function_schema)
+        output = self(messages=messages, openai_function_schema=openai_function_schema)
         if not output:
             raise Exception("No output generated for extract function input")
         if len(output) != 1:
@@ -85,4 +79,3 @@ class OpenAILLM(BaseLLM):
         arguments_json = tool_call.function.arguments
         function_inputs = json.loads(arguments_json)
         return function_inputs
-                

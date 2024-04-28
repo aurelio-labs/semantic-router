@@ -67,23 +67,27 @@ class Route(BaseModel):
                     "LLM is required for dynamic routes. Please ensure the `llm` "
                     "attribute is set."
                 )
-            elif query is None:
+            if query is None or type(query) != str:
                 raise ValueError(
                     "Query is required for dynamic routes. Please ensure the `query` "
                     "argument is passed."
                 )
-        if self.function_schema:
-            extracted_inputs = self.llm.extract_function_inputs(
-                query=query, function_schema=self.function_schema
-            )
-            func_call = extracted_inputs
-        elif self.openai_function_schema:
-            if not isinstance(self.llm, OpenAILLM):
-                raise TypeError("LLM must be an instance of OpenAILLM for openai_function_schema.")
-            extracted_inputs = self.llm.extract_function_inputs_openai(
-                query=query, function_schema=self.openai_function_schema
-            )
-            func_call = extracted_inputs
+            if self.function_schema:
+                extracted_inputs = self.llm.extract_function_inputs( 
+                    query=query, 
+                    function_schema=self.function_schema
+                )
+                func_call = extracted_inputs
+            elif self.openai_function_schema: # Logically must be self.openai_function_schema, but keeps MyPy happy.
+                if not isinstance(self.llm, OpenAILLM):
+                    raise TypeError(
+                        "LLM must be an instance of OpenAILLM for openai_function_schema."
+                    )
+                extracted_inputs = self.llm.extract_function_inputs_openai(
+                    query=query, 
+                    openai_function_schema=self.openai_function_schema
+                )
+                func_call = extracted_inputs
         else:
             # otherwise we just pass None for the call
             func_call = None
