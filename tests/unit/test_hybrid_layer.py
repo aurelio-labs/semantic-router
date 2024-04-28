@@ -40,7 +40,7 @@ def cohere_encoder(mocker):
 @pytest.fixture
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-    return OpenAIEncoder(name="test-openai-encoder", openai_api_key="test_api_key")
+    return OpenAIEncoder(name="text-embedding-ada-002", openai_api_key="test_api_key")
 
 
 @pytest.fixture

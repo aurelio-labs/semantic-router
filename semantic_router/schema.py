@@ -2,59 +2,31 @@ from enum import Enum
 from typing import List, Optional
 
 from pydantic.v1 import BaseModel
-from pydantic.v1.dataclasses import dataclass
-
-from semantic_router.encoders import (
-    BaseEncoder,
-    CohereEncoder,
-    FastEmbedEncoder,
-    GoogleEncoder,
-    MistralEncoder,
-    OpenAIEncoder,
-)
 
 
 class EncoderType(Enum):
-    HUGGINGFACE = "huggingface"
-    FASTEMBED = "fastembed"
-    OPENAI = "openai"
+    AZURE = "azure"
     COHERE = "cohere"
+    OPENAI = "openai"
+    BM25 = "bm25"
+    TFIDF = "tfidf"
+    FASTEMBED = "fastembed"
+    HUGGINGFACE = "huggingface"
     MISTRAL = "mistral"
+    VIT = "vit"
+    CLIP = "clip"
     GOOGLE = "google"
+
+
+class EncoderInfo(BaseModel):
+    name: str
+    token_limit: int
 
 
 class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[dict] = None
     similarity_score: Optional[float] = None
-
-
-@dataclass
-class Encoder:
-    type: EncoderType
-    name: Optional[str]
-    model: BaseEncoder
-
-    def __init__(self, type: str, name: Optional[str]):
-        self.type = EncoderType(type)
-        self.name = name
-        if self.type == EncoderType.HUGGINGFACE:
-            raise NotImplementedError
-        elif self.type == EncoderType.FASTEMBED:
-            self.model = FastEmbedEncoder(name=name)
-        elif self.type == EncoderType.OPENAI:
-            self.model = OpenAIEncoder(name=name)
-        elif self.type == EncoderType.COHERE:
-            self.model = CohereEncoder(name=name)
-        elif self.type == EncoderType.MISTRAL:
-            self.model = MistralEncoder(name=name)
-        elif self.type == EncoderType.GOOGLE:
-            self.model = GoogleEncoder(name=name)
-        else:
-            raise ValueError
-
-    def __call__(self, texts: List[str]) -> List[List[float]]:
-        return self.model(texts)
 
 
 class Message(BaseModel):
