@@ -8,7 +8,7 @@ from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 import json
-from openai.types.chat import ChatCompletionMessageToolCall
+
 
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
@@ -37,7 +37,11 @@ class OpenAILLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def __call__(self, messages: List[Message], openai_function_schema: Optional[dict[str, Any]] = None) -> str:
+    def __call__(
+        self,
+        messages: List[Message],
+        openai_function_schema: Optional[dict[str, Any]] = None,
+    ) -> str:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
@@ -50,7 +54,7 @@ class OpenAILLM(BaseLLM):
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                tools=tools, # type: ignore # MyPy expecting Iterable[ChatCompletionToolParam] | NotGiven, but dict is accepted by OpenAI.
+                tools=tools,  # type: ignore # MyPy expecting Iterable[ChatCompletionToolParam] | NotGiven, but dict is accepted by OpenAI.
             )
 
             output = completion.choices[0].message.content
@@ -64,8 +68,9 @@ class OpenAILLM(BaseLLM):
             logger.error(f"LLM error: {e}")
             raise Exception(f"LLM error: {e}") from e
 
-
-    def extract_function_inputs_openai(self, query: str, openai_function_schema: dict[str, Any]) -> dict:
+    def extract_function_inputs_openai(
+        self, query: str, openai_function_schema: dict[str, Any]
+    ) -> dict:
         messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
