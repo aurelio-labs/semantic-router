@@ -1,6 +1,7 @@
 import os
 from time import sleep
 from typing import Any, List, Optional, Union
+from pydantic.v1 import PrivateAttr
 
 import openai
 from openai import OpenAIError
@@ -16,28 +17,18 @@ from semantic_router.utils.logger import logger
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
-        name="text-embedding-ada-002",
-        type="openai",
-        token_limit=4000
+        name="text-embedding-ada-002", token_limit=8192
     ),
-    "text-embed-3-small": EncoderInfo(
-        name="text-embed-3-small",
-        type="openai",
-        token_limit=8192
-    ),
-    "text-embed-3-large": EncoderInfo(
-        name="text-embed-3-large",
-        type="openai",
-        token_limit=8192
-    )
+    "text-embed-3-small": EncoderInfo(name="text-embed-3-small", token_limit=8192),
+    "text-embed-3-large": EncoderInfo(name="text-embed-3-large", token_limit=8192),
 }
 
 
 class OpenAIEncoder(BaseEncoder):
     client: Optional[openai.Client]
     dimensions: Union[int, NotGiven] = NotGiven()
-    token_limit: Optional[int] = None
-    token_encoder: Optional[Any] = None
+    token_limit: int = 8192  # default value, should be replaced by config
+    _token_encoder: Any = PrivateAttr()
     type: str = "openai"
 
     def __init__(
@@ -71,11 +62,11 @@ class OpenAIEncoder(BaseEncoder):
         if name in model_configs:
             self.token_limit = model_configs[name].token_limit
         # get token encoder
-        self.token_encoder = tiktoken.encoding_for_model(name)
+        self._token_encoder = tiktoken.encoding_for_model(name)
 
     def __call__(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
         """Encode a list of text documents into embeddings using OpenAI API.
-        
+
         :param docs: List of text documents to encode.
         :param truncate: Whether to truncate the documents to token limit. If
             False and a document exceeds the token limit, an error will be
@@ -121,15 +112,15 @@ class OpenAIEncoder(BaseEncoder):
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
-    
+
     def _truncate(self, text: str) -> str:
-        tokens = self.token_encoder.encode(text)
+        tokens = self._token_encoder.encode(text)
         if len(tokens) > self.token_limit:
             logger.warning(
                 f"Document exceeds token limit: {len(tokens)} > {self.token_limit}"
                 "\nTruncating document..."
             )
-            text = self.token_encoder.decode(tokens[:self.token_limit-1])
-            logger.info(f"Trunc length: {len(self.token_encoder.encode(text))}")
+            text = self._token_encoder.decode(tokens[: self.token_limit - 1])
+            logger.info(f"Trunc length: {len(self._token_encoder.encode(text))}")
             return text
         return text

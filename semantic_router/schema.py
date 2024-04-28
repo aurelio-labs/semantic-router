@@ -5,18 +5,23 @@ from pydantic.v1 import BaseModel
 
 
 class EncoderType(Enum):
-    HUGGINGFACE = "huggingface"
-    FASTEMBED = "fastembed"
-    OPENAI = "openai"
+    AZURE = "azure"
     COHERE = "cohere"
+    OPENAI = "openai"
+    BM25 = "bm25"
+    TFIDF = "tfidf"
+    FASTEMBED = "fastembed"
+    HUGGINGFACE = "huggingface"
     MISTRAL = "mistral"
+    VIT = "vit"
+    CLIP = "clip"
     GOOGLE = "google"
 
 
 class EncoderInfo(BaseModel):
     name: str
-    type: EncoderType
     token_limit: int
+
 
 class RouteChoice(BaseModel):
     name: Optional[str] = None
