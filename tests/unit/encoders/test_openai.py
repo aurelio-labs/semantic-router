@@ -5,7 +5,6 @@ from openai.types.create_embedding_response import Usage
 
 from semantic_router.encoders import OpenAIEncoder
 
-
 @pytest.fixture
 def openai_encoder(mocker):
     mocker.patch("openai.Client")

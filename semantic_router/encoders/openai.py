@@ -1,20 +1,43 @@
 import os
 from time import sleep
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import openai
 from openai import OpenAIError
 from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
+import tiktoken
 
 from semantic_router.encoders import BaseEncoder
+from semantic_router.schema import EncoderInfo
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
+
+
+model_configs = {
+    "text-embedding-ada-002": EncoderInfo(
+        name="text-embedding-ada-002",
+        type="openai",
+        token_limit=4000
+    ),
+    "text-embed-3-small": EncoderInfo(
+        name="text-embed-3-small",
+        type="openai",
+        token_limit=8192
+    ),
+    "text-embed-3-large": EncoderInfo(
+        name="text-embed-3-large",
+        type="openai",
+        token_limit=8192
+    )
+}
 
 
 class OpenAIEncoder(BaseEncoder):
     client: Optional[openai.Client]
     dimensions: Union[int, NotGiven] = NotGiven()
+    token_limit: Optional[int] = None
+    token_encoder: Optional[Any] = None
     type: str = "openai"
 
     def __init__(
@@ -44,12 +67,31 @@ class OpenAIEncoder(BaseEncoder):
             ) from e
         # set dimensions to support openai embed 3 dimensions param
         self.dimensions = dimensions
+        # if model name is known, set token limit
+        if name in model_configs:
+            self.token_limit = model_configs[name].token_limit
+        # get token encoder
+        self.token_encoder = tiktoken.encoding_for_model(name)
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
+        """Encode a list of text documents into embeddings using OpenAI API.
+        
+        :param docs: List of text documents to encode.
+        :param truncate: Whether to truncate the documents to token limit. If
+            False and a document exceeds the token limit, an error will be
+            raised.
+        :return: List of embeddings for each document."""
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None
         error_message = ""
+
+        if truncate:
+            # check if any document exceeds token limit and truncate if so
+            for i in range(len(docs)):
+                logger.info(f"Document {i+1} length: {len(docs[i])}")
+                docs[i] = self._truncate(docs[i])
+                logger.info(f"Document {i+1} trunc length: {len(docs[i])}")
 
         # Exponential backoff
         for j in range(1, 7):
@@ -74,7 +116,20 @@ class OpenAIEncoder(BaseEncoder):
             or not isinstance(embeds, CreateEmbeddingResponse)
             or not embeds.data
         ):
+            logger.info(f"Returned embeddings: {embeds}")
             raise ValueError(f"No embeddings returned. Error: {error_message}")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
+    
+    def _truncate(self, text: str) -> str:
+        tokens = self.token_encoder.encode(text)
+        if len(tokens) > self.token_limit:
+            logger.warning(
+                f"Document exceeds token limit: {len(tokens)} > {self.token_limit}"
+                "\nTruncating document..."
+            )
+            text = self.token_encoder.decode(tokens[:self.token_limit-1])
+            logger.info(f"Trunc length: {len(self.token_encoder.encode(text))}")
+            return text
+        return text
