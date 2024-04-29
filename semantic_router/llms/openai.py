@@ -63,16 +63,20 @@ class OpenAILLM(BaseLLM):
                 if tool_calls is None:
                     raise ValueError("Invalid output, expected a tool call.")
                 if len(tool_calls) != 1:
-                    raise ValueError("Invalid output, expected a single tool to be specified.")
+                    raise ValueError(
+                        "Invalid output, expected a single tool to be specified."
+                    )
                 arguments = tool_calls[0].function.arguments
                 if arguments is None:
-                    raise ValueError("Invalid output, expected arguments to be specified.")
-                output = str(arguments) # str to keep MyPy happy.
+                    raise ValueError(
+                        "Invalid output, expected arguments to be specified."
+                    )
+                output = str(arguments)  # str to keep MyPy happy.
             else:
                 content = completion.choices[0].message.content
                 if content is None:
                     raise ValueError("Invalid output, expected content.")
-                output = str(content) # str to keep MyPy happy.
+                output = str(content)  # str to keep MyPy happy.
             return output
         except Exception as e:
             logger.error(f"LLM error: {e}")
@@ -85,6 +89,8 @@ class OpenAILLM(BaseLLM):
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        function_inputs_str = self(messages=messages, openai_function_schema=openai_function_schema)
+        function_inputs_str = self(
+            messages=messages, openai_function_schema=openai_function_schema
+        )
         function_inputs = json.loads(function_inputs_str)
         return function_inputs

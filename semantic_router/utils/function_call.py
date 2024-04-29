@@ -90,13 +90,13 @@ def get_schema_openai_func_calling(item: Callable) -> Dict[str, Any]:
             if match:
                 param_description = match.group(1).strip()
 
-        schema["function"]["parameters"]["properties"][param_name] = {
+        schema["function"]["parameters"]["properties"][param_name] = {  # type: ignore
             "type": convert_param_type_to_json_type(param_type),
             "description": param_description,
         }
 
         if param_required:
-            schema["function"]["parameters"]["required"].append(param_name)
+            schema["function"]["parameters"]["required"].append(param_name)  # type: ignore
 
     return schema
 
