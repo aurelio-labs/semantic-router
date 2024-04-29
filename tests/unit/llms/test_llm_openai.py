@@ -2,6 +2,7 @@ import pytest
 
 from semantic_router.llms import OpenAILLM
 from semantic_router.schema import Message
+from semantic_router.utils.function_call import get_schema_openai
 
 
 @pytest.fixture
@@ -54,3 +55,37 @@ class TestOpenAILLM:
         llm_input = [Message(role="user", content="test")]
         output = openai_llm(llm_input)
         assert output == "test"
+
+    def test_get_schema_openai_with_valid_callable(self):
+        def sample_function(param1: int, param2: str = "default") -> str:
+            """Sample function for testing."""
+            return f"param1: {param1}, param2: {param2}"
+
+        expected_schema = {
+            "type": "function",
+            "function": {
+                "name": "sample_function",
+                "description": "Sample function for testing.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "param1": {
+                            "type": "number",
+                            "description": "No description available.",
+                        },
+                        "param2": {
+                            "type": "string",
+                            "description": "No description available.",
+                        },
+                    },
+                    "required": ["param1"],
+                },
+            },
+        }
+        schema = get_schema_openai(sample_function)
+        assert schema == expected_schema, "Schema did not match expected output."
+
+    def test_get_schema_openai_with_non_callable(self):
+        non_callable = "I am not a function"
+        with pytest.raises(ValueError):
+            get_schema_openai(non_callable)
