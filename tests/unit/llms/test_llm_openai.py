@@ -89,3 +89,59 @@ class TestOpenAILLM:
         non_callable = "I am not a function"
         with pytest.raises(ValueError):
             get_schema_openai(non_callable)
+
+    def test_openai_llm_call_with_function_schema(self, openai_llm, mocker):
+        mock_completion = mocker.MagicMock()
+        mock_completion.choices[0].message.tool_calls = [
+            mocker.MagicMock(function=mocker.MagicMock(arguments="result"))
+        ]
+        mocker.patch.object(
+            openai_llm.client.chat.completions, "create", return_value=mock_completion
+        )
+        llm_input = [Message(role="user", content="test")]
+        function_schema = {"type": "function", "name": "sample_function"}
+        output = openai_llm(llm_input, function_schema)
+        assert (
+            output == "result"
+        ), "Output did not match expected result with function schema"
+
+    def test_openai_llm_call_with_invalid_tool_calls(self, openai_llm, mocker):
+        mock_completion = mocker.MagicMock()
+        mock_completion.choices[0].message.tool_calls = None
+        mocker.patch.object(
+            openai_llm.client.chat.completions, "create", return_value=mock_completion
+        )
+        llm_input = [Message(role="user", content="test")]
+        function_schema = {"type": "function", "name": "sample_function"}
+        with pytest.raises(ValueError) as e:
+            openai_llm(llm_input, function_schema)
+        assert "Invalid output, expected a tool call." in str(e.value)
+
+    def test_openai_llm_call_with_no_arguments_in_tool_calls(self, openai_llm, mocker):
+        mock_completion = mocker.MagicMock()
+        mock_completion.choices[0].message.tool_calls = [
+            mocker.MagicMock(function=mocker.MagicMock(arguments=None))
+        ]
+        mocker.patch.object(
+            openai_llm.client.chat.completions, "create", return_value=mock_completion
+        )
+        llm_input = [Message(role="user", content="test")]
+        function_schema = {"type": "function", "name": "sample_function"}
+        with pytest.raises(ValueError) as e:
+            openai_llm(llm_input, function_schema)
+        assert "Invalid output, expected arguments to be specified." in str(e.value)
+
+    def test_openai_llm_call_with_multiple_tools_specified(self, openai_llm, mocker):
+        mock_completion = mocker.MagicMock()
+        mock_completion.choices[0].message.tool_calls = [
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        ]
+        mocker.patch.object(
+            openai_llm.client.chat.completions, "create", return_value=mock_completion
+        )
+        llm_input = [Message(role="user", content="test")]
+        function_schema = {"type": "function", "name": "sample_function"}
+        with pytest.raises(ValueError) as e:
+            openai_llm(llm_input, function_schema)
+        assert "Invalid output, expected a single tool to be specified." in str(e.value)
