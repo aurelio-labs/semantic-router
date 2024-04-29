@@ -8,7 +8,6 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
-from semantic_router.llms import OpenAILLM
 
 try:
     from PIL.Image import Image
