@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 
 from pydantic.v1 import BaseModel, Field
 
@@ -11,5 +11,5 @@ class BaseEncoder(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(self, docs: List[Any]) -> List[List[float]]:
         raise NotImplementedError("Subclasses must implement this method")

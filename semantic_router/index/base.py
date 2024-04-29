@@ -20,7 +20,7 @@ class BaseIndex(BaseModel):
     type: str = "base"
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+        self, embeddings: List[List[float]], routes: List[str], utterances: List[Any]
     ):
         """
         Add embeddings to the index.

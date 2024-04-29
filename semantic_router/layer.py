@@ -8,12 +8,12 @@ import numpy as np
 import yaml  # type: ignore
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import BaseEncoder, OpenAIEncoder
+from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import Encoder, EncoderType, RouteChoice
+from semantic_router.schema import EncoderType, RouteChoice
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -358,24 +358,24 @@ class RouteLayer:
     @classmethod
     def from_json(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
+        encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_yaml(cls, file_path: str):
         config = LayerConfig.from_file(file_path)
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
+        encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
-        encoder = Encoder(type=config.encoder_type, name=config.encoder_name).model
+        encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
         logger.info(f"Adding `{route.name}` route")
         # create embeddings
-        embeds = self.encoder(route.utterances)  # type: ignore
+        embeds = self.encoder(route.utterances)
         # if route has no score_threshold, use default
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
@@ -384,7 +384,7 @@ class RouteLayer:
         self.index.add(
             embeddings=embeds,
             routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,  # type: ignore
+            utterances=route.utterances,
         )
         self.routes.append(route)
 
@@ -430,14 +430,14 @@ class RouteLayer:
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        embedded_utterances = self.encoder(all_utterances)  # type: ignore
+        embedded_utterances = self.encoder(all_utterances)
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
         self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
-            utterances=all_utterances,  # type: ignore
+            utterances=all_utterances,
         )
 
     def _encode(self, text: str) -> Any:
