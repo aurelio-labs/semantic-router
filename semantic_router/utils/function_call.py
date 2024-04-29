@@ -58,7 +58,7 @@ def convert_param_type_to_json_type(param_type: str) -> str:
         return "object"
 
 
-def get_schema_openai_func_calling(item: Callable) -> Dict[str, Any]:
+def get_schema_openai(item: Callable) -> Dict[str, Any]:
     if not callable(item):
         raise ValueError("Provided item must be a callable function.")
 
