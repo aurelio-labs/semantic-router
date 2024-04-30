@@ -48,7 +48,6 @@ class Route(BaseModel):
     utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
     function_schema: Optional[Dict[str, Any]] = None
-    openai_function_schema: Optional[Dict[str, Any]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
