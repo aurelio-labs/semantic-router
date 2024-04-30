@@ -179,3 +179,21 @@ class TestOpenAILLM:
         assert convert_param_type_to_json_type("list") == "array"
         # Test conversion of a type not explicitly handled
         assert convert_param_type_to_json_type("dict") == "object"
+
+    def test_extract_function_inputs(self, openai_llm, mocker):
+        query = "fetch user data"
+        function_schema = {"function": "get_user_data", "args": ["user_id"]}
+
+        # Mock the __call__ method to return a JSON string as expected
+        mocker.patch.object(OpenAILLM, '__call__', return_value='{"user_id": "123"}')
+        result = openai_llm.extract_function_inputs(query, function_schema)
+
+        # Ensure the __call__ method is called with the correct parameters
+        expected_messages = [
+            Message(role="system", content="You are an intelligent AI. Given a command or request from the user, call the function to complete the request."),
+            Message(role="user", content=query)
+        ]
+        openai_llm.__call__.assert_called_once_with(messages=expected_messages, function_schema=function_schema)
+
+        # Check if the result is as expected
+        assert result == {"user_id": "123"}, "The function inputs should match the expected dictionary."
