@@ -125,7 +125,6 @@ class TestRoute:
             "utterances": ["utterance"],
             "description": None,
             "function_schema": None,
-            "openai_function_schema": None,
             "llm": None,
             "score_threshold": None,
         }
