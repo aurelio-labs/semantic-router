@@ -113,9 +113,15 @@ class TestOpenAILLM:
         )
         llm_input = [Message(role="user", content="test")]
         function_schema = {"type": "function", "name": "sample_function"}
-        with pytest.raises(ValueError) as e:
+
+        with pytest.raises(Exception) as exc_info:
             openai_llm(llm_input, function_schema)
-        assert "Invalid output, expected a tool call." in str(e.value)
+
+        expected_error_message = "LLM error: Invalid output, expected a tool call."
+        actual_error_message = str(exc_info.value)
+        assert (
+            expected_error_message in actual_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
 
     def test_openai_llm_call_with_no_arguments_in_tool_calls(self, openai_llm, mocker):
         mock_completion = mocker.MagicMock()
@@ -127,9 +133,17 @@ class TestOpenAILLM:
         )
         llm_input = [Message(role="user", content="test")]
         function_schema = {"type": "function", "name": "sample_function"}
-        with pytest.raises(ValueError) as e:
+
+        with pytest.raises(Exception) as exc_info:
             openai_llm(llm_input, function_schema)
-        assert "Invalid output, expected arguments to be specified." in str(e.value)
+
+        expected_error_message = (
+            "LLM error: Invalid output, expected arguments to be specified."
+        )
+        actual_error_message = str(exc_info.value)
+        assert (
+            expected_error_message in actual_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
 
     def test_openai_llm_call_with_multiple_tools_specified(self, openai_llm, mocker):
         mock_completion = mocker.MagicMock()
@@ -142,6 +156,14 @@ class TestOpenAILLM:
         )
         llm_input = [Message(role="user", content="test")]
         function_schema = {"type": "function", "name": "sample_function"}
-        with pytest.raises(ValueError) as e:
+
+        with pytest.raises(Exception) as exc_info:
             openai_llm(llm_input, function_schema)
-        assert "Invalid output, expected a single tool to be specified." in str(e.value)
+
+        expected_error_message = (
+            "LLM error: Invalid output, expected a single tool to be specified."
+        )
+        actual_error_message = str(exc_info.value)
+        assert (
+            expected_error_message in actual_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
