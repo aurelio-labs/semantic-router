@@ -102,8 +102,8 @@ class TestOpenAILLM:
             openai_llm.client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
-        function_schema = {"type": "function", "name": "sample_function"}
-        output = openai_llm(llm_input, function_schema)
+        function_schemas = [{"type": "function", "name": "sample_function"}]
+        output = openai_llm(llm_input, function_schemas)
         assert (
             output == "result"
         ), "Output did not match expected result with function schema"
@@ -115,10 +115,10 @@ class TestOpenAILLM:
             openai_llm.client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
-        function_schema = {"type": "function", "name": "sample_function"}
+        function_schemas = [{"type": "function", "name": "sample_function"}]
 
         with pytest.raises(Exception) as exc_info:
-            openai_llm(llm_input, function_schema)
+            openai_llm(llm_input, function_schemas)
 
         expected_error_message = "LLM error: Invalid output, expected a tool call."
         actual_error_message = str(exc_info.value)
@@ -135,10 +135,10 @@ class TestOpenAILLM:
             openai_llm.client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
-        function_schema = {"type": "function", "name": "sample_function"}
+        function_schemas = [{"type": "function", "name": "sample_function"}]
 
         with pytest.raises(Exception) as exc_info:
-            openai_llm(llm_input, function_schema)
+            openai_llm(llm_input, function_schemas)
 
         expected_error_message = (
             "LLM error: Invalid output, expected arguments to be specified."
@@ -158,10 +158,10 @@ class TestOpenAILLM:
             openai_llm.client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
-        function_schema = {"type": "function", "name": "sample_function"}
+        function_schemas = [{"type": "function", "name": "sample_function"}]
 
         with pytest.raises(Exception) as exc_info:
-            openai_llm(llm_input, function_schema)
+            openai_llm(llm_input, function_schemas)
 
         expected_error_message = (
             "LLM error: Invalid output, expected a single tool to be specified."
@@ -184,11 +184,11 @@ class TestOpenAILLM:
 
     def test_extract_function_inputs(self, openai_llm, mocker):
         query = "fetch user data"
-        function_schema = {"function": "get_user_data", "args": ["user_id"]}
+        function_schemas = [{"function": "get_user_data", "args": ["user_id"]}]
 
         # Mock the __call__ method to return a JSON string as expected
         mocker.patch.object(OpenAILLM, "__call__", return_value='{"user_id": "123"}')
-        result = openai_llm.extract_function_inputs(query, function_schema)
+        result = openai_llm.extract_function_inputs(query, function_schemas)
 
         # Ensure the __call__ method is called with the correct parameters
         expected_messages = [
@@ -199,7 +199,7 @@ class TestOpenAILLM:
             Message(role="user", content=query),
         ]
         openai_llm.__call__.assert_called_once_with(
-            messages=expected_messages, function_schema=function_schema
+            messages=expected_messages, function_schemas=function_schemas
         )
 
         # Check if the result is as expected

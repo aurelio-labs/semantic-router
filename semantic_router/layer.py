@@ -244,11 +244,11 @@ class RouteLayer:
         passed = self._check_threshold(top_class_scores, route)
 
         if passed and route is not None and not simulate_static:
-            if route.function_schema and text is None:
+            if route.function_schemas and text is None:
                 raise ValueError(
                     "Route has a function schema, but no text was provided."
                 )
-            if route.function_schema and not isinstance(route.llm, BaseLLM):
+            if route.function_schemas and not isinstance(route.llm, BaseLLM):
                 if not self.llm:
                     logger.warning(
                         "No LLM provided for dynamic route, will use OpenAI LLM "

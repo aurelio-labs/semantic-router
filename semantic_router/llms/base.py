@@ -20,81 +20,139 @@ class BaseLLM(BaseModel):
         raise NotImplementedError("Subclasses must implement this method")
 
     def _is_valid_inputs(
-        self, inputs: dict[str, Any], function_schema: dict[str, Any]
+        self, inputs: list[dict[str, Any]], function_schemas: list[dict[str, Any]]
     ) -> bool:
-        """Validate the extracted inputs against the function schema"""
+        """Determine if the functions chosen by the LLM exist within the function_schemas, 
+        and if the input arguments are valid for those functions."""
         try:
-            # Extract parameter names and types from the signature string
-            signature = function_schema["signature"]
-            param_info = [param.strip() for param in signature[1:-1].split(",")]
-            param_names = [info.split(":")[0].strip() for info in param_info]
-            param_types = [
-                info.split(":")[1].strip().split("=")[0].strip() for info in param_info
-            ]
-            for name, type_str in zip(param_names, param_types):
-                if name not in inputs:
-                    logger.error(f"Input {name} missing from query")
+            for input_dict in inputs:
+                # Check if 'function_name' and 'arguments' keys exist in each input dictionary
+                if "function_name" not in input_dict or "arguments" not in input_dict:
+                    logger.error("Missing 'function_name' or 'arguments' in inputs")
                     return False
+
+                function_name = input_dict["function_name"]
+                arguments = input_dict["arguments"]
+
+                # Find the matching function schema based on function_name
+                matching_schema = next((schema for schema in function_schemas if schema["name"] == function_name), None)
+                if not matching_schema:
+                    logger.error(f"No matching function schema found for function name: {function_name}")
+                    return False
+
+                # Extract parameter names and types from the signature string of the matching schema
+                param_names, param_types = self._extract_parameter_info(matching_schema["signature"])
+
+                # Validate that all required parameters are present in the arguments
+                for name, type_str in zip(param_names, param_types):
+                    if name not in arguments:
+                        logger.error(f"Input {name} missing from arguments")
+                        return False
+
             return True
         except Exception as e:
             logger.error(f"Input validation error: {str(e)}")
             return False
 
+    def _extract_parameter_info(self, signature: str) -> tuple[list[str], list[str]]:
+        """Extract parameter names and types from the function signature."""
+        param_info = [param.strip() for param in signature[1:-1].split(",")]
+        param_names = [info.split(":")[0].strip() for info in param_info]
+        param_types = [
+            info.split(":")[1].strip().split("=")[0].strip() for info in param_info
+        ]
+        return param_names, param_types
+
     def extract_function_inputs(
-        self, query: str, function_schema: dict[str, Any]
+        self, query: str, function_schemas: list[dict[str, Any]]
     ) -> dict:
         logger.info("Extracting function input...")
 
         prompt = f"""
 You are an accurate and reliable computer program that only outputs valid JSON. 
-Your task is to output JSON representing the input arguments of a Python function.
+Your task is to:
+    1) Pick the most relevant Python function schema(s) from FUNCTION_SCHEMAS below, based on the input QUERY. If only one schema is provided, choose that. If multiple schemas are relevant, output a list of JSON objects for each.
+    2) Output JSON representing the input arguments of the chosen function schema(s), including the function name, with argument values determined by information in the QUERY.
 
-This is the Python function's schema:
+These are the Python functions' schema:
 
-### FUNCTION_SCHEMA Start ###
-	{function_schema}
-### FUNCTION_SCHEMA End ###
+### FUNCTION_SCHEMAS Start ###
+    {json.dumps(function_schemas, indent=4)}
+### FUNCTION_SCHEMAS End ###
 
 This is the input query.
 
 ### QUERY Start ###
-	{query}
+    {query}
 ### QUERY End ###
 
 The arguments that you need to provide values for, together with their datatypes, are stated in "signature" in the FUNCTION_SCHEMA.
 The values these arguments must take are made clear by the QUERY.
 Use the FUNCTION_SCHEMA "description" too, as this might provide helpful clues about the arguments and their values.
-Return only JSON, stating the argument names and their corresponding values.
+Include the function name in your JSON output.
+Return only JSON, stating the function name and the argument names with their corresponding values.
 
 ### FORMATTING_INSTRUCTIONS Start ###
-	Return a respones in valid JSON format. Do not return any other explanation or text, just the JSON.
-	The JSON-Keys are the names of the arguments, and JSON-values are the values those arguments should take.
+    Return a response in valid JSON format. Do not return any other explanation or text, just the JSON.
+    The JSON output should include a key 'function_name' with the value being the name of the function.
+    Under the key 'arguments', include a nested JSON object where the keys are the names of the arguments and the values are the values those arguments should take.
+    If multiple function schemas are relevant, return a list of JSON objects.
 ### FORMATTING_INSTRUCTIONS End ###
 
 ### EXAMPLE Start ###
-	=== EXAMPLE_INPUT_QUERY Start ===
-		"How is the weather in Hawaii right now in International units?"
-	=== EXAMPLE_INPUT_QUERY End ===
-	=== EXAMPLE_INPUT_SCHEMA Start ===
-		{{
-			"name": "get_weather",
-			"description": "Useful to get the weather in a specific location",
-			"signature": "(location: str, degree: str) -> str",
-			"output": "<class 'str'>",
-		}}
-	=== EXAMPLE_INPUT_QUERY End ===
-	=== EXAMPLE_OUTPUT Start ===
-		{{
-			"location": "Hawaii",
-			"degree": "Celsius",
-		}}
-	=== EXAMPLE_OUTPUT End ===
+    === EXAMPLE_INPUT_QUERY Start ===
+        "What is the temperature in Hawaii and New York right now in Celsius, and what is the humidity in Hawaii?"
+    === EXAMPLE_INPUT_QUERY End ===
+    === EXAMPLE_INPUT_SCHEMA Start ===
+        {{
+            "name": "get_temperature",
+            "description": "Useful to get the temperature in a specific location",
+            "signature": "(location: str, degree: str) -> str",
+            "output": "<class 'str'>",
+        }}
+        {{
+            "name": "get_humidity",
+            "description": "Useful to get the humidity level in a specific location",
+            "signature": "(location: str) -> int",
+            "output": "<class 'int'>",
+        }}
+        {{
+            "name": "get_wind_speed",
+            "description": "Useful to get the wind speed in a specific location",
+            "signature": "(location: str) -> float",
+            "output": "<class 'float'>",
+        }}
+    === EXAMPLE_INPUT_SCHEMA End ===
+    === EXAMPLE_OUTPUT Start ===
+        [
+            {
+                "function_name": "get_temperature",
+                "arguments": {
+                    "location": "Hawaii",
+                    "degree": "Celsius"
+                }
+            },
+            {
+                "function_name": "get_temperature",
+                "arguments": {
+                    "location": "New York",
+                    "degree": "Celsius"
+                }
+            },
+            {
+                "function_name": "get_humidity",
+                "arguments": {
+                    "location": "Hawaii"
+                }
+            }
+        ]
+    === EXAMPLE_OUTPUT End ===
 ### EXAMPLE End ###
 
-Note: I will tip $500 for and accurate JSON output. You will be penalized for an inaccurate JSON output.
+Note: I will tip $500 for an accurate JSON output. You will be penalized for an inaccurate JSON output.
 
 Provide JSON output now:
-"""
+    """
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
 
@@ -105,6 +163,6 @@ Provide JSON output now:
         logger.info(f"LLM output: {output}")
         function_inputs = json.loads(output)
         logger.info(f"Function inputs: {function_inputs}")
-        if not self._is_valid_inputs(function_inputs, function_schema):
+        if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs

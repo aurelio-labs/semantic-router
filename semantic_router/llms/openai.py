@@ -37,16 +37,29 @@ class OpenAILLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
+    def _extract_tool_calls_info(self, tool_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        tool_calls_info = []
+        for tool_call in tool_calls:
+            if tool_call.function.arguments is None:
+                raise ValueError(
+                    "Invalid output, expected arguments to be specified for each tool call."
+                )
+            tool_calls_info.append({
+                "function_name": tool_call.function.name,
+                "arguments": tool_call.function.arguments
+            })
+        return json.dumps(tool_calls_info)
+    
     def __call__(
         self,
         messages: List[Message],
-        function_schema: Optional[dict[str, Any]] = None,
+        function_schemas: Optional[list[dict[str, Any]]] = None,
     ) -> str:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
-            if function_schema:
-                tools = [function_schema]
+            if function_schemas:
+                tools = function_schemas
             else:
                 tools = None
 
@@ -58,20 +71,17 @@ class OpenAILLM(BaseLLM):
                 tools=tools,  # type: ignore # MyPy expecting Iterable[ChatCompletionToolParam] | NotGiven, but dict is accepted by OpenAI.
             )
 
-            if function_schema:
+            if function_schemas:
                 tool_calls = completion.choices[0].message.tool_calls
                 if tool_calls is None:
                     raise ValueError("Invalid output, expected a tool call.")
-                if len(tool_calls) != 1:
+                if len(tool_calls) < 1:
                     raise ValueError(
-                        "Invalid output, expected a single tool to be specified."
+                        "Invalid output, expected at least one tool to be specified."
                     )
-                arguments = tool_calls[0].function.arguments
-                if arguments is None:
-                    raise ValueError(
-                        "Invalid output, expected arguments to be specified."
-                    )
-                output = str(arguments)  # str to keep MyPy happy.
+                
+                # Collecting multiple tool calls information
+                output = self._extract_tool_calls_info(tool_calls)
             else:
                 content = completion.choices[0].message.content
                 if content is None:
@@ -85,12 +95,12 @@ class OpenAILLM(BaseLLM):
             raise Exception(f"LLM error: {e}") from e
 
     def extract_function_inputs(
-        self, query: str, function_schema: dict[str, Any]
+        self, query: str, function_schemas: list[dict[str, Any]]
     ) -> dict:
         messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        function_inputs_str = self(messages=messages, function_schema=function_schema)
+        function_inputs_str = self(messages=messages, function_schemas=function_schemas)
         function_inputs = json.loads(function_inputs_str)
         return function_inputs
