@@ -5,6 +5,7 @@ import pytest
 from semantic_router.llms import BaseLLM
 from semantic_router.route import Route, is_valid
 
+
 # Is valid test:
 def test_is_valid_with_valid_json():
     valid_json = '{"name": "test_route", "utterances": ["hello", "hi"]}'
