@@ -2,7 +2,7 @@ import pytest
 
 from semantic_router.llms import OpenAILLM
 from semantic_router.schema import Message
-from semantic_router.utils.function_call import get_schema_openai
+from semantic_router.utils.function_call import get_schema_openai, convert_param_type_to_json_type
 
 
 @pytest.fixture
@@ -167,3 +167,15 @@ class TestOpenAILLM:
         assert (
             expected_error_message in actual_error_message
         ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
+
+    
+    def test_convert_param_type_to_json_type(self):
+        # Test conversion of basic types
+        assert convert_param_type_to_json_type("int") == "number"
+        assert convert_param_type_to_json_type("float") == "number"
+        assert convert_param_type_to_json_type("str") == "string"
+        assert convert_param_type_to_json_type("bool") == "boolean"
+        assert convert_param_type_to_json_type("NoneType") == "null"
+        assert convert_param_type_to_json_type("list") == "array"
+        # Test conversion of a type not explicitly handled
+        assert convert_param_type_to_json_type("dict") == "object"
