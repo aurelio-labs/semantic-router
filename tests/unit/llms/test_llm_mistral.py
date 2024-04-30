@@ -1,9 +1,9 @@
+from unittest.mock import patch
+
 import pytest
 
 from semantic_router.llms import MistralAILLM
 from semantic_router.schema import Message
-
-from unittest.mock import patch
 
 
 @pytest.fixture

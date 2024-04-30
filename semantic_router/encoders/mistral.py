@@ -2,12 +2,12 @@
 
 import os
 from time import sleep
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
+from pydantic.v1 import PrivateAttr
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
-from pydantic.v1 import PrivateAttr
 
 
 class MistralEncoder(BaseEncoder):

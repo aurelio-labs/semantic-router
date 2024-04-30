@@ -26,7 +26,7 @@ class AzureOpenAIEncoder(BaseEncoder):
         deployment_name: Optional[str] = None,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = None,
-        model: Optional[str] = None,
+        model: Optional[str] = None,  # TODO we should change to `name` JB
         score_threshold: float = 0.82,
     ):
         name = deployment_name

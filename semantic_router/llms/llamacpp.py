@@ -2,11 +2,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
+from pydantic.v1 import PrivateAttr
+
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
-
-from pydantic.v1 import PrivateAttr
 
 
 class LlamaCppLLM(BaseLLM):
@@ -41,8 +41,6 @@ class LlamaCppLLM(BaseLLM):
                 "`pip install 'semantic-router[local]'`"
             )
         self._llama_cpp = llama_cpp
-        llm = self._llama_cpp.Llama
-        grammar = self._llama_cpp.LlamaGrammar
         self.llm = llm
         self.temperature = temperature
         self.max_tokens = max_tokens

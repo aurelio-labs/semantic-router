@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.28"
+version = "0.0.37"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -28,15 +28,16 @@ fastembed = {version = "^0.2.4", optional = true, python = "<3.12"}
 torch = {version = "^2.1.0", optional = true}
 transformers = {version = "^4.36.2", optional = true}
 llama-cpp-python = {version = "^0.2.28", optional = true}
-black = "^23.12.1"
 colorama = "^0.4.6"
 pinecone-client = {version="^3.0.0", optional = true}
 regex = "^2023.12.25"
 torchvision = { version = "^0.17.0", optional = true}
-pillow = { version= "^10.2.0", optional = true}
+pillow = { version = "^10.2.0", optional = true}
 tiktoken = "^0.6.0"
-matplotlib = { version="^3.8.3", optional = true}
-qdrant-client = {version="^1.8.0", optional = true}
+matplotlib = { version = "^3.8.3", optional = true}
+qdrant-client = {version = "^1.8.0", optional = true}
+google-cloud-aiplatform = {version = "^1.45.0", optional = true}
+requests-mock = "^1.12.1"
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
@@ -47,6 +48,7 @@ vision = ["torch", "torchvision", "transformers", "pillow"]
 processing = ["matplotlib"]
 mistralai = ["mistralai"]
 qdrant = ["qdrant-client"]
+google = ["google-cloud-aiplatform"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
@@ -58,6 +60,7 @@ pytest-xdist = "^3.5.0"
 mypy = "^1.7.1"
 types-pyyaml = "^6.0.12.12"
 types-requests = "^2.31.0"
+black = "^24.0.0"
 
 [build-system]
 requires = ["poetry-core"]

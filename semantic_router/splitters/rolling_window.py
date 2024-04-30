@@ -39,6 +39,7 @@ class RollingWindowSplitter(BaseSplitter):
     def __init__(
         self,
         encoder: BaseEncoder,
+        name="rolling_window_splitter",
         threshold_adjustment=0.01,
         dynamic_threshold: bool = True,
         window_size=5,
@@ -46,7 +47,7 @@ class RollingWindowSplitter(BaseSplitter):
         max_split_tokens=300,
         split_tokens_tolerance=10,
         plot_splits=False,
-        name="rolling_window_splitter",
+        enable_statistics=False,
     ):
         super().__init__(name=name, encoder=encoder)
         self.calculated_threshold: float
@@ -58,6 +59,7 @@ class RollingWindowSplitter(BaseSplitter):
         self.min_split_tokens = min_split_tokens
         self.max_split_tokens = max_split_tokens
         self.split_tokens_tolerance = split_tokens_tolerance
+        self.enable_statistics = enable_statistics
         self.statistics: SplitStatistics
 
     def __call__(self, docs: List[str]) -> List[DocumentSplit]:
@@ -74,7 +76,7 @@ class RollingWindowSplitter(BaseSplitter):
         if len(docs) == 1:
             token_count = tiktoken_length(docs[0])
             if token_count > self.max_split_tokens:
-                logger.warning(
+                logger.info(
                     f"Single document exceeds the maximum token limit "
                     f"of {self.max_split_tokens}. "
                     "Splitting to sentences before semantically splitting."
@@ -88,17 +90,37 @@ class RollingWindowSplitter(BaseSplitter):
             self.calculated_threshold = self.encoder.score_threshold
         split_indices = self._find_split_indices(similarities=similarities)
         splits = self._split_documents(docs, split_indices, similarities)
-        self.plot_similarity_scores(similarities, split_indices, splits)
-        logger.info(self.statistics)
+
+        if self.plot_splits:
+            self.plot_similarity_scores(similarities, split_indices, splits)
+
+        if self.enable_statistics:
+            print(self.statistics)
+
         return splits
 
     def _encode_documents(self, docs: List[str]) -> np.ndarray:
-        try:
-            embeddings = self.encoder(docs)
-            return np.array(embeddings)
-        except Exception as e:
-            logger.error(f"Error encoding documents {docs}: {e}")
-            raise
+        """
+        Encodes a list of documents into embeddings. If the number of documents exceeds 2000,
+        the documents are split into batches to avoid overloading the encoder. OpenAI has a
+        limit of len(array) < 2048.
+
+        :param docs: List of text documents to be encoded.
+        :return: A numpy array of embeddings for the given documents.
+        """
+        max_docs_per_batch = 2000
+        embeddings = []
+
+        for i in range(0, len(docs), max_docs_per_batch):
+            batch_docs = docs[i : i + max_docs_per_batch]
+            try:
+                batch_embeddings = self.encoder(batch_docs)
+                embeddings.extend(batch_embeddings)
+            except Exception as e:
+                logger.error(f"Error encoding documents {batch_docs}: {e}")
+                raise
+
+        return np.array(embeddings)
 
     def _calculate_similarity_scores(self, encoded_docs: np.ndarray) -> List[float]:
         raw_similarities = []
@@ -174,7 +196,7 @@ class RollingWindowSplitter(BaseSplitter):
                 logger.debug(f"Iteration {iteration}: Adjusting low to {low}")
             iteration += 1
 
-        logger.info(
+        logger.debug(
             f"Optimal threshold {self.calculated_threshold} found "
             f"with median tokens ({median_tokens}) in target range "
             f"({self.min_split_tokens}-{self.max_split_tokens})."
@@ -208,7 +230,11 @@ class RollingWindowSplitter(BaseSplitter):
             logger.debug(f"Document token count: {doc_token_count} tokens")
             # Check if current index is a split point based on similarity
             if doc_idx + 1 in split_indices:
-                if current_tokens_count + doc_token_count >= self.min_split_tokens:
+                if (
+                    self.min_split_tokens
+                    <= current_tokens_count + doc_token_count
+                    < self.max_split_tokens
+                ):
                     # Include the current document before splitting
                     # if it doesn't exceed the max limit
                     current_split.append(doc)
@@ -325,9 +351,7 @@ class RollingWindowSplitter(BaseSplitter):
             )
             return
 
-        if not self.plot_splits:
-            return
-        fig, axs = plt.subplots(2, 1, figsize=(12, 12))  # Adjust for two plots
+        _, axs = plt.subplots(2, 1, figsize=(12, 12))  # Adjust for two plots
 
         # Plot 1: Similarity Scores
         axs[0].plot(similarities, label="Similarity Scores", marker="o")

@@ -13,3 +13,10 @@ lint lint_diff:
 
 test:
 	poetry run pytest -vv -n 20 --cov=semantic_router --cov-report=term-missing --cov-report=xml
+
+test_functional:
+	poetry run pytest -vv -n 20 tests/functional
+test_unit:
+	poetry run pytest -vv -n 20 tests/unit
+test_integration:
+	poetry run pytest -vv -n 20 tests/integration

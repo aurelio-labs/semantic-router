@@ -20,7 +20,7 @@ class BaseIndex(BaseModel):
     type: str = "base"
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+        self, embeddings: List[List[float]], routes: List[str], utterances: List[Any]
     ):
         """
         Add embeddings to the index.
@@ -43,7 +43,12 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def query(self, vector: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, List[str]]:
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.
