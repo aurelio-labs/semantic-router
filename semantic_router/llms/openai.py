@@ -8,7 +8,10 @@ from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 import json
-
+from semantic_router.utils.function_call import get_schema, convert_python_type_to_json_type
+import inspect
+from typing import Callable, Dict
+import re
 
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
@@ -104,3 +107,52 @@ class OpenAILLM(BaseLLM):
         function_inputs_str = self(messages=messages, function_schemas=function_schemas)
         function_inputs = json.loads(function_inputs_str)
         return function_inputs
+
+def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
+    schemas = []
+    for item in items:
+        if not callable(item):
+            raise ValueError("Provided item must be a callable function.")
+
+        # Use the existing get_schema function to get the basic schema
+        basic_schema = get_schema(item)
+
+        # Initialize the function schema with basic details
+        function_schema = {
+            "name": basic_schema['name'],
+            "description": basic_schema['description'],
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+
+        # Extract parameter details from the signature
+        signature = inspect.signature(item)
+        docstring = inspect.getdoc(item)
+        param_doc_regex = re.compile(r":param (\w+):(.*?)\n(?=:\w|$)", re.S)
+        doc_params = param_doc_regex.findall(docstring) if docstring else []
+
+        for param_name, param in signature.parameters.items():
+            param_type = param.annotation.__name__ if param.annotation != inspect.Parameter.empty else "Any"
+            param_description = "No description available."
+            param_required = param.default is inspect.Parameter.empty
+
+            # Find the parameter description in the docstring
+            for doc_param_name, doc_param_desc in doc_params:
+                if doc_param_name == param_name:
+                    param_description = doc_param_desc.strip()
+                    break
+
+            function_schema["parameters"]["properties"][param_name] = {
+                "type": convert_python_type_to_json_type(param_type),
+                "description": param_description
+            }
+
+            if param_required:
+                function_schema["parameters"]["required"].append(param_name)
+
+        schemas.append({
+            "type": "function",
+            "function": function_schema
+        })
+
+    return schemas
+
