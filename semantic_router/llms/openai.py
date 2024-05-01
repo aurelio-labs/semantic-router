@@ -49,9 +49,9 @@ class OpenAILLM(BaseLLM):
                 )
             tool_calls_info.append({
                 "function_name": tool_call.function.name,
-                "arguments": tool_call.function.arguments
+                "arguments": json.loads(tool_call.function.arguments)
             })
-        return json.dumps(tool_calls_info)
+        return tool_calls_info
     
     def __call__(
         self,
@@ -104,9 +104,7 @@ class OpenAILLM(BaseLLM):
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        function_inputs_str = self(messages=messages, function_schemas=function_schemas)
-        function_inputs = json.loads(function_inputs_str)
-        return function_inputs
+        return self(messages=messages, function_schemas=function_schemas)
 
 def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
     schemas = []

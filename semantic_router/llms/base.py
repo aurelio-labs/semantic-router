@@ -108,9 +108,9 @@ Return only JSON, stating the function name and the argument names with their co
 
 ### FORMATTING_INSTRUCTIONS Start ###
     Return a response in valid JSON format. Do not return any other explanation or text, just the JSON.
-    The JSON output should include a key 'function_name' with the value being the name of the function.
+    The JSON output should always be an array of JSON objects. If only one function is relevant, return an array with a single JSON object.
+    Each JSON object should include a key 'function_name' with the value being the name of the function.
     Under the key 'arguments', include a nested JSON object where the keys are the names of the arguments and the values are the values those arguments should take.
-    If multiple function schemas are relevant, return a list of JSON objects.
 ### FORMATTING_INSTRUCTIONS End ###
 
 ### EXAMPLE Start ###
@@ -139,26 +139,26 @@ Return only JSON, stating the function name and the argument names with their co
     === EXAMPLE_INPUT_SCHEMA End ===
     === EXAMPLE_OUTPUT Start ===
         [
-            {
+            {{
                 "function_name": "get_temperature",
-                "arguments": {
+                "arguments": {{
                     "location": "Hawaii",
                     "degree": "Celsius"
-                }
-            },
-            {
+                }}
+            }},
+            {{
                 "function_name": "get_temperature",
-                "arguments": {
+                "arguments": {{
                     "location": "New York",
                     "degree": "Celsius"
-                }
-            },
-            {
+                }}
+            }},
+            {{
                 "function_name": "get_humidity",
-                "arguments": {
+                "arguments": {{
                     "location": "Hawaii"
-                }
-            }
+                }}
+            }}
         ]
     === EXAMPLE_OUTPUT End ===
 ### EXAMPLE End ###
