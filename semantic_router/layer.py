@@ -364,16 +364,16 @@ class RouteLayer:
         # data = load_dataset(full_dataset_id, use_auth_token=access_token) # TODO: Couldn't get this to work. Revisit.
 
         # Assuming the file is directly accessible and you know its filename
-        file_path = hf_hub_download(
+        config_data_file_path = hf_hub_download(
             repo_id=full_dataset_id,
-            filename="route_layer_data.json",
+            filename="config_data.json",
             repo_type="dataset",
             revision="main",  # Ensure you're targeting the latest version in the main branch.
             force_download=True,  # Force re-downloading the file, incase the cached version is outdated.
             use_auth_token=access_token,  # Optional: only if required for private repositories.
         )
         # Load the file content
-        with open(file_path, "r") as file:
+        with open(config_data_file_path, "r") as file:
             serialized_data = json.load(file)
 
         # Deserialize encoder
@@ -383,14 +383,24 @@ class RouteLayer:
         encoder_score_threshold = encoder_data.get("score_threshold", None)
 
         # Dynamically import and instantiate the encoder
-        encoder = Encoder(encoder_type, name=encoder_name).model
+        encoder = AutoEncoder(encoder_type, name=encoder_name).model
         encoder.score_threshold = encoder_score_threshold
 
-        # Deserialize routes
+        routes_file_path = hf_hub_download(
+            repo_id=full_dataset_id,
+            filename="routes_dataset.jsonl",
+            repo_type="dataset",
+            revision="main",  # Ensure you're targeting the latest version in the main branch.
+            force_download=True,  # Force re-downloading the file, incase the cached version is outdated.
+            use_auth_token=access_token,  # Optional: only if required for private repositories.
+        )
         routes = []
-        for route_data in serialized_data["routes"]:
-            route_instance = Route.from_dict(route_data)
-            routes.append(route_instance)
+        # Load the file content
+        with open(routes_file_path, "r") as file:
+            for route_data in file:
+                route_dict = json.loads(route_data)
+                route_instance = Route.from_dict(route_dict)
+                routes.append(route_instance)
 
         # Create a new instance with the deserialized data
         return cls(encoder=encoder, routes=routes)
@@ -649,7 +659,7 @@ class RouteLayer:
         """
         Save the JSON data to a file in the repository.
         """
-        json_file_path = os.path.join(repo_local_path, "route_layer_data.json")
+        json_file_path = os.path.join(repo_local_path, "config_data.json")
         with open(json_file_path, "w") as json_file:
             json_file.write(json_data)
 
@@ -659,7 +669,7 @@ class RouteLayer:
         """
         repo = Repository(repo_local_path, use_auth_token=True)
         repo.git_add("routes_dataset.jsonl")
-        repo.git_add("route_layer_data.json")
+        repo.git_add("config_data.json")
         try:
             repo.git_commit("Update route layer data")
             repo.git_push()
