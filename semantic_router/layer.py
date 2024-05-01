@@ -583,17 +583,16 @@ class RouteLayer:
         config = self.to_config()
         config.to_file(file_path)
 
-    def serialize(self):
-        serialized_routes = [route.to_dict() for route in self.routes]
+    def serialize_other_data(self):
+
         # Serialize encoder information correctly
         encoder_info = {
             "type": getattr(self.encoder, "type", "base"),
             "name": getattr(self.encoder, "name", None),
             "score_threshold": getattr(self.encoder, "score_threshold", None),
         }
-        # Prepare the complete serialization including routes and encoder info
+        # Prepare the complete serialization including encoder info and tags
         serialized_data = {
-            "routes": serialized_routes,
             "encoder": encoder_info,
             # Add tags for Hugging Face Hub
             "tags": [
@@ -603,6 +602,20 @@ class RouteLayer:
             ],
         }
         return serialized_data
+
+    def serialize_jsonl(self):
+        # Generate a list of JSON strings, one for each route
+        jsonl_data = ""
+        for route in self.routes:
+            # Convert each route to a dictionary and then to a JSON string
+            route_json = json.dumps(route.to_dict())
+            jsonl_data += f"{route_json}\n"
+        return jsonl_data
+
+    def _jsonl_to_hub(self, repo_local_path: str, jsonl_data: str):
+        jsonl_file_path = os.path.join(repo_local_path, "routes_dataset.jsonl")
+        with open(jsonl_file_path, "w") as file:
+            file.write(jsonl_data)
 
     def _create_hub_repo(
         self, namespace: str, route_layer_id: str, access_token: str
@@ -645,6 +658,7 @@ class RouteLayer:
         Commit and push the changes to the repository.
         """
         repo = Repository(repo_local_path, use_auth_token=True)
+        repo.git_add("routes_dataset.jsonl")
         repo.git_add("route_layer_data.json")
         try:
             repo.git_commit("Update route layer data")
@@ -661,23 +675,23 @@ class RouteLayer:
     def to_hub(
         self, namespace: str, route_layer_id: str, access_token: Optional[str] = None
     ):
-        """
-        Serialize data and upload to the Hugging Face Hub using the User Access Token.
-        """
-        serialized_data = self.serialize()
+        # Serialize routes to JSONL format
+        jsonl_data = self.serialize_jsonl()
+        # Serialize other data to JSON format
+        serialized_data = self.serialize_other_data()
         json_data = json.dumps(serialized_data, indent=4)
+
+        # Use the provided access token or retrieve from environment
         access_token = access_token or os.getenv("HUGGING_FACE_ACCESS_TOKEN")
-
         if not access_token:
-            raise ValueError(
-                "No Hugging Face access token provided. Please provide an access token or set the HUGGING_FACE_ACCESS_TOKEN environment variable."
-            )
+            raise ValueError("No Hugging Face access token provided.")
 
-        repo_local_path = None
+        # Create repository, save data, commit, and push
         try:
             repo_local_path = self._create_hub_repo(
                 namespace, route_layer_id, access_token
             )
+            self._jsonl_to_hub(repo_local_path, jsonl_data)
             self._json_to_hub(repo_local_path, json_data)
             self._commit_push_to_hub(repo_local_path)
         finally:
