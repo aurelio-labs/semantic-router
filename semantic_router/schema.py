@@ -1,6 +1,5 @@
 from enum import Enum
-from typing import List, Optional
-
+from typing import List, Optional, Union, Any
 from pydantic.v1 import BaseModel
 
 
@@ -52,7 +51,7 @@ class Message(BaseModel):
 
 
 class DocumentSplit(BaseModel):
-    docs: List[str]
+    docs: List[Union[str, Any]]
     is_triggered: bool = False
     triggered_score: Optional[float] = None
     token_count: Optional[int] = None
@@ -60,7 +59,7 @@ class DocumentSplit(BaseModel):
 
     @property
     def content(self) -> str:
-        return " ".join(self.docs)
+        return " ".join([doc if isinstance(doc, str) else "" for doc in self.docs])
 
 
 class Metric(Enum):
