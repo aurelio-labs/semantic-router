@@ -53,6 +53,7 @@ class OpenAILLM(BaseLLM):
             })
         return tool_calls_info
     
+    # TODO: Think about whether we need function_schemas.
     def __call__(
         self,
         messages: List[Message],
@@ -97,14 +98,14 @@ class OpenAILLM(BaseLLM):
             logger.error(f"LLM error: {e}")
             raise Exception(f"LLM error: {e}") from e
 
-    def extract_function_inputs(
-        self, query: str, function_schemas: list[dict[str, Any]]
-    ) -> dict:
-        messages = []
-        system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
-        messages.append(Message(role="system", content=system_prompt))
-        messages.append(Message(role="user", content=query))
-        return self(messages=messages, function_schemas=function_schemas)
+    # def extract_function_inputs(
+    #     self, query: str, function_schemas: list[dict[str, Any]]
+    # ) -> dict:
+    #     messages = []
+    #     system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
+    #     messages.append(Message(role="system", content=system_prompt))
+    #     messages.append(Message(role="user", content=query))
+    #     return self(messages=messages, function_schemas=function_schemas)
 
 def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
     schemas = []

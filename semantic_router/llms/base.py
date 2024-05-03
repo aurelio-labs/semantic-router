@@ -83,90 +83,38 @@ class BaseLLM(BaseModel):
         logger.info("Extracting function input...")
 
         prompt = f"""
-You are an accurate and reliable computer program that only outputs valid JSON. 
-Your task is to:
-    1) Pick the most relevant Python function schema(s) from FUNCTION_SCHEMAS below, based on the input QUERY. If only one schema is provided, choose that. If multiple schemas are relevant, output a list of JSON objects for each.
-    2) Output JSON representing the input arguments of the chosen function schema(s), including the function name, with argument values determined by information in the QUERY.
+You are a precise program designed to output valid JSON based on Python function schemas and a given QUERY. Follow these steps:
 
-These are the Python functions' schema:
-
+1. Review the FUNCTION_SCHEMAS provided below:
 ### FUNCTION_SCHEMAS Start ###
-    {json.dumps(function_schemas, indent=4)}
+{json.dumps(function_schemas, indent=4)}
 ### FUNCTION_SCHEMAS End ###
 
-This is the input query.
-
+2. Analyze the QUERY:
 ### QUERY Start ###
-    {query}
+{query}
 ### QUERY End ###
 
-The arguments that you need to provide values for, together with their datatypes, are stated in "signature" in the FUNCTION_SCHEMA.
-The values these arguments must take are made clear by the QUERY.
-Use the FUNCTION_SCHEMA "description" too, as this might provide helpful clues about the arguments and their values.
-Include the function name in your JSON output.
-Return only JSON, stating the function name and the argument names with their corresponding values.
+3. Select the most relevant function schema(s) based on:
+- The function's output aligning with the information requested in the QUERY.
+- The availability of required input information in the QUERY.
 
+4. Format the JSON output as follows:
 ### FORMATTING_INSTRUCTIONS Start ###
-    Return a response in valid JSON format. Do not return any other explanation or text, just the JSON.
-    The JSON output should always be an array of JSON objects. If only one function is relevant, return an array with a single JSON object.
-    Each JSON object should include a key 'function_name' with the value being the name of the function.
-    Under the key 'arguments', include a nested JSON object where the keys are the names of the arguments and the values are the values those arguments should take.
+[
+    {{
+        "function_name": "FUNCTION_NAME",
+        "arguments": {{
+            "ARGUMENT_NAME": "VALUE",
+            ...
+        }}
+    }},
+    ...
+]
 ### FORMATTING_INSTRUCTIONS End ###
 
-### EXAMPLE Start ###
-    === EXAMPLE_INPUT_QUERY Start ===
-        "What is the temperature in Hawaii and New York right now in Celsius, and what is the humidity in Hawaii?"
-    === EXAMPLE_INPUT_QUERY End ===
-    === EXAMPLE_INPUT_SCHEMA Start ===
-        {{
-            "name": "get_temperature",
-            "description": "Useful to get the temperature in a specific location",
-            "signature": "(location: str, degree: str) -> str",
-            "output": "<class 'str'>",
-        }}
-        {{
-            "name": "get_humidity",
-            "description": "Useful to get the humidity level in a specific location",
-            "signature": "(location: str) -> int",
-            "output": "<class 'int'>",
-        }}
-        {{
-            "name": "get_wind_speed",
-            "description": "Useful to get the wind speed in a specific location",
-            "signature": "(location: str) -> float",
-            "output": "<class 'float'>",
-        }}
-    === EXAMPLE_INPUT_SCHEMA End ===
-    === EXAMPLE_OUTPUT Start ===
-        [
-            {{
-                "function_name": "get_temperature",
-                "arguments": {{
-                    "location": "Hawaii",
-                    "degree": "Celsius"
-                }}
-            }},
-            {{
-                "function_name": "get_temperature",
-                "arguments": {{
-                    "location": "New York",
-                    "degree": "Celsius"
-                }}
-            }},
-            {{
-                "function_name": "get_humidity",
-                "arguments": {{
-                    "location": "Hawaii"
-                }}
-            }}
-        ]
-    === EXAMPLE_OUTPUT End ===
-### EXAMPLE End ###
-
-Note: I will tip $500 for an accurate JSON output. You will be penalized for an inaccurate JSON output.
-
-Provide JSON output now:
-    """
+Output the JSON now:
+"""
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
 
