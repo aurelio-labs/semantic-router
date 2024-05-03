@@ -428,7 +428,7 @@ class RouteLayer:
 
     def _retrieve(
         self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[dict]:
+    ) -> List[Dict]:
         """Given a query vector, retrieve the top_k most similar records."""
         # get scores and routes
         scores, routes = self.index.query(
@@ -448,7 +448,7 @@ class RouteLayer:
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
-    def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
+    def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
         # Calculate total score for each class
@@ -473,7 +473,7 @@ class RouteLayer:
         return None
 
     def _semantic_classify_multiple_routes(
-        self, query_results: List[dict]
+        self, query_results: List[Dict]
     ) -> List[Tuple[str, float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
@@ -496,7 +496,7 @@ class RouteLayer:
         return classes_above_threshold
 
     def group_scores_by_class(
-        self, query_results: List[dict]
+        self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:

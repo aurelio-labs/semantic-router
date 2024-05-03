@@ -39,7 +39,7 @@ class TfidfEncoder(BaseEncoder):
         self.word_index = self._build_word_index(docs)
         self.idf = self._compute_idf(docs)
 
-    def _build_word_index(self, docs: List[str]) -> dict:
+    def _build_word_index(self, docs: List[str]) -> Dict:
         words = set()
         for doc in docs:
             for word in doc.split():

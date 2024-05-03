@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
 from pydantic.v1 import PrivateAttr
 
@@ -9,8 +9,8 @@ class VitEncoder(BaseEncoder):
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
     score_threshold: float = 0.5
-    processor_kwargs: dict = {}
-    model_kwargs: dict = {}
+    processor_kwargs: Dict = {}
+    model_kwargs: Dict = {}
     device: Optional[str] = None
     _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()

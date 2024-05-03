@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 
 from pydantic.v1 import PrivateAttr
 
@@ -79,8 +79,8 @@ class LlamaCppLLM(BaseLLM):
             self.grammar = None
 
     def extract_function_inputs(
-        self, query: str, function_schema: dict[str, Any]
-    ) -> dict:
+        self, query: str, function_schema: Dict[str, Any]
+    ) -> Dict:
         with self._grammar():
             return super().extract_function_inputs(
                 query=query, function_schema=function_schema

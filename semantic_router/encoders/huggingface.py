@@ -23,7 +23,7 @@ Classes:
 import requests
 import time
 import os
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
 from pydantic.v1 import PrivateAttr
 
@@ -35,8 +35,8 @@ class HuggingFaceEncoder(BaseEncoder):
     name: str = "sentence-transformers/all-MiniLM-L6-v2"
     type: str = "huggingface"
     score_threshold: float = 0.5
-    tokenizer_kwargs: dict = {}
-    model_kwargs: dict = {}
+    tokenizer_kwargs: Dict = {}
+    model_kwargs: Dict = {}
     device: Optional[str] = None
     _tokenizer: Any = PrivateAttr()
     _model: Any = PrivateAttr()

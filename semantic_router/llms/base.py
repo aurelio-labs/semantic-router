@@ -1,5 +1,5 @@
 import json
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
 from pydantic.v1 import BaseModel
 
@@ -20,7 +20,7 @@ class BaseLLM(BaseModel):
         raise NotImplementedError("Subclasses must implement this method")
     
     def _is_valid_inputs(
-        self, inputs: List[dict[str, Any]], function_schemas: List[dict[str, Any]]
+        self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
         """Determine if the functions chosen by the LLM exist within the function_schemas, 
         and if the input arguments are valid for those functions."""
@@ -49,7 +49,7 @@ class BaseLLM(BaseModel):
             logger.error(f"Input validation error: {str(e)}")
             return False
 
-    def _validate_single_function_inputs(self, inputs: dict[str, Any], function_schema: dict[str, Any]) -> bool:
+    def _validate_single_function_inputs(self, inputs: Dict[str, Any], function_schema: Dict[str, Any]) -> bool:
         """Validate the extracted inputs against the function schema"""
         try:
             # Extract parameter names and types from the signature string
@@ -78,8 +78,8 @@ class BaseLLM(BaseModel):
         return param_names, param_types
 
     def extract_function_inputs(
-        self, query: str, function_schemas: List[dict[str, Any]]
-    ) -> dict:
+        self, query: str, function_schemas: List[Dict[str, Any]]
+    ) -> Dict:
         logger.info("Extracting function input...")
 
         prompt = f"""
