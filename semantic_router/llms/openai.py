@@ -2,6 +2,7 @@ import os
 from typing import List, Optional, Any
 
 import openai
+from openai._types import NotGiven
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
@@ -64,14 +65,14 @@ class OpenAILLM(BaseLLM):
             if function_schemas:
                 tools = function_schemas
             else:
-                tools = None
+                tools = NotGiven
 
             completion = self.client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                tools=tools,  # type: ignore # MyPy expecting Iterable[ChatCompletionToolParam] | NotGiven, but dict is accepted by OpenAI.
+                tools=tools,  
             )
 
             if function_schemas:
