@@ -11,7 +11,7 @@ class BedrockEncoder(BaseEncoder):
     client: Any = None
     type: str = "bedrock"
     input_type: Optional[str] = "search_query"
-    session: Optional[Any] = (None,)
+    session: Optional[Any] = None
     region: Optional[str] = None
 
     def __init__(
