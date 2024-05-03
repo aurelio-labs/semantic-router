@@ -31,3 +31,8 @@ class EncoderDefault(Enum):
             "GOOGLE_EMBEDDING_MODEL", "textembedding-gecko@003"
         ),
     }
+    BEDROCK = {
+        "embedding_model": os.environ.get(
+            "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"
+        )
+    }
