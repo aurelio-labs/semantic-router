@@ -79,9 +79,9 @@ class LlamaCppLLM(BaseLLM):
             self.grammar = None
 
     def extract_function_inputs(
-        self, query: str, function_schema: Dict[str, Any]
+        self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> Dict:
         with self._grammar():
             return super().extract_function_inputs(
-                query=query, function_schema=function_schema
+                query=query, function_schemas=function_schemas
             )

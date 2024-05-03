@@ -169,13 +169,14 @@ Provide JSON output now:
     """
         llm_input = [Message(role="user", content=prompt)]
         output = self(llm_input)
-
         if not output:
             raise Exception("No output generated for extract function input")
 
         output = output.replace("'", '"').strip().rstrip(",")
         logger.info(f"LLM output: {output}")
         function_inputs = json.loads(output)
+        if not isinstance(function_inputs, list): # Local LLMs return a single JSON object that isn't in an array sometimes.
+            function_inputs = [function_inputs]
         logger.info(f"Function inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
