@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from pydantic.v1 import PrivateAttr
 
@@ -48,7 +48,7 @@ class LlamaCppLLM(BaseLLM):
 
     def __call__(
         self,
-        messages: list[Message],
+        messages: List[Message],
     ) -> str:
         try:
             completion = self.llm.create_chat_completion(

@@ -41,7 +41,7 @@ class OpenAILLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def _extract_tool_calls_info(self, tool_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _extract_tool_calls_info(self, tool_calls: List[dict[str, Any]]) -> List[dict[str, Any]]:
         tool_calls_info = []
         for tool_call in tool_calls:
             if tool_call.function.arguments is None:
@@ -57,7 +57,7 @@ class OpenAILLM(BaseLLM):
     def __call__(
         self,
         messages: List[Message],
-        function_schemas: Optional[list[dict[str, Any]]] = None,
+        function_schemas: Optional[List[dict[str, Any]]] = None,
     ) -> str:
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
@@ -99,7 +99,7 @@ class OpenAILLM(BaseLLM):
             raise Exception(f"LLM error: {e}") from e
 
     def extract_function_inputs(
-        self, query: str, function_schemas: list[dict[str, Any]]
+        self, query: str, function_schemas: List[dict[str, Any]]
     ) -> dict:
         messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."

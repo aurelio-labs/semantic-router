@@ -20,7 +20,7 @@ class BaseLLM(BaseModel):
         raise NotImplementedError("Subclasses must implement this method")
     
     def _is_valid_inputs(
-        self, inputs: list[dict[str, Any]], function_schemas: list[dict[str, Any]]
+        self, inputs: List[dict[str, Any]], function_schemas: List[dict[str, Any]]
     ) -> bool:
         """Determine if the functions chosen by the LLM exist within the function_schemas, 
         and if the input arguments are valid for those functions."""
@@ -68,7 +68,7 @@ class BaseLLM(BaseModel):
             logger.error(f"Single input validation error: {str(e)}")
             return False
 
-    def _extract_parameter_info(self, signature: str) -> tuple[list[str], list[str]]:
+    def _extract_parameter_info(self, signature: str) -> tuple[List[str], List[str]]:
         """Extract parameter names and types from the function signature."""
         param_info = [param.strip() for param in signature[1:-1].split(",")]
         param_names = [info.split(":")[0].strip() for info in param_info]
@@ -78,7 +78,7 @@ class BaseLLM(BaseModel):
         return param_names, param_types
 
     def extract_function_inputs(
-        self, query: str, function_schemas: list[dict[str, Any]]
+        self, query: str, function_schemas: List[dict[str, Any]]
     ) -> dict:
         logger.info("Extracting function input...")
 

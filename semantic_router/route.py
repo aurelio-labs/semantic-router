@@ -47,7 +47,7 @@ class Route(BaseModel):
     name: str
     utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
-    function_schemas: Optional[list[Dict[str, Any]]] = None
+    function_schemas: Optional[List[Dict[str, Any]]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 

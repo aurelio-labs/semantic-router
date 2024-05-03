@@ -24,7 +24,7 @@ class EncoderInfo(BaseModel):
 
 class RouteChoice(BaseModel):
     name: Optional[str] = None
-    function_call: Optional[list[dict]] = None
+    function_call: Optional[List[dict]] = None
     similarity_score: Optional[float] = None
 
 

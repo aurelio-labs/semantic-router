@@ -196,7 +196,7 @@ class RouteLayer:
         else:
             self.encoder = encoder
         self.llm = llm
-        self.routes: list[Route] = routes if routes is not None else []
+        self.routes: List[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
         self.top_k = top_k
         if self.top_k < 1:
