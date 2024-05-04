@@ -24,11 +24,7 @@ class BedrockEncoder(BaseEncoder):
     ):
         if name is None:
             name = EncoderDefault.BEDROCK.value["embedding_model"]
-        super().__init__(
-            name=name,
-            score_threshold=score_threshold,
-            input_type=input_type,
-        )
+        super().__init__(name=name, score_threshold=score_threshold)
         self.input_type = input_type
         self.session = session or boto3.Session()
         if self.session.get_credentials() is None:
