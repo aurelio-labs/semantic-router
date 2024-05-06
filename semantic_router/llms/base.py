@@ -24,18 +24,6 @@ class BaseLLM(BaseModel):
     ) -> bool:
         """Determine if the functions chosen by the LLM exist within the function_schemas, 
         and if the input arguments are valid for those functions."""
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('inputs')
-        print(inputs)
-        print('#'*50)
-        # DEBUGGING: End.
-        # DEBUGGING: Start.
-        print('#'*50)
-        print('function_schemas')
-        print(function_schemas)
-        print('#'*50)
-        # DEBUGGING: End.
         try:
             for input_dict in inputs:
                 # Check if 'function_name' and 'arguments' keys exist in each input dictionary
