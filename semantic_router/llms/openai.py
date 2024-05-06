@@ -104,7 +104,69 @@ class OpenAILLM(BaseLLM):
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        return self(messages=messages, function_schemas=function_schemas)
+        function_inputs = self(messages=messages, function_schemas=function_schemas)
+        logger.info(f"Function inputs: {function_inputs}")
+        if not self._is_valid_inputs(function_inputs, function_schemas):
+            raise ValueError("Invalid inputs")
+        return function_inputs
+    
+    def _is_valid_inputs(
+        self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
+    ) -> bool:
+        """Determine if the functions chosen by the LLM exist within the function_schemas, 
+        and if the input arguments are valid for those functions."""
+        try:
+            for input_dict in inputs:
+                # Check if 'function_name' and 'arguments' keys exist in each input dictionary
+                if "function_name" not in input_dict or "arguments" not in input_dict:
+                    logger.error("Missing 'function_name' or 'arguments' in inputs")
+                    return False
+
+                function_name = input_dict["function_name"]
+                arguments = input_dict["arguments"]
+
+                # Find the matching function schema based on function_name
+                matching_schema = next((schema['function'] for schema in function_schemas if schema['function']['name'] == function_name), None)
+                if not matching_schema:
+                    logger.error(f"No matching function schema found for function name: {function_name}")
+                    return False
+
+                # Validate the inputs against the function schema
+                if not self._validate_single_function_inputs(arguments, matching_schema):
+                    logger.error(f"Validation failed for function name: {function_name}")
+                    return False
+
+            return True
+        except Exception as e:
+            logger.error(f"Input validation error: {str(e)}")
+            return False
+
+    def _validate_single_function_inputs(self, inputs: Dict[str, Any], function_schema: Dict[str, Any]) -> bool:
+        """Validate the extracted inputs against the function schema"""
+        try:
+            # Access the parameters and their properties from the function schema directly
+            parameters = function_schema['parameters']['properties']
+            required_params = function_schema['parameters'].get('required', [])
+
+            # Check if all required parameters are present in the inputs
+            for param_name in required_params:
+                if param_name not in inputs:
+                    logger.error(f"Required input '{param_name}' missing from query")
+                    return False
+
+            # Check if the types of the inputs match the expected types (if type checking is needed)
+            for param_name, param_info in parameters.items():
+                if param_name in inputs:
+                    expected_type = param_info['type']
+                    # This is a simple type check, consider expanding it based on your needs
+                    if expected_type == 'string' and not isinstance(inputs[param_name], str):
+                        logger.error(f"Input type for '{param_name}' is not {expected_type}")
+                        return False
+
+            return True
+        except Exception as e:
+            logger.error(f"Single input validation error: {str(e)}")
+            return False
 
 def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
     schemas = []
