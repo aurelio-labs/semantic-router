@@ -80,7 +80,7 @@ class LlamaCppLLM(BaseLLM):
 
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
-    ) -> Dict:
+    ) -> List[Dict[str, Any]]:
         with self._grammar():
             return super().extract_function_inputs(
                 query=query, function_schemas=function_schemas

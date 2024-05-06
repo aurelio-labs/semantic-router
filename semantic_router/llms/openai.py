@@ -1,17 +1,22 @@
 import os
-from typing import List, Optional, Any, Callable, Dict
+from typing import List, Optional, Any, Callable, Dict, Union
 
 import openai
-from openai._types import NotGiven
+from openai._types import NotGiven, NOT_GIVEN
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 import json
-from semantic_router.utils.function_call import get_schema, convert_python_type_to_json_type
+from semantic_router.utils.function_call import (
+    get_schema,
+    convert_python_type_to_json_type,
+)
 import inspect
 import re
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
+
 
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
@@ -40,19 +45,23 @@ class OpenAILLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def _extract_tool_calls_info(self, tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_tool_calls_info(
+        self, tool_calls: List[ChatCompletionMessageToolCall]
+    ) -> List[Dict[str, Any]]:
         tool_calls_info = []
         for tool_call in tool_calls:
             if tool_call.function.arguments is None:
                 raise ValueError(
                     "Invalid output, expected arguments to be specified for each tool call."
                 )
-            tool_calls_info.append({
-                "function_name": tool_call.function.name,
-                "arguments": json.loads(tool_call.function.arguments)
-            })
+            tool_calls_info.append(
+                {
+                    "function_name": tool_call.function.name,
+                    "arguments": json.loads(tool_call.function.arguments),
+                }
+            )
         return tool_calls_info
-    
+
     def __call__(
         self,
         messages: List[Message],
@@ -61,17 +70,14 @@ class OpenAILLM(BaseLLM):
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
-            if function_schemas:
-                tools = function_schemas
-            else:
-                tools = NotGiven
+            tools: Union[List[Dict[str, Any]], NotGiven] = function_schemas if function_schemas is not None else NOT_GIVEN
 
             completion = self.client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                tools=tools,  
+                tools=tools, # type: ignore # We pass a list of dicts which get interpreted as Iterable[ChatCompletionToolParam].
             )
 
             if function_schemas:
@@ -82,14 +88,26 @@ class OpenAILLM(BaseLLM):
                     raise ValueError(
                         "Invalid output, expected at least one tool to be specified."
                     )
-                
+
                 # Collecting multiple tool calls information
-                output = self._extract_tool_calls_info(tool_calls)
+                # DEBUGGING: Start.
+                print('#'*50)
+                print('tool_calls')
+                print(tool_calls)
+                print('#'*50)
+                # DEBUGGING: End.
+                # DEBUGGING: Start.
+                print('#'*50)
+                print('type(tool_calls)')
+                print(type(tool_calls))
+                print('#'*50)
+                # DEBUGGING: End.
+                output = str(self._extract_tool_calls_info(tool_calls)) # str in keepign with base type.
             else:
                 content = completion.choices[0].message.content
                 if content is None:
                     raise ValueError("Invalid output, expected content.")
-                output = str(content)  # str to keep MyPy happy.
+                output = str(content)  # str in keepign with base type.
 
             return output
 
@@ -99,21 +117,24 @@ class OpenAILLM(BaseLLM):
 
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
-    ) -> Dict:
+    ) -> List[Dict[str, Any]]:
         messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages.append(Message(role="system", content=system_prompt))
         messages.append(Message(role="user", content=query))
-        function_inputs = self(messages=messages, function_schemas=function_schemas)
+        output = self(messages=messages, function_schemas=function_schemas)
+        if not output:
+            raise Exception("No output generated for extract function input")
+        function_inputs = json.loads(output)
         logger.info(f"Function inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs
-    
+
     def _is_valid_inputs(
         self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
-        """Determine if the functions chosen by the LLM exist within the function_schemas, 
+        """Determine if the functions chosen by the LLM exist within the function_schemas,
         and if the input arguments are valid for those functions."""
         try:
             for input_dict in inputs:
@@ -126,14 +147,27 @@ class OpenAILLM(BaseLLM):
                 arguments = input_dict["arguments"]
 
                 # Find the matching function schema based on function_name
-                matching_schema = next((schema['function'] for schema in function_schemas if schema['function']['name'] == function_name), None)
+                matching_schema = next(
+                    (
+                        schema["function"]
+                        for schema in function_schemas
+                        if schema["function"]["name"] == function_name
+                    ),
+                    None,
+                )
                 if not matching_schema:
-                    logger.error(f"No matching function schema found for function name: {function_name}")
+                    logger.error(
+                        f"No matching function schema found for function name: {function_name}"
+                    )
                     return False
 
                 # Validate the inputs against the function schema
-                if not self._validate_single_function_inputs(arguments, matching_schema):
-                    logger.error(f"Validation failed for function name: {function_name}")
+                if not self._validate_single_function_inputs(
+                    arguments, matching_schema
+                ):
+                    logger.error(
+                        f"Validation failed for function name: {function_name}"
+                    )
                     return False
 
             return True
@@ -141,12 +175,14 @@ class OpenAILLM(BaseLLM):
             logger.error(f"Input validation error: {str(e)}")
             return False
 
-    def _validate_single_function_inputs(self, inputs: Dict[str, Any], function_schema: Dict[str, Any]) -> bool:
+    def _validate_single_function_inputs(
+        self, inputs: Dict[str, Any], function_schema: Dict[str, Any]
+    ) -> bool:
         """Validate the extracted inputs against the function schema"""
         try:
             # Access the parameters and their properties from the function schema directly
-            parameters = function_schema['parameters']['properties']
-            required_params = function_schema['parameters'].get('required', [])
+            parameters = function_schema["parameters"]["properties"]
+            required_params = function_schema["parameters"].get("required", [])
 
             # Check if all required parameters are present in the inputs
             for param_name in required_params:
@@ -157,16 +193,21 @@ class OpenAILLM(BaseLLM):
             # Check if the types of the inputs match the expected types (if type checking is needed)
             for param_name, param_info in parameters.items():
                 if param_name in inputs:
-                    expected_type = param_info['type']
+                    expected_type = param_info["type"]
                     # This is a simple type check, consider expanding it based on your needs
-                    if expected_type == 'string' and not isinstance(inputs[param_name], str):
-                        logger.error(f"Input type for '{param_name}' is not {expected_type}")
+                    if expected_type == "string" and not isinstance(
+                        inputs[param_name], str
+                    ):
+                        logger.error(
+                            f"Input type for '{param_name}' is not {expected_type}"
+                        )
                         return False
 
             return True
         except Exception as e:
             logger.error(f"Single input validation error: {str(e)}")
             return False
+
 
 def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
     schemas = []
@@ -179,9 +220,9 @@ def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
 
         # Initialize the function schema with basic details
         function_schema = {
-            "name": basic_schema['name'],
-            "description": basic_schema['description'],
-            "parameters": {"type": "object", "properties": {}, "required": []}
+            "name": basic_schema["name"],
+            "description": basic_schema["description"],
+            "parameters": {"type": "object", "properties": {}, "required": []},
         }
 
         # Extract parameter details from the signature
@@ -191,7 +232,11 @@ def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
         doc_params = param_doc_regex.findall(docstring) if docstring else []
 
         for param_name, param in signature.parameters.items():
-            param_type = param.annotation.__name__ if param.annotation != inspect.Parameter.empty else "Any"
+            param_type = (
+                param.annotation.__name__
+                if param.annotation != inspect.Parameter.empty
+                else "Any"
+            )
             param_description = "No description available."
             param_required = param.default is inspect.Parameter.empty
 
@@ -203,16 +248,12 @@ def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
 
             function_schema["parameters"]["properties"][param_name] = {
                 "type": convert_python_type_to_json_type(param_type),
-                "description": param_description
+                "description": param_description,
             }
 
             if param_required:
                 function_schema["parameters"]["required"].append(param_name)
 
-        schemas.append({
-            "type": "function",
-            "function": function_schema
-        })
+        schemas.append({"type": "function", "function": function_schema})
 
     return schemas
-

@@ -18,14 +18,14 @@ class BaseLLM(BaseModel):
 
     def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     def _is_valid_inputs(
         self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
-        """Determine if the functions chosen by the LLM exist within the function_schemas, 
+        """Determine if the functions chosen by the LLM exist within the function_schemas,
         and if the input arguments are valid for those functions."""
         try:
-             # Currently only supporting single functions for most LLMs in Dynamic Routes.
+            # Currently only supporting single functions for most LLMs in Dynamic Routes.
             if len(inputs) != 1:
                 logger.error("Only one set of function inputs is allowed.")
                 return False
@@ -33,7 +33,9 @@ class BaseLLM(BaseModel):
                 logger.error("Only one function schema is allowed.")
                 return False
             # Validate the inputs against the function schema
-            if not self._validate_single_function_inputs(inputs[0], function_schemas[0]):
+            if not self._validate_single_function_inputs(
+                inputs[0], function_schemas[0]
+            ):
                 return False
 
             return True
@@ -41,7 +43,9 @@ class BaseLLM(BaseModel):
             logger.error(f"Input validation error: {str(e)}")
             return False
 
-    def _validate_single_function_inputs(self, inputs: Dict[str, Any], function_schema: Dict[str, Any]) -> bool:
+    def _validate_single_function_inputs(
+        self, inputs: Dict[str, Any], function_schema: Dict[str, Any]
+    ) -> bool:
         """Validate the extracted inputs against the function schema"""
         try:
             # Extract parameter names and types from the signature string

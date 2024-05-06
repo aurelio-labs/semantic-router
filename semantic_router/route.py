@@ -92,16 +92,19 @@ class Route(BaseModel):
     @classmethod
     def from_dict(cls, data: Dict[str, Any]):
         return cls(**data)
+
     @classmethod
-    def from_dynamic_route(cls, llm: BaseLLM, entities: List[Union[BaseModel, Callable]]):
+    def from_dynamic_route(
+        cls, llm: BaseLLM, entities: List[Union[BaseModel, Callable]], route_name: str
+    ):
         """
         Generate a dynamic Route object from a list of functions or Pydantic models using LLM
         """
-        schemas = function_call.get_schemas(items=entities)
-        dynamic_route = cls._generate_dynamic_route(llm=llm, function_schemas=schemas)
+        schemas = function_call.get_schema_list(items=entities)
+        dynamic_route = cls._generate_dynamic_route(llm=llm, function_schemas=schemas, route_name=route_name)
         dynamic_route.function_schemas = schemas
         return dynamic_route
-    
+
     @classmethod
     def _parse_route_config(cls, config: str) -> str:
         # Regular expression to match content inside <config></config>
@@ -115,10 +118,14 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    def _generate_dynamic_route(cls, llm: BaseLLM, function_schemas: List[Dict[str, Any]], route_name: str):
+    def _generate_dynamic_route(
+        cls, llm: BaseLLM, function_schemas: List[Dict[str, Any]], route_name: str
+    ):
         logger.info("Generating dynamic route...")
 
-        formatted_schemas = "\n".join([json.dumps(schema, indent=4) for schema in function_schemas])
+        formatted_schemas = "\n".join(
+            [json.dumps(schema, indent=4) for schema in function_schemas]
+        )
         prompt = f"""
         You are tasked to generate a single JSON configuration for multiple function schemas. 
         Each function schema should contribute five example utterances. 

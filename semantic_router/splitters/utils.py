@@ -2,6 +2,7 @@ import regex
 import tiktoken
 from typing import List
 
+
 def split_to_sentences(text: str) -> List[str]:
     """
     Enhanced regex pattern to split a given text into sentences more accurately.

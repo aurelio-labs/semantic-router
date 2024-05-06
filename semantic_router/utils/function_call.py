@@ -6,7 +6,6 @@ from pydantic.v1 import BaseModel
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
-import re
 
 
 def get_schema_list(items: List[Union[BaseModel, Callable]]) -> List[Dict[str, Any]]:
@@ -15,6 +14,7 @@ def get_schema_list(items: List[Union[BaseModel, Callable]]) -> List[Dict[str, A
         schema = get_schema(item)
         schemas.append(schema)
     return schemas
+
 
 def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
     if isinstance(item, BaseModel):
@@ -65,7 +65,6 @@ def convert_python_type_to_json_type(param_type: str) -> str:
         return "object"
 
 
-
 # TODO: Add route layer object to the input, solve circular import issue
 async def route_and_execute(
     query: str, llm: BaseLLM, functions: List[Callable], layer
@@ -75,7 +74,7 @@ async def route_and_execute(
     for function in functions:
         if function.__name__ == route_choice.name:
             if route_choice.function_call:
-                return function(**route_choice.function_call)
+                return function(**route_choice.function_call[0])
 
     logger.warning("No function found, calling LLM.")
     llm_input = [Message(role="user", content=query)]
