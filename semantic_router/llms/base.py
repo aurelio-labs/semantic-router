@@ -25,24 +25,16 @@ class BaseLLM(BaseModel):
         """Determine if the functions chosen by the LLM exist within the function_schemas, 
         and if the input arguments are valid for those functions."""
         try:
-            for input_dict in inputs:
-                # Check if 'function_name' and 'arguments' keys exist in each input dictionary
-                if "function_name" not in input_dict or "arguments" not in input_dict:
-                    logger.error("Missing 'function_name' or 'arguments' in inputs")
-                    return False
-
-                function_name = input_dict["function_name"]
-                arguments = input_dict["arguments"]
-
-                # Find the matching function schema based on function_name
-                matching_schema = next((schema for schema in function_schemas if schema["name"] == function_name), None)
-                if not matching_schema:
-                    logger.error(f"No matching function schema found for function name: {function_name}")
-                    return False
-
-                # Validate the inputs against the function schema
-                if not self._validate_single_function_inputs(arguments, matching_schema):
-                    return False
+             # Currently only supporting single functions for most LLMs in Dynamic Routes.
+            if len(inputs) != 1:
+                logger.error("Only one set of function inputs is allowed.")
+                return False
+            if len(function_schemas) != 1:
+                logger.error("Only one function schema is allowed.")
+                return False
+            # Validate the inputs against the function schema
+            if not self._validate_single_function_inputs(inputs[0], function_schemas[0]):
+                return False
 
             return True
         except Exception as e:
@@ -78,7 +70,7 @@ class BaseLLM(BaseModel):
         return param_names, param_types
 
     def extract_function_inputs(
-        self, query: str, function_schema: Dict[str, Any]
+        self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         logger.info("Extracting function input...")
 
@@ -89,7 +81,7 @@ Your task is to output JSON representing the input arguments of a Python functio
 This is the Python function's schema:
 
 ### FUNCTION_SCHEMA Start ###
-	{function_schema}
+	{function_schemas}
 ### FUNCTION_SCHEMA End ###
 
 This is the input query.
@@ -139,9 +131,9 @@ Provide JSON output now:
         output = output.replace("'", '"').strip().rstrip(",")
         logger.info(f"LLM output: {output}")
         function_inputs = json.loads(output)
-        if not isinstance(function_inputs, list): # Local LLMs return a single JSON object that isn't in an array sometimes.
+        if not isinstance(function_inputs, list):
             function_inputs = [function_inputs]
         logger.info(f"Function inputs: {function_inputs}")
-        if not self._is_valid_inputs(function_inputs, [function_schema]):
+        if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs
