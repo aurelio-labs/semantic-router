@@ -39,7 +39,7 @@ def layer_json():
                 "why don't you tell me about your political opinions"
             ],
             "description": null,
-            "function_schema": null
+            "function_schemas": null
         },
         {
             "name": "chitchat",
@@ -48,7 +48,7 @@ def layer_json():
                 "how are things going?"
             ],
             "description": null,
-            "function_schema": null
+            "function_schemas": null
         }
     ]
 }"""
@@ -59,13 +59,13 @@ def layer_yaml():
 encoder_type: cohere
 routes:
 - description: null
-  function_schema: null
+  function_schemas: null
   name: politics
   utterances:
   - isn't politics the best thing ever
   - why don't you tell me about your political opinions
 - description: null
-  function_schema: null
+  function_schemas: null
   name: chitchat
   utterances:
   - how's the weather today?
