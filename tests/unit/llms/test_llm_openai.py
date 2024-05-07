@@ -122,7 +122,8 @@ class TestOpenAILLM:
         function_schemas = [{"type": "function", "name": "sample_function"}]
         output = openai_llm(llm_input, function_schemas)
         assert (
-            output == "[{'function_name': 'sample_function', 'arguments': {'timezone': 'America/New_York'}}]"
+            output
+            == "[{'function_name': 'sample_function', 'arguments': {'timezone': 'America/New_York'}}]"
         ), "Output did not match expected result with function schema"
 
     def test_openai_llm_call_with_invalid_tool_calls(self, openai_llm, mocker):
@@ -157,14 +158,11 @@ class TestOpenAILLM:
         with pytest.raises(Exception) as exc_info:
             openai_llm(llm_input, function_schemas)
 
-        expected_error_message = (
-            "LLM error: Invalid output, expected arguments to be specified for each tool call."
-        )
+        expected_error_message = "LLM error: Invalid output, expected arguments to be specified for each tool call."
         actual_error_message = str(exc_info.value)
         assert (
             expected_error_message in actual_error_message
         ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
-
 
     def test_extract_function_inputs(self, openai_llm, mocker):
         query = "fetch user data"
@@ -179,17 +177,21 @@ class TestOpenAILLM:
                         "properties": {
                             "user_id": {
                                 "type": "string",
-                                "description": "The ID of the user."
+                                "description": "The ID of the user.",
                             }
                         },
-                        "required": ["user_id"]
-                    }
-                }
+                        "required": ["user_id"],
+                    },
+                },
             }
         ]
 
         # Mock the __call__ method to return a JSON string as expected
-        mocker.patch.object(OpenAILLM, "__call__", return_value='[{"function_name": "get_user_data", "arguments": {"user_id": "123"}}]')
+        mocker.patch.object(
+            OpenAILLM,
+            "__call__",
+            return_value='[{"function_name": "get_user_data", "arguments": {"user_id": "123"}}]',
+        )
         result = openai_llm.extract_function_inputs(query, function_schemas)
 
         # Ensure the __call__ method is called with the correct parameters
@@ -205,4 +207,6 @@ class TestOpenAILLM:
         )
 
         # Check if the result is as expected
-        assert result == [{"function_name": "get_user_data", "arguments": {"user_id": "123"}}], "The function inputs should match the expected dictionary."
+        assert result == [
+            {"function_name": "get_user_data", "arguments": {"user_id": "123"}}
+        ], "The function inputs should match the expected dictionary."

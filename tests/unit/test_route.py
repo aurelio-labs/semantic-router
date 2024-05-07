@@ -76,7 +76,7 @@ class TestRoute:
 
     def test_generate_dynamic_route(self):
         mock_llm = MockLLM(name="test")
-        function_schemas = {"name": "test_function", "type": "function"}#
+        function_schemas = {"name": "test_function", "type": "function"}  #
         route = Route._generate_dynamic_route(
             llm=mock_llm, function_schemas=function_schemas, route_name="test_route"
         )
@@ -144,7 +144,9 @@ class TestRoute:
             """Test function docstring"""
             pass
 
-        dynamic_route = Route.from_dynamic_route(llm=mock_llm, entities=[test_function], route_name="test_route")
+        dynamic_route = Route.from_dynamic_route(
+            llm=mock_llm, entities=[test_function], route_name="test_route"
+        )
 
         assert dynamic_route.name == "test_function"
         assert dynamic_route.utterances == [
