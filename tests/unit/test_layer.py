@@ -123,7 +123,7 @@ def dynamic_routes():
         Route(
             name="Route 2",
             utterances=["Goodbye", "Bye", "Au revoir"],
-            function_schema={"name": "test"},
+            function_schemas=[{"name": "test"}],
         ),
     ]
 
