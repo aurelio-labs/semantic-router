@@ -101,8 +101,7 @@ class OpenAILLM(BaseLLM):
                 content = completion.choices[0].message.content
                 if content is None:
                     raise ValueError("Invalid output, expected content.")
-                output = str(content)  # str in keepign with base type.
-
+                output = content
             return output
 
         except Exception as e:
@@ -112,10 +111,11 @@ class OpenAILLM(BaseLLM):
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        messages = []
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
-        messages.append(Message(role="system", content=system_prompt))
-        messages.append(Message(role="user", content=query))
+        messages = [
+            Message(role="system", content=system_prompt),
+            Message(role="user", content=query),
+        ]
         output = self(messages=messages, function_schemas=function_schemas)
         if not output:
             raise Exception("No output generated for extract function input")
