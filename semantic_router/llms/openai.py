@@ -90,18 +90,6 @@ class OpenAILLM(BaseLLM):
                     )
 
                 # Collecting multiple tool calls information
-                # DEBUGGING: Start.
-                print('#'*50)
-                print('tool_calls')
-                print(tool_calls)
-                print('#'*50)
-                # DEBUGGING: End.
-                # DEBUGGING: Start.
-                print('#'*50)
-                print('type(tool_calls)')
-                print(type(tool_calls))
-                print('#'*50)
-                # DEBUGGING: End.
                 output = str(self._extract_tool_calls_info(tool_calls)) # str in keepign with base type.
             else:
                 content = completion.choices[0].message.content
@@ -125,6 +113,7 @@ class OpenAILLM(BaseLLM):
         output = self(messages=messages, function_schemas=function_schemas)
         if not output:
             raise Exception("No output generated for extract function input")
+        output = output.replace("'", '"')
         function_inputs = json.loads(output)
         logger.info(f"Function inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schemas):

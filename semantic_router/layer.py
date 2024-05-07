@@ -235,6 +235,11 @@ class RouteLayer:
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('CHECKPOINT 1')
+        print('#'*50)
+        # DEBUGGING: End.
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
@@ -242,7 +247,11 @@ class RouteLayer:
 
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
-
+        # DEBUGGING: Start.
+        print('#'*50)
+        print('CHECKPOINT 2')
+        print('#'*50)
+        # DEBUGGING: End.
         if passed and route is not None and not simulate_static:
             if route.function_schemas and text is None:
                 raise ValueError(
@@ -260,6 +269,12 @@ class RouteLayer:
                     route.llm = self.llm
                 else:
                     route.llm = self.llm
+            # DEBUGGING: Start.
+            print('#'*50)
+            print('text')
+            print(text)
+            print('#'*50)
+            # DEBUGGING: End.
             return route(text)
         elif passed and route is not None and simulate_static:
             return RouteChoice(
