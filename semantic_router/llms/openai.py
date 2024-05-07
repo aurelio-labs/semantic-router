@@ -15,7 +15,9 @@ from semantic_router.utils.function_call import (
 )
 import inspect
 import re
-from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
+from openai.types.chat.chat_completion_message_tool_call import (
+    ChatCompletionMessageToolCall,
+)
 
 
 class OpenAILLM(BaseLLM):
@@ -70,14 +72,16 @@ class OpenAILLM(BaseLLM):
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
-            tools: Union[List[Dict[str, Any]], NotGiven] = function_schemas if function_schemas is not None else NOT_GIVEN
+            tools: Union[List[Dict[str, Any]], NotGiven] = (
+                function_schemas if function_schemas is not None else NOT_GIVEN
+            )
 
             completion = self.client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                tools=tools, # type: ignore # We pass a list of dicts which get interpreted as Iterable[ChatCompletionToolParam].
+                tools=tools,  # type: ignore # We pass a list of dicts which get interpreted as Iterable[ChatCompletionToolParam].
             )
 
             if function_schemas:
@@ -90,7 +94,9 @@ class OpenAILLM(BaseLLM):
                     )
 
                 # Collecting multiple tool calls information
-                output = str(self._extract_tool_calls_info(tool_calls)) # str in keepign with base type.
+                output = str(
+                    self._extract_tool_calls_info(tool_calls)
+                )  # str in keepign with base type.
             else:
                 content = completion.choices[0].message.content
                 if content is None:

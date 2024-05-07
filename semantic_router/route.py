@@ -101,7 +101,9 @@ class Route(BaseModel):
         Generate a dynamic Route object from a list of functions or Pydantic models using LLM
         """
         schemas = function_call.get_schema_list(items=entities)
-        dynamic_route = cls._generate_dynamic_route(llm=llm, function_schemas=schemas, route_name=route_name)
+        dynamic_route = cls._generate_dynamic_route(
+            llm=llm, function_schemas=schemas, route_name=route_name
+        )
         dynamic_route.function_schemas = schemas
         return dynamic_route
 

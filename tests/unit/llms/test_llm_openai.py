@@ -3,6 +3,7 @@ import pytest
 from semantic_router.llms.openai import OpenAILLM, get_schemas_openai
 from semantic_router.schema import Message
 
+
 @pytest.fixture
 def openai_llm(mocker):
     mocker.patch("openai.Client")
@@ -165,7 +166,6 @@ class TestOpenAILLM:
         assert (
             expected_error_message in actual_error_message
         ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
-
 
     def test_extract_function_inputs(self, openai_llm, mocker):
         query = "fetch user data"
