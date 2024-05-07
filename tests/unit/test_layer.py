@@ -118,7 +118,7 @@ def routes_3():
 def dynamic_routes():
     return [
         Route(
-            name="Route 1", utterances=["Hello", "Hi"], function_schema={"name": "test"}
+            name="Route 1", utterances=["Hello", "Hi"], function_schemas={"name": "test"}
         ),
         Route(
             name="Route 2",
