@@ -96,7 +96,7 @@ class OpenAILLM(BaseLLM):
                 # Collecting multiple tool calls information
                 output = str(
                     self._extract_tool_calls_info(tool_calls)
-                )  # str in keepign with base type.
+                )  # str in keeping with base type.
             else:
                 content = completion.choices[0].message.content
                 if content is None:

@@ -84,9 +84,9 @@ Your task is to output JSON representing the input arguments of a Python functio
 
 This is the Python function's schema:
 
-### FUNCTION_SCHEMA Start ###
+### FUNCTION_SCHEMAS Start ###
 	{function_schemas}
-### FUNCTION_SCHEMA End ###
+### FUNCTION_SCHEMAS End ###
 
 This is the input query.
 
@@ -94,9 +94,9 @@ This is the input query.
 	{query}
 ### QUERY End ###
 
-The arguments that you need to provide values for, together with their datatypes, are stated in "signature" in the FUNCTION_SCHEMA.
+The arguments that you need to provide values for, together with their datatypes, are stated in "signature" in the FUNCTION_SCHEMAS.
 The values these arguments must take are made clear by the QUERY.
-Use the FUNCTION_SCHEMA "description" too, as this might provide helpful clues about the arguments and their values.
+Use the FUNCTION_SCHEMAS "description" too, as this might provide helpful clues about the arguments and their values.
 Return only JSON, stating the argument names and their corresponding values.
 
 ### FORMATTING_INSTRUCTIONS Start ###
