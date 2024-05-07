@@ -1,12 +1,7 @@
 import pytest
 
-from semantic_router.llms import OpenAILLM
+from semantic_router.llms.openai import OpenAILLM, get_schemas_openai
 from semantic_router.schema import Message
-from semantic_router.utils.function_call import (
-    get_schema_openai,
-    convert_param_type_to_json_type,
-)
-
 
 @pytest.fixture
 def openai_llm(mocker):
@@ -59,7 +54,7 @@ class TestOpenAILLM:
         output = openai_llm(llm_input)
         assert output == "test"
 
-    def test_get_schema_openai_with_valid_callable(self):
+    def test_get_schemas_openai_with_valid_callable(self):
         def sample_function(param1: int, param2: str = "default") -> str:
             """Sample function for testing."""
             return f"param1: {param1}, param2: {param2}"
@@ -85,13 +80,13 @@ class TestOpenAILLM:
                 },
             },
         }
-        schema = get_schema_openai(sample_function)
+        schema = get_schemas_openai([sample_function])
         assert schema == expected_schema, "Schema did not match expected output."
 
-    def test_get_schema_openai_with_non_callable(self):
+    def test_get_schemas_openai_with_non_callable(self):
         non_callable = "I am not a function"
         with pytest.raises(ValueError):
-            get_schema_openai(non_callable)
+            get_schemas_openai([non_callable])
 
     def test_openai_llm_call_with_function_schema(self, openai_llm, mocker):
         mock_completion = mocker.MagicMock()
@@ -171,16 +166,6 @@ class TestOpenAILLM:
             expected_error_message in actual_error_message
         ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
 
-    def test_convert_param_type_to_json_type(self):
-        # Test conversion of basic types
-        assert convert_param_type_to_json_type("int") == "number"
-        assert convert_param_type_to_json_type("float") == "number"
-        assert convert_param_type_to_json_type("str") == "string"
-        assert convert_param_type_to_json_type("bool") == "boolean"
-        assert convert_param_type_to_json_type("NoneType") == "null"
-        assert convert_param_type_to_json_type("list") == "array"
-        # Test conversion of a type not explicitly handled
-        assert convert_param_type_to_json_type("dict") == "object"
 
     def test_extract_function_inputs(self, openai_llm, mocker):
         query = "fetch user data"
