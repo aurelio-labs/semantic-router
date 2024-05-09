@@ -188,6 +188,8 @@ class PineconeIndex(BaseIndex):
         # Construct the request URL for listing vectors. Adjust parameters as needed.
         list_url = f"https://{self.host}/vectors/list{prefix_str}"
         params: Dict = {}
+        if self.namespace:
+            params["namespace"] = self.namespace
         headers = {"Api-Key": os.environ["PINECONE_API_KEY"]}
         metadata = []
 
