@@ -40,18 +40,3 @@ jobs:
         poetry --no-interaction -v publish --build --repository remote --username "__token__" --password "$PYPI_API_TOKEN"
       env:
         PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-
-  release:
-    needs: publish
-    runs-on: ubuntu-latest
-    steps:
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
