@@ -91,7 +91,7 @@ Return only JSON, stating the argument names and their corresponding values.
 	=== EXAMPLE_OUTPUT End ===
 ### EXAMPLE End ###
 
-Note: I will tip $500 for and accurate JSON output. You will be penalized for an inaccurate JSON output.
+Note: I will tip $500 for an accurate JSON output. You will be penalized for an inaccurate JSON output.
 
 Provide JSON output now:
 """
