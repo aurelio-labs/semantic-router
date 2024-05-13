@@ -89,7 +89,7 @@ class TestBaseLLM:
 
     def test_mandatory_args_only(self, base_llm, mixed_function_schema):
         inputs = {"mandatory1": "value1", "mandatory2": 42}
-        assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == True
+        assert base_llm._is_valid_inputs(inputs, mixed_function_schema)  # True is implied
 
     def test_all_args_provided(self, base_llm, mixed_function_schema):
         inputs = {
@@ -98,11 +98,11 @@ class TestBaseLLM:
             "optional1": "opt1",
             "optional2": "opt2",
         }
-        assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == True
+        assert base_llm._is_valid_inputs(inputs, mixed_function_schema)  # True is implied
 
     def test_missing_mandatory_arg(self, base_llm, mixed_function_schema):
         inputs = {"mandatory1": "value1", "optional1": "opt1", "optional2": "opt2"}
-        assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == False
+        assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
 
     def test_extra_arg_provided(self, base_llm, mixed_function_schema):
         inputs = {
@@ -112,20 +112,20 @@ class TestBaseLLM:
             "optional2": "opt2",
             "extra": "value",
         }
-        assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == False
+        assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
 
     def test_check_for_mandatory_inputs_all_present(self, base_llm, mandatory_params):
         inputs = {"param1": "value1", "param2": "value2"}
-        assert base_llm._check_for_mandatory_inputs(inputs, mandatory_params) == True
+        assert base_llm._check_for_mandatory_inputs(inputs, mandatory_params)  # True is implied
 
     def test_check_for_mandatory_inputs_missing_one(self, base_llm, mandatory_params):
         inputs = {"param1": "value1"}
-        assert base_llm._check_for_mandatory_inputs(inputs, mandatory_params) == False
+        assert not base_llm._check_for_mandatory_inputs(inputs, mandatory_params)
 
     def test_check_for_extra_inputs_no_extras(self, base_llm, all_params):
         inputs = {"param1": "value1", "param2": "value2"}
-        assert base_llm._check_for_extra_inputs(inputs, all_params) == True
+        assert base_llm._check_for_extra_inputs(inputs, all_params)  # True is implied
 
     def test_check_for_extra_inputs_with_extras(self, base_llm, all_params):
         inputs = {"param1": "value1", "param2": "value2", "extra_param": "extra"}
-        assert base_llm._check_for_extra_inputs(inputs, all_params) == False
+        assert not base_llm._check_for_extra_inputs(inputs, all_params)
