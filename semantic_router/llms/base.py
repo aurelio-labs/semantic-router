@@ -52,7 +52,10 @@ class BaseLLM(BaseModel):
             for info in param_info:
                 parts = info.split("=")
                 name_type_pair = parts[0].strip()
-                name = name_type_pair.split(":")[0].strip()
+                if ':' in name_type_pair:
+                    name, _ = name_type_pair.split(":")
+                else:
+                    name = name_type_pair
                 all_params.append(name)
 
                 # If there is no default value, it's a mandatory parameter
