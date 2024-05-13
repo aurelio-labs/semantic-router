@@ -8,15 +8,15 @@ class TestBaseLLM:
     @pytest.fixture
     def base_llm(self):
         return BaseLLM(name="TestLLM")
-    
+
     @pytest.fixture
     def mixed_function_schema(self):
         return {
             "name": "test_function",
             "description": "A test function with mixed mandatory and optional parameters.",
-            "signature": "(mandatory1, mandatory2: int, optional1=None, optional2: str = 'default')"
+            "signature": "(mandatory1, mandatory2: int, optional1=None, optional2: str = 'default')",
         }
-    
+
     @pytest.fixture
     def mandatory_params(self):
         return ["param1", "param2"]
@@ -87,13 +87,17 @@ class TestBaseLLM:
             test_query = "What time is it in America/New_York?"
             base_llm.extract_function_inputs(test_schema, test_query)
 
-
     def test_mandatory_args_only(self, base_llm, mixed_function_schema):
         inputs = {"mandatory1": "value1", "mandatory2": 42}
         assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == True
 
     def test_all_args_provided(self, base_llm, mixed_function_schema):
-        inputs = {"mandatory1": "value1", "mandatory2": 42, "optional1": "opt1", "optional2": "opt2"}
+        inputs = {
+            "mandatory1": "value1",
+            "mandatory2": 42,
+            "optional1": "opt1",
+            "optional2": "opt2",
+        }
         assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == True
 
     def test_missing_mandatory_arg(self, base_llm, mixed_function_schema):
@@ -101,7 +105,13 @@ class TestBaseLLM:
         assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == False
 
     def test_extra_arg_provided(self, base_llm, mixed_function_schema):
-        inputs = {"mandatory1": "value1", "mandatory2": 42, "optional1": "opt1", "optional2": "opt2", "extra": "value"}
+        inputs = {
+            "mandatory1": "value1",
+            "mandatory2": 42,
+            "optional1": "opt1",
+            "optional2": "opt2",
+            "extra": "value",
+        }
         assert base_llm._is_valid_inputs(inputs, mixed_function_schema) == False
 
     def test_check_for_mandatory_inputs_all_present(self, base_llm, mandatory_params):

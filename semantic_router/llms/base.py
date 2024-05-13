@@ -18,26 +18,31 @@ class BaseLLM(BaseModel):
 
     def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
-    
 
-    def _check_for_mandatory_inputs(self, inputs: dict[str, Any], mandatory_params: List[str]) -> bool:
+    def _check_for_mandatory_inputs(
+        self, inputs: dict[str, Any], mandatory_params: List[str]
+    ) -> bool:
         """Check for mandatory parameters in inputs"""
         for name in mandatory_params:
             if name not in inputs:
                 logger.error(f"Mandatory input {name} missing from query")
                 return False
         return True
-    
-    def _check_for_extra_inputs(self, inputs: dict[str, Any], all_params: List[str]) -> bool:
+
+    def _check_for_extra_inputs(
+        self, inputs: dict[str, Any], all_params: List[str]
+    ) -> bool:
         """Check for extra parameters not defined in the signature"""
         input_keys = set(inputs.keys())
         param_keys = set(all_params)
         if not input_keys.issubset(param_keys):
             extra_keys = input_keys - param_keys
-            logger.error(f"Extra inputs provided that are not in the signature: {extra_keys}")
+            logger.error(
+                f"Extra inputs provided that are not in the signature: {extra_keys}"
+            )
             return False
         return True
-        
+
     def _is_valid_inputs(
         self, inputs: dict[str, Any], function_schema: dict[str, Any]
     ) -> bool:
@@ -52,7 +57,7 @@ class BaseLLM(BaseModel):
             for info in param_info:
                 parts = info.split("=")
                 name_type_pair = parts[0].strip()
-                if ':' in name_type_pair:
+                if ":" in name_type_pair:
                     name, _ = name_type_pair.split(":")
                 else:
                     name = name_type_pair
