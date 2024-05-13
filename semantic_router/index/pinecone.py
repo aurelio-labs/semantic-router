@@ -138,7 +138,7 @@ class PineconeIndex(BaseIndex):
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
 
-    def _batch_upsert(self, batch: List[dict]):
+    def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records."""
         if self.index is not None:
             self.index.upsert(vectors=batch, namespace=self.namespace)
@@ -243,7 +243,7 @@ class PineconeIndex(BaseIndex):
     def delete_all(self):
         self.index.delete(delete_all=True, namespace=self.namespace)
 
-    def describe(self) -> dict:
+    def describe(self) -> Dict:
         if self.index is not None:
             stats = self.index.describe_index_stats()
             return {
