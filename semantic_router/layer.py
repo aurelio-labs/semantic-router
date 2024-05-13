@@ -196,7 +196,7 @@ class RouteLayer:
         else:
             self.encoder = encoder
         self.llm = llm
-        self.routes: list[Route] = routes if routes is not None else []
+        self.routes: List[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
         self.top_k = top_k
         if self.top_k < 1:
@@ -242,13 +242,12 @@ class RouteLayer:
 
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
-
         if passed and route is not None and not simulate_static:
-            if route.function_schema and text is None:
+            if route.function_schemas and text is None:
                 raise ValueError(
                     "Route has a function schema, but no text was provided."
                 )
-            if route.function_schema and not isinstance(route.llm, BaseLLM):
+            if route.function_schemas and not isinstance(route.llm, BaseLLM):
                 if not self.llm:
                     logger.warning(
                         "No LLM provided for dynamic route, will use OpenAI LLM "
@@ -428,7 +427,7 @@ class RouteLayer:
 
     def _retrieve(
         self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[dict]:
+    ) -> List[Dict]:
         """Given a query vector, retrieve the top_k most similar records."""
         # get scores and routes
         scores, routes = self.index.query(
@@ -448,7 +447,7 @@ class RouteLayer:
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
-    def _semantic_classify(self, query_results: List[dict]) -> Tuple[str, List[float]]:
+    def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
         # Calculate total score for each class
@@ -473,7 +472,7 @@ class RouteLayer:
         return None
 
     def _semantic_classify_multiple_routes(
-        self, query_results: List[dict]
+        self, query_results: List[Dict]
     ) -> List[Tuple[str, float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
@@ -496,7 +495,7 @@ class RouteLayer:
         return classes_above_threshold
 
     def group_scores_by_class(
-        self, query_results: List[dict]
+        self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:

@@ -63,12 +63,12 @@ class MockLLM(BaseLLM):
 
 class TestRoute:
     def test_value_error_in_route_call(self):
-        function_schema = {"name": "test_function", "type": "function"}
+        function_schemas = [{"name": "test_function", "type": "function"}]
 
         route = Route(
             name="test_function",
             utterances=["utterance1", "utterance2"],
-            function_schema=function_schema,
+            function_schemas=function_schemas,
         )
 
         with pytest.raises(ValueError):
@@ -76,9 +76,9 @@ class TestRoute:
 
     def test_generate_dynamic_route(self):
         mock_llm = MockLLM(name="test")
-        function_schema = {"name": "test_function", "type": "function"}
+        function_schemas = {"name": "test_function", "type": "function"}  #
         route = Route._generate_dynamic_route(
-            llm=mock_llm, function_schema=function_schema
+            llm=mock_llm, function_schemas=function_schemas, route_name="test_route"
         )
         assert route.name == "test_function"
         assert route.utterances == [
@@ -107,8 +107,8 @@ class TestRoute:
     #     }
     #     </config>
     #     """
-    #     function_schema = {"name": "test_function", "type": "function"}
-    #     route = await Route._generate_dynamic_route(function_schema)
+    #     function_schemas = [{"name": "test_function", "type": "function"}]
+    #     route = await Route._generate_dynamic_route(function_schemas)
     #     assert route.name == "test_function"
     #     assert route.utterances == [
     #         "example_utterance_1",
@@ -124,7 +124,7 @@ class TestRoute:
             "name": "test",
             "utterances": ["utterance"],
             "description": None,
-            "function_schema": None,
+            "function_schemas": None,
             "llm": None,
             "score_threshold": None,
         }
@@ -144,7 +144,9 @@ class TestRoute:
             """Test function docstring"""
             pass
 
-        dynamic_route = Route.from_dynamic_route(llm=mock_llm, entity=test_function)
+        dynamic_route = Route.from_dynamic_route(
+            llm=mock_llm, entities=[test_function], route_name="test_route"
+        )
 
         assert dynamic_route.name == "test_function"
         assert dynamic_route.utterances == [
