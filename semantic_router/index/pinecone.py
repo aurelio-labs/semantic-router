@@ -71,7 +71,7 @@ class PineconeIndex(BaseIndex):
         self.namespace = namespace
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
-        
+
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
 
