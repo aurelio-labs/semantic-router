@@ -45,8 +45,7 @@ class CohereEncoder(BaseEncoder):
             embeds = self.client.embed(
                 texts=docs, input_type=self.input_type, model=self.name
             )
-            # Check the type of response and handle accordingly
-            # Only EmbedResponse_EmbeddingsFloats has embeddings of type List[List[float]]
+            # Check for unsupported type.
             if isinstance(embeds, EmbedResponse_EmbeddingsByType):
                 raise NotImplementedError(
                     "Handling of EmbedByTypeResponseEmbeddings is not implemented."
