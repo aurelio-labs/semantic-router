@@ -340,7 +340,7 @@ class RollingWindowSplitter(BaseSplitter):
         self,
         similarities: List[float],
         split_indices: List[int],
-        splits: list[DocumentSplit],
+        splits: List[DocumentSplit],
     ):
         try:
             from matplotlib import pyplot as plt

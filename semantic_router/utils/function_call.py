@@ -8,6 +8,14 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
 
 
+def get_schema_list(items: List[Union[BaseModel, Callable]]) -> List[Dict[str, Any]]:
+    schemas = []
+    for item in items:
+        schema = get_schema(item)
+        schemas.append(schema)
+    return schemas
+
+
 def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
     if isinstance(item, BaseModel):
         signature_parts = []
@@ -40,6 +48,23 @@ def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
     return schema
 
 
+def convert_python_type_to_json_type(param_type: str) -> str:
+    if param_type == "int":
+        return "number"
+    if param_type == "float":
+        return "number"
+    if param_type == "str":
+        return "string"
+    if param_type == "bool":
+        return "boolean"
+    if param_type == "NoneType":
+        return "null"
+    if param_type == "list":
+        return "array"
+    else:
+        return "object"
+
+
 # TODO: Add route layer object to the input, solve circular import issue
 async def route_and_execute(
     query: str, llm: BaseLLM, functions: List[Callable], layer
@@ -49,7 +74,7 @@ async def route_and_execute(
     for function in functions:
         if function.__name__ == route_choice.name:
             if route_choice.function_call:
-                return function(**route_choice.function_call)
+                return function(**route_choice.function_call[0])
 
     logger.warning("No function found, calling LLM.")
     llm_input = [Message(role="user", content=query)]

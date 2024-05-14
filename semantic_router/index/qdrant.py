@@ -208,7 +208,7 @@ class QdrantIndex(BaseIndex):
             ),
         )
 
-    def describe(self) -> dict:
+    def describe(self) -> Dict:
         collection_info = self.client.get_collection(self.index_name)
 
         return {

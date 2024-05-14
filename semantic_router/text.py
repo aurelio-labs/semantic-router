@@ -157,7 +157,7 @@ class Conversation(BaseModel):
         :raises ValueError: If the splitter is not configured before calling this method.
 
         :return: A tuple containing the updated list of topics and the list of new topics generated in this call.
-        :rtype: tuple[list[tuple[int, str]], list[DocumentSplit]]
+        :rtype: tuple[List[tuple[int, str]], List[DocumentSplit]]
         """
 
         if self.splitter is None:
