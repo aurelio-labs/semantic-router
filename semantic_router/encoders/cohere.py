@@ -57,6 +57,6 @@ class CohereEncoder(BaseEncoder):
                     "Handling of EmbedByTypeResponseEmbeddings is not implemented."
                 )
             else:
-                raise ValueError("Unexpected response type from Cohere API")
+                raise ValueError(f"Unexpected response type from Cohere API: type(embeds) = {type(embeds)}")
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
