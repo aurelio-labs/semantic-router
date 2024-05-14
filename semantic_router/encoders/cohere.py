@@ -2,10 +2,7 @@ import os
 from typing import List, Optional
 
 import cohere
-from cohere.types.embed_response import (
-    EmbedResponse_EmbeddingsFloats,
-    EmbedResponse_EmbeddingsByType,
-)
+from cohere.types.embed_response import EmbedResponse_EmbeddingsByType
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
@@ -50,13 +47,11 @@ class CohereEncoder(BaseEncoder):
             )
             # Check the type of response and handle accordingly
             # Only EmbedResponse_EmbeddingsFloats has embeddings of type List[List[float]]
-            if isinstance(embeds, EmbedResponse_EmbeddingsFloats):
-                return embeds.embeddings
-            elif isinstance(embeds, EmbedResponse_EmbeddingsByType):
+            if isinstance(embeds, EmbedResponse_EmbeddingsByType):
                 raise NotImplementedError(
                     "Handling of EmbedByTypeResponseEmbeddings is not implemented."
                 )
             else:
-                raise ValueError(f"Unexpected response type from Cohere API: type(embeds) = {type(embeds)}")
+                return embeds.embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
