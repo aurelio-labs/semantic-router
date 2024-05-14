@@ -15,6 +15,7 @@ class EncoderType(Enum):
     VIT = "vit"
     CLIP = "clip"
     GOOGLE = "google"
+    BEDROCK = "bedrock"
 
 
 class EncoderInfo(BaseModel):

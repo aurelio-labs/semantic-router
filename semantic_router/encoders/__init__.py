@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from semantic_router.encoders.base import BaseEncoder
+from semantic_router.encoders.bedrock import BedrockEncoder
 from semantic_router.encoders.bm25 import BM25Encoder
 from semantic_router.encoders.clip import CLIPEncoder
 from semantic_router.encoders.cohere import CohereEncoder
@@ -29,6 +30,7 @@ __all__ = [
     "VitEncoder",
     "CLIPEncoder",
     "GoogleEncoder",
+    "BedrockEncoder",
 ]
 
 
@@ -67,6 +69,8 @@ class AutoEncoder:
             self.model = CLIPEncoder(name=name)
         elif self.type == EncoderType.GOOGLE:
             self.model = GoogleEncoder(name=name)
+        elif self.type == EncoderType.BEDROCK:
+            self.model = BedrockEncoder(name=name)  # type: ignore
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
