@@ -2,7 +2,10 @@ import os
 from typing import List, Optional
 
 import cohere
-from cohere.types.embed_response import EmbedResponse_EmbeddingsFloats, EmbedResponse_EmbeddingsByType 
+from cohere.types.embed_response import (
+    EmbedResponse_EmbeddingsFloats,
+    EmbedResponse_EmbeddingsByType,
+)
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
@@ -50,7 +53,9 @@ class CohereEncoder(BaseEncoder):
             if isinstance(embeds, EmbedResponse_EmbeddingsFloats):
                 return embeds.embeddings
             elif isinstance(embeds, EmbedResponse_EmbeddingsByType):
-                raise NotImplementedError("Handling of EmbedByTypeResponseEmbeddings is not implemented.")
+                raise NotImplementedError(
+                    "Handling of EmbedByTypeResponseEmbeddings is not implemented."
+                )
             else:
                 raise ValueError("Unexpected response type from Cohere API")
         except Exception as e:
