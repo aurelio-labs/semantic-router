@@ -42,7 +42,7 @@ class CohereEncoder(BaseEncoder):
             raise ValueError("Cohere client is not initialized.")
         try:
             embeds = self.client.embed(
-                docs, input_type=self.input_type, model=self.name
+                texts=docs, input_type=self.input_type, model=self.name
             )
             return embeds.embeddings
         except Exception as e:
