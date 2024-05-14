@@ -38,6 +38,7 @@ class PineconeRecord(BaseModel):
 
 class PineconeIndex(BaseIndex):
     index_prefix: str = "semantic-router--"
+    api_key: Optional[str] = None
     index_name: str = "index"
     dimensions: Union[int, None] = None
     metric: str = "cosine"
@@ -69,7 +70,12 @@ class PineconeIndex(BaseIndex):
         self.host = host
         self.namespace = namespace
         self.type = "pinecone"
-        self.client = self._initialize_client(api_key=api_key)
+        self.api_key = api_key or os.getenv("PINECONE_API_KEY")
+        
+        if self.api_key is None:
+            raise ValueError("Pinecone API key is required.")
+
+        self.client = self._initialize_client(api_key=self.api_key)
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
@@ -82,9 +88,6 @@ class PineconeIndex(BaseIndex):
                 "You can install it with: "
                 "`pip install 'semantic-router[pinecone]'`"
             )
-        api_key = api_key or os.getenv("PINECONE_API_KEY")
-        if api_key is None:
-            raise ValueError("Pinecone API key is required.")
         pinecone_args = {"api_key": api_key, "source_tag": "semantic-router"}
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
@@ -190,7 +193,7 @@ class PineconeIndex(BaseIndex):
         params: Dict = {}
         if self.namespace:
             params["namespace"] = self.namespace
-        headers = {"Api-Key": os.environ["PINECONE_API_KEY"]}
+        headers = {"Api-Key": self.api_key}
         metadata = []
 
         while True:
