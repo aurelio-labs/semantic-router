@@ -70,7 +70,7 @@ class AutoEncoder:
         elif self.type == EncoderType.GOOGLE:
             self.model = GoogleEncoder(name=name)
         elif self.type == EncoderType.BEDROCK:
-            self.model = BedrockEncoder(name=name)
+            self.model = BedrockEncoder(name=name)  # type: ignore
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
