@@ -21,9 +21,10 @@ class ConsecutiveSimSplitter(BaseSplitter):
     ):
         warn(
             "Splitters are being deprecated. They have moved to their own "
-            "package. Please install the `semantic-chunkers` package. More "
+            "package. Please migrate to the `semantic-chunkers` package. More "
             "information can be found at:\n"
-            "https://github.com/aurelio-ai/semantic-chunkers"
+            "https://github.com/aurelio-ai/semantic-chunkers",
+            stacklevel=2,
         )
         super().__init__(name=name, encoder=encoder)
         encoder.score_threshold = score_threshold
