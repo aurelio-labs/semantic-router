@@ -24,7 +24,7 @@ class CumulativeSimSplitter(BaseSplitter):
             "Splitters are being deprecated. They have moved to their own "
             "package. Please migrate to the `semantic-chunkers` package. More "
             "information can be found at:\n"
-            "https://github.com/aurelio-ai/semantic-chunkers",
+            "https://github.com/aurelio-labs/semantic-chunkers",
             stacklevel=2,
         )
         super().__init__(name=name, encoder=encoder)
