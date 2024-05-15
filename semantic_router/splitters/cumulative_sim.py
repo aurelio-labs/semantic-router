@@ -1,4 +1,5 @@
 from typing import List
+from warnings import warn
 
 import numpy as np
 
@@ -19,6 +20,13 @@ class CumulativeSimSplitter(BaseSplitter):
         name: str = "cumulative_similarity_splitter",
         score_threshold: float = 0.45,
     ):
+        warn(
+            "Splitters are being deprecated. They have moved to their own "
+            "package. Please migrate to the `semantic-chunkers` package. More "
+            "information can be found at:\n"
+            "https://github.com/aurelio-ai/semantic-chunkers",
+            stacklevel=2,
+        )
         super().__init__(name=name, encoder=encoder)
         encoder.score_threshold = score_threshold
         self.score_threshold = score_threshold
