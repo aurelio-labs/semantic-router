@@ -4,9 +4,28 @@ from unittest.mock import patch
 
 
 class TestBaseLLM:
+
     @pytest.fixture
     def base_llm(self):
         return BaseLLM(name="TestLLM")
+
+    @pytest.fixture
+    def mixed_function_schema(self):
+        return [
+            {
+                "name": "test_function",
+                "description": "A test function with mixed mandatory and optional parameters.",
+                "signature": "(mandatory1, mandatory2: int, optional1=None, optional2: str = 'default')",
+            }
+        ]
+
+    @pytest.fixture
+    def mandatory_params(self):
+        return ["param1", "param2"]
+
+    @pytest.fixture
+    def all_params(self):
+        return ["param1", "param2", "optional1"]
 
     def test_base_llm_initialization(self, base_llm):
         assert base_llm.name == "TestLLM", "Initialization of name failed"
@@ -71,6 +90,59 @@ class TestBaseLLM:
             }
             test_query = "What time is it in America/New_York?"
             base_llm.extract_function_inputs(test_schema, test_query)
+
+    def test_mandatory_args_only(self, base_llm, mixed_function_schema):
+        inputs = [{"mandatory1": "value1", "mandatory2": 42}]
+        assert base_llm._is_valid_inputs(
+            inputs, mixed_function_schema
+        )  # True is implied
+
+    def test_all_args_provided(self, base_llm, mixed_function_schema):
+        inputs = [
+            {
+                "mandatory1": "value1",
+                "mandatory2": 42,
+                "optional1": "opt1",
+                "optional2": "opt2",
+            }
+        ]
+        assert base_llm._is_valid_inputs(
+            inputs, mixed_function_schema
+        )  # True is implied
+
+    def test_missing_mandatory_arg(self, base_llm, mixed_function_schema):
+        inputs = [{"mandatory1": "value1", "optional1": "opt1", "optional2": "opt2"}]
+        assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
+
+    def test_extra_arg_provided(self, base_llm, mixed_function_schema):
+        inputs = [
+            {
+                "mandatory1": "value1",
+                "mandatory2": 42,
+                "optional1": "opt1",
+                "optional2": "opt2",
+                "extra": "value",
+            }
+        ]
+        assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
+
+    def test_check_for_mandatory_inputs_all_present(self, base_llm, mandatory_params):
+        inputs = {"param1": "value1", "param2": "value2"}
+        assert base_llm._check_for_mandatory_inputs(
+            inputs, mandatory_params
+        )  # True is implied
+
+    def test_check_for_mandatory_inputs_missing_one(self, base_llm, mandatory_params):
+        inputs = {"param1": "value1"}
+        assert not base_llm._check_for_mandatory_inputs(inputs, mandatory_params)
+
+    def test_check_for_extra_inputs_no_extras(self, base_llm, all_params):
+        inputs = {"param1": "value1", "param2": "value2"}
+        assert base_llm._check_for_extra_inputs(inputs, all_params)  # True is implied
+
+    def test_check_for_extra_inputs_with_extras(self, base_llm, all_params):
+        inputs = {"param1": "value1", "param2": "value2", "extra_param": "extra"}
+        assert not base_llm._check_for_extra_inputs(inputs, all_params)
 
     def test_is_valid_inputs_multiple_inputs(self, base_llm, mocker):
         # Mock the logger to capture the error messages
@@ -139,7 +211,7 @@ class TestBaseLLM:
         malformed_function_schema = {
             "name": "get_time",
             "description": "Finds the current time in a specific timezone.",
-            "signature": "(timezone str)",  # Malformed signature missing colon
+            "signiture": "(timezone: str)",  # Malformed key name
             "output": "<class 'str'>",
         }
 
@@ -152,7 +224,7 @@ class TestBaseLLM:
         assert not result, "Method should return False when an exception occurs"
 
         # Check that the appropriate error message was logged
-        expected_error_message = "Single input validation error: list index out of range"  # Adjust based on the actual exception message
+        expected_error_message = "Single input validation error: 'signature'"  # Adjust based on the actual exception message
         mocked_logger.assert_called_once_with(expected_error_message)
 
     def test_extract_parameter_info_valid(self, base_llm):

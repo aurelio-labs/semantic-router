@@ -19,6 +19,30 @@ class BaseLLM(BaseModel):
     def __call__(self, messages: List[Message]) -> Optional[str]:
         raise NotImplementedError("Subclasses must implement this method")
 
+    def _check_for_mandatory_inputs(
+        self, inputs: dict[str, Any], mandatory_params: List[str]
+    ) -> bool:
+        """Check for mandatory parameters in inputs"""
+        for name in mandatory_params:
+            if name not in inputs:
+                logger.error(f"Mandatory input {name} missing from query")
+                return False
+        return True
+
+    def _check_for_extra_inputs(
+        self, inputs: dict[str, Any], all_params: List[str]
+    ) -> bool:
+        """Check for extra parameters not defined in the signature"""
+        input_keys = set(inputs.keys())
+        param_keys = set(all_params)
+        if not input_keys.issubset(param_keys):
+            extra_keys = input_keys - param_keys
+            logger.error(
+                f"Extra inputs provided that are not in the signature: {extra_keys}"
+            )
+            return False
+        return True
+
     def _is_valid_inputs(
         self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
@@ -48,17 +72,33 @@ class BaseLLM(BaseModel):
     ) -> bool:
         """Validate the extracted inputs against the function schema"""
         try:
-            # Extract parameter names and types from the signature string
+            # Extract parameter names and determine if they are optional
             signature = function_schema["signature"]
             param_info = [param.strip() for param in signature[1:-1].split(",")]
-            param_names = [info.split(":")[0].strip() for info in param_info]
-            param_types = [
-                info.split(":")[1].strip().split("=")[0].strip() for info in param_info
-            ]
-            for name, type_str in zip(param_names, param_types):
-                if name not in inputs:
-                    logger.error(f"Input {name} missing from query")
-                    return False
+            mandatory_params = []
+            all_params = []
+
+            for info in param_info:
+                parts = info.split("=")
+                name_type_pair = parts[0].strip()
+                if ":" in name_type_pair:
+                    name, _ = name_type_pair.split(":")
+                else:
+                    name = name_type_pair
+                all_params.append(name)
+
+                # If there is no default value, it's a mandatory parameter
+                if len(parts) == 1:
+                    mandatory_params.append(name)
+
+            # Check for mandatory parameters
+            if not self._check_for_mandatory_inputs(inputs, mandatory_params):
+                return False
+
+            # Check for extra parameters not defined in the signature
+            if not self._check_for_extra_inputs(inputs, all_params):
+                return False
+
             return True
         except Exception as e:
             logger.error(f"Single input validation error: {str(e)}")
