@@ -39,7 +39,7 @@ def layer_json():
                 "why don't you tell me about your political opinions"
             ],
             "description": null,
-            "function_schema": null
+            "function_schemas": null
         },
         {
             "name": "chitchat",
@@ -48,7 +48,7 @@ def layer_json():
                 "how are things going?"
             ],
             "description": null,
-            "function_schema": null
+            "function_schemas": null
         }
     ]
 }"""
@@ -59,13 +59,13 @@ def layer_yaml():
 encoder_type: cohere
 routes:
 - description: null
-  function_schema: null
+  function_schemas: null
   name: politics
   utterances:
   - isn't politics the best thing ever
   - why don't you tell me about your political opinions
 - description: null
-  function_schema: null
+  function_schemas: null
   name: chitchat
   utterances:
   - how's the weather today?
@@ -118,12 +118,14 @@ def routes_3():
 def dynamic_routes():
     return [
         Route(
-            name="Route 1", utterances=["Hello", "Hi"], function_schema={"name": "test"}
+            name="Route 1",
+            utterances=["Hello", "Hi"],
+            function_schemas=[{"name": "test"}],
         ),
         Route(
             name="Route 2",
             utterances=["Goodbye", "Bye", "Au revoir"],
-            function_schema={"name": "test"},
+            function_schemas=[{"name": "test"}],
         ),
     ]
 

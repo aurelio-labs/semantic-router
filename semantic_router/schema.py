@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, Any, Dict
 from pydantic.v1 import BaseModel
 
 
@@ -15,6 +15,7 @@ class EncoderType(Enum):
     VIT = "vit"
     CLIP = "clip"
     GOOGLE = "google"
+    BEDROCK = "bedrock"
 
 
 class EncoderInfo(BaseModel):
@@ -24,7 +25,7 @@ class EncoderInfo(BaseModel):
 
 class RouteChoice(BaseModel):
     name: Optional[str] = None
-    function_call: Optional[dict] = None
+    function_call: Optional[List[Dict]] = None
     similarity_score: Optional[float] = None
 
 
@@ -55,7 +56,7 @@ class DocumentSplit(BaseModel):
     is_triggered: bool = False
     triggered_score: Optional[float] = None
     token_count: Optional[int] = None
-    metadata: Optional[dict] = None
+    metadata: Optional[Dict] = None
 
     @property
     def content(self) -> str:

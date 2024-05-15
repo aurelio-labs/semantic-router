@@ -9,9 +9,9 @@ def replace_type_hints(file_path):
     # Decode the file data with error handling
     file_data = file_data.decode("utf-8", errors="ignore")
 
-    # Regular expression pattern to find 'Optional[dict[int, int]]' and replace with 'Optional[dict[int, int]]'
+    # Regular expression pattern to find 'Dict[Type1, Type2] | None' and replace with 'Optional[Dict[Type1, Type2]]'.
     file_data = re.sub(
-        r"dict\[(\w+), (\w+)\]\s*\|\s*None", r"Optional[dict[\1, \2]]", file_data
+        r"Dict\[(\w+), (\w+)\]\s*\|\s*None", r"Optional[Dict[\1, \2]]", file_data
     )
 
     with open(file_path, "w") as file:

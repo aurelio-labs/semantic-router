@@ -47,7 +47,7 @@ class Route(BaseModel):
     name: str
     utterances: Union[List[str], List[Union[Any, "Image"]]]
     description: Optional[str] = None
-    function_schema: Optional[Dict[str, Any]] = None
+    function_schemas: Optional[List[Dict[str, Any]]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
 
@@ -55,7 +55,7 @@ class Route(BaseModel):
         arbitrary_types_allowed = True
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
-        if self.function_schema:
+        if self.function_schemas:
             if not self.llm:
                 raise ValueError(
                     "LLM is required for dynamic routes. Please ensure the `llm` "
@@ -68,7 +68,7 @@ class Route(BaseModel):
                 )
             # if a function schema is provided we generate the inputs
             extracted_inputs = self.llm.extract_function_inputs(
-                query=query, function_schema=self.function_schema
+                query=query, function_schemas=self.function_schemas
             )
             func_call = extracted_inputs
         else:
@@ -94,13 +94,17 @@ class Route(BaseModel):
         return cls(**data)
 
     @classmethod
-    def from_dynamic_route(cls, llm: BaseLLM, entity: Union[BaseModel, Callable]):
+    def from_dynamic_route(
+        cls, llm: BaseLLM, entities: List[Union[BaseModel, Callable]], route_name: str
+    ):
         """
-        Generate a dynamic Route object from a function or Pydantic model using LLM
+        Generate a dynamic Route object from a list of functions or Pydantic models using LLM
         """
-        schema = function_call.get_schema(item=entity)
-        dynamic_route = cls._generate_dynamic_route(llm=llm, function_schema=schema)
-        dynamic_route.function_schema = schema
+        schemas = function_call.get_schema_list(items=entities)
+        dynamic_route = cls._generate_dynamic_route(
+            llm=llm, function_schemas=schemas, route_name=route_name
+        )
+        dynamic_route.function_schemas = schemas
         return dynamic_route
 
     @classmethod
@@ -116,16 +120,22 @@ class Route(BaseModel):
             raise ValueError("No <config></config> tags found in the output.")
 
     @classmethod
-    def _generate_dynamic_route(cls, llm: BaseLLM, function_schema: Dict[str, Any]):
+    def _generate_dynamic_route(
+        cls, llm: BaseLLM, function_schemas: List[Dict[str, Any]], route_name: str
+    ):
         logger.info("Generating dynamic route...")
 
+        formatted_schemas = "\n".join(
+            [json.dumps(schema, indent=4) for schema in function_schemas]
+        )
         prompt = f"""
-        You are tasked to generate a JSON configuration based on the provided
-        function schema. Please follow the template below, no other tokens allowed:
+        You are tasked to generate a single JSON configuration for multiple function schemas. 
+        Each function schema should contribute five example utterances. 
+        Please follow the template below, no other tokens allowed:
 
         <config>
         {{
-            "name": "<function_name>",
+            "name": "{route_name}",
             "utterances": [
                 "<example_utterance_1>",
                 "<example_utterance_2>",
@@ -136,12 +146,12 @@ class Route(BaseModel):
         </config>
 
         Only include the "name" and "utterances" keys in your answer.
-        The "name" should match the function name and the "utterances"
-        should comprise a list of 5 example phrases that could be used to invoke
-        the function. Use real values instead of placeholders.
+        The "name" should match the provided route name and the "utterances"
+        should comprise a list of 5 example phrases for each function schema that could be used to invoke
+        the functions. Use real values instead of placeholders.
 
-        Input schema:
-        {function_schema}
+        Input schemas:
+        {formatted_schemas}
         """
 
         llm_input = [Message(role="user", content=prompt)]

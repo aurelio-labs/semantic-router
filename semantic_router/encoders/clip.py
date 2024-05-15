@@ -2,7 +2,7 @@ from typing import Any, List, Optional
 
 import numpy as np
 from pydantic.v1 import PrivateAttr
-
+from typing import Dict
 from semantic_router.encoders import BaseEncoder
 
 
@@ -10,9 +10,9 @@ class CLIPEncoder(BaseEncoder):
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     score_threshold: float = 0.2
-    tokenizer_kwargs: dict = {}
-    processor_kwargs: dict = {}
-    model_kwargs: dict = {}
+    tokenizer_kwargs: Dict = {}
+    processor_kwargs: Dict = {}
+    model_kwargs: Dict = {}
     device: Optional[str] = None
     _tokenizer: Any = PrivateAttr()
     _processor: Any = PrivateAttr()

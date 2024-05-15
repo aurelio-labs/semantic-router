@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 
@@ -49,7 +49,7 @@ class LocalIndex(BaseIndex):
             raise ValueError("No routes have been added to the index.")
         return list(zip(self.routes, self.utterances))
 
-    def describe(self) -> dict:
+    def describe(self) -> Dict:
         return {
             "type": self.type,
             "dimensions": self.index.shape[1] if self.index is not None else 0,
