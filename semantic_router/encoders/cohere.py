@@ -2,6 +2,7 @@ import os
 from typing import List, Optional
 
 import cohere
+from cohere.types.embed_response import EmbedResponse_EmbeddingsByType
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
@@ -42,8 +43,14 @@ class CohereEncoder(BaseEncoder):
             raise ValueError("Cohere client is not initialized.")
         try:
             embeds = self.client.embed(
-                docs, input_type=self.input_type, model=self.name
+                texts=docs, input_type=self.input_type, model=self.name
             )
-            return embeds.embeddings
+            # Check for unsupported type.
+            if isinstance(embeds, EmbedResponse_EmbeddingsByType):
+                raise NotImplementedError(
+                    "Handling of EmbedByTypeResponseEmbeddings is not implemented."
+                )
+            else:
+                return embeds.embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
