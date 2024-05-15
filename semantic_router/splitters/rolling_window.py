@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+from warnings import warn
 
 import numpy as np
 
@@ -49,6 +50,12 @@ class RollingWindowSplitter(BaseSplitter):
         plot_splits=False,
         enable_statistics=False,
     ):
+        warn(
+            "Splitters are being deprecated. They have moved to their own "
+            "package. Please install the `semantic-chunkers` package. More "
+            "information can be found at:\n"
+            "https://github.com/aurelio-ai/semantic-chunkers"
+        )
         super().__init__(name=name, encoder=encoder)
         self.calculated_threshold: float
         self.encoder = encoder
