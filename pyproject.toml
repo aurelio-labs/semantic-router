@@ -33,7 +33,7 @@ pinecone-client = {version="^3.0.0", optional = true}
 regex = "^2023.12.25"
 torchvision = { version = "^0.17.0", optional = true}
 pillow = { version = "^10.2.0", optional = true}
-tiktoken = "^0.6.0"
+tiktoken = ">=0.6.0,<1.0.0"
 matplotlib = { version = "^3.8.3", optional = true}
 qdrant-client = {version = "^1.8.0", optional = true}
 google-cloud-aiplatform = {version = "^1.45.0", optional = true}
