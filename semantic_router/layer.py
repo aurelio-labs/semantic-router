@@ -184,6 +184,7 @@ class RouteLayer:
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
         aggregation: str = "sum",
+        default_route: Optional[Route] = None, # TODO: Check if people agree with your reasons for making this a class attribute rather than just adding to extisting list of routes and specifying by name
     ):
         logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
@@ -199,6 +200,7 @@ class RouteLayer:
         self.routes: List[Route] = routes if routes is not None else []
         self.score_threshold = self.encoder.score_threshold
         self.top_k = top_k
+        self.default_route = default_route
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
         self.aggregation = aggregation
@@ -242,30 +244,54 @@ class RouteLayer:
 
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
-        if passed and route is not None and not simulate_static:
-            if route.function_schemas and text is None:
-                raise ValueError(
-                    "Route has a function schema, but no text was provided."
-                )
-            if route.function_schemas and not isinstance(route.llm, BaseLLM):
-                if not self.llm:
-                    logger.warning(
-                        "No LLM provided for dynamic route, will use OpenAI LLM "
-                        "default. Ensure API key is set in OPENAI_API_KEY environment "
-                        "variable."
+        if passed and route is not None: # TODO: Double check. Do we want to possibly return a default route if route is None? We might want to raise a warning or error instead and return RouteChoice().
+            if not simulate_static:
+                if route.function_schemas and text is None:
+                    raise ValueError(
+                        "Route has a function schema, but no text was provided."
                     )
-
-                    self.llm = OpenAILLM()
-                    route.llm = self.llm
-                else:
-                    route.llm = self.llm
-            return route(text)
-        elif passed and route is not None and simulate_static:
-            return RouteChoice(
-                name=route.name,
-                function_call=None,
-                similarity_score=None,
-            )
+                if route.function_schemas and not isinstance(route.llm, BaseLLM):
+                    if not self.llm:
+                        logger.warning(
+                            "No LLM provided for Dynamic Route, will use OpenAI LLM "
+                            "default. Ensure API key is set in OPENAI_API_KEY environment "
+                            "variable."
+                        )
+                        self.llm = OpenAILLM()
+                        route.llm = self.llm
+                    else:
+                        route.llm = self.llm
+                return route(text)
+            elif simulate_static:
+                return RouteChoice(
+                    name=route.name,
+                    function_call=None,
+                    similarity_score=None,
+                )
+        elif self.default_route: # TODO: Reduce repetition of code here and above
+            if not simulate_static:
+                if self.default_route.function_schemas and text is None:
+                    raise ValueError(
+                        "Default Route has a function schema, but no text was provided."
+                    )
+                if self.default_route.function_schemas and not isinstance(self.default_route.llm, BaseLLM):
+                    if not self.llm:
+                        logger.warning(
+                            "No LLM provided for Default Dynamic Route, will use OpenAI LLM "
+                            "default. Ensure API key is set in OPENAI_API_KEY environment "
+                            "variable."
+                        )
+                        self.llm = OpenAILLM()
+                        self.default_route.llm = self.llm
+                    else:
+                        self.default_route.llm = self.llm
+                return self.default_route(text)
+            elif simulate_static:
+                return RouteChoice(
+                    name=self.default_route.name,
+                    function_call=None,
+                    similarity_score=None,
+                )
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
