@@ -79,8 +79,7 @@ class OpenAIEncoder(BaseEncoder):
 
         if truncate:
             # check if any document exceeds token limit and truncate if so
-            for i in range(len(docs)):
-                docs[i] = self._truncate(docs[i])
+            docs = [self._truncate(doc) for doc in docs]
 
         # Exponential backoff
         for j in range(1, 7):
