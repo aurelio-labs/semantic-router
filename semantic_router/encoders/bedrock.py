@@ -250,6 +250,20 @@ class BedrockEncoder(BaseEncoder):
 
     @staticmethod
     def get_env_variable(var_name, provided_value, default=None):
+        """Retrieves environment variable or uses a provided value.
+
+        Args:
+            var_name (str): The name of the environment variable.
+            provided_value (Optional[str]): The provided value to use if not None.
+            default (Optional[str]): The default value if the environment variable is not set.
+
+        Returns:
+            str: The value of the environment variable or the provided/default value.
+            None: Where AWS_SESSION_TOKEN is not set or provided
+
+        Raises:
+            ValueError: If no value is provided and the environment variable is not set.
+        """
         if provided_value is not None:
             return provided_value
         value = os.getenv(var_name, default)
