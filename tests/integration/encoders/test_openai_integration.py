@@ -1,7 +1,5 @@
 import pytest
-
-
-from semantic_router.encoders import OpenAIEncoder
+from semantic_router.encoders.openai import OpenAIEncoder
 
 with open("tests/integration/57640.4032.txt", "r") as fp:
     long_doc = fp.read()
