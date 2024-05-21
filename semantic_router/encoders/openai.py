@@ -19,8 +19,8 @@ model_configs = {
     "text-embedding-ada-002": EncoderInfo(
         name="text-embedding-ada-002", token_limit=8192
     ),
-    "text-embed-3-small": EncoderInfo(name="text-embed-3-small", token_limit=8192),
-    "text-embed-3-large": EncoderInfo(name="text-embed-3-large", token_limit=8192),
+    "text-embedding-3-small": EncoderInfo(name="text-embedding-3-small", token_limit=8192),
+    "text-embedding-3-large": EncoderInfo(name="text-embedding-3-large", token_limit=8192),
 }
 
 
