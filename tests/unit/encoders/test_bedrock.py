@@ -86,6 +86,22 @@ class TestBedrockEncoder:
             bedrock_encoder.access_key_id == "env_id"
         ), "Access key ID not set correctly from environment variable"
 
+    def test_missing_access_key_id(self, mocker):
+        mocker.patch(
+            "semantic_router.encoders.bedrock.BedrockEncoder._initialize_client"
+        )
+
+        with pytest.raises(ValueError):
+            BedrockEncoder(access_key_id=None, secret_access_key="fake_secret")
+
+    def test_missing_secret_access_key(self, mocker):
+        mocker.patch(
+            "semantic_router.encoders.bedrock.BedrockEncoder._initialize_client"
+        )
+
+        with pytest.raises(ValueError):
+            BedrockEncoder(access_key_id="fake_id", secret_access_key=None)
+
     def test_initialisation_missing_env_variables(self, mocker):
         mocker.patch.dict(os.environ, {}, clear=True)
         with pytest.raises(ValueError):
@@ -95,6 +111,17 @@ class TestBedrockEncoder:
                 session_token=None,
                 region=None,
             )
+
+    def test_failed_client_initialisation(self, mocker):
+        mocker.patch.dict(os.environ, clear=True)
+
+        mocker.patch(
+            "semantic_router.encoders.bedrock.BedrockEncoder._initialize_client",
+            side_effect=Exception("Initialization failed"),
+        )
+
+        with pytest.raises(ValueError):
+            BedrockEncoder(access_key_id="fake_id", secret_access_key="fake_secret")
 
     def test_call_method(self, bedrock_encoder):
         response_content = json.dumps({"embedding": [0.1, 0.2, 0.3]})
@@ -181,6 +208,18 @@ class TestBedrockEncoder:
     def test_get_env_variable_missing(self):
         with pytest.raises(ValueError):
             BedrockEncoder.get_env_variable("MISSING_VAR", None)
+
+    def test_uninitialised_client(self, bedrock_encoder):
+        bedrock_encoder.client = None
+
+        with pytest.raises(ValueError):
+            bedrock_encoder(["test"])
+
+    def test_missing_env_variables(self, mocker):
+        mocker.patch.dict(os.environ, clear=True)
+
+        with pytest.raises(ValueError):
+            BedrockEncoder()
 
 
 class TestBedrockEncoderWithCohere:
