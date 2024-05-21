@@ -224,7 +224,7 @@ class BedrockEncoder(BaseEncoder):
                 ) from error
             except Exception as e:
                 raise ValueError(f"Bedrock call failed. Error: {e}") from e
-        raise ValueError("Bedrock call to return embeddings.")
+        raise ValueError("Bedrock call failed to return embeddings.")
 
     def chunk_strings(self, strings, MAX_WORDS=20):
         """
