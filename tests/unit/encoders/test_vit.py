@@ -5,7 +5,7 @@ from PIL import Image
 
 from semantic_router.encoders import VitEncoder
 
-test_model_name = "hf-internal-testing/tiny-random-vit"
+test_model_name = "aurelio-ai/sr-test-vit"
 vit_encoder = VitEncoder(name=test_model_name)
 embed_dim = 32
 

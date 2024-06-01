@@ -43,7 +43,7 @@ boto3 = { version = "^1.34.98", optional = true }
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
-local = ["torch", "transformers", "tokenizers", "llama-cpp-python"]
+local = ["torch", "transformers", "tokenizers", "huggingface-hub", "llama-cpp-python"]
 pinecone = ["pinecone-client"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
 processing = ["matplotlib"]
