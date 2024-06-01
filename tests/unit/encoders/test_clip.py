@@ -4,8 +4,14 @@ import torch
 from PIL import Image
 
 from semantic_router.encoders import CLIPEncoder
+from transformers import AutoTokenizer, AutoModel
 
 test_model_name = "aurelio-ai/sr-test-clip"
+
+# force the model download
+tokenizer = AutoTokenizer.from_pretrained(test_model_name, force_download=True)
+model = AutoModel.from_pretrained(test_model_name, force_download=True)
+
 clip_encoder = CLIPEncoder(name=test_model_name)
 embed_dim = 64
 
