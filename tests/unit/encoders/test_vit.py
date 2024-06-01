@@ -4,8 +4,14 @@ import torch
 from PIL import Image
 
 from semantic_router.encoders import VitEncoder
+from transformers import AutoTokenizer, AutoModel
 
 test_model_name = "hf-internal-testing/tiny-random-vit"
+
+# force the model download
+tokenizer = AutoTokenizer.from_pretrained(test_model_name, force_download=True)
+model = AutoModel.from_pretrained(test_model_name, force_download=True)
+
 vit_encoder = VitEncoder(name=test_model_name)
 embed_dim = 32
 
