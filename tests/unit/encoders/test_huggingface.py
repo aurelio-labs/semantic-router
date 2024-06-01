@@ -4,14 +4,8 @@ import numpy as np
 import pytest
 
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
-from transformers import AutoTokenizer, AutoModel
 
 test_model_name = "aurelio-ai/sr-test-huggingface"
-
-# force the model download
-tokenizer = AutoTokenizer.from_pretrained(test_model_name, force_download=True)
-model = AutoModel.from_pretrained(test_model_name, force_download=True)
-
 encoder = HuggingFaceEncoder(name=test_model_name)
 
 
