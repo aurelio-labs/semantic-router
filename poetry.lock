@@ -4218,7 +4218,7 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more
 bedrock = ["boto3"]
 google = ["google-cloud-aiplatform"]
 hybrid = ["pinecone-text"]
-local = ["llama-cpp-python", "tokenizers", "torch", "transformers"]
+local = ["huggingface-hub", "llama-cpp-python", "tokenizers", "torch", "transformers"]
 mistralai = ["mistralai"]
 pinecone = ["pinecone-client"]
 processing = ["matplotlib"]
@@ -4228,4 +4228,4 @@ vision = ["pillow", "torch", "torchvision", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "ea02ac49c6a0107091cc76153249bece31def22b7d16758c9c024b78d47a9418"
+content-hash = "7a611e25c44d7d5b997d0826b2c96a4e0479eb343171aecae0efeee9fee15728"
