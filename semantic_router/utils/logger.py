@@ -30,12 +30,11 @@ def add_coloured_handler(logger):
 
 def setup_custom_logger(name):
     logger = logging.getLogger(name)
-    logger.handlers = []
 
-    add_coloured_handler(logger)
-
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
+    if not logger.hasHandlers():
+        add_coloured_handler(logger)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
 
     return logger
 
