@@ -94,7 +94,9 @@ class AzureOpenAIEncoder(BaseEncoder):
         for j in range(3):
             try:
                 embeds = self.client.embeddings.create(
-                    input=docs, model=str(self.model), dimensions=self.dimensions,
+                    input=docs,
+                    model=str(self.model),
+                    dimensions=self.dimensions,
                 )
                 if embeds.data:
                     break

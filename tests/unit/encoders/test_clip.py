@@ -5,7 +5,7 @@ from PIL import Image
 
 from semantic_router.encoders import CLIPEncoder
 
-test_model_name = "hf-internal-testing/tiny-random-CLIPModel"
+test_model_name = "aurelio-ai/sr-test-clip"
 clip_encoder = CLIPEncoder(name=test_model_name)
 embed_dim = 64
 
