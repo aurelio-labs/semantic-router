@@ -4217,7 +4217,7 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-bedrock = ["boto3"]
+bedrock = ["boto3", "botocore"]
 google = ["google-cloud-aiplatform"]
 hybrid = ["pinecone-text"]
 local = ["llama-cpp-python", "tokenizers", "torch", "transformers"]
@@ -4230,4 +4230,4 @@ vision = ["pillow", "torch", "torchvision", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "17f2d76c59c4cb39899f69fe1e2242933a5747cfceb24a77a024d0cae0da1b3f"
+content-hash = "cb723f43017c81956776fc89703cf4c165c923e46bd0b541c109ccdfe561f2ab"
