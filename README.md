@@ -1,6 +1,4 @@
-[![Aurelio AI](https://pbs.twimg.com/profile_banners/1671498317455581184/1696285195/1500x500)](https://aurelio.ai)
-
-# Semantic Router
+[![Semantic Router](https://i.ibb.co.com/g423grt/semantic-router-banner.png)](https://aurelio.ai)
 
 <p>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
@@ -143,6 +141,8 @@ Our utterance vector space also integrates with [Pinecone](https://github.com/au
 [![Semantic Router Course](https://github.com/aurelio-labs/assets/blob/main/images/aurelio-1080p-header-dark-semantic-router.jpg)](https://www.aurelio.ai/course/semantic-router)
 
 ### Community
+
+Dimitrios Manias, Ali Chouman, Abdallah Shami, [Semantic Routing for Enhanced Performance of LLM-Assisted Intent-Based 5G Core Network Management and Orchestration](https://arxiv.org/abs/2404.15869), IEEE GlobeCom 2024
 
 Julian Horsey, [Semantic Router superfast decision layer for LLMs and AI agents](https://www.geeky-gadgets.com/semantic-router-superfast-decision-layer-for-llms-and-ai-agents/), Geeky Gadgets
 
