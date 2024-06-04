@@ -85,10 +85,10 @@ class RollingWindowSplitter(BaseSplitter):
             token_count = tiktoken_length(docs[0])
             if token_count > self.max_split_tokens:
                 logger.info(
-                    f"Single document exceeds the maximum token limit "
-                    f"of {self.max_split_tokens}. "
-                    "Splitting to sentences before semantically splitting."
+                    "Single document exceeds the maximum token limit of %s. Splitting to sentences before semantically splitting.",
+                    self.max_split_tokens,
                 )
+
             docs = split_to_sentences(docs[0])
         encoded_docs = self._encode_documents(docs)
         similarities = self._calculate_similarity_scores(encoded_docs)
@@ -125,7 +125,7 @@ class RollingWindowSplitter(BaseSplitter):
                 batch_embeddings = self.encoder(batch_docs)
                 embeddings.extend(batch_embeddings)
             except Exception as e:
-                logger.error(f"Error encoding documents {batch_docs}: {e}")
+                logger.error("Error encoding documents %s: %s", batch_docs, e)
                 raise
 
         return np.array(embeddings)
@@ -145,12 +145,14 @@ class RollingWindowSplitter(BaseSplitter):
     def _find_split_indices(self, similarities: List[float]) -> List[int]:
         split_indices = []
         for idx, score in enumerate(similarities):
-            logger.debug(f"Similarity score at index {idx}: {score}")
+            logger.debug("Similarity score at index %d: %f", idx, score)
             if score < self.calculated_threshold:
                 logger.debug(
-                    f"Adding to split_indices due to score < threshold: "
-                    f"{score} < {self.calculated_threshold}"
+                    "Adding to split_indices due to score < threshold: %f < %f",
+                    score,
+                    self.calculated_threshold,
                 )
+
                 # Split after the document at idx
                 split_indices.append(idx + 1)
         return split_indices
@@ -173,7 +175,9 @@ class RollingWindowSplitter(BaseSplitter):
             self.calculated_threshold = (low + high) / 2
             split_indices = self._find_split_indices(similarity_scores)
             logger.debug(
-                f"Iteration {iteration}: Trying threshold: {self.calculated_threshold}"
+                "Iteration %d: Trying threshold: %f",
+                iteration,
+                self.calculated_threshold,
             )
 
             # Calculate the token counts for each split using the cumulative sums
@@ -187,8 +191,9 @@ class RollingWindowSplitter(BaseSplitter):
             # Calculate the median token count for the splits
             median_tokens = np.median(split_token_counts)
             logger.debug(
-                f"Iteration {iteration}: Median tokens per split: {median_tokens}"
+                "Iteration %d: Median tokens per split: %d", iteration, median_tokens
             )
+
             if (
                 self.min_split_tokens - self.split_tokens_tolerance
                 <= median_tokens
@@ -205,9 +210,11 @@ class RollingWindowSplitter(BaseSplitter):
             iteration += 1
 
         logger.debug(
-            f"Optimal threshold {self.calculated_threshold} found "
-            f"with median tokens ({median_tokens}) in target range "
-            f"({self.min_split_tokens}-{self.max_split_tokens})."
+            "Optimal threshold %f found with median tokens (%d) in target range (%d-%d).",
+            self.calculated_threshold,
+            median_tokens,
+            self.min_split_tokens,
+            self.max_split_tokens,
         )
 
         return self.calculated_threshold
@@ -234,8 +241,9 @@ class RollingWindowSplitter(BaseSplitter):
 
         for doc_idx, doc in enumerate(docs):
             doc_token_count = token_counts[doc_idx]
-            logger.debug(f"Accumulative token count: {current_tokens_count} tokens")
-            logger.debug(f"Document token count: {doc_token_count} tokens")
+            logger.debug("Accumulative token count: %d tokens", current_tokens_count)
+            logger.debug("Document token count: %d tokens", doc_token_count)
+
             # Check if current index is a split point based on similarity
             if doc_idx + 1 in split_indices:
                 if (
@@ -260,9 +268,11 @@ class RollingWindowSplitter(BaseSplitter):
                         )
                     )
                     logger.debug(
-                        f"Split finalized with {current_tokens_count} tokens due to "
-                        f"threshold {self.calculated_threshold}."
+                        "Split finalized with %d tokens due to threshold %f.",
+                        current_tokens_count,
+                        self.calculated_threshold,
                     )
+
                     current_split, current_tokens_count = [], 0
                     splits_by_threshold += 1
                     continue  # Move to the next document after splitting
@@ -280,8 +290,9 @@ class RollingWindowSplitter(BaseSplitter):
                     )
                     splits_by_max_chunk_size += 1
                     logger.debug(
-                        f"Split finalized with {current_tokens_count} tokens due to "
-                        f"exceeding token limit of {self.max_split_tokens}."
+                        "Split finalized with %d tokens due to exceeding token limit of %d.",
+                        current_tokens_count,
+                        self.max_split_tokens,
                     )
                     current_split, current_tokens_count = [], 0
 
@@ -300,8 +311,8 @@ class RollingWindowSplitter(BaseSplitter):
             )
             splits_by_last_split += 1
             logger.debug(
-                f"Final split added with {current_tokens_count} "
-                "tokens due to remaining documents."
+                "Final split added with %d tokens due to remaining documents.",
+                current_tokens_count,
             )
 
         # Validation to ensure no tokens are lost during the split
@@ -311,8 +322,11 @@ class RollingWindowSplitter(BaseSplitter):
         )
         if original_token_count != split_token_count:
             logger.error(
-                f"Token count mismatch: {original_token_count} != {split_token_count}"
+                "Token count mismatch: %d != %d",
+                original_token_count,
+                split_token_count,
             )
+
             raise ValueError(
                 f"Token count mismatch: {original_token_count} != {split_token_count}"
             )
