@@ -1,0 +1,20 @@
+services:
+  postgres:
+    container_name: pgvector
+    image: ankane/pgvector
+    restart: always
+    shm_size: 128mb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: semantic_router
+    volumes:
+      - postgres_data:/var/lib/pgvector/data
+
+volumes:
+  postgres_data:
+    driver: local
+
+  
