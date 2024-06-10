@@ -52,7 +52,8 @@ class PostgresIndex(BaseIndex):
     """
     Postgres implementation of Index
     """
-    connection_string: Optional[str] = None,
+
+    connection_string: Optional[str] = None
     index_prefix: str = "semantic_router_"
     index_name: str = "index"
     dimensions: int = 1536
@@ -115,6 +116,8 @@ class PostgresIndex(BaseIndex):
             raise ValueError(
                 f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
             )
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(
                 f"""
@@ -135,6 +138,8 @@ class PostgresIndex(BaseIndex):
         True where the length of the vector embeddings in the table matches the expected dimensions, or no table yet exists.
         """
         table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(
                 f"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='{table_name}');"
@@ -176,6 +181,8 @@ class PostgresIndex(BaseIndex):
             PostgresIndexRecord(vector=vector, route=route, utterance=utterance)
             for vector, route, utterance in zip(embeddings, routes, utterances)
         ]
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.executemany(
                 f"INSERT INTO {table_name} (id, route, utterance, vector) VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",  # if matching hash exists do nothing.
@@ -188,15 +195,21 @@ class PostgresIndex(BaseIndex):
 
     def delete(self, route_name: str) -> None:
         table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"DELETE FROM {table_name} WHERE route = '{route_name}'")
             self.conn.commit()
 
     def describe(self) -> Dict:
         table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cur.fetchone()[0]
+            count = cur.fetchone()
+            if count is None:
+                count = 0
             return {
                 "type": self.type,
                 "dimensions": self.dimensions,
@@ -213,6 +226,8 @@ class PostgresIndex(BaseIndex):
         Search the index for the query and return top_k results.
         """
         table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             filter_query = f" AND route = ANY({route_filter})" if route_filter else ""
             # create the string representation of vector
@@ -230,6 +245,8 @@ class PostgresIndex(BaseIndex):
 
     def delete_index(self) -> None:
         table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {table_name}")
             self.conn.commit()
