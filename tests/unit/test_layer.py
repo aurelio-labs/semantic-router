@@ -276,6 +276,9 @@ class TestRouteLayer:
 
         assert query_result in ["Route 1"]
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
         pinecone_api_key = os.environ["PINECONE_API_KEY"]
         pineconeindex = PineconeIndex(api_key=pinecone_api_key)
@@ -292,6 +295,9 @@ class TestRouteLayer:
 
         assert query_result in ["Route 1"]
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
         pinecone_api_key = os.environ["PINECONE_API_KEY"]
         pineconeindex = PineconeIndex(api_key=pinecone_api_key, namespace="test")
