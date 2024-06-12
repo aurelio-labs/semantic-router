@@ -1,12 +1,12 @@
 from unittest.mock import patch
 
+import os
 import numpy as np
 import pytest
 
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
 
 test_model_name = "aurelio-ai/sr-test-huggingface"
-encoder = HuggingFaceEncoder(name=test_model_name)
 
 
 class TestHuggingFaceEncoder:
@@ -26,7 +26,11 @@ class TestHuggingFaceEncoder:
 
         assert "Please install Pytorch to use HuggingFaceEncoder" in str(error.value)
 
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
     def test_huggingface_encoder_mean_pooling(self):
+        encoder = HuggingFaceEncoder(name=test_model_name)
         test_docs = ["This is a test", "This is another test"]
         embeddings = encoder(test_docs, pooling_strategy="mean")
         assert isinstance(embeddings, list)
@@ -34,7 +38,11 @@ class TestHuggingFaceEncoder:
         assert all(isinstance(embedding, list) for embedding in embeddings)
         assert all(len(embedding) > 0 for embedding in embeddings)
 
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
     def test_huggingface_encoder_max_pooling(self):
+        encoder = HuggingFaceEncoder(name=test_model_name)
         test_docs = ["This is a test", "This is another test"]
         embeddings = encoder(test_docs, pooling_strategy="max")
         assert isinstance(embeddings, list)
@@ -42,7 +50,11 @@ class TestHuggingFaceEncoder:
         assert all(isinstance(embedding, list) for embedding in embeddings)
         assert all(len(embedding) > 0 for embedding in embeddings)
 
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
     def test_huggingface_encoder_normalized_embeddings(self):
+        encoder = HuggingFaceEncoder(name=test_model_name)
         docs = ["This is a test document.", "Another test document."]
         unnormalized_embeddings = encoder(docs, normalize_embeddings=False)
         normalized_embeddings = encoder(docs, normalize_embeddings=True)
