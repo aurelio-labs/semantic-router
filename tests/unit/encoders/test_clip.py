@@ -34,14 +34,20 @@ def misshaped_pil_image():
 
 
 class TestClipEncoder:
-    def test_clip_encoder__import_errors_transformers(self, mocker):
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
+    def test_clip_encoder__import_errors_transformers(self):
         with patch.dict("sys.modules", {"transformers": None}):
             with pytest.raises(ImportError) as error:
                 CLIPEncoder()
 
         assert "install transformers" in str(error.value)
 
-    def test_clip_encoder__import_errors_torch(self, mocker):
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
+    def test_clip_encoder__import_errors_torch(self):
         with patch.dict("sys.modules", {"torch": None}):
             with pytest.raises(ImportError) as error:
                 CLIPEncoder()
