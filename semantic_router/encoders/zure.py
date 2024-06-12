@@ -1,3 +1,4 @@
+from asyncio import sleep as asleep
 import os
 from time import sleep
 from typing import List, Optional, Union
@@ -14,6 +15,7 @@ from semantic_router.utils.logger import logger
 
 class AzureOpenAIEncoder(BaseEncoder):
     client: Optional[openai.AzureOpenAI] = None
+    async_client: Optional[openai.AsyncAzureOpenAI] = None
     dimensions: Union[int, NotGiven] = NotGiven()
     type: str = "azure"
     api_key: Optional[str] = None
@@ -77,7 +79,14 @@ class AzureOpenAIEncoder(BaseEncoder):
                 api_key=str(self.api_key),
                 azure_endpoint=str(self.azure_endpoint),
                 api_version=str(self.api_version),
-                # _strict_response_validation=True,
+            )
+            self.async_client = openai.AsyncAzureOpenAI(
+                azure_deployment=(
+                    str(self.deployment_name) if self.deployment_name else None
+                ),
+                api_key=str(self.api_key),
+                azure_endpoint=str(self.azure_endpoint),
+                api_version=str(self.api_version),
             )
         except Exception as e:
             raise ValueError(
@@ -86,7 +95,7 @@ class AzureOpenAIEncoder(BaseEncoder):
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
         if self.client is None:
-            raise ValueError("OpenAI client is not initialized.")
+            raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
         error_message = ""
 
@@ -106,6 +115,44 @@ class AzureOpenAIEncoder(BaseEncoder):
 
                 traceback.print_exc()
                 sleep(2**j)
+                error_message = str(e)
+                logger.warning(f"Retrying in {2**j} seconds...")
+            except Exception as e:
+                logger.error(f"Azure OpenAI API call failed. Error: {error_message}")
+                raise ValueError(f"Azure OpenAI API call failed. Error: {e}") from e
+
+        if (
+            not embeds
+            or not isinstance(embeds, CreateEmbeddingResponse)
+            or not embeds.data
+        ):
+            raise ValueError(f"No embeddings returned. Error: {error_message}")
+
+        embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
+        return embeddings
+    
+    async def acall(self, docs: List[str]) -> List[List[float]]:
+        if self.async_client is None:
+            raise ValueError("Azure OpenAI async client is not initialized.")
+        embeds = None
+        error_message = ""
+
+        # Exponential backoff
+        for j in range(3):
+            try:
+                embeds = await self.async_client.embeddings.create(
+                    input=docs,
+                    model=str(self.model),
+                    dimensions=self.dimensions,
+                )
+                if embeds.data:
+                    break
+            except OpenAIError as e:
+                # print full traceback
+                import traceback
+
+                traceback.print_exc()
+                await asleep(2**j)
                 error_message = str(e)
                 logger.warning(f"Retrying in {2**j} seconds...")
             except Exception as e:

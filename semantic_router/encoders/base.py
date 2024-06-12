@@ -7,9 +7,13 @@ class BaseEncoder(BaseModel):
     name: str
     score_threshold: float
     type: str = Field(default="base")
+    is_async: bool = Field(default=False)
 
     class Config:
         arbitrary_types_allowed = True
 
     def __call__(self, docs: List[Any]) -> List[List[float]]:
+        raise NotImplementedError("Subclasses must implement this method")
+    
+    def acall(self, docs: List[Any]) -> List[List[float]]:
         raise NotImplementedError("Subclasses must implement this method")
