@@ -38,7 +38,7 @@ class TestClipEncoder:
         with patch.dict("sys.modules", {"transformers": None}):
             with pytest.raises(ImportError) as error:
                 CLIPEncoder()
-        
+
         assert "install transformers" in str(error.value)
 
     def test_clip_encoder__import_errors_torch(self, mocker):
