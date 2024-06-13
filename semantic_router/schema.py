@@ -21,6 +21,7 @@ class EncoderType(Enum):
 class EncoderInfo(BaseModel):
     name: str
     token_limit: int
+    threshold: Optional[float] = None
 
 
 class RouteChoice(BaseModel):
