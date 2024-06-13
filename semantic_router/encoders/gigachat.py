@@ -21,7 +21,7 @@ class GigaChatEncoder(BaseEncoder):
     def __init__(self,
                  name: Optional[str] = None,
                  auth_data: Optional[str] = None,
-                 scope:Optional[str] = None,
+                 scope: Optional[str] = None,
                  score_threshold: float = 0.75
         ):
         """Initializes the GigaChatEncoder.
@@ -70,5 +70,3 @@ class GigaChatEncoder(BaseEncoder):
             return embeddings
         except Exception as e:
             raise ValueError(f"GigaChat call failed. Error: {e}") from e
-
-

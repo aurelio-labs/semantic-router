@@ -16,7 +16,7 @@ class EncoderType(Enum):
     CLIP = "clip"
     GOOGLE = "google"
     BEDROCK = "bedrock"
-    YANDEX = "yandex"
+    YANDEX = "yandexgpt"
     GIGACHAT = "gigachat"
 
 
