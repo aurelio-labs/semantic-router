@@ -130,7 +130,7 @@ class AzureOpenAIEncoder(BaseEncoder):
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
-    
+
     async def acall(self, docs: List[str]) -> List[List[float]]:
         if self.async_client is None:
             raise ValueError("Azure OpenAI async client is not initialized.")

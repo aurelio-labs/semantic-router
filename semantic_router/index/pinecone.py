@@ -100,14 +100,14 @@ class PineconeIndex(BaseIndex):
             pinecone_args["namespace"] = self.namespace
 
         return Pinecone(**pinecone_args)
-    
+
     def _initialize_async_client(self, api_key: Optional[str] = None):
         async_client = aiohttp.ClientSession(
             headers={
                 "Api-Key": api_key,
                 "Content-Type": "application/json",
                 "X-Pinecone-API-Version": "2024-07",
-                "User-Agent": "source_tag=semanticrouter"
+                "User-Agent": "source_tag=semanticrouter",
             }
         )
         return async_client
@@ -158,7 +158,7 @@ class PineconeIndex(BaseIndex):
         if index is not None:
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
-    
+
     async def _init_async_index(self, force_create: bool = False) -> Union[Any, None]:
         index_stats = None
         indexes = await self._async_list_indexes()
@@ -171,7 +171,7 @@ class PineconeIndex(BaseIndex):
                 dimension=self.dimensions,
                 metric=self.metric,
                 cloud=self.cloud,
-                region=self.region
+                region=self.region,
             )
             # TODO describe index and async sleep
             index_ready = "false"
@@ -332,7 +332,7 @@ class PineconeIndex(BaseIndex):
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
-    
+
     async def aquery(
         self,
         vector: np.ndarray,
@@ -356,7 +356,6 @@ class PineconeIndex(BaseIndex):
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
-        
 
     def delete_index(self):
         self.client.delete_index(self.index_name)
@@ -386,7 +385,7 @@ class PineconeIndex(BaseIndex):
     async def _async_list_indexes(self):
         async with self.async_client.get(f"{self.base_url}/indexes") as response:
             return await response.json(content_type=None)
-    
+
     async def _async_create_index(
         self,
         name: str,
@@ -399,12 +398,7 @@ class PineconeIndex(BaseIndex):
             "name": name,
             "dimension": dimension,
             "metric": metric,
-            "spec": {
-                "serverless": {
-                    "cloud": cloud,
-                    "region": region
-                }
-            },
+            "spec": {"serverless": {"cloud": cloud, "region": region}},
         }
         async with self.async_client.post(
             f"{self.base_url}/indexes",
@@ -412,7 +406,7 @@ class PineconeIndex(BaseIndex):
             json=params,
         ) as response:
             return await response.json(content_type=None)
-        
+
     async def _async_describe_index(self, name: str):
         async with self.async_client.get(f"{self.base_url}/indexes/{name}") as response:
             return await response.json(content_type=None)

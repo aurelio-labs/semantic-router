@@ -173,4 +173,3 @@ class OpenAIEncoder(BaseEncoder):
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
-
