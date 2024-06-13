@@ -7,7 +7,6 @@ class BaseEncoder(BaseModel):
     name: str
     score_threshold: float
     type: str = Field(default="base")
-    is_async: bool = Field(default=False)
 
     class Config:
         arbitrary_types_allowed = True

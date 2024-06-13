@@ -18,13 +18,16 @@ from semantic_router.utils.logger import logger
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
-        name="text-embedding-ada-002", token_limit=8192
+        name="text-embedding-ada-002", token_limit=8192,
+        threshold=0.82,
     ),
     "text-embedding-3-small": EncoderInfo(
-        name="text-embedding-3-small", token_limit=8192
+        name="text-embedding-3-small", token_limit=8192,
+        threshold=0.3,
     ),
     "text-embedding-3-large": EncoderInfo(
-        name="text-embedding-3-large", token_limit=8192
+        name="text-embedding-3-large", token_limit=8192,
+        threshold=0.3,
     ),
 }
 
@@ -43,11 +46,16 @@ class OpenAIEncoder(BaseEncoder):
         openai_base_url: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         openai_org_id: Optional[str] = None,
-        score_threshold: float = 0.82,
+        score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
+        if score_threshold is None and name in model_configs:
+            score_threshold = model_configs[name].threshold
+        elif score_threshold is None:
+            logger.warning(f"Score threshold not set for model: {name}. Using default value.")
+            score_threshold = 0.82
         super().__init__(
             name=name,
             score_threshold=score_threshold,
