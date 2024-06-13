@@ -196,6 +196,11 @@ class RouteLayer:
             self.encoder = encoder
         self.llm = llm
         self.routes: List[Route] = routes if routes is not None else []
+        if self.encoder.score_threshold is None:
+            raise ValueError(
+                "No score threshold provided for encoder. Please set the score threshold "
+                "in the encoder config."
+            )
         self.score_threshold = self.encoder.score_threshold
         self.top_k = top_k
         if self.top_k < 1:

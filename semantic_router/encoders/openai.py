@@ -18,15 +18,18 @@ from semantic_router.utils.logger import logger
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
-        name="text-embedding-ada-002", token_limit=8192,
+        name="text-embedding-ada-002",
+        token_limit=8192,
         threshold=0.82,
     ),
     "text-embedding-3-small": EncoderInfo(
-        name="text-embedding-3-small", token_limit=8192,
+        name="text-embedding-3-small",
+        token_limit=8192,
         threshold=0.3,
     ),
     "text-embedding-3-large": EncoderInfo(
-        name="text-embedding-3-large", token_limit=8192,
+        name="text-embedding-3-large",
+        token_limit=8192,
         threshold=0.3,
     ),
 }
@@ -52,13 +55,17 @@ class OpenAIEncoder(BaseEncoder):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
         if score_threshold is None and name in model_configs:
-            score_threshold = model_configs[name].threshold
+            set_score_threshold = model_configs[name].threshold
         elif score_threshold is None:
-            logger.warning(f"Score threshold not set for model: {name}. Using default value.")
-            score_threshold = 0.82
+            logger.warning(
+                f"Score threshold not set for model: {name}. Using default value."
+            )
+            set_score_threshold = 0.82
+        else:
+            set_score_threshold = score_threshold
         super().__init__(
             name=name,
-            score_threshold=score_threshold,
+            score_threshold=set_score_threshold,
         )
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")

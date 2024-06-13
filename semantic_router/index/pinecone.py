@@ -102,6 +102,9 @@ class PineconeIndex(BaseIndex):
         return Pinecone(**pinecone_args)
 
     def _initialize_async_client(self, api_key: Optional[str] = None):
+        api_key = api_key or self.api_key
+        if api_key is None:
+            raise ValueError("Pinecone API key is required.")
         async_client = aiohttp.ClientSession(
             headers={
                 "Api-Key": api_key,
@@ -159,13 +162,12 @@ class PineconeIndex(BaseIndex):
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
 
-    async def _init_async_index(self, force_create: bool = False) -> Union[Any, None]:
+    async def _init_async_index(self, force_create: bool = False):
         index_stats = None
         indexes = await self._async_list_indexes()
         index_names = [i["name"] for i in indexes["indexes"]]
         index_exists = self.index_name in index_names
-        dimensions_given = self.dimensions is not None
-        if dimensions_given and not index_exists:
+        if self.dimensions is not None and not index_exists:
             await self._async_create_index(
                 name=self.index_name,
                 dimension=self.dimensions,
@@ -183,7 +185,7 @@ class PineconeIndex(BaseIndex):
             index_stats = await self._async_describe_index(self.index_name)
             # grab dimensions for the index
             self.dimensions = index_stats["dimension"]
-        elif force_create and not dimensions_given:
+        elif force_create and self.dimensions is None:
             raise ValueError(
                 "Cannot create an index without specifying the dimensions."
             )
@@ -348,7 +350,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
-            namespace=self.namespace,
+            namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
             include_metadata=True,
