@@ -185,7 +185,6 @@ class RouteLayer:
         top_k: int = 5,
         aggregation: str = "sum",
     ):
-        logger.info("local")
         self.index: BaseIndex = index if index is not None else LocalIndex()
         if encoder is None:
             logger.warning(
@@ -197,6 +196,11 @@ class RouteLayer:
             self.encoder = encoder
         self.llm = llm
         self.routes: List[Route] = routes if routes is not None else []
+        if self.encoder.score_threshold is None:
+            raise ValueError(
+                "No score threshold provided for encoder. Please set the score threshold "
+                "in the encoder config."
+            )
         self.score_threshold = self.encoder.score_threshold
         self.top_k = top_k
         if self.top_k < 1:
@@ -270,6 +274,43 @@ class RouteLayer:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
 
+    async def acall(
+        self,
+        text: Optional[str] = None,
+        vector: Optional[List[float]] = None,
+        simulate_static: bool = False,
+        route_filter: Optional[List[str]] = None,
+    ) -> RouteChoice:
+        # if no vector provided, encode text to get vector
+        if vector is None:
+            if text is None:
+                raise ValueError("Either text or vector must be provided")
+            vector = await self._async_encode(text=text)
+
+        route, top_class_scores = await self._async_retrieve_top_route(
+            vector, route_filter
+        )
+        passed = self._check_threshold(top_class_scores, route)
+        if passed and route is not None and not simulate_static:
+            if route.function_schemas and text is None:
+                raise ValueError(
+                    "Route has a function schema, but no text was provided."
+                )
+            if route.function_schemas and not isinstance(route.llm, BaseLLM):
+                raise NotImplementedError(
+                    "Dynamic routes not yet supported for async calls."
+                )
+            return route(text)
+        elif passed and route is not None and simulate_static:
+            return RouteChoice(
+                name=route.name,
+                function_call=None,
+                similarity_score=None,
+            )
+        else:
+            # if no route passes threshold, return empty route choice
+            return RouteChoice()
+
     def retrieve_multiple_routes(
         self,
         text: Optional[str] = None,
@@ -309,6 +350,19 @@ class RouteLayer:
         )
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
+        return route, top_class_scores
+
+    async def _async_retrieve_top_route(
+        self, vector: List[float], route_filter: Optional[List[str]] = None
+    ) -> Tuple[Optional[Route], List[float]]:
+        # get relevant results (scores and routes)
+        results = await self._async_retrieve(
+            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+        )
+        # decide most relevant routes
+        top_class, top_class_scores = await self._async_semantic_classify(results)
         # TODO do we need this check?
         route = self.check_for_matching_routes(top_class)
         return route, top_class_scores
@@ -425,12 +479,29 @@ class RouteLayer:
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
+    async def _async_encode(self, text: str) -> Any:
+        """Given some text, encode it."""
+        # create query vector
+        xq = np.array(await self.encoder.acall(docs=[text]))
+        xq = np.squeeze(xq)  # Reduce to 1d array.
+        return xq
+
     def _retrieve(
         self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
     ) -> List[Dict]:
         """Given a query vector, retrieve the top_k most similar records."""
         # get scores and routes
         scores, routes = self.index.query(
+            vector=xq, top_k=top_k, route_filter=route_filter
+        )
+        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
+
+    async def _async_retrieve(
+        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
+    ) -> List[Dict]:
+        """Given a query vector, retrieve the top_k most similar records."""
+        # get scores and routes
+        scores, routes = await self.index.aquery(
             vector=xq, top_k=top_k, route_filter=route_filter
         )
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
@@ -449,6 +520,25 @@ class RouteLayer:
 
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class = self.group_scores_by_class(query_results)
+
+        # Calculate total score for each class
+        total_scores = {
+            route: self.aggregation_method(scores)
+            for route, scores in scores_by_class.items()
+        }
+        top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
+
+        # Return the top class and its associated scores
+        if top_class is not None:
+            return str(top_class), scores_by_class.get(top_class, [])
+        else:
+            logger.warning("No classification found for semantic classifier.")
+            return "", []
+
+    async def _async_semantic_classify(
+        self, query_results: List[Dict]
+    ) -> Tuple[str, List[float]]:
+        scores_by_class = await self.async_group_scores_by_class(query_results)
 
         # Calculate total score for each class
         total_scores = {
@@ -495,6 +585,19 @@ class RouteLayer:
         return classes_above_threshold
 
     def group_scores_by_class(
+        self, query_results: List[Dict]
+    ) -> Dict[str, List[float]]:
+        scores_by_class: Dict[str, List[float]] = {}
+        for result in query_results:
+            score = result["score"]
+            route = result["route"]
+            if route in scores_by_class:
+                scores_by_class[route].append(score)
+            else:
+                scores_by_class[route] = [score]
+        return scores_by_class
+
+    async def async_group_scores_by_class(
         self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}

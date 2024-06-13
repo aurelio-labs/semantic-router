@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.46"
+version = "0.0.47"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -42,6 +42,7 @@ requests-mock = "^1.12.1"
 boto3 = { version = "^1.34.98", optional = true }
 botocore = {version = "^1.34.110", optional = true}
 psycopg = { version = "^3.1.19", optional = true, extras = ["binary"] }
+aiohttp = "^3.9.5"
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]

@@ -1,3 +1,4 @@
+from asyncio import sleep as asleep
 import os
 from time import sleep
 from typing import Any, List, Optional, Union
@@ -17,19 +18,26 @@ from semantic_router.utils.logger import logger
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
-        name="text-embedding-ada-002", token_limit=8192
+        name="text-embedding-ada-002",
+        token_limit=8192,
+        threshold=0.82,
     ),
     "text-embedding-3-small": EncoderInfo(
-        name="text-embedding-3-small", token_limit=8192
+        name="text-embedding-3-small",
+        token_limit=8192,
+        threshold=0.3,
     ),
     "text-embedding-3-large": EncoderInfo(
-        name="text-embedding-3-large", token_limit=8192
+        name="text-embedding-3-large",
+        token_limit=8192,
+        threshold=0.3,
     ),
 }
 
 
 class OpenAIEncoder(BaseEncoder):
     client: Optional[openai.Client]
+    async_client: Optional[openai.AsyncClient]
     dimensions: Union[int, NotGiven] = NotGiven()
     token_limit: int = 8192  # default value, should be replaced by config
     _token_encoder: Any = PrivateAttr()
@@ -41,12 +49,24 @@ class OpenAIEncoder(BaseEncoder):
         openai_base_url: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         openai_org_id: Optional[str] = None,
-        score_threshold: float = 0.82,
+        score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
-        super().__init__(name=name, score_threshold=score_threshold)
+        if score_threshold is None and name in model_configs:
+            set_score_threshold = model_configs[name].threshold
+        elif score_threshold is None:
+            logger.warning(
+                f"Score threshold not set for model: {name}. Using default value."
+            )
+            set_score_threshold = 0.82
+        else:
+            set_score_threshold = score_threshold
+        super().__init__(
+            name=name,
+            score_threshold=set_score_threshold,
+        )
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
@@ -54,6 +74,9 @@ class OpenAIEncoder(BaseEncoder):
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
             self.client = openai.Client(
+                base_url=base_url, api_key=api_key, organization=openai_org_id
+            )
+            self.async_client = openai.AsyncClient(
                 base_url=base_url, api_key=api_key, organization=openai_org_id
             )
         except Exception as e:
@@ -126,3 +149,42 @@ class OpenAIEncoder(BaseEncoder):
             logger.info(f"Trunc length: {len(self._token_encoder.encode(text))}")
             return text
         return text
+
+    async def acall(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
+        if self.async_client is None:
+            raise ValueError("OpenAI async client is not initialized.")
+        embeds = None
+        error_message = ""
+
+        if truncate:
+            # check if any document exceeds token limit and truncate if so
+            docs = [self._truncate(doc) for doc in docs]
+
+        # Exponential backoff
+        for j in range(1, 7):
+            try:
+                embeds = await self.async_client.embeddings.create(
+                    input=docs,
+                    model=self.name,
+                    dimensions=self.dimensions,
+                )
+                if embeds.data:
+                    break
+            except OpenAIError as e:
+                await asleep(2**j)
+                error_message = str(e)
+                logger.warning(f"Retrying in {2**j} seconds...")
+            except Exception as e:
+                logger.error(f"OpenAI API call failed. Error: {error_message}")
+                raise ValueError(f"OpenAI API call failed. Error: {e}") from e
+
+        if (
+            not embeds
+            or not isinstance(embeds, CreateEmbeddingResponse)
+            or not embeds.data
+        ):
+            logger.info(f"Returned embeddings: {embeds}")
+            raise ValueError(f"No embeddings returned. Error: {error_message}")
+
+        embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
+        return embeddings
