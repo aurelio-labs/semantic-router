@@ -36,11 +36,6 @@ class EncoderDefault(Enum):
             "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"
         )
     }
-    YANDEX = {
-        "embedding_model": os.getenv(
-            "YANDEX_EMBEDDING_MODEL", "general:embedding"
-        )
-    }
     GIGACHAT = {
         "embedding_model": os.getenv(
             "GIGACHAT_EMBEDDING_MODEL", "Embeddings"
