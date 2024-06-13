@@ -17,6 +17,8 @@ class EncoderType(Enum):
     GOOGLE = "google"
     BEDROCK = "bedrock"
     YANDEX = "yandex"
+    GIGACHAT = "gigachat"
+
 
 
 class EncoderInfo(BaseModel):

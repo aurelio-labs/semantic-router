@@ -15,6 +15,7 @@ from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
 from semantic_router.encoders.yandex import YandexGPTEncoder
+from semantic_router.encoders.gigachat import GigaChatEncoder
 from semantic_router.schema import EncoderType
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "GoogleEncoder",
     "BedrockEncoder",
     "YandexGPTEncoder",
+    "GigaChatEncoder",
 ]
 
 
@@ -75,6 +77,8 @@ class AutoEncoder:
             self.model = BedrockEncoder(name=name)  # type: ignore
         elif self.type == EncoderType.YANDEX:
             self.model = YandexGPTEncoder(name=name)
+        elif self.type == EncoderType.GIGACHAT:
+            self.model = GigaChatEncoder(name=name)
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
