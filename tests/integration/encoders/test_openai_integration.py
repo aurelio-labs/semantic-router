@@ -1,5 +1,6 @@
 import os
 import pytest
+from semantic_router.encoders.base import BaseEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 
 with open("tests/integration/57640.4032.txt", "r") as fp:
@@ -8,7 +9,10 @@ with open("tests/integration/57640.4032.txt", "r") as fp:
 
 @pytest.fixture
 def openai_encoder():
-    return OpenAIEncoder()
+    if os.environ.get("OPENAI_API_KEY") is None:
+        return BaseEncoder()
+    else:
+        return OpenAIEncoder()
 
 
 class TestOpenAIEncoder:
