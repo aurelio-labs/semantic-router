@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import patch, Mock, MagicMock
 from semantic_router.encoders import GigaChatEncoder
-from semantic_router.utils.defaults import EncoderDefault
 
 @pytest.fixture
 def gigachat_encoder(mocker):
@@ -9,7 +8,6 @@ def gigachat_encoder(mocker):
     return GigaChatEncoder(auth_data="test_auth_data", scope="GIGACHAT_API_PERS")
 
 class TestGigaChatEncoder:
-
     def test_gigachat_encoder_init_success(self):
         encoder = GigaChatEncoder(auth_data="test_auth_data", scope="GIGACHAT_API_PERS")
         assert encoder.client is not None
@@ -27,13 +25,7 @@ class TestGigaChatEncoder:
         assert str(
             e.value) == "GigaChat scope cannot be 'None'. Set 'GIGACHAT_API_PERS' for personal use or 'GIGACHAT_API_CORP' for corporate use."
 
-    def test_initialization_missing_scope(self):
-        with pytest.raises(ValueError, match="GigaChat scope cannot be 'None'."):
-            GigaChatEncoder(name="test", auth_data="valid_auth_data", scope=None)
-
-    def test_gigachat_encoder_call_uninitialized_client(self):
-        # Set the client to None to simulate an uninitialized client
-        gigachat_encoder = GigaChatEncoder(name="test", auth_data="valid_auth_data", scope="valid_scope")
+    def test_gigachat_encoder_call_uninitialized_client(self, gigachat_encoder):
         gigachat_encoder.client = None
         with pytest.raises(ValueError) as e:
             gigachat_encoder(["test document"])
@@ -53,12 +45,11 @@ class TestGigaChatEncoder:
 
         gigachat_encoder.client.embeddings.assert_called_with(["test document"])
 
-    def test_call_method_api_failure(self):
-        encoder = GigaChatEncoder(name="test", auth_data="valid_auth_data", scope="valid_scope")
-        encoder.client.embeddings = MagicMock(side_effect=Exception("API failure"))
+    def test_call_method_api_failure(self, gigachat_encoder):
+        gigachat_encoder.client.embeddings = MagicMock(side_effect=Exception("API failure"))
         docs = ["document1", "document2"]
         with pytest.raises(ValueError, match="GigaChat call failed. Error: API failure"):
-            encoder(docs)
+            gigachat_encoder(docs)
 
     def test_init_failure_no_env_vars(self):
         with pytest.raises(ValueError) as excinfo:
