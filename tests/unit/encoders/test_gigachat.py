@@ -55,4 +55,3 @@ class TestGigaChatEncoder:
         with pytest.raises(ValueError) as excinfo:
             GigaChatEncoder()
         assert "GigaChat authorization data cannot be 'None'" in str(excinfo.value)
-
