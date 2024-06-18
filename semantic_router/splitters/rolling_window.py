@@ -95,6 +95,11 @@ class RollingWindowSplitter(BaseSplitter):
         if self.dynamic_threshold:
             self._find_optimal_threshold(docs, similarities)
         else:
+            if self.encoder.score_threshold is None:
+                raise ValueError(
+                    "No score threshold provided for encoder. Please set the score threshold "
+                    "in the encoder config."
+                )
             self.calculated_threshold = self.encoder.score_threshold
         split_indices = self._find_split_indices(similarities=similarities)
         splits = self._split_documents(docs, split_indices, similarities)
