@@ -244,11 +244,8 @@ class TestRouteLayer:
         )
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
-        with pytest.raises(ValueError) as excinfo:
-            route_layer.delete(non_existent_route)
-        assert (
-            str(excinfo.value) == f"Route `{non_existent_route}` not found"
-        ), "Attempting to remove a non-existent route should raise a ValueError."
+        route_layer.delete(non_existent_route)
+        # we should see warning in logs only (ie no errors)
 
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
