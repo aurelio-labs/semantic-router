@@ -28,6 +28,11 @@ class HybridRouteLayer:
         aggregation: str = "sum",
     ):
         self.encoder = encoder
+        if self.encoder.score_threshold is None:
+            raise ValueError(
+                "No score threshold provided for encoder. Please set the score threshold "
+                "in the encoder config."
+            )
         self.score_threshold = self.encoder.score_threshold
 
         if sparse_encoder is None:

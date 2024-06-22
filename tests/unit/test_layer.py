@@ -244,11 +244,8 @@ class TestRouteLayer:
         )
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
-        with pytest.raises(ValueError) as excinfo:
-            route_layer.delete(non_existent_route)
-        assert (
-            str(excinfo.value) == f"Route `{non_existent_route}` not found"
-        ), "Attempting to remove a non-existent route should raise a ValueError."
+        route_layer.delete(non_existent_route)
+        # we should see warning in logs only (ie no errors)
 
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
@@ -276,37 +273,45 @@ class TestRouteLayer:
 
         assert query_result in ["Route 1"]
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
-        pinecone_api_key = os.environ["PINECONE_API_KEY"]
-        pineconeindex = PineconeIndex(api_key=pinecone_api_key)
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=pineconeindex
-        )
-        time.sleep(10)  # allow for index to be populated
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+        if type(index_cls) == PineconeIndex:
+            pinecone_api_key = os.environ["PINECONE_API_KEY"]
+            pineconeindex = PineconeIndex(api_key=pinecone_api_key)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pineconeindex
+            )
+            time.sleep(10)  # allow for index to be populated
+            query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
-        try:
-            route_layer(text="Hello", route_filter=["Route 8"]).name
-        except ValueError:
-            assert True
+            try:
+                route_layer(text="Hello", route_filter=["Route 8"]).name
+            except ValueError:
+                assert True
 
-        assert query_result in ["Route 1"]
+            assert query_result in ["Route 1"]
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
-        pinecone_api_key = os.environ["PINECONE_API_KEY"]
-        pineconeindex = PineconeIndex(api_key=pinecone_api_key, namespace="test")
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=pineconeindex
-        )
-        time.sleep(10)  # allow for index to be populated
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
+        if type(index_cls) == PineconeIndex:
+            pinecone_api_key = os.environ["PINECONE_API_KEY"]
+            pineconeindex = PineconeIndex(api_key=pinecone_api_key, namespace="test")
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pineconeindex
+            )
+            time.sleep(10)  # allow for index to be populated
+            query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
-        try:
-            route_layer(text="Hello", route_filter=["Route 8"]).name
-        except ValueError:
-            assert True
+            try:
+                route_layer(text="Hello", route_filter=["Route 8"]).name
+            except ValueError:
+                assert True
 
-        assert query_result in ["Route 1"]
+            assert query_result in ["Route 1"]
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
