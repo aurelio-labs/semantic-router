@@ -433,9 +433,9 @@ class RouteLayer:
         :type str:
         """
         if route_name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{route_name}` not found"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+            err_msg = f"Route `{route_name}` not found in RouteLayer"
+            logger.warning(err_msg)
+            self.index.delete(route_name=route_name)
         else:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
