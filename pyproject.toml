@@ -15,6 +15,9 @@ authors = [
 readme = "README.md"
 packages = [{include = "semantic_router"}]
 
+[project]
+license = {file = "LICENSE"}
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 pydantic = "^2.5.3"
