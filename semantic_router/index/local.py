@@ -21,7 +21,11 @@ class LocalIndex(BaseIndex):
         arbitrary_types_allowed = True
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        sync: bool = False,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)

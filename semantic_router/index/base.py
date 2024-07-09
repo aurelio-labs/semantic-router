@@ -21,7 +21,11 @@ class BaseIndex(BaseModel):
     sync: str = "merge-force-local"
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[Any]
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[Any],
+        sync: bool = False,
     ):
         """
         Add embeddings to the index.
@@ -74,7 +78,7 @@ class BaseIndex(BaseModel):
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
-    
+
     def _sync_index(self, local_routes: dict):
         """
         Synchronize the local index with the remote index based on the specified mode.
@@ -85,7 +89,7 @@ class BaseIndex(BaseModel):
         - "merge-force-remote": Merge both local and remote taking only remote routes utterances when a route with same route name is present both locally and remotely.
         - "merge-force-local": Merge both local and remote taking only local routes utterances when a route with same route name is present both locally and remotely.
         - "merge": Merge both local and remote, merging also local and remote utterances when a route with same route name is present both locally and remotely.
-        
+
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
