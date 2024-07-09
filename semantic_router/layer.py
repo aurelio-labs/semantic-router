@@ -470,6 +470,7 @@ class RouteLayer:
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
+            sync=True,
         )
 
     def _encode(self, text: str) -> Any:
