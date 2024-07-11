@@ -332,23 +332,15 @@ class PineconeIndex(BaseIndex):
 
     def _get_routes_with_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
-        ids, _ = self._get_all(prefix=f"{clean_route}#")
+        ids, metadata = self._get_all(prefix=f"{clean_route}#", include_metadata=True)
         route_tuples = []
-        for id in ids:
-            res_meta = (
-                self.index.fetch(ids=[id], namespace=self.namespace)
-                if self.index
-                else {}
-            )
-            route_tuples.extend(
-                [
-                    {
-                        "id": id,
-                        "route": x["metadata"]["sr_route"],
-                        "utterance": x["metadata"]["sr_utterance"],
-                    }
-                    for x in res_meta["vectors"].values()
-                ]
+        for id, data in zip(ids, metadata):
+            route_tuples.append(
+                {
+                    "id": id,
+                    "route": data["sr_route"],
+                    "utterance": data["sr_utterance"],
+                }
             )
         return route_tuples
 
@@ -391,9 +383,14 @@ class PineconeIndex(BaseIndex):
 
             # if we need metadata, we fetch it
             if include_metadata:
-                res_meta = self.index.fetch(ids=vector_ids, namespace=self.namespace)
+                for id in vector_ids:
+                    res_meta = (
+                        self.index.fetch(ids=[id], namespace=self.namespace)
+                        if self.index
+                        else {}
+                    )
+                    metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
                 # extract metadata only
-                metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
 
             # Check if there's a next page token; if not, break the loop
             next_page_token = response_data.get("pagination", {}).get("next")
