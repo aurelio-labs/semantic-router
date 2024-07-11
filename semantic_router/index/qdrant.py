@@ -169,7 +169,7 @@ class QdrantIndex(BaseIndex):
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
     ):
         if sync:
-            raise NotImplementedError("Sync add is not implemented for QdrantIndex")
+            logger.warning("Sync add is not implemented for QdrantIndex")
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
 
