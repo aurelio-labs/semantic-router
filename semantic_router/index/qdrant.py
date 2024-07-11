@@ -160,16 +160,24 @@ class QdrantIndex(BaseIndex):
                 **self.config,
             )
 
+    def _add_and_sync(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
+    ):
+        if self.sync is not None:
+            logger.warning("Sync add is not implemented for QdrantIndex")
+        self.add(embeddings, routes, utterances, batch_size)
+
     def add(
         self,
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        sync: bool = False,
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
     ):
-        if sync:
-            logger.warning("Sync add is not implemented for QdrantIndex")
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
 

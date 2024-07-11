@@ -466,11 +466,10 @@ class RouteLayer:
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
-        self.index.add(
+        self.index._add_and_sync(
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
-            sync=True,
         )
 
     def _encode(self, text: str) -> Any:

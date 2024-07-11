@@ -18,17 +18,28 @@ class BaseIndex(BaseModel):
     utterances: Optional[np.ndarray] = None
     dimensions: Union[int, None] = None
     type: str = "base"
-    sync: str = "merge-force-local"
+    sync: Union[str, None] = None
 
     def add(
         self,
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[Any],
-        sync: bool = False,
     ):
         """
         Add embeddings to the index.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def _add_and_sync(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[Any],
+    ):
+        """
+        Add embeddings to the index and manage index syncing if necessary.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")

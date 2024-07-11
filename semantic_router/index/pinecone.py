@@ -65,7 +65,7 @@ class PineconeIndex(BaseIndex):
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
-        sync: str = "merge-force-local",
+        sync: str = "local",
     ):
         super().__init__()
         self.index_name = index_name
@@ -282,7 +282,6 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        sync: bool = False,
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""
@@ -290,14 +289,34 @@ class PineconeIndex(BaseIndex):
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
 
-        if sync:
-            local_routes = {
-                "routes": routes,
-                "utterances": utterances,
-                "embeddings": embeddings,
-            }
-            data_to_upsert, data_to_delete = self._sync_index(local_routes=local_routes)
+        vectors_to_upsert = [
+            PineconeRecord(values=vector, route=route, utterance=utterance).to_dict()
+            for vector, route, utterance in zip(embeddings, routes, utterances)
+        ]
 
+        for i in range(0, len(vectors_to_upsert), batch_size):
+            batch = vectors_to_upsert[i : i + batch_size]
+            self._batch_upsert(batch)
+
+    def _add_and_sync(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        batch_size: int = 100,
+    ):
+        """Add vectors to Pinecone in batches."""
+        if self.index is None:
+            self.dimensions = self.dimensions or len(embeddings[0])
+            self.index = self._init_index(force_create=True)
+
+        local_routes = {
+            "routes": routes,
+            "utterances": utterances,
+            "embeddings": embeddings,
+        }
+        if self.sync is not None:
+            data_to_upsert, data_to_delete = self._sync_index(local_routes=local_routes)
             routes_to_delete: dict = {}
             for route, utterance in data_to_delete:
                 routes_to_delete.setdefault(route, []).append(utterance)
@@ -312,9 +331,11 @@ class PineconeIndex(BaseIndex):
                 ]
                 if ids_to_delete and self.index:
                     self.index.delete(ids=ids_to_delete)
-
         else:
-            data_to_upsert = zip(embeddings, routes, utterances)
+            data_to_upsert = [
+                (vector, route, utterance)
+                for vector, route, utterance in zip(embeddings, routes, utterances)
+            ]
 
         vectors_to_upsert = [
             PineconeRecord(values=vector, route=route, utterance=utterance).to_dict()
@@ -389,7 +410,9 @@ class PineconeIndex(BaseIndex):
                         if self.index
                         else {}
                     )
-                    metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
+                    metadata.extend(
+                        [x["metadata"] for x in res_meta["vectors"].values()]
+                    )
                 # extract metadata only
 
             # Check if there's a next page token; if not, break the loop

@@ -4,6 +4,7 @@ import numpy as np
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.utils.logger import logger
 
 
 class LocalIndex(BaseIndex):
@@ -25,7 +26,6 @@ class LocalIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        sync: bool = False,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
@@ -41,6 +41,16 @@ class LocalIndex(BaseIndex):
             self.index = np.concatenate([self.index, embeds])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
+
+    def _add_and_sync(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+    ):
+        if self.sync is not None:
+            logger.warning("Sync add is not implemented for LocalIndex.")
+        self.add(embeddings, routes, utterances)
 
     def get_routes(self) -> List[Tuple]:
         """
