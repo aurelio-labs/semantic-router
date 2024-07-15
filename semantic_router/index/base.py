@@ -18,6 +18,7 @@ class BaseIndex(BaseModel):
     utterances: Optional[np.ndarray] = None
     dimensions: Union[int, None] = None
     type: str = "base"
+    init_async_index: bool = False
     sync: Union[str, None] = None
 
     def add(
