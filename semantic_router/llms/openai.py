@@ -21,7 +21,7 @@ from openai.types.chat.chat_completion_message_tool_call import (
 
 
 class OpenAILLM(BaseLLM):
-    client: Optional[openai.OpenAI]
+    client: Union[openai.AsyncOpenAI, openai.OpenAI]
     temperature: Optional[float]
     max_tokens: Optional[int]
 
@@ -31,6 +31,7 @@ class OpenAILLM(BaseLLM):
         openai_api_key: Optional[str] = None,
         temperature: float = 0.01,
         max_tokens: int = 200,
+        use_async=False,
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["language_model"]
@@ -38,12 +39,21 @@ class OpenAILLM(BaseLLM):
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
-        try:
-            self.client = openai.OpenAI(api_key=api_key)
-        except Exception as e:
-            raise ValueError(
-                f"OpenAI API client failed to initialize. Error: {e}"
-            ) from e
+
+        if use_async:
+            try:
+                self.client = openai.AsyncOpenAI(api_key=api_key)
+            except Exception as e:
+                raise ValueError(
+                    f"AsyncOpenAI API client failed to initialize. Error: {e}"
+                ) from e
+        else:
+            try:
+                self.client = openai.OpenAI(api_key=api_key)
+            except Exception as e:
+                raise ValueError(
+                    f"OpenAI API client failed to initialize. Error: {e}"
+                ) from e
         self.temperature = temperature
         self.max_tokens = max_tokens
 
@@ -77,6 +87,50 @@ class OpenAILLM(BaseLLM):
             )
 
             completion = self.client.chat.completions.create(
+                model=self.name,
+                messages=[m.to_openai() for m in messages],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                tools=tools,  # type: ignore # We pass a list of dicts which get interpreted as Iterable[ChatCompletionToolParam].
+            )
+
+            if function_schemas:
+                tool_calls = completion.choices[0].message.tool_calls
+                if tool_calls is None:
+                    raise ValueError("Invalid output, expected a tool call.")
+                if len(tool_calls) < 1:
+                    raise ValueError(
+                        "Invalid output, expected at least one tool to be specified."
+                    )
+
+                # Collecting multiple tool calls information
+                output = str(
+                    self._extract_tool_calls_info(tool_calls)
+                )  # str in keeping with base type.
+            else:
+                content = completion.choices[0].message.content
+                if content is None:
+                    raise ValueError("Invalid output, expected content.")
+                output = content
+            return output
+
+        except Exception as e:
+            logger.error(f"LLM error: {e}")
+            raise Exception(f"LLM error: {e}") from e
+
+    async def acall(
+        self,
+        messages: List[Message],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
+        if self.client is None:
+            raise ValueError("OpenAI client is not initialized.")
+        try:
+            tools: Union[List[Dict[str, Any]], NotGiven] = (
+                function_schemas if function_schemas is not None else NOT_GIVEN
+            )
+
+            completion = await self.client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
