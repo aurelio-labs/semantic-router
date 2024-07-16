@@ -475,7 +475,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
-            sparse_vector=kwargs.get('sparse_vector', None),
+            sparse_vector=kwargs.get("sparse_vector", None),
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -501,7 +501,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
-            sparse_vector=kwargs.get('sparse_vector', None),
+            sparse_vector=kwargs.get("sparse_vector", None),
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,

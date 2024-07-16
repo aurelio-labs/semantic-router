@@ -98,7 +98,7 @@ class LocalIndex(BaseIndex):
             scores, idx = top_scores(sim, top_k)
             route_names = [self.routes[i] for i in idx]
         return scores, route_names
-    
+
     async def aquery(
         self,
         vector: np.ndarray,
