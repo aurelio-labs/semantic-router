@@ -462,6 +462,7 @@ class PineconeIndex(BaseIndex):
     def query(
         self,
         vector: np.ndarray,
+        sparse_vector: Optional[dict] = None,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
@@ -474,6 +475,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
+            sparse_vector=sparse_vector,
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -486,6 +488,7 @@ class PineconeIndex(BaseIndex):
     async def aquery(
         self,
         vector: np.ndarray,
+        sparse_vector: Optional[dict] = None,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
@@ -498,6 +501,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
+            sparse_vector=sparse_vector,
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -514,6 +518,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
+        sparse_vector: Optional[dict] = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,
@@ -521,6 +526,7 @@ class PineconeIndex(BaseIndex):
     ):
         params = {
             "vector": vector,
+            "sparse_vector": sparse_vector,
             "namespace": namespace,
             "filter": filter,
             "top_k": top_k,
