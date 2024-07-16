@@ -220,6 +220,19 @@ class RouteLayer:
         if len(self.routes) > 0:
             # initialize index now
             self._add_routes(routes=self.routes)
+        elif self.index.sync in ["merge", "remote", "merge-force-remote"]:
+            dummy_embedding = self.encoder(["dummy"])
+
+            layer_routes = self.index._add_and_sync(
+                embeddings=dummy_embedding,
+                routes=[],
+                utterances=[],
+            )
+            self._set_layer_routes(layer_routes)
+        else:
+            raise ValueError(
+                "No routes provided for RouteLayer. Please provide routes or set sync to 'remote' if you want to use only remote routes."
+            )
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_routes = [route for route in self.routes if route.name == top_class]
@@ -380,6 +393,14 @@ class RouteLayer:
         )
         return self._pass_threshold(scores, threshold)
 
+    def _set_layer_routes(self, new_routes: List[Route]):
+        """
+        Set and override the current routes with a new list of routes.
+
+        :param new_routes: List of Route objects to set as the current routes.
+        """
+        self.routes = new_routes
+
     def __str__(self):
         return (
             f"RouteLayer(encoder={self.encoder}, "
@@ -466,11 +487,12 @@ class RouteLayer:
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
-        self.index._add_and_sync(
+        layer_routes = self.index._add_and_sync(
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
         )
+        self._set_layer_routes(layer_routes)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
