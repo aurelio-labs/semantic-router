@@ -464,7 +464,25 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.index is None:
             raise ValueError("Index is not populated.")
         query_vector_list = vector.tolist()
@@ -474,6 +492,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
+            sparse_vector=kwargs.get("sparse_vector", None),
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -488,7 +507,25 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Asynchronously search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.async_client is None or self.host is None:
             raise ValueError("Async client or host are not initialized.")
         query_vector_list = vector.tolist()
@@ -498,6 +535,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
+            sparse_vector=kwargs.get("sparse_vector", None),
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -514,6 +552,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
+        sparse_vector: Optional[dict] = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,
@@ -521,6 +560,7 @@ class PineconeIndex(BaseIndex):
     ):
         params = {
             "vector": vector,
+            "sparse_vector": sparse_vector,
             "namespace": namespace,
             "filter": filter,
             "top_k": top_k,
