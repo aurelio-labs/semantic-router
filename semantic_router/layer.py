@@ -220,7 +220,7 @@ class RouteLayer:
         if len(self.routes) > 0:
             # initialize index now
             self._add_routes(routes=self.routes)
-        elif self.index.sync in ["merge", "remote", "merge-force-remote"]:
+        elif self.index.sync:
             dummy_embedding = self.encoder(["dummy"])
 
             layer_routes = self.index._add_and_sync(
@@ -229,10 +229,6 @@ class RouteLayer:
                 utterances=[],
             )
             self._set_layer_routes(layer_routes)
-        else:
-            raise ValueError(
-                "No routes provided for RouteLayer. Please provide routes or set sync to 'remote' if you want to use only remote routes."
-            )
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_routes = [route for route in self.routes if route.name == top_class]

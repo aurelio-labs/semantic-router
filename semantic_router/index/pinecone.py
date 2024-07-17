@@ -204,27 +204,6 @@ class PineconeIndex(BaseIndex):
 
     def _sync_index(self, local_routes: dict):
         remote_routes = self.get_routes()
-        if not local_routes["routes"]:
-            if self.sync != "remote":
-                raise ValueError(
-                    "Local routes must be provided to sync the index if the sync setting is not 'remote'."
-                )
-            else:
-                if not remote_routes:
-                    raise ValueError("No routes found in the index.")
-        if (
-            (self.sync in ["remote", "merge-force-remote"] and not remote_routes)
-            or (
-                self.sync in ["error", "local", "merge-force-local"]
-                and not local_routes["routes"]
-            )
-            or (
-                self.sync == "merge"
-                and not remote_routes
-                and not local_routes["routes"]
-            )
-        ):
-            raise ValueError("No routes found in the index.")
 
         remote_dict: dict = {route: set() for route, _ in remote_routes}
         for route, utterance in remote_routes:
@@ -244,13 +223,17 @@ class PineconeIndex(BaseIndex):
             local_utterances = local_dict.get(route, set())
             remote_utterances = remote_dict.get(route, set())
 
+            if not local_utterances and not remote_utterances:
+                continue
+
             if self.sync == "error":
                 if local_utterances != remote_utterances:
                     raise ValueError(
                         f"Synchronization error: Differences found in route '{route}'"
                     )
                 utterances_to_include: set = set()
-                layer_routes[route] = list(local_utterances)
+                if local_utterances:
+                    layer_routes[route] = list(local_utterances)
             elif self.sync == "remote":
                 utterances_to_include = set()
                 if remote_utterances:
@@ -264,7 +247,8 @@ class PineconeIndex(BaseIndex):
                         if utterance not in local_utterances
                     ]
                 )
-                layer_routes[route] = list(local_utterances)
+                if local_utterances:
+                    layer_routes[route] = list(local_utterances)
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
                     utterances_to_include = local_utterances
@@ -292,7 +276,8 @@ class PineconeIndex(BaseIndex):
                         layer_routes[route] = list(remote_utterances)
             elif self.sync == "merge":
                 utterances_to_include = local_utterances - remote_utterances
-                layer_routes[route] = list(remote_utterances.union(local_utterances))
+                if local_utterances or remote_utterances:
+                    layer_routes[route] = list(remote_utterances.union(local_utterances))
             else:
                 raise ValueError("Invalid sync mode specified")
 
