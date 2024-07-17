@@ -301,7 +301,7 @@ class RouteLayer:
                     logger.warning(
                         "No LLM provided for dynamic route, will use OpenAI LLM default"
                     )
-                    self.llm = OpenAILLM(use_async=True)
+                    self.llm = OpenAILLM()
                     route.llm = self.llm
                 else:
                     route.llm = self.llm

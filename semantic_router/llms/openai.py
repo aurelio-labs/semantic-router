@@ -21,7 +21,8 @@ from openai.types.chat.chat_completion_message_tool_call import (
 
 
 class OpenAILLM(BaseLLM):
-    client: Union[openai.AsyncOpenAI, openai.OpenAI]
+    client: Optional[openai.OpenAI]
+    async_client: Optional[openai.AsyncOpenAI]
     temperature: Optional[float]
     max_tokens: Optional[int]
 
@@ -39,21 +40,13 @@ class OpenAILLM(BaseLLM):
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
-
-        if use_async:
-            try:
-                self.client = openai.AsyncOpenAI(api_key=api_key)
-            except Exception as e:
-                raise ValueError(
-                    f"AsyncOpenAI API client failed to initialize. Error: {e}"
-                ) from e
-        else:
-            try:
-                self.client = openai.OpenAI(api_key=api_key)
-            except Exception as e:
-                raise ValueError(
-                    f"OpenAI API client failed to initialize. Error: {e}"
-                ) from e
+        try:
+            self.async_client = openai.AsyncOpenAI(api_key=api_key)
+            self.client = openai.OpenAI(api_key=api_key)
+        except Exception as e:
+            raise ValueError(
+                f"OpenAI API client failed to initialize. Error: {e}"
+            ) from e
         self.temperature = temperature
         self.max_tokens = max_tokens
 
@@ -123,14 +116,14 @@ class OpenAILLM(BaseLLM):
         messages: List[Message],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
-        if self.client is None:
-            raise ValueError("OpenAI client is not initialized.")
+        if self.async_client is None:
+            raise ValueError("OpenAI async_client is not initialized.")
         try:
             tools: Union[List[Dict[str, Any]], NotGiven] = (
                 function_schemas if function_schemas is not None else NOT_GIVEN
             )
 
-            completion = await self.client.chat.completions.create(
+            completion = await self.async_client.chat.completions.create(  # type: ignore
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
