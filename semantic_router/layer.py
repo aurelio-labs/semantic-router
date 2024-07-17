@@ -303,10 +303,9 @@ class RouteLayer:
                     )
                     self.llm = OpenAILLM()
                     route.llm = self.llm
-                    return await route.llm.acall(text)  # type: ignore
                 else:
                     route.llm = self.llm
-            return route(text)
+            return await route.acall(text)
         elif passed and route is not None and simulate_static:
             return RouteChoice(
                 name=route.name,
