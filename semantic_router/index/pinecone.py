@@ -277,7 +277,9 @@ class PineconeIndex(BaseIndex):
             elif self.sync == "merge":
                 utterances_to_include = local_utterances - remote_utterances
                 if local_utterances or remote_utterances:
-                    layer_routes[route] = list(remote_utterances.union(local_utterances))
+                    layer_routes[route] = list(
+                        remote_utterances.union(local_utterances)
+                    )
             else:
                 raise ValueError("Invalid sync mode specified")
 

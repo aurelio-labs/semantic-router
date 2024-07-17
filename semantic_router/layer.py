@@ -491,7 +491,7 @@ class RouteLayer:
             routes=route_names,
             utterances=all_utterances,
         )
-    
+
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
         all_utterances = [
