@@ -89,7 +89,7 @@ class Route(BaseModel):
                     "argument is passed."
                 )
             # if a function schema is provided we generate the inputs
-            extracted_inputs = await self.llm.async_extract_function_inputs(
+            extracted_inputs = await self.llm.async_extract_function_inputs(  # type: ignore # openai-llm
                 query=query, function_schemas=self.function_schemas
             )
             func_call = extracted_inputs
