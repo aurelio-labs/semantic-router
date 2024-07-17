@@ -32,7 +32,6 @@ class OpenAILLM(BaseLLM):
         openai_api_key: Optional[str] = None,
         temperature: float = 0.01,
         max_tokens: int = 200,
-        use_async=False,
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["language_model"]
@@ -123,7 +122,7 @@ class OpenAILLM(BaseLLM):
                 function_schemas if function_schemas is not None else NOT_GIVEN
             )
 
-            completion = await self.async_client.chat.completions.create(  # type: ignore
+            completion = await self.async_client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,
