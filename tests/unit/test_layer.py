@@ -87,7 +87,7 @@ def cohere_encoder(mocker):
 @pytest.fixture
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-    return OpenAIEncoder(name="text-embedding-ada-002", openai_api_key="test_api_key")
+    return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
 
 
 @pytest.fixture
@@ -155,8 +155,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, top_k=10, index=index_cls()
         )
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
@@ -172,7 +172,7 @@ class TestRouteLayer:
         assert cohere_encoder.score_threshold == 0.3
         assert route_layer_cohere.score_threshold == 0.3
         route_layer_openai = RouteLayer(encoder=openai_encoder, index=index_cls())
-        assert route_layer_openai.score_threshold == 0.82
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_initialization_no_encoder(self, openai_encoder, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
@@ -189,8 +189,8 @@ class TestRouteLayer:
         route_layer_openai = RouteLayer(
             encoder=openai_encoder, routes=dynamic_routes, index=index_cls()
         )
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer_openai.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_add_route(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
@@ -542,7 +542,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
-        assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
+        assert route_layer.get_thresholds() == {"Route 1": 0.3, "Route 2": 0.3}
 
     def test_with_multiple_routes_passing_threshold(
         self, openai_encoder, routes, index_cls
