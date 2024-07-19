@@ -88,8 +88,8 @@ class TestHybridRouteLayer:
             alpha=0.8,
         )
         assert route_layer.index is not None and route_layer.categories is not None
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
         assert route_layer.alpha == 0.8
         assert len(route_layer.index) == 5
@@ -104,7 +104,7 @@ class TestHybridRouteLayer:
         route_layer_openai = HybridRouteLayer(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
         )
-        assert route_layer_openai.score_threshold == 0.82
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_add_route(self, openai_encoder):
         route_layer = HybridRouteLayer(

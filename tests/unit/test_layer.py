@@ -155,8 +155,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, top_k=10, index=index_cls()
         )
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
         assert len(route_layer.index) if route_layer.index is not None else 0 == 5
         assert (
@@ -172,7 +172,7 @@ class TestRouteLayer:
         assert cohere_encoder.score_threshold == 0.3
         assert route_layer_cohere.score_threshold == 0.3
         route_layer_openai = RouteLayer(encoder=openai_encoder, index=index_cls())
-        assert route_layer_openai.score_threshold == 0.82
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_initialization_no_encoder(self, openai_encoder, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
@@ -189,8 +189,8 @@ class TestRouteLayer:
         route_layer_openai = RouteLayer(
             encoder=openai_encoder, routes=dynamic_routes, index=index_cls()
         )
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer_openai.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_add_route(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
