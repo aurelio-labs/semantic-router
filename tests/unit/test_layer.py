@@ -542,7 +542,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
-        assert route_layer.get_thresholds() == {"Route 1": 0.82, "Route 2": 0.82}
+        assert route_layer.get_thresholds() == {"Route 1": 0.3, "Route 2": 0.3}
 
     def test_with_multiple_routes_passing_threshold(
         self, openai_encoder, routes, index_cls
