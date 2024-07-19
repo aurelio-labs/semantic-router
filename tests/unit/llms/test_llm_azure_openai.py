@@ -13,9 +13,7 @@ def azure_openai_llm(mocker):
 class TestOpenAILLM:
     def test_azure_openai_llm_init_with_api_key(self, azure_openai_llm):
         assert azure_openai_llm.client is not None, "Client should be initialized"
-        assert (
-            azure_openai_llm.name == "gpt-4o"
-        ), "Default name not set correctly"
+        assert azure_openai_llm.name == "gpt-4o", "Default name not set correctly"
 
     def test_azure_openai_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
