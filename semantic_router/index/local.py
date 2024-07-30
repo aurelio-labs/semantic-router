@@ -42,13 +42,15 @@ class LocalIndex(BaseIndex):
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
-    def _remove_and_sync(self, routes_to_delete: dict):
+    def _add_and_sync(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+    ):
         if self.sync is not None:
-            logger.warning("Sync remove is not implemented for LocalIndex.")
-
-    def _sync_index(self, local_route_names: List[str], local_utterances: List[str], dimensions: int):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for LocalIndex.")
+            logger.warning("Sync add is not implemented for LocalIndex.")
+        self.add(embeddings, routes, utterances)
 
     def get_routes(self) -> List[Tuple]:
         """
