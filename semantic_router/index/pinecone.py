@@ -11,6 +11,7 @@ from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
+from semantic_router.route import Route
 
 
 def clean_route_name(route_name: str) -> str:
@@ -209,6 +210,7 @@ class PineconeIndex(BaseIndex):
             self.index = self._init_index(force_create=True)
 
         remote_routes = self.get_routes()
+
         remote_dict: dict = {route: set() for route, _ in remote_routes}
         for route, utterance in remote_routes:
             remote_dict[route].add(utterance)
