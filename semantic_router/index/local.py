@@ -46,7 +46,9 @@ class LocalIndex(BaseIndex):
         if self.sync is not None:
             logger.warning("Sync remove is not implemented for LocalIndex.")
 
-    def _sync_index(self, local_route_names: List[str], local_utterances: List[str], dimensions: int):
+    def _sync_index(
+        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+    ):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for LocalIndex.")
 

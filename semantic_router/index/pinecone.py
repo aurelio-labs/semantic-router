@@ -201,7 +201,9 @@ class PineconeIndex(BaseIndex):
             logger.warning("Index could not be initialized.")
         self.host = index_stats["host"] if index_stats else None
 
-    def _sync_index(self, local_route_names: List[str], local_utterances: List[str], dimensions: int):
+    def _sync_index(
+        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+    ):
         if self.index is None:
             self.dimensions = self.dimensions or dimensions
             self.index = self._init_index(force_create=True)
@@ -253,7 +255,7 @@ class PineconeIndex(BaseIndex):
                     layer_routes[route] = list(local_utterances)
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
-                    utterances_to_include = local_utterances
+                    utterances_to_include = set(local_utterances)
                     if local_utterances:
                         layer_routes[route] = list(local_utterances)
                 else:
@@ -287,8 +289,6 @@ class PineconeIndex(BaseIndex):
 
             for utterance in utterances_to_include:
                 routes_to_add.append((route, utterance))
-
-        logger.info(f"Layer routes: {layer_routes}")
 
         return routes_to_add, routes_to_delete, layer_routes
 

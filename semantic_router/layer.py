@@ -487,14 +487,13 @@ class RouteLayer:
             utterances=all_utterances,
         )
 
-
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
         local_route_names, local_utterances = self._extract_routes_details(routes)
         routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
             local_route_names=local_route_names,
             local_utterances=local_utterances,
-            dimensions=len(self.encoder(["dummy"])[0])
+            dimensions=len(self.encoder(["dummy"])[0]),
         )
 
         layer_routes = [
@@ -508,8 +507,10 @@ class RouteLayer:
         self.index._remove_and_sync(data_to_delete)
 
         all_utterances_to_add = [utt for _, utt in routes_to_add]
-        embedded_utterances_to_add = self.encoder(all_utterances_to_add) if all_utterances_to_add else []
-        
+        embedded_utterances_to_add = (
+            self.encoder(all_utterances_to_add) if all_utterances_to_add else []
+        )
+
         route_names_to_add = [route for route, _, in routes_to_add]
 
         self.index.add(
@@ -517,14 +518,16 @@ class RouteLayer:
             routes=route_names_to_add,
             utterances=all_utterances_to_add,
         )
-        
+
         self._set_layer_routes(layer_routes)
 
-    def _extract_routes_details(self, routes: List[Route]) -> Tuple[List[str], List[str]]:
+    def _extract_routes_details(
+        self, routes: List[Route]
+    ) -> Tuple:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         return route_names, utterances
-    
+
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
         # create query vector
