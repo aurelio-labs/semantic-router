@@ -309,10 +309,15 @@ class RouteLayer:
                     "Route has a function schema, but no text was provided."
                 )
             if route.function_schemas and not isinstance(route.llm, BaseLLM):
-                raise NotImplementedError(
-                    "Dynamic routes not yet supported for async calls."
-                )
-            return route(text)
+                if not self.llm:
+                    logger.warning(
+                        "No LLM provided for dynamic route, will use OpenAI LLM default"
+                    )
+                    self.llm = OpenAILLM()
+                    route.llm = self.llm
+                else:
+                    route.llm = self.llm
+            return await route.acall(text)
         elif passed and route is not None and simulate_static:
             return RouteChoice(
                 name=route.name,
