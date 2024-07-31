@@ -11,7 +11,6 @@ from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
-from semantic_router.route import Route
 
 
 def clean_route_name(route_name: str) -> str:
