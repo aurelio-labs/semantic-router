@@ -11,7 +11,6 @@ from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
-from semantic_router.route import Route
 
 
 def clean_route_name(route_name: str) -> str:
@@ -208,7 +207,6 @@ class PineconeIndex(BaseIndex):
             self.index = self._init_index(force_create=True)
 
         remote_routes = self.get_routes()
-
         remote_dict: dict = {route: set() for route, _ in remote_routes}
         for route, utterance in remote_routes:
             remote_dict[route].add(utterance)
@@ -216,9 +214,6 @@ class PineconeIndex(BaseIndex):
         local_dict: dict = {route: set() for route in local_route_names}
         for route, utterance in zip(local_route_names, local_utterances):
             local_dict[route].add(utterance)
-
-        logger.info(f"Local routes: {local_dict}")
-        logger.info(f"Remote routes: {remote_dict}")
 
         all_routes = set(remote_dict.keys()).union(local_dict.keys())
 
@@ -324,7 +319,7 @@ class PineconeIndex(BaseIndex):
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
-    
+
     def _remove_and_sync(self, routes_to_delete: dict):
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)

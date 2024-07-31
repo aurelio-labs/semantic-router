@@ -497,9 +497,6 @@ class RouteLayer:
             dimensions=len(self.encoder(["dummy"])[0])
         )
 
-        logger.info(f"ROUTES TO ADD: {(routes_to_add)}")
-        logger.info(f"ROUTES TO DELETE: {(routes_to_delete)}")
-
         layer_routes = [
             Route(name=route, utterances=layer_routes_dict[route])
             for route in layer_routes_dict.keys()
