@@ -521,9 +521,7 @@ class RouteLayer:
 
         self._set_layer_routes(layer_routes)
 
-    def _extract_routes_details(
-        self, routes: List[Route]
-    ) -> Tuple:
+    def _extract_routes_details(self, routes: List[Route]) -> Tuple:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         return route_names, utterances
