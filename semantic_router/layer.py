@@ -217,8 +217,20 @@ class RouteLayer:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
-        if len(self.routes) > 0:
+        if self.index.sync:
             # initialize index now
+            if len(self.routes) > 0:
+                self._add_and_sync_routes(routes=self.routes)
+            else:
+                dummy_embedding = self.encoder(["dummy"])
+
+                layer_routes = self.index._add_and_sync(
+                    embeddings=dummy_embedding,
+                    routes=[],
+                    utterances=[],
+                )
+                self._set_layer_routes(layer_routes)
+        elif len(self.routes) > 0:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
@@ -385,6 +397,14 @@ class RouteLayer:
         )
         return self._pass_threshold(scores, threshold)
 
+    def _set_layer_routes(self, new_routes: List[Route]):
+        """
+        Set and override the current routes with a new list of routes.
+
+        :param new_routes: List of Route objects to set as the current routes.
+        """
+        self.routes = new_routes
+
     def __str__(self):
         return (
             f"RouteLayer(encoder={self.encoder}, "
@@ -471,11 +491,27 @@ class RouteLayer:
         # create route array
         route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
-        self.index._add_and_sync(
+        self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
         )
+
+    def _add_and_sync_routes(self, routes: List[Route]):
+        # create embeddings for all routes and sync at startup with remote ones based on sync setting
+        all_utterances = [
+            utterance for route in routes for utterance in route.utterances
+        ]
+        embedded_utterances = self.encoder(all_utterances)
+        # create route array
+        route_names = [route.name for route in routes for _ in route.utterances]
+        # add everything to the index
+        layer_routes = self.index._add_and_sync(
+            embeddings=embedded_utterances,
+            routes=route_names,
+            utterances=all_utterances,
+        )
+        self._set_layer_routes(layer_routes)
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
