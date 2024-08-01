@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Quickstart &#8212; Semantic Router 0.0.55 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=b87b3bc5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Semantic Router documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
+<p>To get started with <em>semantic-router</em> we install it like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">qU</span> <span class="n">semantic</span><span class="o">-</span><span class="n">router</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If wanting to use a fully local version of semantic router you can use <code class="docutils literal notranslate"><span class="pre">HuggingFaceEncoder</span></code> and <code class="docutils literal notranslate"><span class="pre">LlamaCppLLM</span></code> (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-qU</span> <span class="pre">&quot;semantic-router[local]&quot;</span></code>, see <a class="reference external" href="https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb">here</a>). To use the <code class="docutils literal notranslate"><span class="pre">HybridRouteLayer</span></code> you must <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-qU</span> <span class="pre">&quot;semantic-router[hybrid]&quot;</span></code>.</p>
+</div>
+<p>We begin by defining a set of <code class="docutils literal notranslate"><span class="pre">Route</span></code> objects. These are the decision paths that the semantic router can decide to use, let’s try two simple routes for now — one for talk on <em>politics</em> and another for <em>chitchat</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">semantic_router</span> <span class="kn">import</span> <span class="n">Route</span>
+
+<span class="c1"># we could use this as a guide for our chatbot to avoid political conversations</span>
+<span class="n">politics</span> <span class="o">=</span> <span class="n">Route</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;politics&quot;</span><span class="p">,</span>
+    <span class="n">utterances</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;isn&#39;t politics the best thing ever&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;why don&#39;t you tell me about your political opinions&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;don&#39;t you just love the president&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;they&#39;re going to destroy this country!&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;they will save the country!&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+
+<span class="c1"># this could be used as an indicator to our chatbot to switch to a more</span>
+<span class="c1"># conversational prompt</span>
+<span class="n">chitchat</span> <span class="o">=</span> <span class="n">Route</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;chitchat&quot;</span><span class="p">,</span>
+    <span class="n">utterances</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;how&#39;s the weather today?&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;how are things going?&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;lovely weather today&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;the weather is horrendous&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;let&#39;s go to the chippy&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+
+<span class="c1"># we place both of our decisions together into single list</span>
+<span class="n">routes</span> <span class="o">=</span> <span class="p">[</span><span class="n">politics</span><span class="p">,</span> <span class="n">chitchat</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>We have our routes ready, now we initialize an embedding / encoder model. We currently support a <code class="docutils literal notranslate"><span class="pre">CohereEncoder</span></code> and <code class="docutils literal notranslate"><span class="pre">OpenAIEncoder</span></code> — more encoders will be added soon. To initialize them we do:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">semantic_router.encoders</span> <span class="kn">import</span> <span class="n">CohereEncoder</span><span class="p">,</span> <span class="n">OpenAIEncoder</span>
+
+<span class="c1"># for Cohere</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;COHERE_API_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&lt;YOUR_API_KEY&gt;&quot;</span>
+<span class="n">encoder</span> <span class="o">=</span> <span class="n">CohereEncoder</span><span class="p">()</span>
+
+<span class="c1"># or for OpenAI</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&lt;YOUR_API_KEY&gt;&quot;</span>
+<span class="n">encoder</span> <span class="o">=</span> <span class="n">OpenAIEncoder</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>With our <code class="docutils literal notranslate"><span class="pre">routes</span></code> and <code class="docutils literal notranslate"><span class="pre">encoder</span></code> defined we now create a <code class="docutils literal notranslate"><span class="pre">RouteLayer</span></code>. The route layer handles our semantic decision making.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">semantic_router.layer</span> <span class="kn">import</span> <span class="n">RouteLayer</span>
+
+<span class="n">rl</span> <span class="o">=</span> <span class="n">RouteLayer</span><span class="p">(</span><span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span> <span class="n">routes</span><span class="o">=</span><span class="n">routes</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now use our route layer to make super fast decisions based on user queries. Let’s try with two queries that should trigger our route decisions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rl</span><span class="p">(</span><span class="s2">&quot;don&#39;t you love politics?&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Out</span><span class="p">]:</span> <span class="s1">&#39;politics&#39;</span>
+</pre></div>
+</div>
+<p>Correct decision, let’s try another:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rl</span><span class="p">(</span><span class="s2">&quot;how&#39;s the weather today?&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Out</span><span class="p">]:</span> <span class="s1">&#39;chitchat&#39;</span>
+</pre></div>
+</div>
+<p>We get both decisions correct! Now lets try sending an unrelated query:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rl</span><span class="p">(</span><span class="s2">&quot;I&#39;m interested in learning about llama 2&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Out</span><span class="p">]:</span>
+</pre></div>
+</div>
+<p>In this case, no decision could be made as we had no matches — so our route layer returned <code class="docutils literal notranslate"><span class="pre">None</span></code>!</p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Semantic Router</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Semantic Router documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Aurelio AI.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/quickstart.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
