@@ -1,1 +1,2 @@
 sphinxawesome-theme==5.2.0
+semantic-router
