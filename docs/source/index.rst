@@ -15,3 +15,4 @@ Our utterance vector space also integrates with `Pinecone <https://github.com/au
    :caption: Contents:
 
    quickstart
+   api
