@@ -16,19 +16,15 @@ release = "0.0.55"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
-    "sphinxawesome_theme"
-]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinxawesome_theme"]
 
-#templates_path = ["_templates"]
+# templates_path = ["_templates"]
 exclude_patterns: List[str] = []
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_permalinks_icon = '<span>#</span>'
-html_theme = 'sphinxawesome_theme'
+html_permalinks_icon = "<span>#</span>"
+html_theme = "sphinxawesome_theme"
 html_static_path = ["_static"]
