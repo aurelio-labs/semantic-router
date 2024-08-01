@@ -33,14 +33,9 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def _add_and_sync(
-        self,
-        embeddings: List[List[float]],
-        routes: List[str],
-        utterances: List[Any],
-    ):
+    def _remove_and_sync(self, routes_to_delete: dict):
         """
-        Add embeddings to the index and manage index syncing if necessary.
+        Remove embeddings in a routes syncing process from the index.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
@@ -91,7 +86,9 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def _sync_index(self, local_routes: dict):
+    def _sync_index(
+        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+    ):
         """
         Synchronize the local index with the remote index based on the specified mode.
         Modes:

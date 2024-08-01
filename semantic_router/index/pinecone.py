@@ -11,7 +11,6 @@ from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.utils.logger import logger
-from semantic_router.route import Route
 
 
 def clean_route_name(route_name: str) -> str:
@@ -202,15 +201,21 @@ class PineconeIndex(BaseIndex):
             logger.warning("Index could not be initialized.")
         self.host = index_stats["host"] if index_stats else None
 
-    def _sync_index(self, local_routes: dict):
+    def _sync_index(
+        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+    ):
+        if self.index is None:
+            self.dimensions = self.dimensions or dimensions
+            self.index = self._init_index(force_create=True)
+
         remote_routes = self.get_routes()
 
         remote_dict: dict = {route: set() for route, _ in remote_routes}
         for route, utterance in remote_routes:
             remote_dict[route].add(utterance)
 
-        local_dict: dict = {route: set() for route in local_routes["routes"]}
-        for route, utterance in zip(local_routes["routes"], local_routes["utterances"]):
+        local_dict: dict = {route: set() for route in local_route_names}
+        for route, utterance in zip(local_route_names, local_utterances):
             local_dict[route].add(utterance)
 
         all_routes = set(remote_dict.keys()).union(local_dict.keys())
@@ -251,7 +256,7 @@ class PineconeIndex(BaseIndex):
                     layer_routes[route] = list(local_utterances)
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
-                    utterances_to_include = local_utterances
+                    utterances_to_include = set(local_utterances)
                     if local_utterances:
                         layer_routes[route] = list(local_utterances)
                 else:
@@ -284,17 +289,7 @@ class PineconeIndex(BaseIndex):
                 raise ValueError("Invalid sync mode specified")
 
             for utterance in utterances_to_include:
-                indices = [
-                    i
-                    for i, x in enumerate(local_routes["utterances"])
-                    if x == utterance and local_routes["routes"][i] == route
-                ]
-                routes_to_add.extend(
-                    [
-                        (local_routes["embeddings"][idx], route, utterance)
-                        for idx in indices
-                    ]
-                )
+                routes_to_add.append((route, utterance))
 
         return routes_to_add, routes_to_delete, layer_routes
 
@@ -326,64 +321,17 @@ class PineconeIndex(BaseIndex):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
 
-    def _add_and_sync(
-        self,
-        embeddings: List[List[float]],
-        routes: List[str],
-        utterances: List[str],
-        batch_size: int = 100,
-    ) -> List[Route]:
-        """Add vectors to Pinecone in batches and return the overall updated list of Route objects."""
-        if self.index is None:
-            self.dimensions = self.dimensions or len(embeddings[0])
-            self.index = self._init_index(force_create=True)
-
-        local_routes = {
-            "routes": routes,
-            "utterances": utterances,
-            "embeddings": embeddings,
-        }
-        if self.sync is not None:
-            data_to_upsert, data_to_delete, layer_routes_dict = self._sync_index(
-                local_routes=local_routes
-            )
-
-            layer_routes = [
-                Route(name=route, utterances=layer_routes_dict[route])
-                for route in layer_routes_dict.keys()
+    def _remove_and_sync(self, routes_to_delete: dict):
+        for route, utterances in routes_to_delete.items():
+            remote_routes = self._get_routes_with_ids(route_name=route)
+            ids_to_delete = [
+                r["id"]
+                for r in remote_routes
+                if (r["route"], r["utterance"])
+                in zip([route] * len(utterances), utterances)
             ]
-
-            routes_to_delete: dict = {}
-            for route, utterance in data_to_delete:
-                routes_to_delete.setdefault(route, []).append(utterance)
-
-            for route, utterances in routes_to_delete.items():
-                remote_routes = self._get_routes_with_ids(route_name=route)
-                ids_to_delete = [
-                    r["id"]
-                    for r in remote_routes
-                    if (r["route"], r["utterance"])
-                    in zip([route] * len(utterances), utterances)
-                ]
-                if ids_to_delete and self.index:
-                    self.index.delete(ids=ids_to_delete)
-
-        else:
-            data_to_upsert = [
-                (vector, route, utterance)
-                for vector, route, utterance in zip(embeddings, routes, utterances)
-            ]
-
-        vectors_to_upsert = [
-            PineconeRecord(values=vector, route=route, utterance=utterance).to_dict()
-            for vector, route, utterance in data_to_upsert
-        ]
-
-        for i in range(0, len(vectors_to_upsert), batch_size):
-            batch = vectors_to_upsert[i : i + batch_size]
-            self._batch_upsert(batch)
-
-        return layer_routes
+            if ids_to_delete and self.index:
+                self.index.delete(ids=ids_to_delete)
 
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
