@@ -28,3 +28,6 @@ package-lock.json
 package.json
 test.ipynb
 ```
+
+# docs
+docs/build
