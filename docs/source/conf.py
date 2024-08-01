@@ -22,7 +22,7 @@ extensions = [
     "sphinxawesome_theme"
 ]
 
-templates_path = ["_templates"]
+#templates_path = ["_templates"]
 exclude_patterns: List[str] = []
 
 
