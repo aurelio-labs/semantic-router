@@ -1,4 +1,4 @@
-﻿semantic\_router
+semantic\_router
 ================
 
 .. automodule:: semantic_router

@@ -18,8 +18,10 @@ release = "0.0.55"
 
 extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinxawesome_theme"]
 
-# templates_path = ["_templates"]
+templates_path = ["_templates"]
 exclude_patterns: List[str] = []
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 
 # -- Options for HTML output -------------------------------------------------

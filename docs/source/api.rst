@@ -2,6 +2,8 @@ API
 ===
 
 .. autosummary::
-   :toctree: generated
+   :toctree: _autosummary
+   :template: custom-module-template.rst
+   :recursive:
 
    semantic_router
