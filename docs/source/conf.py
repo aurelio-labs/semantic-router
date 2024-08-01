@@ -19,7 +19,6 @@ release = "0.0.55"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    "sphinx.ext.myst_parser"
 ]
 
 templates_path = ["_templates"]
