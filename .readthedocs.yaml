@@ -24,9 +24,8 @@ sphinx:
 #    - pdf
 #    - epub
 
-# Optional but recommended, declare the Python requirements required
-# to build your documentation
+# Declare the Python requirements required to build docs
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-# python:
-#    install:
-#    - requirements: docs/requirements.txt
+python:
+   install:
+   - requirements: ./docs/source/requirements.txt
