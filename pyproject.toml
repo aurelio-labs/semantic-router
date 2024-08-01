@@ -69,6 +69,7 @@ types-pyyaml = "^6.0.12.12"
 types-requests = "^2.31.0"
 black = {extras = ["jupyter"], version = ">=23.12.1,<24.5.0"}
 sphinx = "^7.0.0"
+sphinxawesome-theme = "^5.2.0"
 
 [build-system]
 requires = ["poetry-core"]

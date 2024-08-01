@@ -19,6 +19,7 @@ release = "0.0.55"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.myst_parser"
 ]
 
 templates_path = ["_templates"]
@@ -28,5 +29,6 @@ exclude_patterns: List[str] = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_permalinks_icon = '<span>#</span>'
+html_theme = 'sphinxawesome_theme'
 html_static_path = ["_static"]
