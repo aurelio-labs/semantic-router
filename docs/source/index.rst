@@ -11,7 +11,9 @@ The *encoders* of semantic router include easy-to-use integrations with `Cohere 
 Our utterance vector space also integrates with `Pinecone <https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb>`_ and `Qdrant <https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb>`_!
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :hidden:
 
-   quickstart
+   Home page <self>
+   Quickstart <quickstart>
+   Jupyter tutorials <tutorials>
+   API reference <_autosummary/semantic_router>
