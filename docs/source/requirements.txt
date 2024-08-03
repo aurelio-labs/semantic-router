@@ -1,5 +1,4 @@
 sphinx
 sphinxawesome-theme==5.2.0
 sphinx-autodoc-typehints
-numpy
 .
