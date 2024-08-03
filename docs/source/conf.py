@@ -20,7 +20,13 @@ release = "0.0.55"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinxawesome_theme"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinxawesome_theme",
+    "nbsphinx",
+    "sphinx_autodoc_typehints",
+]
 
 templates_path = ["_templates"]
 exclude_patterns: List[str] = []

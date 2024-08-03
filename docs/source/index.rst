@@ -15,5 +15,5 @@ Our utterance vector space also integrates with `Pinecone <https://github.com/au
 
    Home page <self>
    Quickstart <quickstart>
-   Jupyter tutorials <tutorials>
+   Examples <../examples>
    API reference <_autosummary/semantic_router>
