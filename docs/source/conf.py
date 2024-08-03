@@ -1,4 +1,7 @@
 from typing import List
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))  # Source code dir relative to this file
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -21,7 +24,7 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinxawesome_the
 templates_path = ["_templates"]
 exclude_patterns: List[str] = []
 autosummary_generate = True
-numpydoc_show_class_members = False
+numpydoc_show_class_members = True
 
 
 # -- Options for HTML output -------------------------------------------------
