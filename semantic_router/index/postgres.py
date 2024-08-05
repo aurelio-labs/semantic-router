@@ -25,7 +25,7 @@ class MetricPgVecOperatorMap(Enum):
 def parse_vector(vector_str: Union[str, Any]) -> List[float]:
     """
     Parses a vector from a string or other representation.
-    
+
     :param vector_str: The string or object representation of a vector.
     :type vector_str: Union[str, Any]
     :return: A list of floats representing the vector.
@@ -41,7 +41,7 @@ def parse_vector(vector_str: Union[str, Any]) -> List[float]:
 def clean_route_name(route_name: str) -> str:
     """
     Cleans and formats the route name by stripping spaces and replacing them with hyphens.
-    
+
     :param route_name: The original route name.
     :type route_name: str
     :return: The cleaned and formatted route name.
@@ -63,7 +63,7 @@ class PostgresIndexRecord(BaseModel):
     def __init__(self, **data) -> None:
         """
         Initializes a new Postgres index record with given data.
-        
+
         :param data: Field values for the record.
         :type data: dict
         """
@@ -80,7 +80,7 @@ class PostgresIndexRecord(BaseModel):
     def to_dict(self) -> Dict:
         """
         Converts the record to a dictionary.
-        
+
         :return: A dictionary representation of the record.
         :rtype: Dict
         """
@@ -117,7 +117,7 @@ class PostgresIndex(BaseIndex):
     ):
         """
         Initializes the Postgres index with the specified parameters.
-        
+
         :param connection_string: The connection string for the PostgreSQL database.
         :type connection_string: Optional[str]
         :param index_prefix: The prefix for the index table name.
@@ -150,7 +150,7 @@ class PostgresIndex(BaseIndex):
     def _get_table_name(self) -> str:
         """
         Returns the name of the table for the index.
-        
+
         :return: The table name.
         :rtype: str
         """
@@ -159,7 +159,7 @@ class PostgresIndex(BaseIndex):
     def _get_metric_operator(self) -> str:
         """
         Returns the PostgreSQL operator for the specified metric.
-        
+
         :return: The PostgreSQL operator.
         :rtype: str
         """
@@ -168,7 +168,7 @@ class PostgresIndex(BaseIndex):
     def _get_score_query(self, embeddings_str: str) -> str:
         """
         Creates the select statement required to return the embeddings distance.
-        
+
         :param embeddings_str: The string representation of the embeddings.
         :type embeddings_str: str
         :return: The SQL query part for scoring.
@@ -189,7 +189,7 @@ class PostgresIndex(BaseIndex):
     def setup_index(self) -> None:
         """
         Sets up the index by creating the table and vector extension if they do not exist.
-        
+
         :raises ValueError: If the existing table's vector dimensions do not match the expected dimensions.
         :raises TypeError: If the database connection is not established.
         """
@@ -218,7 +218,7 @@ class PostgresIndex(BaseIndex):
     def _check_embeddings_dimensions(self) -> bool:
         """
         Checks if the length of the vector embeddings in the table matches the expected dimensions, or if no table exists.
-        
+
         :return: True if the dimensions match or the table does not exist, False otherwise.
         :rtype: bool
         :raises ValueError: If the vector column comment does not contain a valid integer.
@@ -258,7 +258,7 @@ class PostgresIndex(BaseIndex):
     ) -> None:
         """
         Adds vectors to the index.
-        
+
         :param embeddings: A list of vector embeddings to add.
         :type embeddings: List[List[float]]
         :param routes: A list of route names corresponding to the embeddings.
@@ -293,7 +293,7 @@ class PostgresIndex(BaseIndex):
     def delete(self, route_name: str) -> None:
         """
         Deletes records with the specified route name.
-        
+
         :param route_name: The name of the route to delete records for.
         :type route_name: str
         :raises TypeError: If the database connection is not established.
@@ -308,7 +308,7 @@ class PostgresIndex(BaseIndex):
     def describe(self) -> Dict:
         """
         Describes the index by returning its type, dimensions, and total vector count.
-        
+
         :return: A dictionary containing the index's type, dimensions, and total vector count.
         :rtype: Dict
         :raises TypeError: If the database connection is not established.
@@ -337,7 +337,7 @@ class PostgresIndex(BaseIndex):
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Searches the index for the query vector and returns the top_k results.
-        
+
         :param vector: The query vector.
         :type vector: np.ndarray
         :param top_k: The number of top results to return.
@@ -368,7 +368,7 @@ class PostgresIndex(BaseIndex):
     def _get_route_ids(self, route_name: str):
         """
         Retrieves all vector IDs for a specific route.
-        
+
         :param route_name: The name of the route to retrieve IDs for.
         :type route_name: str
         :return: A list of vector IDs.
@@ -383,7 +383,7 @@ class PostgresIndex(BaseIndex):
     ):
         """
         Retrieves all vector IDs and optionally metadata from the Postgres index.
-        
+
         :param route_name: Optional route name to filter the results by.
         :type route_name: Optional[str]
         :param include_metadata: Whether to include metadata in the results.
@@ -433,7 +433,7 @@ class PostgresIndex(BaseIndex):
     def delete_all(self):
         """
         Deletes all records from the Postgres index.
-        
+
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
@@ -446,7 +446,7 @@ class PostgresIndex(BaseIndex):
     def delete_index(self) -> None:
         """
         Deletes the entire table for the index.
-        
+
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
@@ -459,7 +459,7 @@ class PostgresIndex(BaseIndex):
     def __len__(self):
         """
         Returns the total number of vectors in the index.
-        
+
         :return: The total number of vectors.
         :rtype: int
         :raises TypeError: If the database connection is not established.
