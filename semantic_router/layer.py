@@ -709,7 +709,21 @@ class RouteLayer:
         y: List[str],
         batch_size: int = 500,
         max_iter: int = 500,
+        local_execution: bool = False,
     ):
+        original_index = self.index
+        if local_execution:
+            # Switch to a local index for fitting
+            from semantic_router.index.local import LocalIndex
+
+            remote_routes = self.index.get_routes()
+            # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
+            routes = [route_tuple[0] for route_tuple in remote_routes]
+            utterances = [route_tuple[1] for route_tuple in remote_routes]
+            embeddings = self.encoder(utterances)
+            self.index = LocalIndex()
+            self.index.add(embeddings=embeddings, routes=routes, utterances=utterances)
+
         # convert inputs into array
         Xq: List[List[float]] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
@@ -736,6 +750,10 @@ class RouteLayer:
                 best_thresholds = thresholds
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
+
+        if local_execution:
+            # Switch back to the original index
+            self.index = original_index
 
     def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
         """
