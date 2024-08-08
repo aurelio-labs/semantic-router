@@ -33,6 +33,17 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    def get_routes(self):
+        """
+        Retrieves a list of routes and their associated utterances from the index.
+        This method should be implemented by subclasses.
+
+        :returns: A list of tuples, each containing a route name and an associated utterance.
+        :rtype: list[tuple]
+        :raises NotImplementedError: If the method is not implemented by the subclass.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def _remove_and_sync(self, routes_to_delete: dict):
         """
         Remove embeddings in a routes syncing process from the index.
