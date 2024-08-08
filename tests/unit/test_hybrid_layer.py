@@ -40,7 +40,7 @@ def cohere_encoder(mocker):
 @pytest.fixture
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-    return OpenAIEncoder(name="text-embedding-ada-002", openai_api_key="test_api_key")
+    return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
 
 
 @pytest.fixture
@@ -88,8 +88,8 @@ class TestHybridRouteLayer:
             alpha=0.8,
         )
         assert route_layer.index is not None and route_layer.categories is not None
-        assert openai_encoder.score_threshold == 0.82
-        assert route_layer.score_threshold == 0.82
+        assert openai_encoder.score_threshold == 0.3
+        assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
         assert route_layer.alpha == 0.8
         assert len(route_layer.index) == 5
@@ -104,7 +104,7 @@ class TestHybridRouteLayer:
         route_layer_openai = HybridRouteLayer(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
         )
-        assert route_layer_openai.score_threshold == 0.82
+        assert route_layer_openai.score_threshold == 0.3
 
     def test_add_route(self, openai_encoder):
         route_layer = HybridRouteLayer(
