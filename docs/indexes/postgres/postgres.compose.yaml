@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  pgvector:
+    build: .
+    environment:
+      POSTGRES_DB: semantic_router
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:
