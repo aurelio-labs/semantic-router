@@ -2269,12 +2269,12 @@ files = [
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.2.87"
+version = "0.2.85"
 description = "Python bindings for the llama.cpp library"
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "llama_cpp_python-0.2.87.tar.gz", hash = "sha256:4dff585f533131aa44b7d9e79a62d60172f317aef15d7bf4bafeb074b55a48c4"},
+    {file = "llama_cpp_python-0.2.85.tar.gz", hash = "sha256:31476c2f4331784d3681f9bcd366cc4666ba97ab128bffbd23cb90ee2cebff21"},
 ]
 
 [package.dependencies]
@@ -5382,4 +5382,4 @@ vision = ["pillow", "torch", "torchvision", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "13067697a82e75e7e3e9211d99a2e5a7971b9d57b9a71c81a97fb72881847499"
+content-hash = "32e1158d0742323cf5e3a7262ceec1229829d80df399caa62b5b693bc430932a"
