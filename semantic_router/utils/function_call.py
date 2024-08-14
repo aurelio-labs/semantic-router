@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from pydantic.v1 import BaseModel
 
@@ -14,7 +14,7 @@ class Parameter(BaseModel):
         arbitrary_types_allowed = True
 
     name: str = Field(description="The name of the parameter")
-    description: str | None = Field(
+    description: Optional[str] = Field(
         default=None, description="The description of the parameter"
     )
     type: str = Field(description="The type of the parameter")
@@ -41,7 +41,7 @@ class FunctionSchema:
     output: str = Field(description="The output of the function")
     parameters: List[Parameter] = Field(description="The parameters of the function")
 
-    def __init__(self, function: Callable | BaseModel):
+    def __init__(self, function: Union[Callable, BaseModel]):
         self.function = function
         if callable(function):
             self._process_function(function)
