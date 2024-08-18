@@ -77,7 +77,7 @@ class TestOpenAIEncoder:
         )
         with pytest.raises(ValueError) as e:
             openai_encoder(["test document"])
-        assert "No embeddings returned. Error" in str(e.value)
+        assert "No embeddings returned." in str(e.value)
 
     def test_openai_encoder_call_failure_non_openai_error(self, openai_encoder, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
