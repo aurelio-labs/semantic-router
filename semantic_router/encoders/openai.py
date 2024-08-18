@@ -42,6 +42,7 @@ class OpenAIEncoder(BaseEncoder):
     token_limit: int = 8192  # default value, should be replaced by config
     _token_encoder: Any = PrivateAttr()
     type: str = "openai"
+    max_retries: int
 
     def __init__(
         self,
@@ -51,9 +52,13 @@ class OpenAIEncoder(BaseEncoder):
         openai_org_id: Optional[str] = None,
         score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
+        max_retries: int | None = None,
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
+
+        max_retries = max_retries if max_retries is not None else 3
+
         if score_threshold is None and name in model_configs:
             set_score_threshold = model_configs[name].threshold
         elif score_threshold is None:
@@ -66,6 +71,7 @@ class OpenAIEncoder(BaseEncoder):
         super().__init__(
             name=name,
             score_threshold=set_score_threshold,
+            max_retries=max_retries,
         )
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
@@ -109,8 +115,9 @@ class OpenAIEncoder(BaseEncoder):
             docs = [self._truncate(doc) for doc in docs]
 
         # Exponential backoff
-        for j in range(1, 7):
+        for j in range(self.max_retries + 1):
             try:
+                raise OpenAIError("Test")
                 embeds = self.client.embeddings.create(
                     input=docs,
                     model=self.name,
@@ -119,12 +126,14 @@ class OpenAIEncoder(BaseEncoder):
                 if embeds.data:
                     break
             except OpenAIError as e:
-                sleep(2**j)
-                error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")
+                logger.error("Exception occurred", exc_info=True)
+                if self.max_retries != 0:
+                    sleep(2**j)
+                    logger.warning(f"Retrying in {2**j} seconds due to OpenAIError: {e}")
+
             except Exception as e:
-                logger.error(f"OpenAI API call failed. Error: {error_message}")
-                raise ValueError(f"OpenAI API call failed. Error: {e}") from e
+                logger.error(f"OpenAI API call failed. Error: {e}")
+                raise ValueError(f"OpenAI API call failed. Error: {str(e)}") from e
 
         if (
             not embeds
@@ -132,7 +141,7 @@ class OpenAIEncoder(BaseEncoder):
             or not embeds.data
         ):
             logger.info(f"Returned embeddings: {embeds}")
-            raise ValueError(f"No embeddings returned. Error: {error_message}")
+            raise ValueError(f"No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
@@ -161,8 +170,9 @@ class OpenAIEncoder(BaseEncoder):
             docs = [self._truncate(doc) for doc in docs]
 
         # Exponential backoff
-        for j in range(1, 7):
+        for j in range(self.max_retries + 1):
             try:
+                raise OpenAIError("Test")
                 embeds = await self.async_client.embeddings.create(
                     input=docs,
                     model=self.name,
@@ -171,11 +181,12 @@ class OpenAIEncoder(BaseEncoder):
                 if embeds.data:
                     break
             except OpenAIError as e:
-                await asleep(2**j)
-                error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")
+                logger.error("Exception occurred", exc_info=True)
+                if self.max_retries != 0:
+                    await asleep(2**j)
+                    logger.warning(f"Retrying in {2**j} seconds due to OpenAIError: {e}")
             except Exception as e:
-                logger.error(f"OpenAI API call failed. Error: {error_message}")
+                logger.error(f"OpenAI API call failed. Error: {e}")
                 raise ValueError(f"OpenAI API call failed. Error: {e}") from e
 
         if (
@@ -184,7 +195,7 @@ class OpenAIEncoder(BaseEncoder):
             or not embeds.data
         ):
             logger.info(f"Returned embeddings: {embeds}")
-            raise ValueError(f"No embeddings returned. Error: {error_message}")
+            raise ValueError(f"No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
