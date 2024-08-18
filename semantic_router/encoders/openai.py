@@ -114,7 +114,6 @@ class OpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                raise OpenAIError("Test")
                 embeds = self.client.embeddings.create(
                     input=docs,
                     model=self.name,
@@ -170,7 +169,6 @@ class OpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                raise OpenAIError("Test")
                 embeds = await self.async_client.embeddings.create(
                     input=docs,
                     model=self.name,

@@ -105,7 +105,6 @@ class AzureOpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                raise OpenAIError("Test")
                 embeds = self.client.embeddings.create(
                     input=docs,
                     model=str(self.model),
@@ -142,7 +141,6 @@ class AzureOpenAIEncoder(BaseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                raise OpenAIError("Test")
                 embeds = await self.async_client.embeddings.create(
                     input=docs,
                     model=str(self.model),
