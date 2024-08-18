@@ -23,7 +23,7 @@ class AzureOpenAIEncoder(BaseEncoder):
     azure_endpoint: Optional[str] = None
     api_version: Optional[str] = None
     model: Optional[str] = None
-    max_retries: int
+    max_retries: int = 3
 
     def __init__(
         self,
@@ -39,10 +39,7 @@ class AzureOpenAIEncoder(BaseEncoder):
         name = deployment_name
         if name is None:
             name = EncoderDefault.AZURE.value["embedding_model"]
-
-        max_retries = max_retries if max_retries is not None else 3
-        
-        super().__init__(name=name, score_threshold=score_threshold, max_retries=max_retries)
+        super().__init__(name=name, score_threshold=score_threshold)
         self.api_key = api_key
         self.deployment_name = deployment_name
         self.azure_endpoint = azure_endpoint
@@ -54,6 +51,8 @@ class AzureOpenAIEncoder(BaseEncoder):
             self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
             if self.api_key is None:
                 raise ValueError("No Azure OpenAI API key provided.")
+        if max_retries is not None:
+            self.max_retries = max_retries
         if self.deployment_name is None:
             self.deployment_name = EncoderDefault.AZURE.value["deployment_name"]
         # deployment_name may still be None, but it is optional in the API
@@ -102,7 +101,6 @@ class AzureOpenAIEncoder(BaseEncoder):
         if self.client is None:
             raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
-        error_message = ""
 
         # Exponential backoff
         for j in range(self.max_retries + 1):
@@ -119,7 +117,9 @@ class AzureOpenAIEncoder(BaseEncoder):
                 logger.error("Exception occurred", exc_info=True)
                 if self.max_retries != 0:
                     sleep(2**j)
-                    logger.warning(f"Retrying in {2**j} seconds due to OpenAIError: {e}")
+                    logger.warning(
+                        f"Retrying in {2**j} seconds due to OpenAIError: {e}"
+                    )
             except Exception as e:
                 logger.error(f"Azure OpenAI API call failed. Error: {e}")
                 raise ValueError(f"Azure OpenAI API call failed. Error: {e}") from e
@@ -129,7 +129,7 @@ class AzureOpenAIEncoder(BaseEncoder):
             or not isinstance(embeds, CreateEmbeddingResponse)
             or not embeds.data
         ):
-            raise ValueError(f"No embeddings returned.")
+            raise ValueError("No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
@@ -138,7 +138,6 @@ class AzureOpenAIEncoder(BaseEncoder):
         if self.async_client is None:
             raise ValueError("Azure OpenAI async client is not initialized.")
         embeds = None
-        error_message = ""
 
         # Exponential backoff
         for j in range(self.max_retries + 1):
@@ -156,7 +155,9 @@ class AzureOpenAIEncoder(BaseEncoder):
                 logger.error("Exception occurred", exc_info=True)
                 if self.max_retries != 0:
                     await asleep(2**j)
-                    logger.warning(f"Retrying in {2**j} seconds due to OpenAIError: {e}")
+                    logger.warning(
+                        f"Retrying in {2**j} seconds due to OpenAIError: {e}"
+                    )
             except Exception as e:
                 logger.error(f"Azure OpenAI API call failed. Error: {e}")
                 raise ValueError(f"Azure OpenAI API call failed. Error: {e}") from e
@@ -166,7 +167,7 @@ class AzureOpenAIEncoder(BaseEncoder):
             or not isinstance(embeds, CreateEmbeddingResponse)
             or not embeds.data
         ):
-            raise ValueError(f"No embeddings returned.")
+            raise ValueError("No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
