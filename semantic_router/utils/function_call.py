@@ -77,7 +77,11 @@ class FunctionSchema:
                     "type": "object",
                     "properties": {
                         param.name: {
-                            "description": param.description,
+                            "description": (
+                                param.description
+                                if isinstance(param.description, str)
+                                else None
+                            ),
                             "type": self._ollama_type_mapping(param.type),
                         }
                         for param in self.parameters
