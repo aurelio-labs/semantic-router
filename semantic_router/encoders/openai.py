@@ -42,6 +42,7 @@ class OpenAIEncoder(BaseEncoder):
     token_limit: int = 8192  # default value, should be replaced by config
     _token_encoder: Any = PrivateAttr()
     type: str = "openai"
+    max_retries: int = 3
 
     def __init__(
         self,
@@ -51,6 +52,7 @@ class OpenAIEncoder(BaseEncoder):
         openai_org_id: Optional[str] = None,
         score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
+        max_retries: int = 3,
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
@@ -72,6 +74,8 @@ class OpenAIEncoder(BaseEncoder):
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
+        if max_retries is not None:
+            self.max_retries = max_retries
         try:
             self.client = openai.Client(
                 base_url=base_url, api_key=api_key, organization=openai_org_id
@@ -102,14 +106,13 @@ class OpenAIEncoder(BaseEncoder):
         if self.client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None
-        error_message = ""
 
         if truncate:
             # check if any document exceeds token limit and truncate if so
             docs = [self._truncate(doc) for doc in docs]
 
         # Exponential backoff
-        for j in range(1, 7):
+        for j in range(self.max_retries + 1):
             try:
                 embeds = self.client.embeddings.create(
                     input=docs,
@@ -119,12 +122,18 @@ class OpenAIEncoder(BaseEncoder):
                 if embeds.data:
                     break
             except OpenAIError as e:
-                sleep(2**j)
-                error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")
+                logger.error("Exception occurred", exc_info=True)
+                if self.max_retries != 0 and j < self.max_retries:
+                    sleep(2**j)
+                    logger.warning(
+                        f"Retrying in {2**j} seconds due to OpenAIError: {e}"
+                    )
+                else:
+                    raise
+
             except Exception as e:
-                logger.error(f"OpenAI API call failed. Error: {error_message}")
-                raise ValueError(f"OpenAI API call failed. Error: {e}") from e
+                logger.error(f"OpenAI API call failed. Error: {e}")
+                raise ValueError(f"OpenAI API call failed. Error: {str(e)}") from e
 
         if (
             not embeds
@@ -132,7 +141,7 @@ class OpenAIEncoder(BaseEncoder):
             or not embeds.data
         ):
             logger.info(f"Returned embeddings: {embeds}")
-            raise ValueError(f"No embeddings returned. Error: {error_message}")
+            raise ValueError("No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
@@ -154,14 +163,13 @@ class OpenAIEncoder(BaseEncoder):
         if self.async_client is None:
             raise ValueError("OpenAI async client is not initialized.")
         embeds = None
-        error_message = ""
 
         if truncate:
             # check if any document exceeds token limit and truncate if so
             docs = [self._truncate(doc) for doc in docs]
 
         # Exponential backoff
-        for j in range(1, 7):
+        for j in range(self.max_retries + 1):
             try:
                 embeds = await self.async_client.embeddings.create(
                     input=docs,
@@ -171,11 +179,17 @@ class OpenAIEncoder(BaseEncoder):
                 if embeds.data:
                     break
             except OpenAIError as e:
-                await asleep(2**j)
-                error_message = str(e)
-                logger.warning(f"Retrying in {2**j} seconds...")
+                logger.error("Exception occurred", exc_info=True)
+                if self.max_retries != 0 and j < self.max_retries:
+                    await asleep(2**j)
+                    logger.warning(
+                        f"Retrying in {2**j} seconds due to OpenAIError: {e}"
+                    )
+                else:
+                    raise
+
             except Exception as e:
-                logger.error(f"OpenAI API call failed. Error: {error_message}")
+                logger.error(f"OpenAI API call failed. Error: {e}")
                 raise ValueError(f"OpenAI API call failed. Error: {e}") from e
 
         if (
@@ -184,7 +198,7 @@ class OpenAIEncoder(BaseEncoder):
             or not embeds.data
         ):
             logger.info(f"Returned embeddings: {embeds}")
-            raise ValueError(f"No embeddings returned. Error: {error_message}")
+            raise ValueError("No embeddings returned.")
 
         embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
         return embeddings
