@@ -187,7 +187,7 @@ class OpenAIEncoder(BaseEncoder):
                     )
                 else:
                     raise
-                    
+
             except Exception as e:
                 logger.error(f"OpenAI API call failed. Error: {e}")
                 raise ValueError(f"OpenAI API call failed. Error: {e}") from e
