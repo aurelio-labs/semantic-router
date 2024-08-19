@@ -52,7 +52,7 @@ class OpenAIEncoder(BaseEncoder):
         openai_org_id: Optional[str] = None,
         score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
-        max_retries: int | None = None,
+        max_retries: int = 3,
     ):
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]

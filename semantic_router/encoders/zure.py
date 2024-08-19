@@ -34,7 +34,7 @@ class AzureOpenAIEncoder(BaseEncoder):
         model: Optional[str] = None,  # TODO we should change to `name` JB
         score_threshold: float = 0.82,
         dimensions: Union[int, NotGiven] = NotGiven(),
-        max_retries: int | None = None,
+        max_retries: int = 3,
     ):
         name = deployment_name
         if name is None:
