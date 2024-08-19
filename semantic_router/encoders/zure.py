@@ -114,11 +114,13 @@ class AzureOpenAIEncoder(BaseEncoder):
                     break
             except OpenAIError as e:
                 logger.error("Exception occurred", exc_info=True)
-                if self.max_retries != 0:
+                if self.max_retries != 0 and j < self.max_retries:
                     sleep(2**j)
                     logger.warning(
                         f"Retrying in {2**j} seconds due to OpenAIError: {e}"
                     )
+                else:
+                    raise
             except Exception as e:
                 logger.error(f"Azure OpenAI API call failed. Error: {e}")
                 raise ValueError(f"Azure OpenAI API call failed. Error: {e}") from e
@@ -151,11 +153,13 @@ class AzureOpenAIEncoder(BaseEncoder):
 
             except OpenAIError as e:
                 logger.error("Exception occurred", exc_info=True)
-                if self.max_retries != 0:
+                if self.max_retries != 0 and j < self.max_retries:
                     await asleep(2**j)
                     logger.warning(
                         f"Retrying in {2**j} seconds due to OpenAIError: {e}"
                     )
+                else:
+                    raise
             except Exception as e:
                 logger.error(f"Azure OpenAI API call failed. Error: {e}")
                 raise ValueError(f"Azure OpenAI API call failed. Error: {e}") from e
