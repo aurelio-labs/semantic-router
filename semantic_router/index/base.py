@@ -26,6 +26,7 @@ class BaseIndex(BaseModel):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[Any],
+        function_schemas: List[Dict[str, Any]],
     ):
         """
         Add embeddings to the index.

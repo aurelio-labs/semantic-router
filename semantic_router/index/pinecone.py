@@ -22,6 +22,7 @@ class PineconeRecord(BaseModel):
     values: List[float]
     route: str
     utterance: str
+    function_schema: str
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -34,7 +35,11 @@ class PineconeRecord(BaseModel):
         return {
             "id": self.id,
             "values": self.values,
-            "metadata": {"sr_route": self.route, "sr_utterance": self.utterance},
+            "metadata": {
+                "sr_route": self.route,
+                "sr_utterance": self.utterance,
+                "sr_function_schemas": self.function_schema,
+            },
         }
 
 
@@ -305,6 +310,7 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: List[Dict[str, Any]] = "",
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""
@@ -313,8 +319,15 @@ class PineconeIndex(BaseIndex):
             self.index = self._init_index(force_create=True)
 
         vectors_to_upsert = [
-            PineconeRecord(values=vector, route=route, utterance=utterance).to_dict()
-            for vector, route, utterance in zip(embeddings, routes, utterances)
+            PineconeRecord(
+                values=vector,
+                route=route,
+                utterance=utterance,
+                function_schema=str(function_schema),
+            ).to_dict()
+            for vector, route, utterance, function_schema in zip(
+                embeddings, routes, utterances, function_schemas
+            )
         ]
 
         for i in range(0, len(vectors_to_upsert), batch_size):

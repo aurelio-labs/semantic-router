@@ -430,12 +430,17 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
-        # add routes to the index
         self.index.add(
             embeddings=embeds,
             routes=[route.name] * len(route.utterances),
             utterances=route.utterances,
+            function_schemas=(
+                route.function_schemas * len(route.utterances)
+                if route.function_schemas
+                else [""] * len(route.utterances)
+            ),
         )
+
         self.routes.append(route)
 
     def list_route_names(self) -> List[str]:
