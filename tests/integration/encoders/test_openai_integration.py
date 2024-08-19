@@ -1,5 +1,6 @@
 import os
 import pytest
+from openai import OpenAIError
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 
@@ -40,7 +41,7 @@ class TestOpenAIEncoder:
         os.environ.get("OPENAI_API_KEY") is None, reason="OpenAI API key required"
     )
     def test_openai_encoder_call_no_truncation(self, openai_encoder):
-        with pytest.raises(ValueError) as _:
+        with pytest.raises(OpenAIError) as _:
             # default truncation is True
             openai_encoder([long_doc], truncate=False)
 
