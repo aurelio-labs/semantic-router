@@ -5,6 +5,7 @@ import numpy as np
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
+from typing import Any
 
 
 class LocalIndex(BaseIndex):
@@ -26,6 +27,7 @@ class LocalIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)

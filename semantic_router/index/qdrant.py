@@ -175,6 +175,7 @@ class QdrantIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
     ):
         self.dimensions = self.dimensions or len(embeddings[0])

@@ -437,7 +437,7 @@ class RouteLayer:
             function_schemas=(
                 route.function_schemas * len(route.utterances)
                 if route.function_schemas
-                else [""] * len(route.utterances)
+                else [""] * len(route.utterances)  # type: ignore
             ),
         )
 
@@ -482,7 +482,9 @@ class RouteLayer:
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
-        route_names, all_utterances = self._extract_routes_details(routes)
+        route_names, all_utterances, function_schemas = self._extract_routes_details(
+            routes
+        )
         embedded_utterances = self.encoder(all_utterances)
         # create route array
         # add everything to the index
@@ -490,11 +492,14 @@ class RouteLayer:
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
+            function_schemas=function_schemas,
         )
 
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
-        local_route_names, local_utterances = self._extract_routes_details(routes)
+        local_route_names, local_utterances, local_function_schemas = (
+            self._extract_routes_details(routes)
+        )
         routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
             local_route_names=local_route_names,
             local_utterances=local_utterances,
@@ -522,6 +527,7 @@ class RouteLayer:
             embeddings=embedded_utterances_to_add,
             routes=route_names_to_add,
             utterances=all_utterances_to_add,
+            function_schemas=local_function_schemas,
         )
 
         self._set_layer_routes(layer_routes)
@@ -529,7 +535,13 @@ class RouteLayer:
     def _extract_routes_details(self, routes: List[Route]) -> Tuple:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
-        return route_names, utterances
+        function_schemas = [
+            function_schema if function_schema is not None else ""
+            for route in routes
+            if route.function_schemas is not None
+            for function_schema in route.function_schemas
+        ]
+        return route_names, utterances, function_schemas
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
