@@ -99,7 +99,11 @@ class BaseIndex(BaseModel):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _sync_index(
-        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+        self,
+        local_route_names: List[str],
+        local_utterances: List[str],
+        dimensions: int,
+        local_function_schemas: List[str] = None,  # type: ignore
     ):
         """
         Synchronize the local index with the remote index based on the specified mode.

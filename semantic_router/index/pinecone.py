@@ -207,7 +207,11 @@ class PineconeIndex(BaseIndex):
         self.host = index_stats["host"] if index_stats else None
 
     def _sync_index(
-        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+        self,
+        local_route_names: List[str],
+        local_utterances: List[str],
+        dimensions: int,
+        local_function_schemas: List[str] = None,  # type: ignore
     ):
         if self.index is None:
             self.dimensions = self.dimensions or dimensions
