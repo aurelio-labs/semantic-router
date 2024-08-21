@@ -21,7 +21,7 @@ class UnifyLLM(BaseLLM):
     ):
 	
         if name is None:
-            name = os.environ.get("UNIFY_END_POINT", "llama-3-8b-chat@together-ai")
+            name = EncoderDefault.UNIFy.value["end_point"]
         
         super().__init__(name=name)
 	
