@@ -34,5 +34,10 @@ class EncoderDefault(Enum):
     BEDROCK = {
         "embedding_model": os.environ.get(
             "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"
+        ),
+    }
+    UNIFy = {
+        "end_point": os.environ.get("UNIFY_END_POINT", "llama-3-8b-chat@together-ai"
         )
     }
+    
