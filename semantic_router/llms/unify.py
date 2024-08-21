@@ -25,22 +25,17 @@ class UnifyLLM(BaseLLM):
         
         super().__init__(name=name)
 	
+        self.client = Unify(name, api_key=unify_api_key)
+
+    def __call__(self, messages: List[Message]) -> str:
+        if self.client is None:
+            raise UnifyError("Unify client is not initialized.")
         try:
-            self.client = Unify(name, api_key=unify_api_key)
-        except Exception as e:
-            raise ValueError(
-                f"Unify API client failed to initialize. Error: {e}"
-            ) from e
-
-        def __call__(self, messages: List[Message]) -> str:
-            if self.client is None:
-                raise ValueError("Unify client is not initialized.")
-            try:
-                output = self.client.generate(messages=[m.to_openai() for m in messages])
+            output = self.client.generate(messages=[m.to_openai() for m in messages])
 				
-                if not output:
-                    raise Exception("No output generated")
-                return output
+            if not output:
+                 raise Exception("No output generated")
+            return output
 
-            except Exception as e:
-                raise UnifyError(f"Unify API call failed. Error: {e}") from e
+        except Exception as e:
+             raise UnifyError(f"Unify API call failed. Error: {e}") from e
