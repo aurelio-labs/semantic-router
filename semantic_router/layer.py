@@ -217,8 +217,13 @@ class RouteLayer:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
-        if len(self.routes) > 0:
+        if self.index.sync:
             # initialize index now
+            if len(self.routes) > 0:
+                self._add_and_sync_routes(routes=self.routes)
+            else:
+                self._add_and_sync_routes(routes=[])
+        elif len(self.routes) > 0:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
@@ -297,10 +302,15 @@ class RouteLayer:
                     "Route has a function schema, but no text was provided."
                 )
             if route.function_schemas and not isinstance(route.llm, BaseLLM):
-                raise NotImplementedError(
-                    "Dynamic routes not yet supported for async calls."
-                )
-            return route(text)
+                if not self.llm:
+                    logger.warning(
+                        "No LLM provided for dynamic route, will use OpenAI LLM default"
+                    )
+                    self.llm = OpenAILLM()
+                    route.llm = self.llm
+                else:
+                    route.llm = self.llm
+            return await route.acall(text)
         elif passed and route is not None and simulate_static:
             return RouteChoice(
                 name=route.name,
@@ -379,6 +389,14 @@ class RouteLayer:
             else self.score_threshold
         )
         return self._pass_threshold(scores, threshold)
+
+    def _set_layer_routes(self, new_routes: List[Route]):
+        """
+        Set and override the current routes with a new list of routes.
+
+        :param new_routes: List of Route objects to set as the current routes.
+        """
+        self.routes = new_routes
 
     def __str__(self):
         return (
@@ -459,18 +477,54 @@ class RouteLayer:
 
     def _add_routes(self, routes: List[Route]):
         # create embeddings for all routes
-        all_utterances = [
-            utterance for route in routes for utterance in route.utterances
-        ]
+        route_names, all_utterances = self._extract_routes_details(routes)
         embedded_utterances = self.encoder(all_utterances)
         # create route array
-        route_names = [route.name for route in routes for _ in route.utterances]
         # add everything to the index
         self.index.add(
             embeddings=embedded_utterances,
             routes=route_names,
             utterances=all_utterances,
         )
+
+    def _add_and_sync_routes(self, routes: List[Route]):
+        # create embeddings for all routes and sync at startup with remote ones based on sync setting
+        local_route_names, local_utterances = self._extract_routes_details(routes)
+        routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
+            local_route_names=local_route_names,
+            local_utterances=local_utterances,
+            dimensions=len(self.encoder(["dummy"])[0]),
+        )
+
+        layer_routes = [
+            Route(name=route, utterances=layer_routes_dict[route])
+            for route in layer_routes_dict.keys()
+        ]
+
+        data_to_delete: dict = {}
+        for route, utterance in routes_to_delete:
+            data_to_delete.setdefault(route, []).append(utterance)
+        self.index._remove_and_sync(data_to_delete)
+
+        all_utterances_to_add = [utt for _, utt in routes_to_add]
+        embedded_utterances_to_add = (
+            self.encoder(all_utterances_to_add) if all_utterances_to_add else []
+        )
+
+        route_names_to_add = [route for route, _, in routes_to_add]
+
+        self.index.add(
+            embeddings=embedded_utterances_to_add,
+            routes=route_names_to_add,
+            utterances=all_utterances_to_add,
+        )
+
+        self._set_layer_routes(layer_routes)
+
+    def _extract_routes_details(self, routes: List[Route]) -> Tuple:
+        route_names = [route.name for route in routes for _ in route.utterances]
+        utterances = [utterance for route in routes for utterance in route.utterances]
+        return route_names, utterances
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
@@ -655,7 +709,21 @@ class RouteLayer:
         y: List[str],
         batch_size: int = 500,
         max_iter: int = 500,
+        local_execution: bool = False,
     ):
+        original_index = self.index
+        if local_execution:
+            # Switch to a local index for fitting
+            from semantic_router.index.local import LocalIndex
+
+            remote_routes = self.index.get_routes()
+            # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
+            routes = [route_tuple[0] for route_tuple in remote_routes]
+            utterances = [route_tuple[1] for route_tuple in remote_routes]
+            embeddings = self.encoder(utterances)
+            self.index = LocalIndex()
+            self.index.add(embeddings=embeddings, routes=routes, utterances=utterances)
+
         # convert inputs into array
         Xq: List[List[float]] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
@@ -682,6 +750,10 @@ class RouteLayer:
                 best_thresholds = thresholds
         # update route layer to best thresholds
         self._update_thresholds(score_thresholds=best_thresholds)
+
+        if local_execution:
+            # Switch back to the original index
+            self.index = original_index
 
     def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
         """

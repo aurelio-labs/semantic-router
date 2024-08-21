@@ -43,7 +43,7 @@ example_function_schema = {
 class TestOpenAILLM:
     def test_openai_llm_init_with_api_key(self, openai_llm):
         assert openai_llm.client is not None, "Client should be initialized"
-        assert openai_llm.name == "gpt-3.5-turbo", "Default name not set correctly"
+        assert openai_llm.name == "gpt-4o", "Default name not set correctly"
 
     def test_openai_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")

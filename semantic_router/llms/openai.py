@@ -22,6 +22,7 @@ from openai.types.chat.chat_completion_message_tool_call import (
 
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
+    async_client: Optional[openai.AsyncOpenAI]
     temperature: Optional[float]
     max_tokens: Optional[int]
 
@@ -39,6 +40,7 @@ class OpenAILLM(BaseLLM):
         if api_key is None:
             raise ValueError("OpenAI API key cannot be 'None'.")
         try:
+            self.async_client = openai.AsyncOpenAI(api_key=api_key)
             self.client = openai.OpenAI(api_key=api_key)
         except Exception as e:
             raise ValueError(
@@ -48,6 +50,23 @@ class OpenAILLM(BaseLLM):
         self.max_tokens = max_tokens
 
     def _extract_tool_calls_info(
+        self, tool_calls: List[ChatCompletionMessageToolCall]
+    ) -> List[Dict[str, Any]]:
+        tool_calls_info = []
+        for tool_call in tool_calls:
+            if tool_call.function.arguments is None:
+                raise ValueError(
+                    "Invalid output, expected arguments to be specified for each tool call."
+                )
+            tool_calls_info.append(
+                {
+                    "function_name": tool_call.function.name,
+                    "arguments": json.loads(tool_call.function.arguments),
+                }
+            )
+        return tool_calls_info
+
+    async def async_extract_tool_calls_info(
         self, tool_calls: List[ChatCompletionMessageToolCall]
     ) -> List[Dict[str, Any]]:
         tool_calls_info = []
@@ -108,6 +127,50 @@ class OpenAILLM(BaseLLM):
             logger.error(f"LLM error: {e}")
             raise Exception(f"LLM error: {e}") from e
 
+    async def acall(
+        self,
+        messages: List[Message],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
+        if self.async_client is None:
+            raise ValueError("OpenAI async_client is not initialized.")
+        try:
+            tools: Union[List[Dict[str, Any]], NotGiven] = (
+                function_schemas if function_schemas is not None else NOT_GIVEN
+            )
+
+            completion = await self.async_client.chat.completions.create(
+                model=self.name,
+                messages=[m.to_openai() for m in messages],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                tools=tools,  # type: ignore # We pass a list of dicts which get interpreted as Iterable[ChatCompletionToolParam].
+            )
+
+            if function_schemas:
+                tool_calls = completion.choices[0].message.tool_calls
+                if tool_calls is None:
+                    raise ValueError("Invalid output, expected a tool call.")
+                if len(tool_calls) < 1:
+                    raise ValueError(
+                        "Invalid output, expected at least one tool to be specified."
+                    )
+
+                # Collecting multiple tool calls information
+                output = str(
+                    await self.async_extract_tool_calls_info(tool_calls)
+                )  # str in keeping with base type.
+            else:
+                content = completion.choices[0].message.content
+                if content is None:
+                    raise ValueError("Invalid output, expected content.")
+                output = content
+            return output
+
+        except Exception as e:
+            logger.error(f"LLM error: {e}")
+            raise Exception(f"LLM error: {e}") from e
+
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
@@ -122,6 +185,25 @@ class OpenAILLM(BaseLLM):
         output = output.replace("'", '"')
         function_inputs = json.loads(output)
         logger.info(f"Function inputs: {function_inputs}")
+        logger.info(f"function_schemas: {function_schemas}")
+        if not self._is_valid_inputs(function_inputs, function_schemas):
+            raise ValueError("Invalid inputs")
+        return function_inputs
+
+    async def async_extract_function_inputs(
+        self, query: str, function_schemas: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
+        messages = [
+            Message(role="system", content=system_prompt),
+            Message(role="user", content=query),
+        ]
+        output = await self.acall(messages=messages, function_schemas=function_schemas)
+        if not output:
+            raise Exception("No output generated for extract function input")
+        output = output.replace("'", '"')
+        function_inputs = json.loads(output)
+        logger.info(f"OpenAI => Function Inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs

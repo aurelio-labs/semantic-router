@@ -65,6 +65,8 @@ class PineconeIndex(BaseIndex):
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
+        sync: str = "local",
+        init_async_index: bool = False,
     ):
         super().__init__()
         self.index_name = index_name
@@ -77,12 +79,16 @@ class PineconeIndex(BaseIndex):
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
+        self.sync = sync
 
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
 
         self.client = self._initialize_client(api_key=self.api_key)
-        self.async_client = self._initialize_async_client(api_key=self.api_key)
+        if init_async_index:
+            self.async_client = self._initialize_async_client(api_key=self.api_key)
+        else:
+            self.async_client = None
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
@@ -195,6 +201,98 @@ class PineconeIndex(BaseIndex):
             logger.warning("Index could not be initialized.")
         self.host = index_stats["host"] if index_stats else None
 
+    def _sync_index(
+        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+    ):
+        if self.index is None:
+            self.dimensions = self.dimensions or dimensions
+            self.index = self._init_index(force_create=True)
+
+        remote_routes = self.get_routes()
+
+        remote_dict: dict = {route: set() for route, _ in remote_routes}
+        for route, utterance in remote_routes:
+            remote_dict[route].add(utterance)
+
+        local_dict: dict = {route: set() for route in local_route_names}
+        for route, utterance in zip(local_route_names, local_utterances):
+            local_dict[route].add(utterance)
+
+        all_routes = set(remote_dict.keys()).union(local_dict.keys())
+
+        routes_to_add = []
+        routes_to_delete = []
+        layer_routes = {}
+
+        for route in all_routes:
+            local_utterances = local_dict.get(route, set())
+            remote_utterances = remote_dict.get(route, set())
+
+            if not local_utterances and not remote_utterances:
+                continue
+
+            if self.sync == "error":
+                if local_utterances != remote_utterances:
+                    raise ValueError(
+                        f"Synchronization error: Differences found in route '{route}'"
+                    )
+                utterances_to_include: set = set()
+                if local_utterances:
+                    layer_routes[route] = list(local_utterances)
+            elif self.sync == "remote":
+                utterances_to_include = set()
+                if remote_utterances:
+                    layer_routes[route] = list(remote_utterances)
+            elif self.sync == "local":
+                utterances_to_include = local_utterances - remote_utterances
+                routes_to_delete.extend(
+                    [
+                        (route, utterance)
+                        for utterance in remote_utterances
+                        if utterance not in local_utterances
+                    ]
+                )
+                if local_utterances:
+                    layer_routes[route] = list(local_utterances)
+            elif self.sync == "merge-force-remote":
+                if route in local_dict and route not in remote_dict:
+                    utterances_to_include = set(local_utterances)
+                    if local_utterances:
+                        layer_routes[route] = list(local_utterances)
+                else:
+                    utterances_to_include = set()
+                    if remote_utterances:
+                        layer_routes[route] = list(remote_utterances)
+            elif self.sync == "merge-force-local":
+                if route in local_dict:
+                    utterances_to_include = local_utterances - remote_utterances
+                    routes_to_delete.extend(
+                        [
+                            (route, utterance)
+                            for utterance in remote_utterances
+                            if utterance not in local_utterances
+                        ]
+                    )
+                    if local_utterances:
+                        layer_routes[route] = local_utterances
+                else:
+                    utterances_to_include = set()
+                    if remote_utterances:
+                        layer_routes[route] = list(remote_utterances)
+            elif self.sync == "merge":
+                utterances_to_include = local_utterances - remote_utterances
+                if local_utterances or remote_utterances:
+                    layer_routes[route] = list(
+                        remote_utterances.union(local_utterances)
+                    )
+            else:
+                raise ValueError("Invalid sync mode specified")
+
+            for utterance in utterances_to_include:
+                routes_to_add.append((route, utterance))
+
+        return routes_to_add, routes_to_delete, layer_routes
+
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records."""
         if self.index is not None:
@@ -223,10 +321,36 @@ class PineconeIndex(BaseIndex):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
 
+    def _remove_and_sync(self, routes_to_delete: dict):
+        for route, utterances in routes_to_delete.items():
+            remote_routes = self._get_routes_with_ids(route_name=route)
+            ids_to_delete = [
+                r["id"]
+                for r in remote_routes
+                if (r["route"], r["utterance"])
+                in zip([route] * len(utterances), utterances)
+            ]
+            if ids_to_delete and self.index:
+                self.index.delete(ids=ids_to_delete)
+
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
         ids, _ = self._get_all(prefix=f"{clean_route}#")
         return ids
+
+    def _get_routes_with_ids(self, route_name: str):
+        clean_route = clean_route_name(route_name)
+        ids, metadata = self._get_all(prefix=f"{clean_route}#", include_metadata=True)
+        route_tuples = []
+        for id, data in zip(ids, metadata):
+            route_tuples.append(
+                {
+                    "id": id,
+                    "route": data["sr_route"],
+                    "utterance": data["sr_utterance"],
+                }
+            )
+        return route_tuples
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
@@ -267,9 +391,16 @@ class PineconeIndex(BaseIndex):
 
             # if we need metadata, we fetch it
             if include_metadata:
-                res_meta = self.index.fetch(ids=vector_ids, namespace=self.namespace)
+                for id in vector_ids:
+                    res_meta = (
+                        self.index.fetch(ids=[id], namespace=self.namespace)
+                        if self.index
+                        else {}
+                    )
+                    metadata.extend(
+                        [x["metadata"] for x in res_meta["vectors"].values()]
+                    )
                 # extract metadata only
-                metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
 
             # Check if there's a next page token; if not, break the loop
             next_page_token = response_data.get("pagination", {}).get("next")
@@ -316,7 +447,25 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.index is None:
             raise ValueError("Index is not populated.")
         query_vector_list = vector.tolist()
@@ -326,6 +475,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
+            sparse_vector=kwargs.get("sparse_vector", None),
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -340,7 +490,25 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Asynchronously search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.async_client is None or self.host is None:
             raise ValueError("Async client or host are not initialized.")
         query_vector_list = vector.tolist()
@@ -350,6 +518,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
+            sparse_vector=kwargs.get("sparse_vector", None),
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -366,6 +535,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
+        sparse_vector: Optional[dict] = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,
@@ -373,6 +543,7 @@ class PineconeIndex(BaseIndex):
     ):
         params = {
             "vector": vector,
+            "sparse_vector": sparse_vector,
             "namespace": namespace,
             "filter": filter,
             "top_k": top_k,

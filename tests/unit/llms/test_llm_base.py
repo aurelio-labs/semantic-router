@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 
 class TestBaseLLM:
-
     @pytest.fixture
     def base_llm(self):
         return BaseLLM(name="TestLLM")
