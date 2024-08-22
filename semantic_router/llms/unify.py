@@ -11,13 +11,19 @@ from unify.clients import Unify, AsyncUnify
 
 class UnifyLLM(BaseLLM):
 
-    client: Optional[Unify] = None
-    async_client: Optional[AsyncUnify] = None
+    client: Optional[Unify]
+    async_client: Optional[AsyncUnify]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
+    stream: Optional[bool]
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        unify_api_key: Optional[str] = None,
+        name: Optional[str],
+        unify_api_key: Optional[str],
+        temperature: Optional[float] = 0.01,
+        max_tokens: Optional[int] = 200,
+        stream: bool = False,
     ):
 
         if name is None:
@@ -25,7 +31,9 @@ class UnifyLLM(BaseLLM):
             {EncoderDefault.UNIFY.value["language_provider"]}"
 
         super().__init__(name=name)
-
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.stream = stream
         self.client = Unify(endpoint=name, api_key=unify_api_key)
 
     def __call__(self, messages: List[Message]) -> str:
@@ -33,7 +41,10 @@ class UnifyLLM(BaseLLM):
             raise UnifyError("Unify client is not initialized.")
         try:
             output = self.client.generate(
-                messages=[m.to_openai() for m in messages]
+                messages=[m.to_openai() for m in messages],
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                stream=self.stream,
                 )
 
             if not output:

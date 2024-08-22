@@ -10,14 +10,13 @@ def unify_llm():
 
 
 class TestOllamaLLM:
-    def test_ollama_llm_init_success(self, ollama_llm):
-        assert unify_llm.name == "ollama"
-        assert unify_llm.temperature == 0.2
-        assert unify_llm.llm_name == "openhermes"
+    def test_unify_llm_init_success(self, unify_llm):
+        assert unify_llm.name == "gpt-4o@openai"
+        assert unify_llm.temperature == 0.01
         assert unify_llm.max_tokens == 200
         assert unify_llm.stream is False
 
-    def test_ollama_llm_call_success(self, unify_llm, mocker):
+    def test_unify_llm_call_success(self, unify_llm, mocker):
         mock_response = mocker.MagicMock()
         mock_response.json.return_value = {"message": {"content": "test response"}}
         mocker.patch("requests.post", return_value=mock_response)
