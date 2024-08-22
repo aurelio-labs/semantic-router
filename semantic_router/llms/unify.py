@@ -27,8 +27,7 @@ class UnifyLLM(BaseLLM):
     ):
 
         if name is None:
-            name = f"{EncoderDefault.UNIFY.value['language_model']}@\
-            {EncoderDefault.UNIFY.value['language_provider']}"
+            name = f"{EncoderDefault.UNIFY.value['language_model']}@{EncoderDefault.UNIFY.value['language_provider']}"
 
         super().__init__(name=name)
         self.temperature = temperature
@@ -48,7 +47,7 @@ class UnifyLLM(BaseLLM):
                 )
 
             if not output:
-                raise Exception("No output generated")
+                raise UnifyError("No output generated")
             return output
 
         except Exception as e:
