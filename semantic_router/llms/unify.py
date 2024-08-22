@@ -19,8 +19,8 @@ class UnifyLLM(BaseLLM):
 
     def __init__(
         self,
-        name: Optional[str],
-        unify_api_key: Optional[str],
+        name: Optional[str] = None,
+        unify_api_key: Optional[str] = None,
         temperature: Optional[float] = 0.01,
         max_tokens: Optional[int] = 200,
         stream: bool = False,

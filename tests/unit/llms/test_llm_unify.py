@@ -24,7 +24,7 @@ class TestUnifyLLM:
         output = unify_llm([Message(role="user", content="test")])
         assert output == "test response"
 
-    def test_ollama_llm_error_handling(self, unify_llm, mocker):
+    def test_unify_llm_error_handling(self, unify_llm, mocker):
         mocker.patch("requests.post", side_effect=Exception("LLM error"))
         with pytest.raises(Exception) as exc_info:
             unify_llm([Message(role="user", content="test")])
