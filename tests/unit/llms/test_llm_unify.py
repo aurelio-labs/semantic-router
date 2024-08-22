@@ -1,10 +1,8 @@
 import pytest
 
-from dotenv import load_dotenv
 from semantic_router.llms.unify import UnifyLLM
 from semantic_router.schema import Message
 
-load_dotenv()
 
 @pytest.fixture
 def unify_llm():
