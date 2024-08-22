@@ -331,7 +331,7 @@ class PineconeIndex(BaseIndex):
                 in zip([route] * len(utterances), utterances)
             ]
             if ids_to_delete and self.index:
-                self.index.delete(ids=ids_to_delete)
+                self.index.delete(ids=ids_to_delete, namespace=self.namespace)
 
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
