@@ -1,7 +1,4 @@
-import os
-from typing import Dict, List, Optional
-
-import unify
+from typing import List, Optional
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
@@ -45,3 +42,4 @@ class UnifyLLM(BaseLLM):
 
         except Exception as e:
             raise UnifyError(f"Unify API call failed. Error: {e}") from e
+
