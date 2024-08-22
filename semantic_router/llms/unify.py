@@ -4,7 +4,6 @@ from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
 
-# from unify.utils import _validate_api_key
 from unify.exceptions import UnifyError
 from unify.clients import Unify, AsyncUnify
 
