@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Optional
 
 from semantic_router.llms import BaseLLM
@@ -33,6 +34,7 @@ class UnifyLLM(BaseLLM):
         self.max_tokens = max_tokens
         self.stream = stream
         self.client = Unify(endpoint=name, api_key=unify_api_key)
+        self.async_client = AsyncUnify(endpoint=name, api_key=unify_api_key)
 
     def __call__(self, messages: List[Message]) -> str:
         if self.client is None:
@@ -52,3 +54,25 @@ class UnifyLLM(BaseLLM):
         except Exception as e:
             raise UnifyError(f"Unify API call failed. Error: {e}") from e
 
+    async def acall(self, messages: List[Message]) -> str:
+        if self.async_client is None:
+            raise UnifyError("Unify async_client is not initialized.")
+            try:
+                
+                async def main():
+                    responses = await self.async_client.generate(
+                        messages=[m.to_openai() for m in messages],
+                        max_tokens=self.max_tokens,
+                        temperature=self.temperature,
+                        stream=self.stream,
+                        )
+                    return responses
+                    
+                output = await main()  
+                
+                if not output:
+                    raise UnifyError("No output generated")
+                return output
+
+            except Exception as e:
+                raise UnifyError(f"Unify API call failed. Error: {e}") from e
