@@ -1,6 +1,6 @@
 import pytest
 
-from semantic_router.llms import UnifyLLM
+from semantic_router.llms.unify import UnifyLLM
 from semantic_router.schema import Message
 
 
