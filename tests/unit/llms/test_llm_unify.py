@@ -9,7 +9,7 @@ def unify_llm():
     return UnifyLLM()
 
 
-class TestOllamaLLM:
+class TestUnifyLLM:
     def test_unify_llm_init_success(self, unify_llm):
         assert unify_llm.name == "gpt-4o@openai"
         assert unify_llm.temperature == 0.01
