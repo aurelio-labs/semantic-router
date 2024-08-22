@@ -38,11 +38,9 @@ class EncoderDefault(Enum):
     }
     UNIFY = {
         "language_model": os.environ.get(
-            "UNIFY_CHAT_MODEL_NAME",
-            "llama-3-8b-chat",
-            ),
+            "UNIFY_CHAT_MODEL_NAME", "llama-3-8b-chat"
+        ),
         "language_provider": os.environ.get(
-            "UNIFY_CHAT_MODEL_PROVIDER",
-            "together-ai",
-            ),
+            "UNIFY_CHAT_MODEL_PROVIDER", "together-ai"
+        ),
     }
