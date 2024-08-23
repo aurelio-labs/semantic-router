@@ -676,7 +676,6 @@ class PineconeIndex(BaseIndex):
                 response_data = await response.json(content_type=None)
                 print(f"RESPONSE: {response_data}")
             except Exception as e:
-                print(f"Failed to decode JSON for vector {vector_id}: {e}")
                 return {}
 
             return (
