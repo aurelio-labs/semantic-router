@@ -628,6 +628,7 @@ class PineconeIndex(BaseIndex):
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
+                    logger.error(f"Error fetching vectors: {error_text}")
                     break
 
                 response_data = await response.json(content_type=None)
@@ -667,11 +668,15 @@ class PineconeIndex(BaseIndex):
         ) as response:
             if response.status != 200:
                 error_text = await response.text()
+                logger.error(f"Error fetching metadata: {error_text}")
                 return {}
 
             try:
                 response_data = await response.json(content_type=None)
             except Exception as e:
+                logger.warning(
+                    f"No metadata found for vector {vector_id}: {e}"
+                )
                 return {}
 
             return (
