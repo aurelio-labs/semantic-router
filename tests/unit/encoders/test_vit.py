@@ -43,11 +43,6 @@ class TestVitEncoder:
         with pytest.raises(ImportError):
             VitEncoder()
 
-    def test_vit_encoder__import_errors_torchvision(self, mocker):
-        mocker.patch.dict("sys.modules", {"torchvision": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
-
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
