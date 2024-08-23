@@ -674,7 +674,6 @@ class PineconeIndex(BaseIndex):
 
             try:
                 response_data = await response.json(content_type=None)
-                print(f"RESPONSE: {response_data}")
             except Exception as e:
                 return {}
 
