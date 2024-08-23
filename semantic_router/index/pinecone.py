@@ -667,9 +667,6 @@ class PineconeIndex(BaseIndex):
         ) as response:
             if response.status != 200:
                 error_text = await response.text()
-                print(
-                    f"Error fetching metadata for vector {vector_id}: {response.status} - {error_text}"
-                )
                 return {}
 
             try:
