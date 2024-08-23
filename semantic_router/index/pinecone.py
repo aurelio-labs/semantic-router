@@ -628,7 +628,6 @@ class PineconeIndex(BaseIndex):
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    print(f"Error listing vectors: {response.status} - {error_text}")
                     break
 
                 response_data = await response.json(content_type=None)
