@@ -597,7 +597,7 @@ class PineconeIndex(BaseIndex):
             return await response.json(content_type=None)
 
     async def _async_get_all(
-        self, prefix: str | None = None, include_metadata: bool = False
+        self, prefix: Optional[str] = None, include_metadata: bool = False
     ) -> tuple[list[str], list[dict]]:
         """
         Retrieves all vector IDs from the Pinecone index using pagination asynchronously.
