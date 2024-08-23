@@ -674,9 +674,7 @@ class PineconeIndex(BaseIndex):
             try:
                 response_data = await response.json(content_type=None)
             except Exception as e:
-                logger.warning(
-                    f"No metadata found for vector {vector_id}: {e}"
-                )
+                logger.warning(f"No metadata found for vector {vector_id}: {e}")
                 return {}
 
             return (
