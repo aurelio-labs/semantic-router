@@ -691,7 +691,6 @@ class PineconeIndex(BaseIndex):
             List[Tuple]: A list of (route_name, utterance) objects.
         """
         _, metadata = await self._async_get_all(include_metadata=True)
-        print(metadata)
         route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
         return route_tuples
 
