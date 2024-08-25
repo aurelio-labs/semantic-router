@@ -59,16 +59,13 @@ class UnifyLLM(BaseLLM):
             raise UnifyError("Unify async_client is not initialized.")
             try:
                 
-                async def main():
-                    responses = await self.async_client.generate(
-                        messages=[m.to_openai() for m in messages],
-                        max_tokens=self.max_tokens,
-                        temperature=self.temperature,
-                        stream=self.stream,
-                        )
-                    return responses
-                    
-                output = await main()  
+                output = await self.async_client.generate(
+                    messages=[m.to_openai() for m in messages],
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    stream=self.stream,
+                    )
+                 
                 
                 if not output:
                     raise UnifyError("No output generated")
