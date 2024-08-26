@@ -40,9 +40,7 @@ class TestVitEncoder:
             with pytest.raises(ImportError) as error:
                 VitEncoder()
 
-        assert "Please install transformers to use VitEncoder" in str(
-            error.value
-        )
+        assert "Please install transformers to use VitEncoder" in str(error.value)
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
