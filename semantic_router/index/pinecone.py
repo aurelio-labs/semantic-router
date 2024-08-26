@@ -528,6 +528,18 @@ class PineconeIndex(BaseIndex):
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
 
+    async def aget_routes(self) -> list[tuple]:
+        """
+        Asynchronously get a list of route and utterance objects currently stored in the index.
+
+        Returns:
+            List[Tuple]: A list of (route_name, utterance) objects.
+        """
+        if self.async_client is None or self.host is None:
+            raise ValueError("Async client or host are not initialized.")
+
+        return await self._async_get_routes()
+
     def delete_index(self):
         self.client.delete_index(self.index_name)
 
@@ -583,6 +595,102 @@ class PineconeIndex(BaseIndex):
     async def _async_describe_index(self, name: str):
         async with self.async_client.get(f"{self.base_url}/indexes/{name}") as response:
             return await response.json(content_type=None)
+
+    async def _async_get_all(
+        self, prefix: Optional[str] = None, include_metadata: bool = False
+    ) -> tuple[list[str], list[dict]]:
+        """
+        Retrieves all vector IDs from the Pinecone index using pagination asynchronously.
+        """
+        if self.index is None:
+            raise ValueError("Index is None, could not retrieve vector IDs.")
+
+        all_vector_ids = []
+        next_page_token = None
+
+        if prefix:
+            prefix_str = f"?prefix={prefix}"
+        else:
+            prefix_str = ""
+
+        list_url = f"https://{self.host}/vectors/list{prefix_str}"
+        params: dict = {}
+        if self.namespace:
+            params["namespace"] = self.namespace
+        metadata = []
+
+        while True:
+            if next_page_token:
+                params["paginationToken"] = next_page_token
+
+            async with self.async_client.get(
+                list_url, params=params, headers={"Api-Key": self.api_key}
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Error fetching vectors: {error_text}")
+                    break
+
+                response_data = await response.json(content_type=None)
+
+            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            if not vector_ids:
+                break
+            all_vector_ids.extend(vector_ids)
+
+            if include_metadata:
+                metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
+                metadata_results = await asyncio.gather(*metadata_tasks)
+                metadata.extend(metadata_results)
+
+            next_page_token = response_data.get("pagination", {}).get("next")
+            if not next_page_token:
+                break
+
+        return all_vector_ids, metadata
+
+    async def _async_fetch_metadata(self, vector_id: str) -> dict:
+        """
+        Fetch metadata for a single vector ID asynchronously using the async_client.
+        """
+        url = f"https://{self.host}/vectors/fetch"
+
+        params = {
+            "ids": [vector_id],
+        }
+
+        headers = {
+            "Api-Key": self.api_key,
+        }
+
+        async with self.async_client.get(
+            url, params=params, headers=headers
+        ) as response:
+            if response.status != 200:
+                error_text = await response.text()
+                logger.error(f"Error fetching metadata: {error_text}")
+                return {}
+
+            try:
+                response_data = await response.json(content_type=None)
+            except Exception as e:
+                logger.warning(f"No metadata found for vector {vector_id}: {e}")
+                return {}
+
+            return (
+                response_data.get("vectors", {}).get(vector_id, {}).get("metadata", {})
+            )
+
+    async def _async_get_routes(self) -> list[tuple]:
+        """
+        Gets a list of route and utterance objects currently stored in the index.
+
+        Returns:
+            List[Tuple]: A list of (route_name, utterance) objects.
+        """
+        _, metadata = await self._async_get_all(include_metadata=True)
+        route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
+        return route_tuples
 
     def __len__(self):
         return self.index.describe_index_stats()["total_vector_count"]
