@@ -91,6 +91,17 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    def aget_routes(self):
+        """
+        Asynchronously get a list of route and utterance objects currently stored in the index.
+        This method should be implemented by subclasses.
+
+        :returns: A list of tuples, each containing a route name and an associated utterance.
+        :rtype: list[tuple]
+        :raises NotImplementedError: If the method is not implemented by the subclass.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def delete_index(self):
         """
         Deletes or resets the index.

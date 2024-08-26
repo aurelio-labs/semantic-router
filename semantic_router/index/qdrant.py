@@ -322,6 +322,9 @@ class QdrantIndex(BaseIndex):
         route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
         return np.array(scores), route_names
 
+    def aget_routes(self):
+        logger.error("Sync remove is not implemented for QdrantIndex.")
+
     def delete_index(self):
         self.client.delete_collection(self.index_name)
 

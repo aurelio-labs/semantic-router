@@ -134,6 +134,9 @@ class LocalIndex(BaseIndex):
             route_names = [self.routes[i] for i in idx]
         return scores, route_names
 
+    def aget_routes(self):
+        logger.error("Sync remove is not implemented for LocalIndex.")
+
     def delete(self, route_name: str):
         """
         Delete all records of a specific route from the index.

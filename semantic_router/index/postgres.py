@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import Metric
+from semantic_router.utils.logger import logger
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -459,6 +460,9 @@ class PostgresIndex(BaseIndex):
         with self.conn.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {table_name}")
             self.conn.commit()
+
+    def aget_routes(self):
+        logger.error("Sync remove is not implemented for PostgresIndex.")
 
     def __len__(self):
         """
