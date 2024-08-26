@@ -217,12 +217,12 @@ class RouteLayer:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
 
-        if self.routes:
-            self._add_routes(routes=self.routes)
-
         # if routes list has been passed, we initialize index now
         if self.index.sync:
             self._add_and_sync_routes(routes=self.routes)
+
+        if self.routes:
+            self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_routes = [route for route in self.routes if route.name == top_class]
@@ -516,13 +516,20 @@ class RouteLayer:
             dimensions=len(self.encoder(["dummy"])[0]),
         )
 
-        layer_routes = [
-            Route(
-                name=route,
-                utterances=layer_routes_dict[route],
+        layer_routes = []
+        for route in layer_routes_dict.keys():
+            route_data = layer_routes_dict[route]
+            logger.info(
+                f"route_data[function_schemas][0]: {route_data["function_schemas"][0]}"
             )
-            for route in layer_routes_dict.keys()
-        ]
+            if not route_data["function_schemas"][0]:
+                layer_routes.append(
+                    Route(
+                        name=route,
+                        utterances=route_data["utterances"],
+                        function_schemas=None,
+                    )
+                )
 
         data_to_delete: dict = {}
         for route, utterance in routes_to_delete:
@@ -545,11 +552,13 @@ class RouteLayer:
 
         self._set_layer_routes(layer_routes)
 
-    def _extract_routes_details(self, routes: List[Route]) -> Tuple:
+    def _extract_routes_details(
+        self, routes: List[Route]
+    ) -> Tuple[list[str], list[str], List[Dict[str, Any]]]:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
-            route.function_schemas if route.function_schemas is not None else ""
+            route.function_schemas[0] if route.function_schemas is not None else []
             for route in routes
             for _ in route.utterances
         ]
