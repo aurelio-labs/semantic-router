@@ -27,7 +27,7 @@ class VitEncoder(BaseEncoder):
             from transformers import ViTImageProcessor, ViTModel
         except ImportError:
             raise ImportError(
-                "Please install transformers to use HuggingFaceEncoder. "
+                "Please install transformers to use VitEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
@@ -37,7 +37,7 @@ class VitEncoder(BaseEncoder):
             import torchvision.transforms as T
         except ImportError:
             raise ImportError(
-                "Please install Pytorch to use HuggingFaceEncoder. "
+                "Please install Pytorch to use VitEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
@@ -46,7 +46,7 @@ class VitEncoder(BaseEncoder):
             from PIL import Image
         except ImportError:
             raise ImportError(
-                "Please install PIL to use HuggingFaceEncoder. "
+                "Please install PIL to use VitEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import os
 import numpy as np
 import pytest
@@ -33,15 +35,14 @@ def misshaped_pil_image():
 
 
 class TestVitEncoder:
-    def test_vit_encoder__import_errors_transformers(self, mocker):
-        mocker.patch.dict("sys.modules", {"transformers": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
+    def test_vit_encoder__import_errors_transformers(self):
+        with patch.dict("sys.modules", {"transformers": None}):
+            with pytest.raises(ImportError) as error:
+                VitEncoder()
 
-    def test_vit_encoder__import_errors_torch(self, mocker):
-        mocker.patch.dict("sys.modules", {"torch": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
+        assert "Please install transformers to use VitEncoder" in str(
+            error.value
+        )
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
