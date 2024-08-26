@@ -428,6 +428,7 @@ class RouteLayer:
         if route.score_threshold is None:
             route.score_threshold = self.score_threshold
 
+        # add routes to the index
         self.index.add(
             embeddings=embeds,
             routes=[route.name] * len(route.utterances),
@@ -435,7 +436,7 @@ class RouteLayer:
             function_schemas=(
                 route.function_schemas * len(route.utterances)
                 if route.function_schemas
-                else [""] * len(route.utterances)  # type: ignore
+                else [{}] * len(route.utterances)
             ),
         )
 

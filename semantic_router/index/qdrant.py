@@ -169,7 +169,7 @@ class QdrantIndex(BaseIndex):
         local_route_names: List[str],
         local_utterances: List[str],
         dimensions: int,
-        local_function_schemas: List[str] = None,  # type: ignore
+        local_function_schemas: List[str] | None = None,
     ):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for QdrantIndex.")
@@ -179,7 +179,7 @@ class QdrantIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
+        function_schemas: List[Dict[str, Any]] | None = None,
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
     ):
         self.dimensions = self.dimensions or len(embeddings[0])

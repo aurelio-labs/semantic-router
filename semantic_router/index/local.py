@@ -27,7 +27,7 @@ class LocalIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
+        function_schemas: List[Dict[str, Any]] | None = None,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
@@ -53,7 +53,7 @@ class LocalIndex(BaseIndex):
         local_route_names: List[str],
         local_utterances: List[str],
         dimensions: int,
-        local_function_schemas: List[str] = None,  # type: ignore
+        local_function_schemas: List[str] | None = None,
     ):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for LocalIndex.")

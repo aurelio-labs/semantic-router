@@ -3,6 +3,8 @@ import asyncio
 import hashlib
 import os
 import time
+import json
+
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -211,7 +213,7 @@ class PineconeIndex(BaseIndex):
         local_route_names: List[str],
         local_utterances: List[str],
         dimensions: int,
-        local_function_schemas: List[str] = None,  # type: ignore
+        local_function_schemas: List[str] | None = None,
     ):
         if self.index is None:
             self.dimensions = self.dimensions or dimensions
@@ -314,7 +316,7 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
+        function_schemas: List[Dict[str, Any]] | None = None,
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""
@@ -327,10 +329,10 @@ class PineconeIndex(BaseIndex):
                 values=vector,
                 route=route,
                 utterance=utterance,
-                function_schema=str(function_schema),
+                function_schema=json.dumps(function_schema),
             ).to_dict()
             for vector, route, utterance, function_schema in zip(
-                embeddings, routes, utterances, function_schemas
+                embeddings, routes, utterances, function_schemas  # type: ignore
             )
         ]
 

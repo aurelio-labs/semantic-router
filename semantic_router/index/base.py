@@ -26,7 +26,7 @@ class BaseIndex(BaseModel):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[Any],
-        function_schemas: List[Dict[str, Any]] = None,  # type: ignore
+        function_schemas: List[Dict[str, Any]] | None = None,
     ):
         """
         Add embeddings to the index.
@@ -114,7 +114,7 @@ class BaseIndex(BaseModel):
         local_route_names: List[str],
         local_utterances: List[str],
         dimensions: int,
-        local_function_schemas: List[str] = None,  # type: ignore
+        local_function_schemas: List[str] | None = None,
     ):
         """
         Synchronize the local index with the remote index based on the specified mode.
