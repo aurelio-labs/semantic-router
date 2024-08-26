@@ -226,6 +226,8 @@ class RouteLayer:
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_routes = [route for route in self.routes if route.name == top_class]
+        logger.info(f"matching_routes: {matching_routes}")
+        logger.info(f"self.routes: {self.routes}")
         if not matching_routes:
             logger.error(
                 f"No route found with name {top_class}. Check to see if any Routes "
@@ -516,18 +518,27 @@ class RouteLayer:
             dimensions=len(self.encoder(["dummy"])[0]),
         )
 
-        layer_routes = []
+        layer_routes: List[Route] = []
+        logger.info(f"layer_routes_dict: {layer_routes_dict}")
         for route in layer_routes_dict.keys():
-            route_data = layer_routes_dict[route]
-            logger.info(
-                f"route_data[function_schemas][0]: {route_data["function_schemas"][0]}"
-            )
-            if not route_data["function_schemas"][0]:
+            logger.info(f"route name: {route}")
+
+            route_ = layer_routes_dict[route]
+            function_schemas = route_.get("function_schemas", None)
+            if not function_schemas:
                 layer_routes.append(
                     Route(
                         name=route,
-                        utterances=route_data["utterances"],
+                        utterances=route_["utterances"],
                         function_schemas=None,
+                    )
+                )
+            else:
+                layer_routes.append(
+                    Route(
+                        name=route,
+                        utterances=route_["utterances"],
+                        function_schemas=[function_schemas],
                     )
                 )
 
@@ -550,6 +561,8 @@ class RouteLayer:
             function_schemas=local_function_schemas,
         )
 
+        logger.info(f"layer_routes: {layer_routes}")
+
         self._set_layer_routes(layer_routes)
 
     def _extract_routes_details(
@@ -558,7 +571,7 @@ class RouteLayer:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
-            route.function_schemas[0] if route.function_schemas is not None else []
+            route.function_schemas[0] if route.function_schemas is not None else {}
             for route in routes
             for _ in route.utterances
         ]
