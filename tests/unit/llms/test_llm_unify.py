@@ -24,6 +24,11 @@ class TestUnifyLLM:
         assert unify_llm.client is not None, "Client should be initialized"
         assert unify_llm.name == "llama-3-8b-chat@together-ai", "Default name not set correctly"
 
+    def test_unify_llm_init_without_api_key(self, mocker):
+        mocker.patch("os.environ.get", return_value=None)
+        with pytest.raises(KeyError) as _:
+            UnifyLLM()
+
 
 # @pytest.fixture
 # def unify_llm():
