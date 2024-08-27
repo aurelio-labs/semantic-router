@@ -522,14 +522,13 @@ class RouteLayer:
         logger.info(f"layer_routes_dict: {layer_routes_dict}")
         for route in layer_routes_dict.keys():
             logger.info(f"route name: {route}")
-
-            route_ = layer_routes_dict[route]
-            function_schemas = route_.get("function_schemas", None)
+            route_dict = layer_routes_dict[route]
+            function_schemas = route_dict.get("function_schemas", None)
             if not function_schemas:
                 layer_routes.append(
                     Route(
                         name=route,
-                        utterances=route_["utterances"],
+                        utterances=route_dict["utterances"],
                         function_schemas=None,
                     )
                 )
@@ -537,7 +536,7 @@ class RouteLayer:
                 layer_routes.append(
                     Route(
                         name=route,
-                        utterances=route_["utterances"],
+                        utterances=route_dict["utterances"],
                         function_schemas=[function_schemas],
                     )
                 )
