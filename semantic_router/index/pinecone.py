@@ -500,7 +500,11 @@ class PineconeIndex(BaseIndex):
             (
                 route_objects["sr_route"],
                 route_objects["sr_utterance"],
-                json.loads(route_objects["sr_function_schemas"]) if route_objects["sr_function_schemas"] else {},
+                (
+                    json.loads(route_objects["sr_function_schemas"])
+                    if route_objects["sr_function_schemas"]
+                    else {}
+                ),
             )
             for route_objects in metadata
         ]
