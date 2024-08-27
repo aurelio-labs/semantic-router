@@ -122,9 +122,9 @@ class BaseIndex(BaseModel):
         - "error": Raise an error if local and remote are not synchronized.
         - "remote": Take remote as the source of truth and update local to align.
         - "local": Take local as the source of truth and update remote to align.
-        - "merge-force-remote": Merge both local and remote taking only remote routes utterances when a route with same route name is present both locally and remotely.
-        - "merge-force-local": Merge both local and remote taking only local routes utterances when a route with same route name is present both locally and remotely.
-        - "merge": Merge both local and remote, merging also local and remote utterances when a route with same route name is present both locally and remotely.
+        - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
+        - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
+        - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
 
         This method should be implemented by subclasses.
         """
