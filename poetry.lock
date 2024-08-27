@@ -5181,6 +5181,21 @@ files = [
 ]
 
 [[package]]
+name = "unifyai"
+version = "0.9.2"
+description = "A Python package for interacting with the Unify API"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "unifyai-0.9.2-py3-none-any.whl", hash = "sha256:03c4547316712a1d6592011effb3bd5fff71b811cf698ad92c662150fe62e322"},
+    {file = "unifyai-0.9.2.tar.gz", hash = "sha256:bdf5b8edc9d412e5aeb8d1328b5699c061f918471a2d3f474eb1f57b1a0a508e"},
+]
+
+[package.dependencies]
+openai = ">=1.12.0,<2.0.0"
+requests = ">=2.31.0,<3.0.0"
+
+[[package]]
 name = "urllib3"
 version = "1.26.19"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -5377,9 +5392,10 @@ pinecone = ["pinecone-client"]
 postgres = ["psycopg2"]
 processing = ["matplotlib"]
 qdrant = ["qdrant-client"]
+unify = ["unifyai"]
 vision = ["pillow", "torch", "torchvision", "transformers"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "8b916cdcdc2f555b12572e63751c6d06087fb02dd089d53ba6128028f4fc8db9"
+content-hash = "583b9f9f4889eb8c0b65d975fd357e667e4ba95a32e4757c4a16886adef00559"
