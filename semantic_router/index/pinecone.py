@@ -361,6 +361,12 @@ class PineconeIndex(BaseIndex):
                         )
                     }
 
+                if local_function_schemas_dict or remote_function_schemas_dict:
+                    layer_routes[route]["function_schemas"] = {
+                        **remote_function_schemas_dict,
+                        **local_function_schemas_dict,
+                    }
+
             else:
                 raise ValueError("Invalid sync mode specified")
 
