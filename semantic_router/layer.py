@@ -488,16 +488,16 @@ class RouteLayer:
 
         route_names = []
         all_embeddings = []
-        all_utterances = []
+        all_utterances: List[str] = []
         all_function_schemas = []
 
         for route in routes:
             logger.info(f"Adding `{route.name}` route")
             route_embeddings = self.encoder(route.utterances)
-            
+
             # Set score_threshold if not already set
             route.score_threshold = route.score_threshold or self.score_threshold
-            
+
             # Prepare data for batch insertion
             route_names.extend([route.name] * len(route.utterances))
             all_embeddings.extend(route_embeddings)
@@ -519,7 +519,6 @@ class RouteLayer:
         except Exception as e:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
-
 
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
