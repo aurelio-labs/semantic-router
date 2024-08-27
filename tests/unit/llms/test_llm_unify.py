@@ -2,7 +2,7 @@ import pytest
 
 from semantic_router.llms.unify import UnifyLLM
 from semantic_router.schema import Message
-import unify.clients
+from unify.clients import Unify, AsyncUnify
 from unittest.mock import patch
 
 from dotenv import load_dotenv
@@ -12,7 +12,9 @@ load_dotenv()
 @pytest.fixture
 def unify_llm(mocker):
     mocker.patch("unify.clients.Unify")
-    mocker.patch.object(unify.clients.Unify, "set_endpoint")
+    mocker.patch.object(Unify, "set_endpoint", return_value=None)
+    mocker.patch.object(AsyncUnify, "set_endpoint", return_value=None)
+
     return UnifyLLM(unify_api_key="fake-api-key")
 
 
@@ -20,6 +22,7 @@ class TestUnifyLLM:
 
     def test_unify_llm_init_success_1(self, unify_llm, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
+        mocker.patch.object(unify_llm.client, "set_endpoint", return_value=None)
 
         assert unify_llm.client is not None
 
