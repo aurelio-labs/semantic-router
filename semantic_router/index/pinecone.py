@@ -227,8 +227,6 @@ class PineconeIndex(BaseIndex):
             for route, _, _ in remote_routes
         }
 
-        logger.info(f"remote_routes: {remote_routes}")
-
         for route, utterance, function_schema in remote_routes:
             logger.info(f"function_schema remote: {function_schema}")
             remote_dict[route]["utterances"].add(utterance)
@@ -278,13 +276,16 @@ class PineconeIndex(BaseIndex):
             utterances_to_include: set = set()
 
             if self.sync == "error":
-                if local_utterances_set != remote_utterances_set:
+                if (local_utterances_set != remote_utterances_set) or (local_function_schemas_dict != remote_function_schemas_dict):
                     raise ValueError(
                         f"Synchronization error: Differences found in route '{route}'"
                     )
                 if local_utterances_set:
                     layer_routes[route] = {"utterances": list(local_utterances_set)}
-
+                if local_function_schemas_dict:
+                    layer_routes[route][
+                        "function_schemas"
+                    ] = local_function_schemas_dict
             elif self.sync == "remote":
                 if remote_utterances_set:
                     layer_routes[route] = {"utterances": list(remote_utterances_set)}
