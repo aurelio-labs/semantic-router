@@ -212,8 +212,8 @@ class PineconeIndex(BaseIndex):
         self,
         local_route_names: List[str],
         local_utterances: List[str],
-        dimensions: int,
         local_function_schemas: List[Dict[str, Any]],
+        dimensions: int,
     ) -> Tuple:
 
         if self.index is None:
@@ -222,23 +222,20 @@ class PineconeIndex(BaseIndex):
 
         remote_routes = self.get_routes()
 
-        remote_dict = {
+        remote_dict: Dict[str, Dict[str, Union[set, Dict]]] = {
             route: {"utterances": set(), "function_schemas": {}}
             for route, _, _ in remote_routes
         }
 
         for route, utterance, function_schema in remote_routes:
-            logger.info(f"function_schema remote: {function_schema}")
-            remote_dict[route]["utterances"].add(utterance)
+            remote_dict[route]["utterances"].add(utterance)  # type: ignore
 
-            if not function_schema:
-                logger.info(f"function_schema remote is empty for {route}")
-                remote_dict[route]["function_schemas"].update({})
-            else:
-                logger.info(f"function_schema remote is not empty for {route}")
-                remote_dict[route]["function_schemas"].update(function_schema)
+            logger.info(
+                f"function_schema remote is {'empty' if not function_schema else 'not empty'} for {route}"
+            )
+            remote_dict[route]["function_schemas"].update(function_schema or {})
 
-        local_dict = {
+        local_dict: Dict[str, Dict[str, Union[set, Dict]]] = {
             route: {"utterances": set(), "function_schemas": {}}
             for route in local_route_names
         }
@@ -246,14 +243,13 @@ class PineconeIndex(BaseIndex):
         for route, utterance, function_schema in zip(
             local_route_names, local_utterances, local_function_schemas
         ):
-            logger.info(f"function_schema local: {function_schema}")
-            local_dict[route]["utterances"].add(utterance)
+            local_dict[route]["utterances"].add(utterance)  # type: ignore
             local_dict[route]["function_schemas"].update(function_schema)
 
         all_routes = set(remote_dict.keys()).union(local_dict.keys())
         routes_to_add = []
         routes_to_delete = []
-        layer_routes = {}
+        layer_routes: Dict[str, Dict[str, Union[List[str], Dict]]] = {}
 
         for route in all_routes:
             local_utterances_set = local_dict.get(route, {"utterances": set()})[
@@ -276,25 +272,27 @@ class PineconeIndex(BaseIndex):
             utterances_to_include: set = set()
 
             if self.sync == "error":
-                if (local_utterances_set != remote_utterances_set) or (local_function_schemas_dict != remote_function_schemas_dict):
+                if (local_utterances_set != remote_utterances_set) or (
+                    local_function_schemas_dict != remote_function_schemas_dict
+                ):
                     raise ValueError(
                         f"Synchronization error: Differences found in route '{route}'"
                     )
                 if local_utterances_set:
                     layer_routes[route] = {"utterances": list(local_utterances_set)}
-                if local_function_schemas_dict:
-                    layer_routes[route][
-                        "function_schemas"
-                    ] = local_function_schemas_dict
+                if isinstance(local_function_schemas_dict, dict):
+                    layer_routes[route]["function_schemas"] = {
+                        **local_function_schemas_dict
+                    }
             elif self.sync == "remote":
                 if remote_utterances_set:
                     layer_routes[route] = {"utterances": list(remote_utterances_set)}
-                if remote_function_schemas_dict:
-                    layer_routes[route][
-                        "function_schemas"
-                    ] = remote_function_schemas_dict
+                if isinstance(remote_function_schemas_dict, dict):
+                    layer_routes[route]["function_schemas"] = {
+                        **remote_function_schemas_dict
+                    }
             elif self.sync == "local":
-                utterances_to_include = local_utterances_set - remote_utterances_set
+                utterances_to_include = local_utterances_set - remote_utterances_set  # type: ignore
                 routes_to_delete.extend(
                     [
                         (route, utterance)
@@ -305,32 +303,32 @@ class PineconeIndex(BaseIndex):
                 layer_routes[route] = {}
                 if local_utterances_set:
                     layer_routes[route] = {"utterances": list(local_utterances_set)}
-                if local_function_schemas_dict:
-                    layer_routes[route][
-                        "function_schemas"
-                    ] = local_function_schemas_dict
+                if isinstance(local_function_schemas_dict, dict):
+                    layer_routes[route]["function_schemas"] = {
+                        **local_function_schemas_dict
+                    }
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
                     utterances_to_include = set(local_utterances)
                     if local_utterances:
                         layer_routes[route] = {"utterances": list(local_utterances)}
-                    if local_function_schemas_dict:
-                        layer_routes[route][
-                            "function_schemas"
-                        ] = local_function_schemas_dict
+                    if isinstance(local_function_schemas_dict, dict):
+                        layer_routes[route]["function_schemas"] = {
+                            **local_function_schemas_dict
+                        }
                 else:
                     if remote_utterances_set:
                         layer_routes[route] = {
                             "utterances": list(remote_utterances_set)
                         }
-                    if remote_function_schemas_dict:
-                        layer_routes[route][
-                            "function_schemas"
-                        ] = remote_function_schemas_dict
+                    if isinstance(remote_function_schemas_dict, dict):
+                        layer_routes[route]["function_schemas"] = {
+                            **remote_function_schemas_dict
+                        }
 
             elif self.sync == "merge-force-local":
                 if route in local_dict:
-                    utterances_to_include = local_utterances_set - remote_utterances_set
+                    utterances_to_include = local_utterances_set - remote_utterances_set  # type: ignore
                     routes_to_delete.extend(
                         [
                             (route, utterance)
@@ -340,32 +338,41 @@ class PineconeIndex(BaseIndex):
                     )
                     if local_utterances_set:
                         layer_routes[route] = {"utterances": list(local_utterances_set)}
-                    if local_function_schemas_dict:
-                        layer_routes[route][
-                            "function_schemas"
-                        ] = local_function_schemas_dict
+                    if isinstance(local_function_schemas_dict, dict):
+                        layer_routes[route]["function_schemas"] = {
+                            **local_function_schemas_dict
+                        }
                 else:
                     if remote_utterances_set:
                         layer_routes[route] = {
                             "utterances": list(remote_utterances_set)
                         }
-                    if remote_function_schemas_dict:
-                        layer_routes[route][
-                            "function_schemas"
-                        ] = remote_function_schemas_dict
+                    if isinstance(remote_function_schemas_dict, dict):
+                        layer_routes[route]["function_schemas"] = {
+                            **remote_function_schemas_dict
+                        }
             elif self.sync == "merge":
-                utterances_to_include = local_utterances_set - remote_utterances_set
+                utterances_to_include = local_utterances_set - remote_utterances_set  # type: ignore
                 if local_utterances_set or remote_utterances_set:
                     layer_routes[route] = {
                         "utterances": list(
-                            remote_utterances_set.union(local_utterances_set)
+                            remote_utterances_set.union(local_utterances_set)  # type: ignore
                         )
                     }
 
                 if local_function_schemas_dict or remote_function_schemas_dict:
-                    layer_routes[route]["function_schemas"] = {
-                        **remote_function_schemas_dict,
-                        **local_function_schemas_dict,
+                    # Ensure both are dictionaries before merging
+                    layer_routes[route]["function_schemas"] = {  # type: ignore
+                        **(
+                            remote_function_schemas_dict
+                            if isinstance(remote_function_schemas_dict, dict)
+                            else {}
+                        ),
+                        **(
+                            local_function_schemas_dict
+                            if isinstance(local_function_schemas_dict, dict)
+                            else {}
+                        ),
                     }
 
             else:

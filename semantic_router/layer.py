@@ -225,16 +225,16 @@ class RouteLayer:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
-        matching_routes = [route for route in self.routes if route.name == top_class]
-        logger.info(f"matching_routes: {matching_routes}")
-        logger.info(f"self.routes: {self.routes}")
-        if not matching_routes:
+        # Use next with a generator expression for optimization
+        matching_route = next(
+            (route for route in self.routes if route.name == top_class), None
+        )
+        if matching_route is None:
             logger.error(
                 f"No route found with name {top_class}. Check to see if any Routes "
                 "have been defined."
             )
-            return None
-        return matching_routes[0]
+        return matching_route
 
     def __call__(
         self,
@@ -496,7 +496,7 @@ class RouteLayer:
                         function_schemas=(
                             route.function_schemas * len(route.utterances)
                             if route.function_schemas
-                            else [""] * len(route.utterances)  # type: ignore
+                            else [{}] * len(route.utterances)
                         ),
                     )
                 except Exception as e:
@@ -519,27 +519,17 @@ class RouteLayer:
         )
 
         layer_routes: List[Route] = []
-        logger.info(f"layer_routes_dict: {layer_routes_dict}")
+
         for route in layer_routes_dict.keys():
-            logger.info(f"route name: {route}")
             route_dict = layer_routes_dict[route]
             function_schemas = route_dict.get("function_schemas", None)
-            if not function_schemas:
-                layer_routes.append(
-                    Route(
-                        name=route,
-                        utterances=route_dict["utterances"],
-                        function_schemas=None,
-                    )
+            layer_routes.append(
+                Route(
+                    name=route,
+                    utterances=route_dict["utterances"],
+                    function_schemas=[function_schemas] if function_schemas else None,
                 )
-            else:
-                layer_routes.append(
-                    Route(
-                        name=route,
-                        utterances=route_dict["utterances"],
-                        function_schemas=[function_schemas],
-                    )
-                )
+            )
 
         data_to_delete: dict = {}
         for route, utterance in routes_to_delete:
