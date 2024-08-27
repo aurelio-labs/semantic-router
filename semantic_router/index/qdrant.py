@@ -271,15 +271,15 @@ class QdrantIndex(BaseIndex):
                 ]
             )
 
-        results = self.client.search(
+        results = self.client.query_points(
             self.index_name,
-            query_vector=vector,
+            query=vector,
             limit=top_k,
             with_payload=True,
             query_filter=filter,
         )
-        scores = [result.score for result in results]
-        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
+        scores = [result.score for result in results.points]
+        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points]
         return np.array(scores), route_names
 
     async def aquery(
@@ -306,15 +306,15 @@ class QdrantIndex(BaseIndex):
                 ]
             )
 
-        results = await self.aclient.search(
+        results = await self.aclient.query_points(
             self.index_name,
-            query_vector=vector,
+            query=vector,
             limit=top_k,
             with_payload=True,
             query_filter=filter,
         )
-        scores = [result.score for result in results]
-        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results]
+        scores = [result.score for result in results.points]
+        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points]
         return np.array(scores), route_names
 
     def aget_routes(self):
