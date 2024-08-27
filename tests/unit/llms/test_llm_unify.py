@@ -2,13 +2,16 @@ import pytest
 
 from semantic_router.llms.unify import UnifyLLM
 from semantic_router.schema import Message
+from unittest.mock import patch
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 @pytest.fixture
-def unify_llm():
-    return UnifyLLM()
+def unify_llm(mocker):
+    mocker.patch("unify.clients.Unify")
+    return UnifyLLM(unify_api_key="fake-api-key")
 
 
 class TestUnifyLLM:
