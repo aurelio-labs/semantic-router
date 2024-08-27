@@ -2,6 +2,7 @@ import pytest
 
 from semantic_router.llms.unify import UnifyLLM
 from semantic_router.schema import Message
+from unify.exceptions import UnifyError
 # from dotenv import load_dotenv
 
 # load_dotenv()
@@ -28,6 +29,13 @@ class TestUnifyLLM:
         mocker.patch("os.environ.get", return_value=None)
         with pytest.raises(KeyError) as _:
             UnifyLLM()
+
+    def test_unify_llm_call_uninitialized_client(self, unify_llm):
+        unify_llm.client = None
+        with pytest.raises(UnifyError) as e:
+            llm_input = [Message(role="user", content="test")]
+            unify_llm(llm_input)
+        assert "Unify client is not initialized." in str(e.value)
 
 
 # @pytest.fixture
