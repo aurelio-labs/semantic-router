@@ -36,7 +36,7 @@ class UnifyLLM(BaseLLM):
         self.stream = stream
         self.client = Unify(endpoint=name, api_key=unify_api_key)
         self.async_client = AsyncUnify(endpoint=name, api_key=unify_api_key)
-        self.Async = Async
+        self.Async = Async  # noqa: C0103
 
     def __call__(self, messages: List[Message]) -> Any:
         func: Union[Callable[..., str],
