@@ -74,8 +74,8 @@ class UnifyLLM(BaseLLM):
                 temperature=self.temperature,
                 stream=self.stream,
                 )
-                
-            
+
+
             if not output:
                 raise UnifyError("No output generated")
             return output
