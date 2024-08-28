@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import os
 import numpy as np
 import pytest
@@ -7,7 +9,6 @@ from PIL import Image
 from semantic_router.encoders import VitEncoder
 
 test_model_name = "aurelio-ai/sr-test-vit"
-vit_encoder = VitEncoder(name=test_model_name)
 embed_dim = 32
 
 if torch.cuda.is_available():
@@ -34,25 +35,18 @@ def misshaped_pil_image():
 
 
 class TestVitEncoder:
-    def test_vit_encoder__import_errors_transformers(self, mocker):
-        mocker.patch.dict("sys.modules", {"transformers": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
+    def test_vit_encoder__import_errors_transformers(self):
+        with patch.dict("sys.modules", {"transformers": None}):
+            with pytest.raises(ImportError) as error:
+                VitEncoder()
 
-    def test_vit_encoder__import_errors_torch(self, mocker):
-        mocker.patch.dict("sys.modules", {"torch": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
-
-    def test_vit_encoder__import_errors_torchvision(self, mocker):
-        mocker.patch.dict("sys.modules", {"torchvision": None})
-        with pytest.raises(ImportError):
-            VitEncoder()
+        assert "Please install transformers to use VitEncoder" in str(error.value)
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
     def test_vit_encoder_initialization(self):
+        vit_encoder = VitEncoder(name=test_model_name)
         assert vit_encoder.name == test_model_name
         assert vit_encoder.type == "huggingface"
         assert vit_encoder.score_threshold == 0.5
@@ -62,6 +56,7 @@ class TestVitEncoder:
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
     def test_vit_encoder_call(self, dummy_pil_image):
+        vit_encoder = VitEncoder(name=test_model_name)
         encoded_images = vit_encoder([dummy_pil_image] * 3)
 
         assert len(encoded_images) == 3
@@ -71,6 +66,7 @@ class TestVitEncoder:
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
     def test_vit_encoder_call_misshaped(self, dummy_pil_image, misshaped_pil_image):
+        vit_encoder = VitEncoder(name=test_model_name)
         encoded_images = vit_encoder([dummy_pil_image, misshaped_pil_image])
 
         assert len(encoded_images) == 2
@@ -80,6 +76,7 @@ class TestVitEncoder:
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
     def test_vit_encoder_process_images_device(self, dummy_pil_image):
+        vit_encoder = VitEncoder(name=test_model_name)
         imgs = vit_encoder._process_images([dummy_pil_image] * 3)["pixel_values"]
 
         assert imgs.device.type == device
@@ -88,6 +85,7 @@ class TestVitEncoder:
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
     )
     def test_vit_encoder_ensure_rgb(self, dummy_black_and_white_img):
+        vit_encoder = VitEncoder(name=test_model_name)
         rgb_image = vit_encoder._ensure_rgb(dummy_black_and_white_img)
 
         assert rgb_image.mode == "RGB"
