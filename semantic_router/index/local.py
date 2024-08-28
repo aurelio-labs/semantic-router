@@ -27,7 +27,7 @@ class LocalIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: List[Dict[str, Any]] | None = None,
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)

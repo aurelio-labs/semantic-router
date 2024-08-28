@@ -399,7 +399,7 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: List[Dict[str, Any]] | None = None,
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""

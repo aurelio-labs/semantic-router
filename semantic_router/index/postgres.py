@@ -259,7 +259,7 @@ class PostgresIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[Any],
-        function_schemas: List[Dict[str, Any]] | None = None,
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """
         Adds vectors to the index.
