@@ -1,4 +1,4 @@
-import asyncio
+import asyncio  # noqa: F401
 from typing import List, Optional, Coroutine, Callable, Any, Union
 
 from semantic_router.llms import BaseLLM
@@ -10,7 +10,6 @@ from unify.clients import Unify, AsyncUnify
 
 
 class UnifyLLM(BaseLLM):
-
     client: Optional[Unify]
     async_client: Optional[AsyncUnify]
     temperature: Optional[float]
@@ -27,9 +26,9 @@ class UnifyLLM(BaseLLM):
         stream: bool = False,
         Async: bool = False,
     ):
-
         if name is None:
-            name = f"{EncoderDefault.UNIFY.value['language_model']}@{EncoderDefault.UNIFY.value['language_provider']}"
+            name = f"{EncoderDefault.UNIFY.value['language_model']}\
+                @{EncoderDefault.UNIFY.value['language_provider']}"
 
         super().__init__(name=name)
         self.temperature = temperature
@@ -40,10 +39,9 @@ class UnifyLLM(BaseLLM):
         self.Async = Async  # noqa: C0103
 
     def __call__(self, messages: List[Message]) -> Any:
-        func: Union[Callable[..., str],
-                    Callable[..., Coroutine[Any, Any, str]]] = (
-                        self._call if not self.Async else self._acall
-                        )
+        func: Union[Callable[..., str], Callable[..., Coroutine[Any, Any, str]]] = (
+            self._call if not self.Async else self._acall
+        )
         return func(messages)
 
     def _call(self, messages: List[Message]) -> str:
@@ -55,7 +53,7 @@ class UnifyLLM(BaseLLM):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=self.stream,
-                )
+            )
 
             if not output:
                 raise UnifyError("No output generated")
@@ -68,14 +66,12 @@ class UnifyLLM(BaseLLM):
         if self.async_client is None:
             raise UnifyError("Unify async_client is not initialized.")
         try:
-            
             output = await self.async_client.generate(
                 messages=[m.to_openai() for m in messages],
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
                 stream=self.stream,
-                )
-
+            )
 
             if not output:
                 raise UnifyError("No output generated")
