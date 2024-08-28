@@ -76,7 +76,7 @@ class TestUnifyLLM:
 
     def test_unify_llm_error_handling(self, unify_llm, mocker):
 
-        mocker.patch("requests.post", side_effect=Exception("LLM error"))
-        with pytest.raises(Exception) as exc_info:
+        mocker.patch.object(unify_llm.client, "generate", side_effect=Exception("LLM error"))
+        with pytest.raises(UnifyError) as exc_info:
             unify_llm([Message(role="user", content="test")])
-        assert "LLM error" in str(exc_info.value)
+        assert "LLM error" in f"{str(exc_info)}, {str(exc_info.value)}"

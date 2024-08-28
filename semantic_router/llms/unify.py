@@ -16,6 +16,7 @@ class UnifyLLM(BaseLLM):
     temperature: Optional[float]
     max_tokens: Optional[int]
     stream: Optional[bool]
+    Async: Optional[bool]
 
     def __init__(
         self,
