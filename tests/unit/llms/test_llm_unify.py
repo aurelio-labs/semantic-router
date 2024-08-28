@@ -24,7 +24,7 @@ class TestUnifyLLM:
 
     #     assert unify_llm.client is not None
 
-    def test_unify_llm_init_success_2(self, unify_llm):
+    def test_unify_llm_init_success(self, unify_llm):
         # mocker.patch("os.getenv", return_value="fake-api-key")
         assert unify_llm.name == "llama-3-8b-chat@together-ai"
         assert unify_llm.temperature == 0.01
