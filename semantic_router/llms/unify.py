@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Coroutine, Callable, Any, Union
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
@@ -24,6 +24,7 @@ class UnifyLLM(BaseLLM):
         temperature: Optional[float] = 0.01,
         max_tokens: Optional[int] = 200,
         stream: bool = False,
+        Async: bool = False,
     ):
 
         if name is None:
@@ -35,8 +36,16 @@ class UnifyLLM(BaseLLM):
         self.stream = stream
         self.client = Unify(endpoint=name, api_key=unify_api_key)
         self.async_client = AsyncUnify(endpoint=name, api_key=unify_api_key)
+        self.Async = Async  # noqa: C0103
 
-    def __call__(self, messages: List[Message]) -> str:
+    def __call__(self, messages: List[Message]) -> Any:
+        func: Union[Callable[..., str],
+                    Callable[..., Coroutine[Any, Any, str]]] = (
+                        self._call if not self.Async else self._acall
+                        )
+        return func(messages)
+
+    def _call(self, messages: List[Message]) -> str:
         if self.client is None:
             raise UnifyError("Unify client is not initialized.")
         try:
@@ -54,22 +63,22 @@ class UnifyLLM(BaseLLM):
         except Exception as e:
             raise UnifyError(f"Unify API call failed. Error: {e}") from e
 
-    async def acall(self, messages: List[Message]) -> str:
+    async def _acall(self, messages: List[Message]) -> str:
         if self.async_client is None:
             raise UnifyError("Unify async_client is not initialized.")
-            try:
-                
-                output = await self.async_client.generate(
-                    messages=[m.to_openai() for m in messages],
-                    max_tokens=self.max_tokens,
-                    temperature=self.temperature,
-                    stream=self.stream,
-                    )
-                 
-                
-                if not output:
-                    raise UnifyError("No output generated")
-                return output
+        try:
+            
+            output = await self.async_client.generate(
+                messages=[m.to_openai() for m in messages],
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                stream=self.stream,
+                )
 
-            except Exception as e:
-                raise UnifyError(f"Unify API call failed. Error: {e}") from e
+
+            if not output:
+                raise UnifyError("No output generated")
+            return output
+
+        except Exception as e:
+            raise UnifyError(f"Unify API call failed. Error: {e}") from e
