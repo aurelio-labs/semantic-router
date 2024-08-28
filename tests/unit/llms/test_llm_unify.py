@@ -6,6 +6,7 @@ from semantic_router.schema import Message
 from unify.clients import Unify, AsyncUnify
 from unify.exceptions import UnifyError
 
+
 @pytest.fixture
 def unify_llm(mocker):
     mocker.patch("unify.clients.Unify")
@@ -17,7 +18,6 @@ def unify_llm(mocker):
 
 
 class TestUnifyLLM:
-
     # def test_unify_llm_init_success_1(self, unify_llm, mocker):
     #     mocker.patch("os.getenv", return_value="fake-api-key")
     #     mocker.patch.object(unify_llm.client, "set_endpoint", return_value=None)
@@ -30,10 +30,12 @@ class TestUnifyLLM:
         assert unify_llm.temperature == 0.01
         assert unify_llm.max_tokens == 200
         assert unify_llm.stream is False
-    	
+
     def test_unify_llm_init_with_api_key(self, unify_llm):
         assert unify_llm.client is not None, "Client should be initialized"
-        assert unify_llm.name == "llama-3-8b-chat@together-ai", "Default name not set correctly"
+        assert (
+            unify_llm.name == "llama-3-8b-chat@together-ai"
+        ), "Default name not set correctly"
 
     def test_unify_llm_init_without_api_key(self, mocker):
         mocker.patch("os.environ.get", return_value=None)
@@ -48,18 +50,16 @@ class TestUnifyLLM:
         assert "Unify client is not initialized." in str(e.value)
 
     def test_unify_llm_error_handling(self, unify_llm, mocker):
-
-        mocker.patch.object(unify_llm.client, "generate", side_effect=Exception("LLM error"))
+        mocker.patch.object(
+            unify_llm.client, "generate", side_effect=Exception("LLM error")
+        )
         with pytest.raises(UnifyError) as exc_info:
             unify_llm([Message(role="user", content="test")])
         assert "LLM error" in f"{str(exc_info)}, {str(exc_info.value)}"
-        
 
     def test_unify_llm_call_success(self, unify_llm, mocker):
-        
         mock_response = "test response"
         mocker.patch.object(unify_llm.client, "generate", return_value=mock_response)
 
         output = unify_llm([Message(role="user", content="test")])
         assert output == "test response"
-
