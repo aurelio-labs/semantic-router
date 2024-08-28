@@ -70,9 +70,3 @@ class TestUnifyLLM:
         output = unify_llm([Message(role="user", content="test")])
         assert output == "test response"
 
-
-    # def test_unify_llm_init_success(self, unify_llm):
-    #     assert unify_llm.name == "gpt-4o@openai"
-    #     assert unify_llm.temperature == 0.01
-    #     assert unify_llm.max_tokens == 200
-    #     assert unify_llm.stream is False
