@@ -14,11 +14,10 @@ from unify.exceptions import UnifyError
 def unify_llm(mocker):
     mocker.patch("unify.clients.Unify")
     mocker.patch("json.loads", return_value=["llama-3-8b-chat@together-ai"])
-    mocker.patch("unify.clients.Unify")
     mocker.patch.object(Unify, "set_endpoint", return_value=None)
     mocker.patch.object(AsyncUnify, "set_endpoint", return_value=None)
 
-    return UnifyLLM(unify_api_key="test_api_key"unify_api_key="fake-api-key")
+    return UnifyLLM(unify_api_key="fake-api-key")
 
 
 class TestUnifyLLM:
