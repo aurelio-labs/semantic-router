@@ -108,7 +108,11 @@ class PineconeIndex(BaseIndex):
                 "You can install it with: "
                 "`pip install 'semantic-router[pinecone]'`"
             )
-        pinecone_args = {"api_key": api_key, "source_tag": "semanticrouter"}
+        pinecone_args = {
+            "api_key": api_key,
+            "source_tag": "semanticrouter",
+            "host": self.base_url,
+        }
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
 
