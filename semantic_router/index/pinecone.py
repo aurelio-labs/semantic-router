@@ -313,7 +313,11 @@ class PineconeIndex(BaseIndex):
                     }
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
-                    utterances_to_include = local_utterances_set
+                    utterances_to_include = (
+                        local_utterances_set
+                        if isinstance(local_utterances_set, set)
+                        else set()
+                    )
                     if local_utterances_set:
                         layer_routes[route] = {"utterances": list(local_utterances_set)}
                     if isinstance(local_function_schemas_dict, dict):
