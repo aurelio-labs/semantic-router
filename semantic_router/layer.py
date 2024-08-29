@@ -180,7 +180,7 @@ class RouteLayer:
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: List[Route] = [],
+        routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
         aggregation: str = "sum",
@@ -195,7 +195,7 @@ class RouteLayer:
         else:
             self.encoder = encoder
         self.llm = llm
-        self.routes = routes
+        self.routes = routes if routes else []
         if self.encoder.score_threshold is None:
             raise ValueError(
                 "No score threshold provided for encoder. Please set the score threshold "
@@ -216,12 +216,10 @@ class RouteLayer:
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
-
         # if routes list has been passed, we initialize index now
         if self.index.sync:
             self._add_and_sync_routes(routes=self.routes)
-
-        if self.routes:
+        elif self.routes:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
@@ -529,8 +527,8 @@ class RouteLayer:
         routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
             local_route_names=local_route_names,
             local_utterances=local_utterances,
-            local_function_schemas=local_function_schemas,
             dimensions=len(self.encoder(["dummy"])[0]),
+            local_function_schemas=local_function_schemas,
         )
 
         layer_routes: List[Route] = []

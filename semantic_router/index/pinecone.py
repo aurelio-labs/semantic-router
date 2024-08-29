@@ -216,8 +216,8 @@ class PineconeIndex(BaseIndex):
         self,
         local_route_names: List[str],
         local_utterances: List[str],
-        local_function_schemas: List[Dict[str, Any]],
         dimensions: int,
+        local_function_schemas: List[Dict[str, Any]],
     ) -> Tuple:
 
         if self.index is None:
@@ -313,9 +313,9 @@ class PineconeIndex(BaseIndex):
                     }
             elif self.sync == "merge-force-remote":
                 if route in local_dict and route not in remote_dict:
-                    utterances_to_include = set(local_utterances)
-                    if local_utterances:
-                        layer_routes[route] = {"utterances": list(local_utterances)}
+                    utterances_to_include = local_utterances_set
+                    if local_utterances_set:
+                        layer_routes[route] = {"utterances": list(local_utterances_set)}
                     if isinstance(local_function_schemas_dict, dict):
                         layer_routes[route]["function_schemas"] = {
                             **local_function_schemas_dict

@@ -113,8 +113,8 @@ class BaseIndex(BaseModel):
         self,
         local_route_names: List[str],
         local_utterances: List[str],
-        local_function_schemas: List[Dict[str, Any]],
         dimensions: int,
+        local_function_schemas: List[Dict[str, Any]],
     ):
         """
         Synchronize the local index with the remote index based on the specified mode.
