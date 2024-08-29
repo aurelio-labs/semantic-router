@@ -27,8 +27,8 @@ class UnifyLLM(BaseLLM):
         Async: bool = False,
     ):
         if name is None:
-            name = f"{EncoderDefault.UNIFY.value['language_model']}\
-                @{EncoderDefault.UNIFY.value['language_provider']}"
+            name = (f"{EncoderDefault.UNIFY.value['language_model']}"+
+                    f"@{EncoderDefault.UNIFY.value['language_provider']}")
 
         super().__init__(name=name)
         self.temperature = temperature
