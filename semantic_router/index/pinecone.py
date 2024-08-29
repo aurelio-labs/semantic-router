@@ -363,39 +363,15 @@ class PineconeIndex(BaseIndex):
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
         all_vector_ids = []
-        next_page_token = None
-
-        if prefix:
-            prefix_str = f"?prefix={prefix}"
-        else:
-            prefix_str = ""
-
-        # Construct the request URL for listing vectors. Adjust parameters as needed.
-        list_url = f"https://{self.host}/vectors/list{prefix_str}"
-        params: Dict = {}
-        if self.namespace:
-            params["namespace"] = self.namespace
-        headers = {"Api-Key": self.api_key}
         metadata = []
 
-        while True:
-            if next_page_token:
-                params["paginationToken"] = next_page_token
-
-            # Make the request to list vectors. Adjust headers and parameters as needed.
-            response = requests.get(list_url, params=params, headers=headers)
-            response_data = response.json()
-
-            # Extract vector IDs from the response and add them to the list
-            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
-            # check that there are vector IDs, otherwise break the loop
-            if not vector_ids:
+        for ids in self.index.list(prefix=prefix):
+            if not ids:
                 break
-            all_vector_ids.extend(vector_ids)
+            all_vector_ids.extend(ids)
 
-            # if we need metadata, we fetch it
             if include_metadata:
-                for id in vector_ids:
+                for id in ids:
                     res_meta = (
                         self.index.fetch(ids=[id], namespace=self.namespace)
                         if self.index
@@ -404,12 +380,6 @@ class PineconeIndex(BaseIndex):
                     metadata.extend(
                         [x["metadata"] for x in res_meta["vectors"].values()]
                     )
-                # extract metadata only
-
-            # Check if there's a next page token; if not, break the loop
-            next_page_token = response_data.get("pagination", {}).get("next")
-            if not next_page_token:
-                break
 
         return all_vector_ids, metadata
 
