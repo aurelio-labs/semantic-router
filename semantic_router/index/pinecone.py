@@ -364,7 +364,7 @@ class PineconeIndex(BaseIndex):
         all_vector_ids = []
         metadata = []
 
-        for ids in self.index.list(prefix=prefix):
+        for ids in self.index.list(prefix=prefix, namespace=self.namespace):
             all_vector_ids.extend(ids)
 
             if include_metadata:
