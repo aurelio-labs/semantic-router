@@ -5,7 +5,6 @@ from pydantic.v1 import Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import Metric
-
 from semantic_router.utils.logger import logger
 
 DEFAULT_COLLECTION_NAME = "semantic-router-index"
@@ -97,7 +96,7 @@ class QdrantIndex(BaseIndex):
 
     def _initialize_clients(self):
         try:
-            from qdrant_client import QdrantClient, AsyncQdrantClient
+            from qdrant_client import AsyncQdrantClient, QdrantClient
 
             sync_client = QdrantClient(
                 location=self.location,
@@ -257,7 +256,7 @@ class QdrantIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        from qdrant_client import models, QdrantClient
+        from qdrant_client import QdrantClient, models
 
         self.client: QdrantClient
         filter = None
@@ -279,7 +278,9 @@ class QdrantIndex(BaseIndex):
             query_filter=filter,
         )
         scores = [result.score for result in results.points]
-        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points]
+        route_names = [
+            result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
+        ]
         return np.array(scores), route_names
 
     async def aquery(
@@ -288,7 +289,7 @@ class QdrantIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        from qdrant_client import models, AsyncQdrantClient
+        from qdrant_client import AsyncQdrantClient, models
 
         self.aclient: Optional[AsyncQdrantClient]
         if self.aclient is None:
@@ -314,7 +315,9 @@ class QdrantIndex(BaseIndex):
             query_filter=filter,
         )
         scores = [result.score for result in results.points]
-        route_names = [result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points]
+        route_names = [
+            result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
+        ]
         return np.array(scores), route_names
 
     def aget_routes(self):
