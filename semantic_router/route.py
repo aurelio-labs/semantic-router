@@ -50,6 +50,7 @@ class Route(BaseModel):
     function_schemas: Optional[List[Dict[str, Any]]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
+    metadata: Optional[Dict[str, Any]] = {}
 
     class Config:
         arbitrary_types_allowed = True

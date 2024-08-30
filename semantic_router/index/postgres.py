@@ -258,8 +258,9 @@ class PostgresIndex(BaseIndex):
         self,
         embeddings: List[List[float]],
         routes: List[str],
-        utterances: List[Any],
+        utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ) -> None:
         """
         Adds vectors to the index.

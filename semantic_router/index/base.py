@@ -27,6 +27,7 @@ class BaseIndex(BaseModel):
         routes: List[str],
         utterances: List[Any],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ):
         """
         Add embeddings to the index.
@@ -113,8 +114,9 @@ class BaseIndex(BaseModel):
         self,
         local_route_names: List[str],
         local_utterances: List[str],
-        dimensions: int,
         local_function_schemas: List[Dict[str, Any]],
+        local_metadata: List[Dict[str, Any]],
+        dimensions: int,
     ):
         """
         Synchronize the local index with the remote index based on the specified mode.
