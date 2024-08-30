@@ -222,7 +222,7 @@ class PineconeIndex(BaseIndex):
         local_function_schemas_list: List[Dict[str, Any]],
         local_metadata_list: List[Dict[str, Any]],
         dimensions: int,
-    ) -> Tuple[List,List,Dict]:
+    ) -> Tuple[List, List, Dict]:
         if self.index is None:
             self.dimensions = self.dimensions or dimensions
             self.index = self._init_index(force_create=True)
@@ -231,7 +231,11 @@ class PineconeIndex(BaseIndex):
 
         # Create remote dictionary for storing utterances and metadata
         remote_dict: Dict[str, Dict[str, Any]] = {
-            route: {"utterances": set(), "function_schemas": function_schemas, "metadata": metadata}
+            route: {
+                "utterances": set(),
+                "function_schemas": function_schemas,
+                "metadata": metadata,
+            }
             for route, utterance, function_schemas, metadata in remote_routes
         }
         for route, utterance, function_schemas, metadata in remote_routes:
@@ -240,10 +244,17 @@ class PineconeIndex(BaseIndex):
         # Create local dictionary for storing utterances and metadata
         local_dict: Dict[str, Dict[str, Any]] = {}
         for route, utterance, function_schemas, metadata in zip(
-            local_route_names, local_utterances_list, local_function_schemas_list, local_metadata_list
+            local_route_names,
+            local_utterances_list,
+            local_function_schemas_list,
+            local_metadata_list,
         ):
             if route not in local_dict:
-                local_dict[route] = {"utterances": set(), "function_schemas": function_schemas, "metadata": metadata}
+                local_dict[route] = {
+                    "utterances": set(),
+                    "function_schemas": function_schemas,
+                    "metadata": metadata,
+                }
             local_dict[route]["utterances"].add(utterance)
             local_dict[route]["function_schemas"] = function_schemas
             local_dict[route]["metadata"] = metadata
@@ -257,8 +268,12 @@ class PineconeIndex(BaseIndex):
         for route in all_routes:
             local_utterances = local_dict.get(route, {}).get("utterances", set())
             remote_utterances = remote_dict.get(route, {}).get("utterances", set())
-            local_function_schemas = local_dict.get(route, {}).get("function_schemas", {})
-            remote_function_schemas = remote_dict.get(route, {}).get("function_schemas", {})
+            local_function_schemas = local_dict.get(route, {}).get(
+                "function_schemas", {}
+            )
+            remote_function_schemas = remote_dict.get(route, {}).get(
+                "function_schemas", {}
+            )
             local_metadata = local_dict.get(route, {}).get("metadata", {})
             remote_metadata = remote_dict.get(route, {}).get("metadata", {})
 
@@ -354,7 +369,10 @@ class PineconeIndex(BaseIndex):
                 if local_utterances or remote_utterances:
                     # Here metadata are merged, with local metadata taking precedence for same keys
                     merged_metadata = {**remote_metadata, **local_metadata}
-                    merged_function_schemas = {**remote_function_schemas, **local_function_schemas}
+                    merged_function_schemas = {
+                        **remote_function_schemas,
+                        **local_function_schemas,
+                    }
                     layer_routes[route] = {
                         "utterances": list(remote_utterances.union(local_utterances)),
                         "function_schemas": merged_function_schemas,
@@ -365,15 +383,24 @@ class PineconeIndex(BaseIndex):
                 raise ValueError("Invalid sync mode specified")
 
             # Add utterances if metadata has changed or if there are new utterances
-            if (metadata_changed or function_schema_changed) and self.sync in ["local", "merge-force-local"]:
+            if (metadata_changed or function_schema_changed) and self.sync in [
+                "local",
+                "merge-force-local",
+            ]:
                 for utterance in local_utterances:
-                    routes_to_add.append((route, utterance, local_function_schemas, local_metadata))
+                    routes_to_add.append(
+                        (route, utterance, local_function_schemas, local_metadata)
+                    )
             if (metadata_changed or function_schema_changed) and self.sync == "merge":
                 for utterance in local_utterances:
-                    routes_to_add.append((route, utterance, merged_function_schemas, merged_metadata))
+                    routes_to_add.append(
+                        (route, utterance, merged_function_schemas, merged_metadata)
+                    )
             elif utterances_to_include:
                 for utterance in utterances_to_include:
-                    routes_to_add.append((route, utterance, local_function_schemas, local_metadata))
+                    routes_to_add.append(
+                        (route, utterance, local_function_schemas, local_metadata)
+                    )
 
         return routes_to_add, routes_to_delete, layer_routes
 
@@ -407,7 +434,7 @@ class PineconeIndex(BaseIndex):
                 metadata=metadata,
             ).to_dict()
             for vector, route, utterance, function_schema, metadata in zip(
-                embeddings, routes, utterances, function_schemas, metadata_list # type: ignore
+                embeddings, routes, utterances, function_schemas, metadata_list  # type: ignore
             )
         ]
 
@@ -496,7 +523,7 @@ class PineconeIndex(BaseIndex):
             )
             for data in metadata
         ]
-        return route_tuples # type: ignore
+        return route_tuples  # type: ignore
 
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
@@ -783,7 +810,7 @@ class PineconeIndex(BaseIndex):
             )
             for data in metadata
         ]
-        return route_info # type: ignore
+        return route_info  # type: ignore
 
     def __len__(self):
         return self.index.describe_index_stats()["total_vector_count"]

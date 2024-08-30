@@ -543,7 +543,12 @@ class RouteLayer:
 
         # Update local route layer state
         self.routes = [
-            Route(name=route, utterances=data.get("utterances", []), function_schemas=[data.get("function_schemas", None)], metadata=data.get("metadata", {}))
+            Route(
+                name=route,
+                utterances=data.get("utterances", []),
+                function_schemas=[data.get("function_schemas", None)],
+                metadata=data.get("metadata", {}),
+            )
             for route, data in layer_routes_dict.items()
         ]
 
