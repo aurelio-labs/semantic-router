@@ -48,8 +48,8 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
       - name: Upload Docs
-        id: upload-file
+        id: upload-directory
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: docs/build/html/**
+          path: docs/build/html
           destination: docs-bucket-production/semantic-router
