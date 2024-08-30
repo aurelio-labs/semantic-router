@@ -427,7 +427,7 @@ class RouteLayer:
                 if route.function_schemas
                 else [{}] * len(route.utterances)
             ),
-            metadata_list=[route.metadata] * len(route.utterances),
+            metadata_list=[route.metadata if route.metadata else {}] * len(route.utterances),
         )
 
         self.routes.append(route)
@@ -554,7 +554,7 @@ class RouteLayer:
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
-    ) -> Tuple[list[str], list[str], List[Dict[str, Any]]]:
+    ) -> Tuple:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
