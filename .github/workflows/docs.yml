@@ -1,0 +1,40 @@
+name: Docs
+
+on:
+  pull_request:
+
+jobs:
+  build-docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
+    env:
+      POETRY_VERSION: "1.8.3"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Poetry
+        uses: actions/cache@v2
+        with:
+          path: ~/.poetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Install poetry
+        run: |
+          pipx install poetry==$POETRY_VERSION
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: poetry
+      - name: Install dependencies
+        run: |
+          poetry install
+          cd docs
+          pip install -r source/requirements.txt
+      - name: Build docs
+        run: |
+          sphinx-build -M html source build
