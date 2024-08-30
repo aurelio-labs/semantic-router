@@ -51,3 +51,4 @@ jobs:
         with:
           path: docs/build/html
           destination: docs-bucket-production/semantic-router
+          parent: false
