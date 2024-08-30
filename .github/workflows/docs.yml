@@ -40,8 +40,6 @@ jobs:
       - name: Build docs
         run: |
           sphinx-build -M html docs/source docs/build
-          - uses: actions/checkout@v4
-          name: Checkout
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
