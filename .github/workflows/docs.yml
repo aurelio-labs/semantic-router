@@ -5,6 +5,9 @@ on:
 
 jobs:
   build-docs:
+    permissions:
+      contents: read
+      id-token: write
     name: Build Docs
     runs-on: ubuntu-latest
     strategy:
@@ -14,7 +17,7 @@ jobs:
     env:
       POETRY_VERSION: "1.8.3"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache Poetry
         uses: actions/cache@v2
         with:
@@ -43,6 +46,7 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
       - name: Upload Docs
