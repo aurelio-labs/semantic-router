@@ -44,9 +44,7 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
       - name: Upload Docs
         id: upload-directory
         uses: google-github-actions/upload-cloud-storage@v2
