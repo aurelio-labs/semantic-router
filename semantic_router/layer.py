@@ -427,7 +427,8 @@ class RouteLayer:
                 if route.function_schemas
                 else [{}] * len(route.utterances)
             ),
-            metadata_list=[route.metadata if route.metadata else {}] * len(route.utterances),
+            metadata_list=[route.metadata if route.metadata else {}]
+            * len(route.utterances),
         )
 
         self.routes.append(route)
