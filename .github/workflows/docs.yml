@@ -32,7 +32,7 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: |
-          poetry install
+          poetry install --all-extras
           pip install -r docs/source/requirements.txt
       - name: Build docs
         run: |
