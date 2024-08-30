@@ -33,8 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
-          cd docs
-          pip install -r source/requirements.txt
+          pip install -r docs/source/requirements.txt
       - name: Build docs
         run: |
-          sphinx-build -M html source build
+          sphinx-build -M html docs/source docs/build
