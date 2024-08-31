@@ -38,11 +38,10 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: |
-          poetry install
-          pip install -r docs/source/requirements.txt
+          poetry install --all-extras
       - name: Build docs
         run: |
-          sphinx-build -M html docs/source docs/build
+          poetry run sphinx-build -M html docs/source docs/build
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
