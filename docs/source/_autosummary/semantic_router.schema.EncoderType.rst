@@ -1,4 +1,4 @@
-semantic\_router.schema.EncoderType
+﻿semantic\_router.schema.EncoderType
 ===================================
 
 .. currentmodule:: semantic_router.schema

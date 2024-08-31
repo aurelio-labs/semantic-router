@@ -1,4 +1,4 @@
-semantic\_router.utils.logger.CustomFormatter
+﻿semantic\_router.utils.logger.CustomFormatter
 =============================================
 
 .. currentmodule:: semantic_router.utils.logger

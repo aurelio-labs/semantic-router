@@ -1,4 +1,4 @@
-semantic\_router.schema.Message
+﻿semantic\_router.schema.Message
 ===============================
 
 .. currentmodule:: semantic_router.schema

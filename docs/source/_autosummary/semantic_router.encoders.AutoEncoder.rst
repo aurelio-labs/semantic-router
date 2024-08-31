@@ -1,4 +1,4 @@
-semantic\_router.encoders.AutoEncoder
+﻿semantic\_router.encoders.AutoEncoder
 =====================================
 
 .. currentmodule:: semantic_router.encoders

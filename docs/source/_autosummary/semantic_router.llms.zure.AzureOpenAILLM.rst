@@ -1,4 +1,4 @@
-semantic\_router.llms.zure.AzureOpenAILLM
+﻿semantic\_router.llms.zure.AzureOpenAILLM
 =========================================
 
 .. currentmodule:: semantic_router.llms.zure

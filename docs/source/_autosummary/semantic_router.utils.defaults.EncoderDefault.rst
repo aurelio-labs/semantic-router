@@ -1,4 +1,4 @@
-semantic\_router.utils.defaults.EncoderDefault
+﻿semantic\_router.utils.defaults.EncoderDefault
 ==============================================
 
 .. currentmodule:: semantic_router.utils.defaults

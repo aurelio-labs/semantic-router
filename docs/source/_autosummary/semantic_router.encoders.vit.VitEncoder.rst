@@ -1,4 +1,4 @@
-semantic\_router.encoders.vit.VitEncoder
+﻿semantic\_router.encoders.vit.VitEncoder
 ========================================
 
 .. currentmodule:: semantic_router.encoders.vit
