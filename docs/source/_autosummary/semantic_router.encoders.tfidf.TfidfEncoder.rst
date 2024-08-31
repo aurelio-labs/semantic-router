@@ -1,4 +1,4 @@
-semantic\_router.encoders.tfidf.TfidfEncoder
+﻿semantic\_router.encoders.tfidf.TfidfEncoder
 ============================================
 
 .. currentmodule:: semantic_router.encoders.tfidf

@@ -1,4 +1,4 @@
-semantic\_router.index.qdrant.QdrantIndex
+﻿semantic\_router.index.qdrant.QdrantIndex
 =========================================
 
 .. currentmodule:: semantic_router.index.qdrant
@@ -18,6 +18,7 @@ semantic\_router.index.qdrant.QdrantIndex
    
       ~QdrantIndex.__init__
       ~QdrantIndex.add
+      ~QdrantIndex.aget_routes
       ~QdrantIndex.aquery
       ~QdrantIndex.construct
       ~QdrantIndex.convert_metric

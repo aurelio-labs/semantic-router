@@ -1,4 +1,4 @@
-semantic\_router.splitters.base.BaseSplitter
+﻿semantic\_router.splitters.base.BaseSplitter
 ============================================
 
 .. currentmodule:: semantic_router.splitters.base

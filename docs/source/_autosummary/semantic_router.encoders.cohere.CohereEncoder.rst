@@ -1,4 +1,4 @@
-semantic\_router.encoders.cohere.CohereEncoder
+﻿semantic\_router.encoders.cohere.CohereEncoder
 ==============================================
 
 .. currentmodule:: semantic_router.encoders.cohere

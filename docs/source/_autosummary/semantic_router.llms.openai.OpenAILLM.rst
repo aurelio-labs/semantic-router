@@ -1,4 +1,4 @@
-semantic\_router.llms.openai.OpenAILLM
+﻿semantic\_router.llms.openai.OpenAILLM
 ======================================
 
 .. currentmodule:: semantic_router.llms.openai

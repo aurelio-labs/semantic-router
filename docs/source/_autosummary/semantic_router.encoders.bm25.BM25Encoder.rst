@@ -1,4 +1,4 @@
-semantic\_router.encoders.bm25.BM25Encoder
+﻿semantic\_router.encoders.bm25.BM25Encoder
 ==========================================
 
 .. currentmodule:: semantic_router.encoders.bm25

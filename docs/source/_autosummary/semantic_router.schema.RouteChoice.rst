@@ -1,4 +1,4 @@
-semantic\_router.schema.RouteChoice
+﻿semantic\_router.schema.RouteChoice
 ===================================
 
 .. currentmodule:: semantic_router.schema

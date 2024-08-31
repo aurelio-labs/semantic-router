@@ -1,4 +1,4 @@
-semantic\_router.index.local.LocalIndex
+﻿semantic\_router.index.local.LocalIndex
 =======================================
 
 .. currentmodule:: semantic_router.index.local
@@ -18,6 +18,7 @@ semantic\_router.index.local.LocalIndex
    
       ~LocalIndex.__init__
       ~LocalIndex.add
+      ~LocalIndex.aget_routes
       ~LocalIndex.aquery
       ~LocalIndex.construct
       ~LocalIndex.copy
