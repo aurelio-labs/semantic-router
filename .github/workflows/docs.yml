@@ -1,9 +1,10 @@
 name: Release Docs
 
 on:
-  push:
-    tags:
-      - '*'
+  pull_request:
+  # push:
+  #   tags:
+  #     - '*'
 
 jobs:
   build-docs:
