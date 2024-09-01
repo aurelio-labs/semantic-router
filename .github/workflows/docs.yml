@@ -2,8 +2,8 @@ name: Release Docs
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 jobs:
   build-docs:
@@ -37,20 +37,22 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: |
-          poetry install
-          pip install -r docs/source/requirements.txt
+          poetry install --all-extras
       - name: Build docs
         run: |
-          sphinx-build -M html docs/source docs/build
+          poetry run sphinx-build -M html docs/source docs/build
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
       - name: Upload Docs
-        id: upload-directory
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: docs/build/html
-          destination: docs-bucket-production/semantic-router
-          parent: false
+        run: |
+          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination-objects
+      # - name: Upload Docs
+      #   id: upload-directory
+      #   uses: google-github-actions/upload-cloud-storage@v2
+      #   with:
+      #     path: docs/build/html
+      #     destination: docs-bucket-production/semantic-router
+      #     parent: false
