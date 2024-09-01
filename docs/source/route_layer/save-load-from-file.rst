@@ -28,7 +28,7 @@ The saved files contain all the information needed to initialize new
 route layers. If we are using a remote index, we can use the
 `sync features`_ to keep the route layer in sync with the index.
 
-.. _sync features: sync.rst
+.. _sync features: sync.html
 
 Full Example
 ---------------
@@ -45,7 +45,7 @@ load a route layer from file.
 
 We start by installing the library:
 
-.. code:: ipython3
+.. code:: none
 
     !pip install -qU semantic-router
 
@@ -54,7 +54,7 @@ Define Route
 
 First let's create a list of routes:
 
-.. code:: ipython3
+.. code:: python
 
     from semantic_router import Route
     

@@ -147,7 +147,7 @@ hardware
 
 
 Initializing Dynamic Routes
-===========================
+---------------------------
 
 Similar to the ``02-dynamic-routes.ipynb`` notebook, we will be
 initializing some dynamic routes that make use of LLMs for function
@@ -249,7 +249,7 @@ a ``HuggingFaceEncoder`` with ``sentence-transformers/all-MiniLM-L6-v2``
     encoder = HuggingFaceEncoder()
 
 ``llama.cpp`` LLM
-=================
+-----------------
 
 From here, we can go ahead and instantiate our ``llama-cpp-python``
 ``llama_cpp.Llama`` LLM, and then pass it to the

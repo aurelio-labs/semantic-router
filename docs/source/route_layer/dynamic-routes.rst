@@ -15,7 +15,7 @@ associated with that route.
 
 For example we could provide a dynamic route with associated utterances:
 
-::
+.. code:: python
 
    "what is x to the power of y?"
    "what is 9 to the power of 4?"
@@ -26,7 +26,7 @@ For example we could provide a dynamic route with associated utterances:
 and we could also provide the route with a schema outlining key features
 of the function:
 
-::
+.. code:: python
 
    def power(base: float, exponent: float) -> float:
        """Raise base to the power of exponent.
@@ -76,7 +76,6 @@ it correctly.
 .. code:: ipython3
 
     get_time("America/New_York")
-
 
 
 

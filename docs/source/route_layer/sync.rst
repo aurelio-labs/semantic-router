@@ -66,3 +66,5 @@ You can try this yourself by running the following:
     )
 
     rl = RouteLayer(encoder=encoder, routes=routes, index=pc_index)
+
+When initializing the `PineconeIndex` object, we can specify the `sync` parameter.
