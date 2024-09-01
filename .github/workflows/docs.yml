@@ -49,7 +49,7 @@ jobs:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
       - name: Upload Docs
         run: |
-          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination
+          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination-objects
       # - name: Upload Docs
       #   id: upload-directory
       #   uses: google-github-actions/upload-cloud-storage@v2
