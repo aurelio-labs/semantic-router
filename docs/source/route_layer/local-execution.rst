@@ -235,7 +235,7 @@ calling
 
 
 Encoders
-========
+--------
 
 You can use alternative Encoders, however, in this example we want to
 showcase a fully-local Semantic Router execution, so we are going to use

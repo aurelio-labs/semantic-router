@@ -178,11 +178,6 @@ target route labels:
     Accuracy: 100.00%
 
 
-.. parsed-literal::
-
-    
-
-
 On this small subset we get perfect accuracy — but what if we try we a
 larger, more robust dataset?
 
@@ -285,12 +280,7 @@ can expect the routes to perform on your actual use-case.*
     Accuracy: 34.85%
 
 
-.. parsed-literal::
-
-    
-
-
-Ouch, that’s not so good! Fortunately, we can easily improve our
+Ouch, that's not so good! Fortunately, we can easily improve our
 performance here.
 
 Route Layer Optimization

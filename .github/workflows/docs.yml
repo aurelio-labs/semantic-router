@@ -48,9 +48,12 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
       - name: Upload Docs
-        id: upload-directory
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: docs/build/html
-          destination: docs-bucket-production/semantic-router
-          parent: false
+        run: |
+          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination
+      # - name: Upload Docs
+      #   id: upload-directory
+      #   uses: google-github-actions/upload-cloud-storage@v2
+      #   with:
+      #     path: docs/build/html
+      #     destination: docs-bucket-production/semantic-router
+      #     parent: false

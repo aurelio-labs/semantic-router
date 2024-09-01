@@ -153,9 +153,9 @@ unrelated to our existing ``Route`` objects?
 In this case, we return ``None`` because no matches were identified.
 
 Demonstrating the Filter Feature
-================================
+--------------------------------
 
-Now, le'’s demonstrate the filter feature. We can specify a subset of
+Now, let's demonstrate the filter feature. We can specify a subset of
 routes to consider when making a classification. This can be useful if
 we want to restrict the scope of possible routes based on some context.
 
