@@ -1,4 +1,4 @@
-semantic\_router.splitters.consecutive\_sim.ConsecutiveSimSplitter
+﻿semantic\_router.splitters.consecutive\_sim.ConsecutiveSimSplitter
 ==================================================================
 
 .. currentmodule:: semantic_router.splitters.consecutive_sim

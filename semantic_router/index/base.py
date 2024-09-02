@@ -26,6 +26,8 @@ class BaseIndex(BaseModel):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[Any],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ):
         """
         Add embeddings to the index.
@@ -109,7 +111,12 @@ class BaseIndex(BaseModel):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _sync_index(
-        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+        self,
+        local_route_names: List[str],
+        local_utterances: List[str],
+        local_function_schemas: List[Dict[str, Any]],
+        local_metadata: List[Dict[str, Any]],
+        dimensions: int,
     ):
         """
         Synchronize the local index with the remote index based on the specified mode.
@@ -117,9 +124,9 @@ class BaseIndex(BaseModel):
         - "error": Raise an error if local and remote are not synchronized.
         - "remote": Take remote as the source of truth and update local to align.
         - "local": Take local as the source of truth and update remote to align.
-        - "merge-force-remote": Merge both local and remote taking only remote routes utterances when a route with same route name is present both locally and remotely.
-        - "merge-force-local": Merge both local and remote taking only local routes utterances when a route with same route name is present both locally and remotely.
-        - "merge": Merge both local and remote, merging also local and remote utterances when a route with same route name is present both locally and remotely.
+        - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
+        - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
+        - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
 
         This method should be implemented by subclasses.
         """

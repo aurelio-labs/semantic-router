@@ -1,4 +1,4 @@
-semantic\_router.index.pinecone.PineconeIndex
+﻿semantic\_router.index.pinecone.PineconeIndex
 =============================================
 
 .. currentmodule:: semantic_router.index.pinecone
@@ -18,6 +18,7 @@ semantic\_router.index.pinecone.PineconeIndex
    
       ~PineconeIndex.__init__
       ~PineconeIndex.add
+      ~PineconeIndex.aget_routes
       ~PineconeIndex.aquery
       ~PineconeIndex.construct
       ~PineconeIndex.copy

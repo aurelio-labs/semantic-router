@@ -1,4 +1,4 @@
-semantic\_router.encoders.huggingface.HuggingFaceEncoder
+﻿semantic\_router.encoders.huggingface.HuggingFaceEncoder
 ========================================================
 
 .. currentmodule:: semantic_router.encoders.huggingface

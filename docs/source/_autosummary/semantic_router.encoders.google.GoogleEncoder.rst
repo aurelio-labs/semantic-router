@@ -1,4 +1,4 @@
-semantic\_router.encoders.google.GoogleEncoder
+﻿semantic\_router.encoders.google.GoogleEncoder
 ==============================================
 
 .. currentmodule:: semantic_router.encoders.google

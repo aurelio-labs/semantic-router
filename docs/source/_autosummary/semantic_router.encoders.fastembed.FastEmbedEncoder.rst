@@ -1,4 +1,4 @@
-semantic\_router.encoders.fastembed.FastEmbedEncoder
+﻿semantic\_router.encoders.fastembed.FastEmbedEncoder
 ====================================================
 
 .. currentmodule:: semantic_router.encoders.fastembed

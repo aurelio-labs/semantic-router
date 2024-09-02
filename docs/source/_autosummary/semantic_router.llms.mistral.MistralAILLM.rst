@@ -1,4 +1,4 @@
-semantic\_router.llms.mistral.MistralAILLM
+﻿semantic\_router.llms.mistral.MistralAILLM
 ==========================================
 
 .. currentmodule:: semantic_router.llms.mistral

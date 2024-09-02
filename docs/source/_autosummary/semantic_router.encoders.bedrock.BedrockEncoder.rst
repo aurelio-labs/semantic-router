@@ -1,4 +1,4 @@
-semantic\_router.encoders.bedrock.BedrockEncoder
+﻿semantic\_router.encoders.bedrock.BedrockEncoder
 ================================================
 
 .. currentmodule:: semantic_router.encoders.bedrock

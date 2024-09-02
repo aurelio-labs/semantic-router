@@ -1,4 +1,4 @@
-semantic\_router.llms.ollama.OllamaLLM
+﻿semantic\_router.llms.ollama.OllamaLLM
 ======================================
 
 .. currentmodule:: semantic_router.llms.ollama

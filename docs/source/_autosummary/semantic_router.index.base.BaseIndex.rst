@@ -1,4 +1,4 @@
-semantic\_router.index.base.BaseIndex
+﻿semantic\_router.index.base.BaseIndex
 =====================================
 
 .. currentmodule:: semantic_router.index.base
@@ -18,6 +18,7 @@ semantic\_router.index.base.BaseIndex
    
       ~BaseIndex.__init__
       ~BaseIndex.add
+      ~BaseIndex.aget_routes
       ~BaseIndex.aquery
       ~BaseIndex.construct
       ~BaseIndex.copy
@@ -26,6 +27,7 @@ semantic\_router.index.base.BaseIndex
       ~BaseIndex.describe
       ~BaseIndex.dict
       ~BaseIndex.from_orm
+      ~BaseIndex.get_routes
       ~BaseIndex.json
       ~BaseIndex.parse_file
       ~BaseIndex.parse_obj

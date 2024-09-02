@@ -1,4 +1,4 @@
-semantic\_router.schema.Metric
+﻿semantic\_router.schema.Metric
 ==============================
 
 .. currentmodule:: semantic_router.schema

@@ -1,4 +1,4 @@
-semantic\_router.encoders.base.BaseEncoder
+﻿semantic\_router.encoders.base.BaseEncoder
 ==========================================
 
 .. currentmodule:: semantic_router.encoders.base

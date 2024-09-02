@@ -1,4 +1,4 @@
-semantic\_router.hybrid\_layer.HybridRouteLayer
+﻿semantic\_router.hybrid\_layer.HybridRouteLayer
 ===============================================
 
 .. currentmodule:: semantic_router.hybrid_layer

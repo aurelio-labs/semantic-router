@@ -1,4 +1,4 @@
-semantic\_router.encoders.clip.CLIPEncoder
+﻿semantic\_router.encoders.clip.CLIPEncoder
 ==========================================
 
 .. currentmodule:: semantic_router.encoders.clip

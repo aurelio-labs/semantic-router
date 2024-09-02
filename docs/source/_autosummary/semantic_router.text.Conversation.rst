@@ -1,4 +1,4 @@
-semantic\_router.text.Conversation
+﻿semantic\_router.text.Conversation
 ==================================
 
 .. currentmodule:: semantic_router.text

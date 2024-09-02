@@ -127,6 +127,7 @@ class TestRoute:
             "function_schemas": None,
             "llm": None,
             "score_threshold": None,
+            "metadata": {},
         }
         assert route.to_dict() == expected_dict
 

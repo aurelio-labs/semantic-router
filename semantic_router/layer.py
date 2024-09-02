@@ -195,7 +195,7 @@ class RouteLayer:
         else:
             self.encoder = encoder
         self.llm = llm
-        self.routes: List[Route] = routes if routes is not None else []
+        self.routes = routes if routes else []
         if self.encoder.score_threshold is None:
             raise ValueError(
                 "No score threshold provided for encoder. Please set the score threshold "
@@ -227,14 +227,16 @@ class RouteLayer:
             self._add_routes(routes=self.routes)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
-        matching_routes = [route for route in self.routes if route.name == top_class]
-        if not matching_routes:
+        matching_route = next(
+            (route for route in self.routes if route.name == top_class), None
+        )
+        if matching_route is None:
             logger.error(
                 f"No route found with name {top_class}. Check to see if any Routes "
                 "have been defined."
             )
             return None
-        return matching_routes[0]
+        return matching_route
 
     def __call__(
         self,
@@ -390,14 +392,6 @@ class RouteLayer:
         )
         return self._pass_threshold(scores, threshold)
 
-    def _set_layer_routes(self, new_routes: List[Route]):
-        """
-        Set and override the current routes with a new list of routes.
-
-        :param new_routes: List of Route objects to set as the current routes.
-        """
-        self.routes = new_routes
-
     def __str__(self):
         return (
             f"RouteLayer(encoder={self.encoder}, "
@@ -423,19 +417,20 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
-        logger.info(f"Adding `{route.name}` route")
-        # create embeddings
-        embeds = self.encoder(route.utterances)
-        # if route has no score_threshold, use default
-        if route.score_threshold is None:
-            route.score_threshold = self.score_threshold
-
-        # add routes to the index
+        embedded_utterances = self.encoder(route.utterances)
         self.index.add(
-            embeddings=embeds,
+            embeddings=embedded_utterances,
             routes=[route.name] * len(route.utterances),
             utterances=route.utterances,
+            function_schemas=(
+                route.function_schemas * len(route.utterances)
+                if route.function_schemas
+                else [{}] * len(route.utterances)
+            ),
+            metadata_list=[route.metadata if route.metadata else {}]
+            * len(route.utterances),
         )
+
         self.routes.append(route)
 
     def list_route_names(self) -> List[str]:
@@ -476,55 +471,104 @@ class RouteLayer:
             self.routes.append(route)
 
     def _add_routes(self, routes: List[Route]):
+        if not routes:
+            logger.warning("No routes provided to add.")
+            return
         # create embeddings for all routes
-        route_names, all_utterances = self._extract_routes_details(routes)
-        embedded_utterances = self.encoder(all_utterances)
-        # create route array
-        # add everything to the index
-        self.index.add(
-            embeddings=embedded_utterances,
-            routes=route_names,
-            utterances=all_utterances,
+        route_names, all_utterances, all_function_schemas, all_metadata = (
+            self._extract_routes_details(routes, include_metadata=True)
         )
+        embedded_utterances = self.encoder(all_utterances)
+        try:
+            # Batch insertion into the index
+            self.index.add(
+                embeddings=embedded_utterances,
+                routes=route_names,
+                utterances=all_utterances,
+                function_schemas=all_function_schemas,
+                metadata_list=all_metadata,
+            )
+        except Exception as e:
+            logger.error(f"Failed to add routes to the index: {e}")
+            raise Exception("Indexing error occurred") from e
 
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
-        local_route_names, local_utterances = self._extract_routes_details(routes)
+        local_route_names, local_utterances, local_function_schemas, local_metadata = (
+            self._extract_routes_details(routes, include_metadata=True)
+        )
+
         routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
-            local_route_names=local_route_names,
-            local_utterances=local_utterances,
+            local_route_names,
+            local_utterances,
+            local_function_schemas,
+            local_metadata,
             dimensions=len(self.encoder(["dummy"])[0]),
         )
 
-        layer_routes = [
-            Route(name=route, utterances=layer_routes_dict[route])
-            for route in layer_routes_dict.keys()
-        ]
+        logger.info(f"Routes to add: {routes_to_add}")
+        logger.info(f"Routes to delete: {routes_to_delete}")
+        logger.info(f"Layer routes: {layer_routes_dict}")
 
-        data_to_delete: dict = {}
+        data_to_delete = {}  # type: ignore
         for route, utterance in routes_to_delete:
             data_to_delete.setdefault(route, []).append(utterance)
         self.index._remove_and_sync(data_to_delete)
 
-        all_utterances_to_add = [utt for _, utt in routes_to_add]
+        # Prepare data for addition
+        if routes_to_add:
+            (
+                route_names_to_add,
+                all_utterances_to_add,
+                function_schemas_to_add,
+                metadata_to_add,
+            ) = map(list, zip(*routes_to_add))
+        else:
+            (
+                route_names_to_add,
+                all_utterances_to_add,
+                function_schemas_to_add,
+                metadata_to_add,
+            ) = ([], [], [], [])
+
         embedded_utterances_to_add = (
             self.encoder(all_utterances_to_add) if all_utterances_to_add else []
         )
-
-        route_names_to_add = [route for route, _, in routes_to_add]
 
         self.index.add(
             embeddings=embedded_utterances_to_add,
             routes=route_names_to_add,
             utterances=all_utterances_to_add,
+            function_schemas=function_schemas_to_add,
+            metadata_list=metadata_to_add,
         )
 
-        self._set_layer_routes(layer_routes)
+        # Update local route layer state
+        self.routes = [
+            Route(
+                name=route,
+                utterances=data.get("utterances", []),
+                function_schemas=[data.get("function_schemas", None)],
+                metadata=data.get("metadata", {}),
+            )
+            for route, data in layer_routes_dict.items()
+        ]
 
-    def _extract_routes_details(self, routes: List[Route]) -> Tuple:
+    def _extract_routes_details(
+        self, routes: List[Route], include_metadata: bool = False
+    ) -> Tuple:
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
-        return route_names, utterances
+        function_schemas = [
+            route.function_schemas[0] if route.function_schemas is not None else {}
+            for route in routes
+            for _ in route.utterances
+        ]
+
+        if include_metadata:
+            metadata = [route.metadata for route in routes for _ in route.utterances]
+            return route_names, utterances, function_schemas, metadata
+        return route_names, utterances, function_schemas
 
     def _encode(self, text: str) -> Any:
         """Given some text, encode it."""
@@ -718,11 +762,15 @@ class RouteLayer:
 
             remote_routes = self.index.get_routes()
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes = [route_tuple[0] for route_tuple in remote_routes]
-            utterances = [route_tuple[1] for route_tuple in remote_routes]
+            routes, utterances, metadata = map(list, zip(*remote_routes))
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
-            self.index.add(embeddings=embeddings, routes=routes, utterances=utterances)
+            self.index.add(
+                embeddings=embeddings,
+                routes=routes,
+                utterances=utterances,
+                metadata_list=metadata,
+            )
 
         # convert inputs into array
         Xq: List[List[float]] = []

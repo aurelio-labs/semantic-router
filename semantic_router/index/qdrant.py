@@ -164,7 +164,12 @@ class QdrantIndex(BaseIndex):
             logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def _sync_index(
-        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+        self,
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas: List[Dict[str, Any]],
+        local_metadata_list: List[Dict[str, Any]],
+        dimensions: int,
     ):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for QdrantIndex.")
@@ -174,6 +179,8 @@ class QdrantIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
     ):
         self.dimensions = self.dimensions or len(embeddings[0])

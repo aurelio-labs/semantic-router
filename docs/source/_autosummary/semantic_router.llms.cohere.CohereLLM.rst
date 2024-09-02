@@ -1,4 +1,4 @@
-semantic\_router.llms.cohere.CohereLLM
+﻿semantic\_router.llms.cohere.CohereLLM
 ======================================
 
 .. currentmodule:: semantic_router.llms.cohere

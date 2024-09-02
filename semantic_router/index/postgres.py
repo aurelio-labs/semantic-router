@@ -255,7 +255,12 @@ class PostgresIndex(BaseIndex):
                 raise ValueError("No comment found for the 'vector' column.")
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[Any]
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ) -> None:
         """
         Adds vectors to the index.

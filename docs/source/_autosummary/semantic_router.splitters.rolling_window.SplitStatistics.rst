@@ -1,4 +1,4 @@
-semantic\_router.splitters.rolling\_window.SplitStatistics
+﻿semantic\_router.splitters.rolling\_window.SplitStatistics
 ==========================================================
 
 .. currentmodule:: semantic_router.splitters.rolling_window
