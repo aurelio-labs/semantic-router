@@ -44,7 +44,7 @@ jobs:
           pip install nltk
       - name: Download nltk data
         run: |
-          python -m nltk.downloader punkt stopwords wordnet
+          python -m nltk.downloader punkt stopwords wordnet punkt_tab
       - name: Pytest All
         env:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
