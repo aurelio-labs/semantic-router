@@ -5,6 +5,7 @@ import numpy as np
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
+from typing import Any
 
 
 class LocalIndex(BaseIndex):
@@ -26,6 +27,8 @@ class LocalIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
@@ -47,7 +50,12 @@ class LocalIndex(BaseIndex):
             logger.warning("Sync remove is not implemented for LocalIndex.")
 
     def _sync_index(
-        self, local_route_names: List[str], local_utterances: List[str], dimensions: int
+        self,
+        local_route_names: List[str],
+        local_utterances: List[str],
+        local_function_schemas: List[Dict[str, Any]],
+        local_metadata: List[Dict[str, Any]],
+        dimensions: int,
     ):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for LocalIndex.")
