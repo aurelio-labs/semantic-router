@@ -1,6 +1,15 @@
 Semantic Router documentation
 =============================
 
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+
+   Home page <self>
+   Quickstart <quickstart>
+   Route Layer <route_layer>
+   API reference <_autosummary/semantic_router>
+
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — *routing* our requests using *semantic* meaning.
 
 Integrations
@@ -10,10 +19,3 @@ The *encoders* of semantic router include easy-to-use integrations with `Cohere 
 
 Our utterance vector space also integrates with `Pinecone <https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb>`_ and `Qdrant <https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb>`_!
 
-.. toctree::
-   :hidden:
-
-   Home page <self>
-   Quickstart <quickstart>
-   Jupyter tutorials <tutorials>
-   API reference <_autosummary/semantic_router>

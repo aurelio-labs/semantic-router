@@ -1,4 +1,4 @@
-semantic\_router.llms.openrouter.OpenRouterLLM
+﻿semantic\_router.llms.openrouter.OpenRouterLLM
 ==============================================
 
 .. currentmodule:: semantic_router.llms.openrouter

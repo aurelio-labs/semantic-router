@@ -1,4 +1,4 @@
-semantic\_router.llms.base.BaseLLM
+﻿semantic\_router.llms.base.BaseLLM
 ==================================
 
 .. currentmodule:: semantic_router.llms.base

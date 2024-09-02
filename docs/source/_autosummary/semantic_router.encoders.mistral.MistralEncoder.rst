@@ -1,4 +1,4 @@
-semantic\_router.encoders.mistral.MistralEncoder
+﻿semantic\_router.encoders.mistral.MistralEncoder
 ================================================
 
 .. currentmodule:: semantic_router.encoders.mistral

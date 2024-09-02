@@ -1,4 +1,4 @@
-semantic\_router.splitters.rolling\_window.RollingWindowSplitter
+﻿semantic\_router.splitters.rolling\_window.RollingWindowSplitter
 ================================================================
 
 .. currentmodule:: semantic_router.splitters.rolling_window

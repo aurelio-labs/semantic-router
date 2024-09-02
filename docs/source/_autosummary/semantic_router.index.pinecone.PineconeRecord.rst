@@ -1,4 +1,4 @@
-semantic\_router.index.pinecone.PineconeRecord
+﻿semantic\_router.index.pinecone.PineconeRecord
 ==============================================
 
 .. currentmodule:: semantic_router.index.pinecone

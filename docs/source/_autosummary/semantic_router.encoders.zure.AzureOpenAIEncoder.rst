@@ -1,4 +1,4 @@
-semantic\_router.encoders.zure.AzureOpenAIEncoder
+﻿semantic\_router.encoders.zure.AzureOpenAIEncoder
 =================================================
 
 .. currentmodule:: semantic_router.encoders.zure
@@ -49,6 +49,7 @@ semantic\_router.encoders.zure.AzureOpenAIEncoder
       ~AzureOpenAIEncoder.azure_endpoint
       ~AzureOpenAIEncoder.api_version
       ~AzureOpenAIEncoder.model
+      ~AzureOpenAIEncoder.max_retries
       ~AzureOpenAIEncoder.name
       ~AzureOpenAIEncoder.score_threshold
    

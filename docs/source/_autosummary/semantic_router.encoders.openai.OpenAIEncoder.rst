@@ -1,4 +1,4 @@
-semantic\_router.encoders.openai.OpenAIEncoder
+﻿semantic\_router.encoders.openai.OpenAIEncoder
 ==============================================
 
 .. currentmodule:: semantic_router.encoders.openai
@@ -45,6 +45,7 @@ semantic\_router.encoders.openai.OpenAIEncoder
       ~OpenAIEncoder.dimensions
       ~OpenAIEncoder.token_limit
       ~OpenAIEncoder.type
+      ~OpenAIEncoder.max_retries
       ~OpenAIEncoder.name
       ~OpenAIEncoder.score_threshold
    

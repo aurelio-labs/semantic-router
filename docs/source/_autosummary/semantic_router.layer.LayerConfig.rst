@@ -1,4 +1,4 @@
-semantic\_router.layer.LayerConfig
+﻿semantic\_router.layer.LayerConfig
 ==================================
 
 .. currentmodule:: semantic_router.layer

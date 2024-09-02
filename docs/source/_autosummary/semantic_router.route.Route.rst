@@ -1,4 +1,4 @@
-semantic\_router.route.Route
+﻿semantic\_router.route.Route
 ============================
 
 .. currentmodule:: semantic_router.route

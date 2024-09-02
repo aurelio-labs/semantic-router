@@ -1,4 +1,4 @@
-semantic\_router.utils.function\_call
+﻿semantic\_router.utils.function\_call
 =====================================
 
 .. automodule:: semantic_router.utils.function_call
@@ -22,6 +22,15 @@ semantic\_router.utils.function\_call
    
 
    
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      FunctionSchema
+      Parameter
    
    
 

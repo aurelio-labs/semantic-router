@@ -1,4 +1,4 @@
-semantic\_router.splitters.cumulative\_sim.CumulativeSimSplitter
+﻿semantic\_router.splitters.cumulative\_sim.CumulativeSimSplitter
 ================================================================
 
 .. currentmodule:: semantic_router.splitters.cumulative_sim

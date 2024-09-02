@@ -1,4 +1,4 @@
-semantic\_router.schema.DocumentSplit
+﻿semantic\_router.schema.DocumentSplit
 =====================================
 
 .. currentmodule:: semantic_router.schema
