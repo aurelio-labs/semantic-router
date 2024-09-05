@@ -219,7 +219,6 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if self.index.sync:
             # initialize index now
-            logger.info(f"JB TEMP: {self.routes=}")
             if len(self.routes) > 0:
                 self._add_and_sync_routes(routes=self.routes)
             else:
@@ -545,7 +544,6 @@ class RouteLayer:
         )
 
         # Update local route layer state
-        logger.info([data.get("function_schemas", None) for _, data in layer_routes_dict.items()])
         self.routes = []
         for route, data in layer_routes_dict.items():
             function_schemas = data.get("function_schemas", None)

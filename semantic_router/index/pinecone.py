@@ -797,7 +797,6 @@ class PineconeIndex(BaseIndex):
         return self.index.describe_index_stats()["total_vector_count"]
 
 
-
 def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
     """Parses metadata from Pinecone index to extract route, utterance, function
     schema and additional metadata.
@@ -814,12 +813,14 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
         sr_function_schema = json.loads(record.get("sr_function_schema", "{}"))
         if sr_function_schema == {}:
             sr_function_schema = None
-        
+
         additional_metadata = {
             key: value
             for key, value in record.items()
             if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
         }
         # TODO: Not a fan of tuple packing here
-        route_info.append((sr_route, sr_utterance, sr_function_schema, additional_metadata))
+        route_info.append(
+            (sr_route, sr_utterance, sr_function_schema, additional_metadata)
+        )
     return route_info
