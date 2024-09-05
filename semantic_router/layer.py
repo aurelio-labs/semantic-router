@@ -546,7 +546,11 @@ class RouteLayer:
             Route(
                 name=route,
                 utterances=data.get("utterances", []),
-                function_schemas=[data.get("function_schemas", None)] if data.get("function_schemas") else None,
+                function_schemas=(
+                    [data.get("function_schemas", None)]
+                    if data.get("function_schemas")
+                    else None
+                ),
                 metadata=data.get("metadata", {}),
             )
             for route, data in layer_routes_dict.items()

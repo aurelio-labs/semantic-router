@@ -114,6 +114,7 @@ def routes_3():
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
 
+
 @pytest.fixture
 def routes_4():
     return [
@@ -168,7 +169,7 @@ class TestRouteLayer:
         )
         if index_cls is PineconeIndex:
             time.sleep(15)  # allow for index to be populated
-            
+
         assert openai_encoder.score_threshold == 0.3
         assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
@@ -363,59 +364,69 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST LOCAL
             pinecone_index = PineconeIndex(sync="local")
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes_2, index=pinecone_index)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_2, index=pinecone_index
+            )
             time.sleep(15)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
-                ('Route 1', 'Hello', None, {}), 
-                ('Route 2', 'Hi', None, {}), 
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
 
             # TEST REMOTE
             pinecone_index = PineconeIndex(sync="remote")
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index
+            )
 
             time.sleep(15)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
-                ('Route 1', 'Hello', None, {}), 
-                ('Route 2', 'Hi', None, {}), 
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
 
             # TEST MERGE FORCE REMOTE
             pinecone_index = PineconeIndex(sync="merge-force-remote")
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index
+            )
 
             time.sleep(15)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
-                ('Route 1', 'Hello', None, {}),
-                ('Route 2', 'Hi', None, {}),
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
 
             # TEST MERGE FORCE LOCAL
             pinecone_index = PineconeIndex(sync="merge-force-local")
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index
+            )
 
             time.sleep(15)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
-                ('Route 1', 'Hello', None, {'type': 'default'}),
-                ('Route 1', 'Hi', None, {'type': 'default'}),
-                ('Route 2', 'Bye', None, {}),
-                ('Route 2', 'Au revoir', None, {}),
-                ('Route 2', 'Goodbye', None, {})
+                ("Route 1", "Hello", None, {"type": "default"}),
+                ("Route 1", "Hi", None, {"type": "default"}),
+                ("Route 2", "Bye", None, {}),
+                ("Route 2", "Au revoir", None, {}),
+                ("Route 2", "Goodbye", None, {}),
             ], "The routes in the index should match the local routes"
 
             # TEST MERGE
             pinecone_index = PineconeIndex(sync="merge")
-            route_layer = RouteLayer(encoder=openai_encoder, routes=routes_4, index=pinecone_index)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_4, index=pinecone_index
+            )
 
             time.sleep(15)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
-                ('Route 1', 'Hello', None, {'type': 'default'}),
-                ('Route 1', 'Hi', None, {'type': 'default'}),
-                ('Route 1', 'Goodbye', None, {'type': 'default'}),
-                ('Route 2', 'Bye', None, {}),
-                ('Route 2', 'Asparagus', None, {}),
-                ('Route 2', 'Au revoir', None, {}),
-                ('Route 2', 'Goodbye', None, {}),
+                ("Route 1", "Hello", None, {"type": "default"}),
+                ("Route 1", "Hi", None, {"type": "default"}),
+                ("Route 1", "Goodbye", None, {"type": "default"}),
+                ("Route 2", "Bye", None, {}),
+                ("Route 2", "Asparagus", None, {}),
+                ("Route 2", "Au revoir", None, {}),
+                ("Route 2", "Goodbye", None, {}),
             ], "The routes in the index should match the local routes"
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
