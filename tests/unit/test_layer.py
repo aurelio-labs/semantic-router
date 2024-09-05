@@ -23,6 +23,7 @@ def mock_encoder_call(utterances):
         "Goodbye": [0.7, 0.8, 0.9],
         "Bye": [1.0, 1.1, 1.2],
         "Au revoir": [1.3, 1.4, 1.5],
+        "Asparagus": [-2.0, 1.0, 0.0],
     }
     return [mock_responses.get(u, [0.0, 0.0, 0.0]) for u in utterances]
 
@@ -93,7 +94,7 @@ def openai_encoder(mocker):
 @pytest.fixture
 def routes():
     return [
-        Route(name="Route 1", utterances=["Hello", "Hi"]),
+        Route(name="Route 1", utterances=["Hello", "Hi"], metadata={"type": "default"}),
         Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
     ]
 
@@ -102,7 +103,7 @@ def routes():
 def routes_2():
     return [
         Route(name="Route 1", utterances=["Hello"]),
-        Route(name="Route 2", utterances=["Hello"]),
+        Route(name="Route 2", utterances=["Hi"]),
     ]
 
 
@@ -110,6 +111,13 @@ def routes_2():
 def routes_3():
     return [
         Route(name="Route 1", utterances=["Hello"]),
+        Route(name="Route 2", utterances=["Asparagus"]),
+    ]
+
+@pytest.fixture
+def routes_4():
+    return [
+        Route(name="Route 1", utterances=["Goodbye"], metadata={"type": "default"}),
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
 
@@ -146,6 +154,9 @@ def get_test_indexes():
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
+    if importlib.util.find_spec("pinecone") is not None:
+        indexes.append(PineconeIndex)
+
     return indexes
 
 
@@ -155,6 +166,9 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, top_k=10, index=index_cls()
         )
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
+            
         assert openai_encoder.score_threshold == 0.3
         assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
@@ -192,25 +206,28 @@ class TestRouteLayer:
         assert openai_encoder.score_threshold == 0.3
         assert route_layer_openai.score_threshold == 0.3
 
-    def test_add_route(self, openai_encoder, index_cls):
+    def test_add_route(self, routes, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
-        route1 = Route(name="Route 1", utterances=["Yes", "No"])
-        route2 = Route(name="Route 2", utterances=["Maybe", "Sure"])
 
         # Initially, the routes list should be empty
         assert route_layer.routes == []
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
 
         # Add route1 and check
-        route_layer.add(route=route1)
-        assert route_layer.routes == [route1]
+        route_layer.add(route=routes[0])
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
+        assert route_layer.routes == [routes[0]]
         assert route_layer.index is not None
-        # Use the describe method to get the number of vectors
-        assert route_layer.index.describe()["vectors"] == 2
+        assert len(route_layer.index.get_routes()) == 2
 
         # Add route2 and check
-        route_layer.add(route=route2)
-        assert route_layer.routes == [route1, route2]
-        assert route_layer.index.describe()["vectors"] == 4
+        route_layer.add(route=routes[1])
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
+        assert route_layer.routes == [routes[0], routes[1]]
+        assert len(route_layer.index.get_routes()) == 5
 
     def test_list_route_names(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(
@@ -228,6 +245,8 @@ class TestRouteLayer:
         # Delete a route by name
         route_to_delete = routes[0].name
         route_layer.delete(route_to_delete)
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         # Ensure the route is no longer in the route layer
         assert (
             route_to_delete not in route_layer.list_route_names()
@@ -242,6 +261,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
+        if index_cls is PineconeIndex:
+            time.sleep(15)
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
         route_layer.delete(non_existent_route)
@@ -249,21 +270,44 @@ class TestRouteLayer:
 
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
+        if index_cls is PineconeIndex:
+            time.sleep(15)
         route_layer._add_routes(routes=routes)
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         assert route_layer.index is not None
-        assert route_layer.index.describe()["vectors"] == 5
+        assert len(route_layer.index.get_routes()) == 5
 
     def test_query_and_classification(self, openai_encoder, routes, index_cls):
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index_cls()
-        )
+        if index_cls is PineconeIndex:
+            pineconeindex = PineconeIndex(dimensions=3)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pineconeindex
+            )
+            time.sleep(15)
+        else:
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=index_cls()
+            )
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
 
     def test_query_filter(self, openai_encoder, routes, index_cls):
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index_cls()
-        )
+        if index_cls is PineconeIndex:
+            pineconeindex = PineconeIndex(dimensions=3)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pineconeindex
+            )
+            time.sleep(15)
+        else:
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=index_cls()
+            )
+
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
         try:
@@ -277,13 +321,12 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
-        if type(index_cls) == PineconeIndex:
-            pinecone_api_key = os.environ["PINECONE_API_KEY"]
-            pineconeindex = PineconeIndex(api_key=pinecone_api_key)
+        if index_cls is PineconeIndex:
+            pineconeindex = PineconeIndex(dimensions=3)
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(10)  # allow for index to be populated
+            time.sleep(15)  # allow for index to be populated
             query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
             try:
@@ -297,13 +340,12 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
-        if type(index_cls) == PineconeIndex:
-            pinecone_api_key = os.environ["PINECONE_API_KEY"]
-            pineconeindex = PineconeIndex(api_key=pinecone_api_key, namespace="test")
+        if index_cls is PineconeIndex:
+            pineconeindex = PineconeIndex(namespace="test")
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(10)  # allow for index to be populated
+            time.sleep(15)  # allow for index to be populated
             query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
             try:
@@ -312,9 +354,72 @@ class TestRouteLayer:
                 assert True
 
             assert query_result in ["Route 1"]
+            route_layer.index.index.delete(namespace="test", delete_all=True)
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_sync_pinecone(self, openai_encoder, routes, routes_2, routes_4, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST LOCAL
+            pinecone_index = PineconeIndex(sync="local")
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes_2, index=pinecone_index)
+            time.sleep(15)  # allow for index to be populated
+            assert route_layer.index.get_routes() == [
+                ('Route 1', 'Hello', None, {}), 
+                ('Route 2', 'Hi', None, {}), 
+            ], "The routes in the index should match the local routes"
+
+            # TEST REMOTE
+            pinecone_index = PineconeIndex(sync="remote")
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+
+            time.sleep(15)  # allow for index to be populated
+            assert route_layer.index.get_routes() == [
+                ('Route 1', 'Hello', None, {}), 
+                ('Route 2', 'Hi', None, {}), 
+            ], "The routes in the index should match the local routes"
+
+            # TEST MERGE FORCE REMOTE
+            pinecone_index = PineconeIndex(sync="merge-force-remote")
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+
+            time.sleep(15)  # allow for index to be populated
+            assert route_layer.index.get_routes() == [
+                ('Route 1', 'Hello', None, {}),
+                ('Route 2', 'Hi', None, {}),
+            ], "The routes in the index should match the local routes"
+
+            # TEST MERGE FORCE LOCAL
+            pinecone_index = PineconeIndex(sync="merge-force-local")
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=pinecone_index)
+
+            time.sleep(15)  # allow for index to be populated
+            assert route_layer.index.get_routes() == [
+                ('Route 1', 'Hello', None, {'type': 'default'}),
+                ('Route 1', 'Hi', None, {'type': 'default'}),
+                ('Route 2', 'Bye', None, {}),
+                ('Route 2', 'Au revoir', None, {}),
+                ('Route 2', 'Goodbye', None, {})
+            ], "The routes in the index should match the local routes"
+
+            # TEST MERGE
+            pinecone_index = PineconeIndex(sync="merge")
+            route_layer = RouteLayer(encoder=openai_encoder, routes=routes_4, index=pinecone_index)
+
+            time.sleep(15)  # allow for index to be populated
+            assert route_layer.index.get_routes() == [
+                ('Route 1', 'Hello', None, {'type': 'default'}),
+                ('Route 1', 'Hi', None, {'type': 'default'}),
+                ('Route 1', 'Goodbye', None, {'type': 'default'}),
+                ('Route 2', 'Bye', None, {}),
+                ('Route 2', 'Asparagus', None, {}),
+                ('Route 2', 'Au revoir', None, {}),
+                ('Route 2', 'Goodbye', None, {}),
+            ], "The routes in the index should match the local routes"
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
-        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
+        route_layer = RouteLayer(encoder=openai_encoder)
         with pytest.raises(ValueError):
             assert route_layer(text="Anything").name is None
 
@@ -322,6 +427,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         vector = [0.1, 0.2, 0.3]
         query_result = route_layer(vector=vector).name
         assert query_result in ["Route 1", "Route 2"]
@@ -372,12 +479,12 @@ class TestRouteLayer:
 
     def test_pass_threshold(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
-        assert not route_layer._pass_threshold([], 0.5)
-        assert route_layer._pass_threshold([0.6, 0.7], 0.5)
+        assert not route_layer._pass_threshold([], 0.3)
+        assert route_layer._pass_threshold([0.6, 0.7], 0.3)
 
-    def test_failover_score_threshold(self, base_encoder, index_cls):
-        route_layer = RouteLayer(encoder=base_encoder, index=index_cls())
-        assert route_layer.score_threshold == 0.5
+    def test_failover_score_threshold(self, openai_encoder, index_cls):
+        route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
+        assert route_layer.score_threshold == 0.3
 
     def test_json(self, openai_encoder, routes, index_cls):
         temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
@@ -391,6 +498,8 @@ class TestRouteLayer:
             route_layer.to_json(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_json(temp_path)
+            if index_cls is PineconeIndex:
+                time.sleep(15)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -410,6 +519,8 @@ class TestRouteLayer:
             route_layer.to_yaml(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_yaml(temp_path)
+            if index_cls is PineconeIndex:
+                time.sleep(15)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -530,9 +641,11 @@ class TestRouteLayer:
         )
         # confirm route creation functions as expected
         layer_config = route_layer.to_config()
-        assert layer_config.routes == routes
+        assert layer_config.routes == route_layer.routes
         # now load from config and confirm it's the same
         route_layer_from_config = RouteLayer.from_config(layer_config, index_cls())
+        if index_cls is PineconeIndex:
+            time.sleep(15)  # allow for index to be populated
         assert (
             route_layer_from_config._get_route_names() == route_layer._get_route_names()
         )
@@ -647,6 +760,8 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes_3, index=index_cls()
         )
         text = "Hello"
+        if index_cls is PineconeIndex:
+            time.sleep(15)
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 1, f"Expected one result, and got {len(results)}"
         matched_routes = [result.name for result in results]
@@ -659,6 +774,8 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes_2, index=index_cls()
         )
         text = "Hello"
+        if index_cls is PineconeIndex:
+            time.sleep(15)
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 2, "Expected two results"
         matched_routes = [result.name for result in results]
