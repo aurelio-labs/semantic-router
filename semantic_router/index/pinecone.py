@@ -799,7 +799,7 @@ class PineconeIndex(BaseIndex):
                 data.get("sr_utterance", ""),
                 (
                     json.loads(data["sr_function_schema"])
-                    if data["sr_function_schema"]
+                    if data.get("sr_function_schema", "")
                     else {}
                 ),
                 {
