@@ -15,6 +15,8 @@ from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
 
 
+PINECONE_SLEEP = 20
+
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
     mock_responses = {
@@ -168,7 +170,7 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes, top_k=10, index=index_cls()
         )
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
         assert openai_encoder.score_threshold == 0.3
         assert route_layer.score_threshold == 0.3
@@ -213,12 +215,12 @@ class TestRouteLayer:
         # Initially, the routes list should be empty
         assert route_layer.routes == []
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
         # Add route1 and check
         route_layer.add(route=routes[0])
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0]]
         assert route_layer.index is not None
         assert len(route_layer.index.get_routes()) == 2
@@ -226,7 +228,7 @@ class TestRouteLayer:
         # Add route2 and check
         route_layer.add(route=routes[1])
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0], routes[1]]
         assert len(route_layer.index.get_routes()) == 5
 
@@ -247,7 +249,7 @@ class TestRouteLayer:
         route_to_delete = routes[0].name
         route_layer.delete(route_to_delete)
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         # Ensure the route is no longer in the route layer
         assert (
             route_to_delete not in route_layer.list_route_names()
@@ -263,7 +265,7 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
         if index_cls is PineconeIndex:
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         # Attempt to remove a route that does not exist
         non_existent_route = "non-existent-route"
         route_layer.delete(non_existent_route)
@@ -272,10 +274,10 @@ class TestRouteLayer:
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         if index_cls is PineconeIndex:
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         route_layer._add_routes(routes=routes)
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.index is not None
         assert len(route_layer.index.get_routes()) == 5
 
@@ -285,13 +287,13 @@ class TestRouteLayer:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         else:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=index_cls()
             )
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
 
@@ -301,14 +303,14 @@ class TestRouteLayer:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         else:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=index_cls()
             )
 
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
         try:
@@ -327,7 +329,7 @@ class TestRouteLayer:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
             try:
@@ -346,7 +348,7 @@ class TestRouteLayer:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes, index=pineconeindex
             )
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
             try:
@@ -367,7 +369,7 @@ class TestRouteLayer:
             route_layer = RouteLayer(
                 encoder=openai_encoder, routes=routes_2, index=pinecone_index
             )
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
@@ -379,7 +381,7 @@ class TestRouteLayer:
                 encoder=openai_encoder, routes=routes, index=pinecone_index
             )
 
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
@@ -391,7 +393,7 @@ class TestRouteLayer:
                 encoder=openai_encoder, routes=routes, index=pinecone_index
             )
 
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
@@ -403,7 +405,7 @@ class TestRouteLayer:
                 encoder=openai_encoder, routes=routes, index=pinecone_index
             )
 
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
                 ("Route 1", "Hello", None, {"type": "default"}),
                 ("Route 1", "Hi", None, {"type": "default"}),
@@ -418,7 +420,7 @@ class TestRouteLayer:
                 encoder=openai_encoder, routes=routes_4, index=pinecone_index
             )
 
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert route_layer.index.get_routes() == [
                 ("Route 1", "Hello", None, {"type": "default"}),
                 ("Route 1", "Hi", None, {"type": "default"}),
@@ -439,7 +441,7 @@ class TestRouteLayer:
             encoder=openai_encoder, routes=routes, index=index_cls()
         )
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         vector = [0.1, 0.2, 0.3]
         query_result = route_layer(vector=vector).name
         assert query_result in ["Route 1", "Route 2"]
@@ -510,7 +512,7 @@ class TestRouteLayer:
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_json(temp_path)
             if index_cls is PineconeIndex:
-                time.sleep(15)  # allow for index to be populated
+                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -531,7 +533,7 @@ class TestRouteLayer:
             assert os.path.exists(temp_path)
             route_layer_from_file = RouteLayer.from_yaml(temp_path)
             if index_cls is PineconeIndex:
-                time.sleep(15)  # allow for index to be populated
+                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -656,7 +658,7 @@ class TestRouteLayer:
         # now load from config and confirm it's the same
         route_layer_from_config = RouteLayer.from_config(layer_config, index_cls())
         if index_cls is PineconeIndex:
-            time.sleep(15)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert (
             route_layer_from_config._get_route_names() == route_layer._get_route_names()
         )
@@ -772,7 +774,7 @@ class TestRouteLayer:
         )
         text = "Hello"
         if index_cls is PineconeIndex:
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 1, f"Expected one result, and got {len(results)}"
         matched_routes = [result.name for result in results]
@@ -786,7 +788,7 @@ class TestRouteLayer:
         )
         text = "Hello"
         if index_cls is PineconeIndex:
-            time.sleep(15)
+            time.sleep(PINECONE_SLEEP)
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 2, "Expected two results"
         matched_routes = [result.name for result in results]
