@@ -219,6 +219,7 @@ class RouteLayer:
         # if routes list has been passed, we initialize index now
         if self.index.sync:
             # initialize index now
+            logger.info(f"JB TEMP: {self.routes=}")
             if len(self.routes) > 0:
                 self._add_and_sync_routes(routes=self.routes)
             else:
@@ -544,15 +545,20 @@ class RouteLayer:
         )
 
         # Update local route layer state
-        self.routes = [
-            Route(
-                name=route,
-                utterances=data.get("utterances", []),
-                function_schemas=[data.get("function_schemas", None)],
-                metadata=data.get("metadata", {}),
+        logger.info([data.get("function_schemas", None) for _, data in layer_routes_dict.items()])
+        self.routes = []
+        for route, data in layer_routes_dict.items():
+            function_schemas = data.get("function_schemas", None)
+            if function_schemas is not None:
+                function_schemas = [function_schemas]
+            self.routes.append(
+                Route(
+                    name=route,
+                    utterances=data.get("utterances", []),
+                    function_schemas=function_schemas,
+                    metadata=data.get("metadata", {}),
+                )
             )
-            for route, data in layer_routes_dict.items()
-        ]
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False

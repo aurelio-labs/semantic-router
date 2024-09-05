@@ -92,8 +92,11 @@ class OpenAILLM(BaseLLM):
             raise ValueError("OpenAI client is not initialized.")
         try:
             tools: Union[List[Dict[str, Any]], NotGiven] = (
-                function_schemas if function_schemas is not None else NOT_GIVEN
+                function_schemas if function_schemas else NOT_GIVEN
             )
+            logger.info(f"{function_schemas=}")
+            logger.info(f"{function_schemas is None=}")
+            logger.info(f"{tools=}")
 
             completion = self.client.chat.completions.create(
                 model=self.name,
