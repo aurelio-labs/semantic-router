@@ -544,15 +544,19 @@ class RouteLayer:
         )
 
         # Update local route layer state
-        self.routes = [
-            Route(
-                name=route,
-                utterances=data.get("utterances", []),
-                function_schemas=[data.get("function_schemas", None)],
-                metadata=data.get("metadata", {}),
+        self.routes = []
+        for route, data in layer_routes_dict.items():
+            function_schemas = data.get("function_schemas", None)
+            if function_schemas is not None:
+                function_schemas = [function_schemas]
+            self.routes.append(
+                Route(
+                    name=route,
+                    utterances=data.get("utterances", []),
+                    function_schemas=function_schemas,
+                    metadata=data.get("metadata", {}),
+                )
             )
-            for route, data in layer_routes_dict.items()
-        ]
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
