@@ -261,6 +261,7 @@ class HFEndpointEncoder(BaseEncoder):
                         continue
                 else:
                     response.raise_for_status()
+                    break
 
             except requests.exceptions.RequestException:
                 if attempt < max_retries - 1:
@@ -272,4 +273,4 @@ class HFEndpointEncoder(BaseEncoder):
                         f"Query failed with status {response.status_code}: {response.text}"
                     )
 
-        return response.json()
+        return response.json()[0]   # It returns List[List[List[float]]
