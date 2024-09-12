@@ -276,4 +276,4 @@ class HFEndpointEncoder(BaseEncoder):
                         f"Query failed with status {response.status_code}: {response.text}"
                     )
 
-        return response.json()[0]   # It returns List[List[List[float]]
+        return response.json()
