@@ -92,7 +92,7 @@ class OpenAILLM(BaseLLM):
             raise ValueError("OpenAI client is not initialized.")
         try:
             tools: Union[List[Dict[str, Any]], NotGiven] = (
-                function_schemas if function_schemas is not None else NOT_GIVEN
+                function_schemas if function_schemas else NOT_GIVEN
             )
 
             completion = self.client.chat.completions.create(
@@ -184,8 +184,6 @@ class OpenAILLM(BaseLLM):
             raise Exception("No output generated for extract function input")
         output = output.replace("'", '"')
         function_inputs = json.loads(output)
-        logger.info(f"Function inputs: {function_inputs}")
-        logger.info(f"function_schemas: {function_schemas}")
         if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs
@@ -203,7 +201,6 @@ class OpenAILLM(BaseLLM):
             raise Exception("No output generated for extract function input")
         output = output.replace("'", '"')
         function_inputs = json.loads(output)
-        logger.info(f"OpenAI => Function Inputs: {function_inputs}")
         if not self._is_valid_inputs(function_inputs, function_schemas):
             raise ValueError("Invalid inputs")
         return function_inputs
