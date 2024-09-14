@@ -2,8 +2,9 @@ from semantic_router.index.base import BaseIndex
 from typing import Union, Optional, Any, List, Dict, Tuple
 
 import numpy as np
-
+from semantic_router.schema import Metric
 from pydantic.v1 import Field, BaseModel
+from semantic_router.utils.logger import logger
 
 
 DEFAULT_COLLECTION_NAME = "semantic_router_index"
@@ -48,9 +49,9 @@ class MilvusIndex(BaseIndex):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.client = self._initiate_client()
+        self.client = self._initialize_client()
         
-    def _initiate_client(self):
+    def _initialize_client(self):
         try:
             from pymilvus import MilvusClient
             
@@ -65,7 +66,7 @@ class MilvusIndex(BaseIndex):
         
         return MilvusClient(**milvus_args)
     
-    def _initiate_collection(self):
+    def _initialize_collection(self):
         try:
             from pymilvus import MilvusClient, DataType
         except ImportError:
@@ -106,6 +107,21 @@ class MilvusIndex(BaseIndex):
                 schema=schema,
                 index_params=index_params
             )
+            
+    def _remove_and_sync(self, routes_to_delete: dict):
+        if self.sync is not None:
+            logger.error("Sync remove is not implemented for MilvusIndex.")
+    
+    def _sync_index(
+        self,
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas: List[Dict[str, Any]],
+        local_metadata_list: List[Dict[str, Any]],
+        dimensions: int,
+    ):
+        if self.sync is not None:
+            logger.error("Sync index is not implemented for MilvusIndex.")
     
     def add(
         self,
@@ -120,7 +136,7 @@ class MilvusIndex(BaseIndex):
         This method should be implemented by subclasses.
         """
         self.dimensions = self.dimensions or len(embeddings[0])
-        self._initiate_collection()
+        self._initialize_collection()
         
         data = [
             {EMBEDDINGS: embedding, ROUTE: route, UTTERANCE: utterance}
@@ -169,7 +185,7 @@ class MilvusIndex(BaseIndex):
         Search the index for the query_vector and return top_k results.
         """
         
-        vector = vector.tolist()
+        vector = [vector.tolist()]
         if route_filter:
             filter_rule = "route in [" + ",".join(route_filter) + "]"
             res = self.client.search(
@@ -195,7 +211,38 @@ class MilvusIndex(BaseIndex):
             res = list(res)
             distances = [gp['distance'] for gp in res[0]]
             routes = [gp['entity'][ROUTE] for gp in res[0]]
-            return distances, routes
+            return np.array(distances), routes
         
     
-      
+    def delete_index(self):
+        """
+        Deletes or resets the index.
+        """
+        self.client.drop_collection(
+            collection_name=self.index_name,
+        )
+        
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
+        if self.sync is not None:
+            logger.error("Acuery is not implemented for Milvus.")
+            
+    def aget_routes(self):
+        logger.error("Sync get_routes is not implemented for MilvusIndex.")
+
+    def convert_metric(self, metric: Metric):
+        
+        metric_hash = {
+            Metric.COSINE: "COSINE",
+            Metric.DOTPRODUCT: "IP",
+            Metric.EUCLIDEAN: "L2",
+        }
+        
+        if metric not in metric:
+            raise ValueError(f"Unsupported Milvus similarity metric: {metric}")
+        
+        return metric_hash[metric
