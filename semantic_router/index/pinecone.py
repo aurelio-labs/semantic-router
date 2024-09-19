@@ -542,31 +542,16 @@ class PineconeIndex(BaseIndex):
         return all_vector_ids, metadata
 
     def get_routes(self) -> List[Tuple]:
-        """
-        Gets a list of route and utterance objects currently stored in the index, including additional metadata.
+        """Gets a list of route and utterance objects currently stored in the
+        index, including additional metadata.
 
-        Returns:
-            List[Tuple]: A list of tuples, each containing route, utterance, function schema and additional metadata.
+        :return: A list of tuples, each containing route, utterance, function
+        schema and additional metadata.
+        :rtype: List[Tuple]
         """
         _, metadata = self._get_all(include_metadata=True)
-        route_tuples = [
-            (
-                data.get("sr_route", ""),
-                data.get("sr_utterance", ""),
-                (
-                    json.loads(data["sr_function_schema"])
-                    if data.get("sr_function_schema", "")
-                    else {}
-                ),
-                {
-                    key: value
-                    for key, value in data.items()
-                    if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
-                },
-            )
-            for data in metadata
-        ]
-        return route_tuples  # type: ignore
+        route_tuples = parse_route_info(metadata=metadata)
+        return route_tuples
 
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
@@ -596,8 +581,7 @@ class PineconeIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Search the index for the query vector and return the top_k results.
+        """Search the index for the query vector and return the top_k results.
 
         :param vector: The query vector to search for.
         :type vector: np.ndarray
@@ -676,11 +660,11 @@ class PineconeIndex(BaseIndex):
         return np.array(scores), route_names
 
     async def aget_routes(self) -> list[tuple]:
-        """
-        Asynchronously get a list of route and utterance objects currently stored in the index.
+        """Asynchronously get a list of route and utterance objects currently
+        stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+        :return: A list of (route_name, utterance) objects.
+        :rtype: List[Tuple]
         """
         if self.async_client is None or self.host is None:
             raise ValueError("Async client or host are not initialized.")
@@ -746,8 +730,15 @@ class PineconeIndex(BaseIndex):
     async def _async_get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
     ) -> tuple[list[str], list[dict]]:
-        """
-        Retrieves all vector IDs from the Pinecone index using pagination asynchronously.
+        """Retrieves all vector IDs from the Pinecone index using pagination
+        asynchronously.
+
+        :param prefix: The prefix to filter the vectors by.
+        :type prefix: Optional[str]
+        :param include_metadata: Whether to include metadata in the response.
+        :type include_metadata: bool
+        :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
+        :rtype: tuple[list[str], list[dict]]
         """
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
@@ -797,8 +788,13 @@ class PineconeIndex(BaseIndex):
         return all_vector_ids, metadata
 
     async def _async_fetch_metadata(self, vector_id: str) -> dict:
-        """
-        Fetch metadata for a single vector ID asynchronously using the async_client.
+        """Fetch metadata for a single vector ID asynchronously using the
+        async_client.
+
+        :param vector_id: The ID of the vector to fetch metadata for.
+        :type vector_id: str
+        :return: A dictionary containing the metadata for the vector.
+        :rtype: dict
         """
         url = f"https://{self.host}/vectors/fetch"
 
@@ -829,31 +825,45 @@ class PineconeIndex(BaseIndex):
             )
 
     async def _async_get_routes(self) -> List[Tuple]:
-        """
-        Asynchronously gets a list of route and utterance objects currently stored in the index, including additional metadata.
+        """Asynchronously gets a list of route and utterance objects currently
+        stored in the index, including additional metadata.
 
-        Returns:
-            List[Tuple]: A list of tuples, each containing route, utterance, function schema and additional metadata.
+        :return: A list of tuples, each containing route, utterance, function
+        schema and additional metadata.
+        :rtype: List[Tuple]
         """
         _, metadata = await self._async_get_all(include_metadata=True)
-        route_info = [
-            (
-                data.get("sr_route", ""),
-                data.get("sr_utterance", ""),
-                (
-                    json.loads(data["sr_function_schema"])
-                    if data["sr_function_schema"]
-                    else {}
-                ),
-                {
-                    key: value
-                    for key, value in data.items()
-                    if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
-                },
-            )
-            for data in metadata
-        ]
+        route_info = parse_route_info(metadata=metadata)
         return route_info  # type: ignore
 
     def __len__(self):
         return self.index.describe_index_stats()["total_vector_count"]
+
+
+def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
+    """Parses metadata from Pinecone index to extract route, utterance, function
+    schema and additional metadata.
+
+    :param metadata: List of metadata dictionaries.
+    :type metadata: List[Dict[str, Any]]
+    :return: A list of tuples, each containing route, utterance, function schema and additional metadata.
+    :rtype: List[Tuple]
+    """
+    route_info = []
+    for record in metadata:
+        sr_route = record.get("sr_route", "")
+        sr_utterance = record.get("sr_utterance", "")
+        sr_function_schema = json.loads(record.get("sr_function_schema", "{}"))
+        if sr_function_schema == {}:
+            sr_function_schema = None
+
+        additional_metadata = {
+            key: value
+            for key, value in record.items()
+            if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
+        }
+        # TODO: Not a fan of tuple packing here
+        route_info.append(
+            (sr_route, sr_utterance, sr_function_schema, additional_metadata)
+        )
+    return route_info
