@@ -147,8 +147,8 @@ def get_test_indexes():
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
-    # if importlib.util.find_spec("milvus_client") is not None:
-    indexes.append(MilvusIndex)
+    if importlib.util.find_spec("pymilvus") is not None:
+        indexes.append(MilvusIndex)
     return indexes
 
 
@@ -254,7 +254,6 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
-        a = route_layer.index.describe()
         assert route_layer.index.describe()["vectors"] == 5
 
     def test_query_and_classification(self, openai_encoder, routes, index_cls):

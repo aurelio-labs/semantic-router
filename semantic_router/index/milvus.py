@@ -163,9 +163,9 @@ class MilvusIndex(BaseIndex):
         """
         res = self.client.query(
             collection_name=self.index_name,
-            filter='route not in ["***"]',
+            filter="",
             output_fields=[ROUTE, UTTERANCE],
-            limit=OUTPUT_LIMIT,
+            limit=None,
         )
 
         res = list(res)
