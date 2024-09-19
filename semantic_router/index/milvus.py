@@ -63,11 +63,11 @@ class MilvusIndex(BaseIndex):
             from pymilvus import MilvusClient
         except ImportError:
             raise ImportError("Please install pymilvus to use MilvusIndex.")
-        
-        milvus_args = {'uri': self.uri}
+
+        milvus_args = {"uri": self.uri}
         if self.token:
-            milvus_args['token'] = self.token
-        
+            milvus_args["token"] = self.token
+
         return MilvusClient(**milvus_args)
 
     def _initialize_collection(self):
@@ -76,23 +76,27 @@ class MilvusIndex(BaseIndex):
             from pymilvus import MilvusClient, DataType
         except ImportError:
             raise ImportError("Please check if pymilvus is properly installed.")
-        
+
         self.client: MilvusClient
         if self.client.has_collection(collection_name=self.index_name):
             self.client.drop_collection(collection_name=self.index_name)
 
         if self.dimensions is None:
             raise ValueError("Cannot initiate index without dimensions.")
-        
+
         schema = MilvusClient.create_schema(
             auto_id=True,
             enable_dynamic_field=True,
         )
         schema.add_field(field_name=ID, datatype=DataType.INT64, is_primary=True)
-        schema.add_field(field_name=EMBEDDINGS, datatype=DataType.FLOAT_VECTOR, dim=self.dimensions)
+        schema.add_field(
+            field_name=EMBEDDINGS, datatype=DataType.FLOAT_VECTOR, dim=self.dimensions
+        )
         schema.add_field(field_name=ROUTE, datatype=DataType.VARCHAR, max_length=100)
-        schema.add_field(field_name=UTTERANCE, datatype=DataType.VARCHAR, max_length=100)
-        
+        schema.add_field(
+            field_name=UTTERANCE, datatype=DataType.VARCHAR, max_length=100
+        )
+
         index_params = self.client.prepare_index_params()
         index_params.add_index(
             field_name=ID,
@@ -101,11 +105,9 @@ class MilvusIndex(BaseIndex):
             field_name=EMBEDDINGS,
             metric_type="COSINE",
         )
-        
+
         self.client.create_collection(
-            collection_name=self.index_name,
-            schema=schema,
-            index_params=index_params
+            collection_name=self.index_name, schema=schema, index_params=index_params
         )
 
     def _remove_and_sync(self, routes_to_delete: dict):
@@ -135,7 +137,7 @@ class MilvusIndex(BaseIndex):
     ):
         """
         Add embeddings to the Milvus index.
-        
+
         :param embeddings: List of embedding vectors.
         :param routes: List of route names.
         :param utterances: List of utterances.
@@ -145,12 +147,12 @@ class MilvusIndex(BaseIndex):
         self.dimensions = self.dimensions or len(embeddings[0])
         if not self.client.has_collection(collection_name=self.index_name):
             self._initialize_collection()
-        
+
         data = [
             {EMBEDDINGS: embedding, ROUTE: route, UTTERANCE: utterance}
             for embedding, route, utterance in zip(embeddings, routes, utterances)
         ]
-        
+
         self.client.insert(collection_name=self.index_name, data=data)
 
     def get_routes(self) -> List[Tuple]:
@@ -165,27 +167,24 @@ class MilvusIndex(BaseIndex):
             output_fields=[ROUTE, UTTERANCE],
             limit=OUTPUT_LIMIT,
         )
-        
+
         res = list(res)
-        route_utterance = [(group['route'], group['utterance']) for group in res]
+        route_utterance = [(group["route"], group["utterance"]) for group in res]
         return route_utterance
 
     def delete(self, route_name: str):
         """Delete a specific route from the index."""
         filter_route = f"route == '{route_name}'"
-        self.client.delete(
-            collection_name=self.index_name,
-            filter=filter_route
-        )
+        self.client.delete(collection_name=self.index_name, filter=filter_route)
 
     def describe(self):
         """Describe the index with statistics."""
         info = self.client.describe_collection(collection_name=self.index_name)
         stats = self.client.get_collection_stats(collection_name=self.index_name)
         params = {
-            "vectors": stats['row_count'],
+            "vectors": stats["row_count"],
             "dimensions": self.dimensions,
-            "type": self.type
+            "type": self.type,
         }
         return params
 
@@ -205,9 +204,9 @@ class MilvusIndex(BaseIndex):
         """
         if not self.client.has_collection(collection_name=self.index_name):
             raise ValueError("Index not found.")
-        
+
         vector = [vector.tolist()]
-        
+
         if route_filter:
             filter_rule = f"route in {str(route_filter)}"
             res = self.client.search(
@@ -215,19 +214,19 @@ class MilvusIndex(BaseIndex):
                 limit=top_k,
                 data=vector,
                 filter=filter_rule,
-                output_fields=[EMBEDDINGS, ROUTE]
+                output_fields=[EMBEDDINGS, ROUTE],
             )
         else:
             res = self.client.search(
                 collection_name=self.index_name,
                 limit=top_k,
                 data=vector,
-                output_fields=[EMBEDDINGS, ROUTE]
+                output_fields=[EMBEDDINGS, ROUTE],
             )
-        
+
         res = list(res)
-        distances = [gp['distance'] for gp in res[0]]
-        routes = [gp['entity'][ROUTE] for gp in res[0]]
+        distances = [gp["distance"] for gp in res[0]]
+        routes = [gp["entity"][ROUTE] for gp in res[0]]
         return np.array(distances), routes
 
     def delete_index(self):
@@ -251,7 +250,7 @@ class MilvusIndex(BaseIndex):
     def convert_metric(self, metric: Metric):
         """
         Convert metric to a Milvus-compatible format.
-        
+
         :param metric: The metric to convert.
         :returns: The converted metric string.
         """
@@ -260,12 +259,12 @@ class MilvusIndex(BaseIndex):
             Metric.DOTPRODUCT: "IP",
             Metric.EUCLIDEAN: "L2",
         }
-        
+
         if metric not in metric_hash:
             raise ValueError(f"Unsupported Milvus similarity metric: {metric}")
-        
+
         return metric_hash[metric]
 
     def __len__(self):
         """Return the number of vectors in the index."""
-        return self.client.get_collection_stats(self.index_name)['row_count']
+        return self.client.get_collection_stats(self.index_name)["row_count"]

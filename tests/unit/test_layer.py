@@ -319,7 +319,6 @@ class TestRouteLayer:
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
-        # a = route_layer(text="Anything").name
         with pytest.raises(ValueError):
             assert route_layer(text="Anything").name is None
 
