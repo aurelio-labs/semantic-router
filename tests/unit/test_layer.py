@@ -10,6 +10,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
+from semantic_router.index.milvus import MilvusIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
@@ -146,6 +147,8 @@ def get_test_indexes():
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
+    # if importlib.util.find_spec("milvus_client") is not None:
+    indexes.append(MilvusIndex)
     return indexes
 
 
@@ -251,6 +254,7 @@ class TestRouteLayer:
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
         route_layer._add_routes(routes=routes)
         assert route_layer.index is not None
+        a = route_layer.index.describe()
         assert route_layer.index.describe()["vectors"] == 5
 
     def test_query_and_classification(self, openai_encoder, routes, index_cls):
@@ -315,6 +319,7 @@ class TestRouteLayer:
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
         route_layer = RouteLayer(encoder=openai_encoder, index=index_cls())
+        # a = route_layer(text="Anything").name
         with pytest.raises(ValueError):
             assert route_layer(text="Anything").name is None
 
