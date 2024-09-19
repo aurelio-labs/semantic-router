@@ -3,7 +3,7 @@ from typing import Union, Optional, Any, List, Dict, Tuple
 
 import numpy as np
 from semantic_router.schema import Metric
-from pydantic.v1 import Field, BaseModel
+from pydantic.v1 import Field
 from semantic_router.utils.logger import logger
 
 
@@ -179,7 +179,6 @@ class MilvusIndex(BaseIndex):
 
     def describe(self):
         """Describe the index with statistics."""
-        info = self.client.describe_collection(collection_name=self.index_name)
         stats = self.client.get_collection_stats(collection_name=self.index_name)
         params = {
             "vectors": stats["row_count"],
@@ -205,7 +204,7 @@ class MilvusIndex(BaseIndex):
         if not self.client.has_collection(collection_name=self.index_name):
             raise ValueError("Index not found.")
 
-        vector = [vector.tolist()]
+        vector = vector.reshape(1, -1)
 
         if route_filter:
             filter_rule = f"route in {str(route_filter)}"
@@ -242,6 +241,7 @@ class MilvusIndex(BaseIndex):
         """Async query is not implemented for MilvusIndex."""
         if self.sync is not None:
             logger.error("Async query is not implemented for Milvus.")
+        return self.query(vector, top_k, route_filter)
 
     def aget_routes(self):
         """Async get_routes is not implemented for MilvusIndex."""
