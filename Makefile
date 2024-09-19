@@ -12,7 +12,7 @@ lint lint_diff:
 	poetry run mypy $(PYTHON_FILES)
 
 test:
-	poetry run pytest -vv -n 20 --cov=semantic_router --cov-report=term-missing --cov-report=xml
+	poetry run pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml
 
 test_functional:
 	poetry run pytest -vv -n 20 tests/functional
