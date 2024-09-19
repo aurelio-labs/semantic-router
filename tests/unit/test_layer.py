@@ -16,7 +16,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 20
+PINECONE_SLEEP = 15
 
 
 def mock_encoder_call(utterances):
@@ -50,6 +50,7 @@ def init_index(
         index = index_cls(
             index_name=TEST_ID, dimensions=dimensions, namespace=namespace, sync=sync
         )
+        time.sleep(PINECONE_SLEEP)
     else:
         index = index_cls()
     return index
