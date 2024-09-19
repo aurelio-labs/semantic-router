@@ -9,4 +9,5 @@ __all__ = [
     "LocalIndex",
     "QdrantIndex",
     "PineconeIndex",
+    "MilvusIndex",
 ]
