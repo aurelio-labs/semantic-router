@@ -268,11 +268,11 @@ class PineconeIndex(BaseIndex):
         for route in all_routes:
             local_utterances = local_dict.get(route, {}).get("utterances", set())
             remote_utterances = remote_dict.get(route, {}).get("utterances", set())
-            local_function_schemas = local_dict.get(route, {}).get(
-                "function_schemas", {}
+            local_function_schemas = (
+                local_dict.get(route, {}).get("function_schemas", {}) or {}
             )
-            remote_function_schemas = remote_dict.get(route, {}).get(
-                "function_schemas", {}
+            remote_function_schemas = (
+                remote_dict.get(route, {}).get("function_schemas", {}) or {}
             )
             local_metadata = local_dict.get(route, {}).get("metadata", {})
             remote_metadata = remote_dict.get(route, {}).get("metadata", {})
@@ -295,7 +295,9 @@ class PineconeIndex(BaseIndex):
                 if local_utterances:
                     layer_routes[route] = {
                         "utterances": list(local_utterances),
-                        "function_schemas": local_function_schemas,
+                        "function_schemas": (
+                            local_function_schemas if local_function_schemas else None
+                        ),
                         "metadata": local_metadata,
                     }
 
@@ -303,7 +305,9 @@ class PineconeIndex(BaseIndex):
                 if remote_utterances:
                     layer_routes[route] = {
                         "utterances": list(remote_utterances),
-                        "function_schemas": remote_function_schemas,
+                        "function_schemas": (
+                            remote_function_schemas if remote_function_schemas else None
+                        ),
                         "metadata": remote_metadata,
                     }
 
@@ -319,7 +323,9 @@ class PineconeIndex(BaseIndex):
                 if local_utterances:
                     layer_routes[route] = {
                         "utterances": list(local_utterances),
-                        "function_schemas": local_function_schemas,
+                        "function_schemas": (
+                            local_function_schemas if local_function_schemas else None
+                        ),
                         "metadata": local_metadata,
                     }
 
@@ -329,14 +335,22 @@ class PineconeIndex(BaseIndex):
                     if local_utterances:
                         layer_routes[route] = {
                             "utterances": list(local_utterances),
-                            "function_schemas": local_function_schemas,
+                            "function_schemas": (
+                                local_function_schemas
+                                if local_function_schemas
+                                else None
+                            ),
                             "metadata": local_metadata,
                         }
                 else:
                     if remote_utterances:
                         layer_routes[route] = {
                             "utterances": list(remote_utterances),
-                            "function_schemas": remote_function_schemas,
+                            "function_schemas": (
+                                remote_function_schemas
+                                if remote_function_schemas
+                                else None
+                            ),
                             "metadata": remote_metadata,
                         }
 
@@ -353,14 +367,22 @@ class PineconeIndex(BaseIndex):
                     if local_utterances:
                         layer_routes[route] = {
                             "utterances": list(local_utterances),
-                            "function_schemas": local_function_schemas,
+                            "function_schemas": (
+                                local_function_schemas
+                                if local_function_schemas
+                                else None
+                            ),
                             "metadata": local_metadata,
                         }
                 else:
                     if remote_utterances:
                         layer_routes[route] = {
                             "utterances": list(remote_utterances),
-                            "function_schemas": remote_function_schemas,
+                            "function_schemas": (
+                                remote_function_schemas
+                                if remote_function_schemas
+                                else None
+                            ),
                             "metadata": remote_metadata,
                         }
 
@@ -375,7 +397,9 @@ class PineconeIndex(BaseIndex):
                     }
                     layer_routes[route] = {
                         "utterances": list(remote_utterances.union(local_utterances)),
-                        "function_schemas": merged_function_schemas,
+                        "function_schemas": (
+                            merged_function_schemas if merged_function_schemas else None
+                        ),
                         "metadata": merged_metadata,
                     }
 
@@ -389,17 +413,36 @@ class PineconeIndex(BaseIndex):
             ]:
                 for utterance in local_utterances:
                     routes_to_add.append(
-                        (route, utterance, local_function_schemas, local_metadata)
+                        (
+                            route,
+                            utterance,
+                            local_function_schemas if local_function_schemas else None,
+                            local_metadata,
+                        )
                     )
             if (metadata_changed or function_schema_changed) and self.sync == "merge":
                 for utterance in local_utterances:
                     routes_to_add.append(
-                        (route, utterance, merged_function_schemas, merged_metadata)
+                        (
+                            route,
+                            utterance,
+                            (
+                                merged_function_schemas
+                                if merged_function_schemas
+                                else None
+                            ),
+                            merged_metadata,
+                        )
                     )
             elif utterances_to_include:
                 for utterance in utterances_to_include:
                     routes_to_add.append(
-                        (route, utterance, local_function_schemas, local_metadata)
+                        (
+                            route,
+                            utterance,
+                            local_function_schemas if local_function_schemas else None,
+                            local_metadata,
+                        )
                     )
 
         return routes_to_add, routes_to_delete, layer_routes
