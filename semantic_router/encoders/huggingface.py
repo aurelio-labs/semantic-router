@@ -220,7 +220,10 @@ class HFEndpointEncoder(BaseEncoder):
                 outputs = self.query({"inputs": batch, "parameters": {}})
                 if not outputs or len(outputs) == 0:
                     raise ValueError("No embeddings returned from the query.")
-                embeddings = embeddings + outputs
+                if isinstance(outputs[0], list):
+                    embeddings.extend(outputs)
+                else:
+                    embeddings.append(outputs)
             except Exception as e:
                 raise ValueError(f"No embeddings returned for batch. Error: {e}") from e
 
