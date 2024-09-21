@@ -4,6 +4,8 @@ import numpy as np
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.utils.logger import logger
+from typing import Any
 
 
 class LocalIndex(BaseIndex):
@@ -21,7 +23,12 @@ class LocalIndex(BaseIndex):
         arbitrary_types_allowed = True
 
     def add(
-        self, embeddings: List[List[float]], routes: List[str], utterances: List[str]
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
@@ -37,6 +44,21 @@ class LocalIndex(BaseIndex):
             self.index = np.concatenate([self.index, embeds])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
+
+    def _remove_and_sync(self, routes_to_delete: dict):
+        if self.sync is not None:
+            logger.warning("Sync remove is not implemented for LocalIndex.")
+
+    def _sync_index(
+        self,
+        local_route_names: List[str],
+        local_utterances: List[str],
+        local_function_schemas: List[Dict[str, Any]],
+        local_metadata: List[Dict[str, Any]],
+        dimensions: int,
+    ):
+        if self.sync is not None:
+            logger.error("Sync remove is not implemented for LocalIndex.")
 
     def get_routes(self) -> List[Tuple]:
         """
@@ -84,6 +106,38 @@ class LocalIndex(BaseIndex):
             scores, idx = top_scores(sim, top_k)
             route_names = [self.routes[i] for i in idx]
         return scores, route_names
+
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+    ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Search the index for the query and return top_k results.
+        """
+        if self.index is None or self.routes is None:
+            raise ValueError("Index or routes are not populated.")
+        if route_filter is not None:
+            filtered_index = []
+            filtered_routes = []
+            for route, vec in zip(self.routes, self.index):
+                if route in route_filter:
+                    filtered_index.append(vec)
+                    filtered_routes.append(route)
+            if not filtered_routes:
+                raise ValueError("No routes found matching the filter criteria.")
+            sim = similarity_matrix(vector, np.array(filtered_index))
+            scores, idx = top_scores(sim, top_k)
+            route_names = [filtered_routes[i] for i in idx]
+        else:
+            sim = similarity_matrix(vector, self.index)
+            scores, idx = top_scores(sim, top_k)
+            route_names = [self.routes[i] for i in idx]
+        return scores, route_names
+
+    def aget_routes(self):
+        logger.error("Sync remove is not implemented for LocalIndex.")
 
     def delete(self, route_name: str):
         """

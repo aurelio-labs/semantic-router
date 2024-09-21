@@ -50,6 +50,7 @@ class Route(BaseModel):
     function_schemas: Optional[List[Dict[str, Any]]] = None
     llm: Optional[BaseLLM] = None
     score_threshold: Optional[float] = None
+    metadata: Optional[Dict[str, Any]] = {}
 
     class Config:
         arbitrary_types_allowed = True
@@ -68,6 +69,28 @@ class Route(BaseModel):
                 )
             # if a function schema is provided we generate the inputs
             extracted_inputs = self.llm.extract_function_inputs(
+                query=query, function_schemas=self.function_schemas
+            )
+            func_call = extracted_inputs
+        else:
+            # otherwise we just pass None for the call
+            func_call = None
+        return RouteChoice(name=self.name, function_call=func_call)
+
+    async def acall(self, query: Optional[str] = None) -> RouteChoice:
+        if self.function_schemas:
+            if not self.llm:
+                raise ValueError(
+                    "LLM is required for dynamic routes. Please ensure the `llm` "
+                    "attribute is set."
+                )
+            elif query is None:
+                raise ValueError(
+                    "Query is required for dynamic routes. Please ensure the `query` "
+                    "argument is passed."
+                )
+            # if a function schema is provided we generate the inputs
+            extracted_inputs = await self.llm.async_extract_function_inputs(  # type: ignore # openai-llm
                 query=query, function_schemas=self.function_schemas
             )
             func_call = extracted_inputs

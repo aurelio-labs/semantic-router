@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.48"
+version = "0.0.65"
 description = "Super fast semantic router for AI decision making"
 authors = [
     "James Briggs <james@aurelio.ai>",
@@ -14,6 +14,7 @@ authors = [
 ]
 readme = "README.md"
 packages = [{include = "semantic_router"}]
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
@@ -28,7 +29,7 @@ pinecone-text = {version = ">=0.7.1,<0.10.0", optional = true}
 torch = {version = ">=2.1.0,<2.6.0", optional = true}
 transformers = {version = ">=4.36.2", optional = true}
 tokenizers = {version = ">=0.19", optional = true}
-llama-cpp-python = {version = "^0.2.28", optional = true}
+llama-cpp-python = {version = ">=0.2.28,<0.2.86", optional = true}
 colorama = "^0.4.6"
 pinecone-client = {version=">=3.0.0,<4.0.0", optional = true}
 regex = ">=2023.12.25"
@@ -36,13 +37,16 @@ torchvision = { version = ">=0.17.0,<0.18.0", optional = true}
 pillow = { version = ">=10.2.0,<11.0.0", optional = true}
 tiktoken = ">=0.6.0,<1.0.0"
 matplotlib = { version = "^3.8.3", optional = true}
-qdrant-client = {version = "^1.8.0", optional = true}
+qdrant-client = {version = "^1.11.1", optional = true}
 google-cloud-aiplatform = {version = "^1.45.0", optional = true}
 requests-mock = "^1.12.1"
 boto3 = { version = "^1.34.98", optional = true }
 botocore = {version = "^1.34.110", optional = true}
 aiohttp = "^3.9.5"
 fastembed = {version = "^0.3.0", optional = true}
+psycopg2 = {version = "^2.9.9", optional = true}
+sphinx = {version = "^7.0.0", optional = true}
+sphinxawesome-theme = {version = "^5.2.0", optional = true}
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
@@ -54,7 +58,9 @@ mistralai = ["mistralai"]
 qdrant = ["qdrant-client"]
 google = ["google-cloud-aiplatform"]
 bedrock = ["boto3", "botocore"]
+postgres = ["psycopg2"]
 fastembed = ["fastembed"]
+docs = ["sphinx", "sphinxawesome-theme"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"

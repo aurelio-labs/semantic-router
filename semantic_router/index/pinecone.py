@@ -3,10 +3,11 @@ import asyncio
 import hashlib
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+import json
+
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 import numpy as np
-import requests
 from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
@@ -22,6 +23,8 @@ class PineconeRecord(BaseModel):
     values: List[float]
     route: str
     utterance: str
+    function_schema: str
+    metadata: Dict[str, Any] = {}  # Additional metadata dictionary
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -29,12 +32,19 @@ class PineconeRecord(BaseModel):
         # Use SHA-256 for a more secure hash
         utterance_id = hashlib.sha256(self.utterance.encode()).hexdigest()
         self.id = f"{clean_route}#{utterance_id}"
+        self.metadata.update(
+            {
+                "sr_route": self.route,
+                "sr_utterance": self.utterance,
+                "sr_function_schema": self.function_schema,
+            }
+        )
 
     def to_dict(self):
         return {
             "id": self.id,
             "values": self.values,
-            "metadata": {"sr_route": self.route, "sr_utterance": self.utterance},
+            "metadata": self.metadata,
         }
 
 
@@ -65,6 +75,8 @@ class PineconeIndex(BaseIndex):
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
+        sync: str = "local",
+        init_async_index: bool = False,
     ):
         super().__init__()
         self.index_name = index_name
@@ -77,12 +89,16 @@ class PineconeIndex(BaseIndex):
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
+        self.sync = sync
 
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
 
         self.client = self._initialize_client(api_key=self.api_key)
-        self.async_client = self._initialize_async_client(api_key=self.api_key)
+        if init_async_index:
+            self.async_client = self._initialize_async_client(api_key=self.api_key)
+        else:
+            self.async_client = None
 
     def _initialize_client(self, api_key: Optional[str] = None):
         try:
@@ -95,7 +111,11 @@ class PineconeIndex(BaseIndex):
                 "You can install it with: "
                 "`pip install 'semantic-router[pinecone]'`"
             )
-        pinecone_args = {"api_key": api_key, "source_tag": "semanticrouter"}
+        pinecone_args = {
+            "api_key": api_key,
+            "source_tag": "semanticrouter",
+            "host": self.base_url,
+        }
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
 
@@ -195,6 +215,238 @@ class PineconeIndex(BaseIndex):
             logger.warning("Index could not be initialized.")
         self.host = index_stats["host"] if index_stats else None
 
+    def _sync_index(
+        self,
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas_list: List[Dict[str, Any]],
+        local_metadata_list: List[Dict[str, Any]],
+        dimensions: int,
+    ) -> Tuple[List, List, Dict]:
+        if self.index is None:
+            self.dimensions = self.dimensions or dimensions
+            self.index = self._init_index(force_create=True)
+
+        remote_routes = self.get_routes()
+
+        # Create remote dictionary for storing utterances and metadata
+        remote_dict: Dict[str, Dict[str, Any]] = {
+            route: {
+                "utterances": set(),
+                "function_schemas": function_schemas,
+                "metadata": metadata,
+            }
+            for route, utterance, function_schemas, metadata in remote_routes
+        }
+        for route, utterance, function_schemas, metadata in remote_routes:
+            remote_dict[route]["utterances"].add(utterance)
+
+        # Create local dictionary for storing utterances and metadata
+        local_dict: Dict[str, Dict[str, Any]] = {}
+        for route, utterance, function_schemas, metadata in zip(
+            local_route_names,
+            local_utterances_list,
+            local_function_schemas_list,
+            local_metadata_list,
+        ):
+            if route not in local_dict:
+                local_dict[route] = {
+                    "utterances": set(),
+                    "function_schemas": function_schemas,
+                    "metadata": metadata,
+                }
+            local_dict[route]["utterances"].add(utterance)
+            local_dict[route]["function_schemas"] = function_schemas
+            local_dict[route]["metadata"] = metadata
+
+        all_routes = set(remote_dict.keys()).union(local_dict.keys())
+
+        routes_to_add = []
+        routes_to_delete = []
+        layer_routes = {}
+
+        for route in all_routes:
+            local_utterances = local_dict.get(route, {}).get("utterances", set())
+            remote_utterances = remote_dict.get(route, {}).get("utterances", set())
+            local_function_schemas = (
+                local_dict.get(route, {}).get("function_schemas", {}) or {}
+            )
+            remote_function_schemas = (
+                remote_dict.get(route, {}).get("function_schemas", {}) or {}
+            )
+            local_metadata = local_dict.get(route, {}).get("metadata", {})
+            remote_metadata = remote_dict.get(route, {}).get("metadata", {})
+
+            utterances_to_include = set()
+
+            metadata_changed = local_metadata != remote_metadata
+            function_schema_changed = local_function_schemas != remote_function_schemas
+
+            if self.sync == "error":
+                if (
+                    local_utterances != remote_utterances
+                    or local_function_schemas != remote_function_schemas
+                    or local_metadata != remote_metadata
+                ):
+                    raise ValueError(
+                        f"Synchronization error: Differences found in route '{route}'"
+                    )
+
+                if local_utterances:
+                    layer_routes[route] = {
+                        "utterances": list(local_utterances),
+                        "function_schemas": (
+                            local_function_schemas if local_function_schemas else None
+                        ),
+                        "metadata": local_metadata,
+                    }
+
+            elif self.sync == "remote":
+                if remote_utterances:
+                    layer_routes[route] = {
+                        "utterances": list(remote_utterances),
+                        "function_schemas": (
+                            remote_function_schemas if remote_function_schemas else None
+                        ),
+                        "metadata": remote_metadata,
+                    }
+
+            elif self.sync == "local":
+                utterances_to_include = local_utterances - remote_utterances
+                routes_to_delete.extend(
+                    [
+                        (route, utterance)
+                        for utterance in remote_utterances
+                        if utterance not in local_utterances
+                    ]
+                )
+                if local_utterances:
+                    layer_routes[route] = {
+                        "utterances": list(local_utterances),
+                        "function_schemas": (
+                            local_function_schemas if local_function_schemas else None
+                        ),
+                        "metadata": local_metadata,
+                    }
+
+            elif self.sync == "merge-force-remote":
+                if route in local_dict and route not in remote_dict:
+                    utterances_to_include = local_utterances
+                    if local_utterances:
+                        layer_routes[route] = {
+                            "utterances": list(local_utterances),
+                            "function_schemas": (
+                                local_function_schemas
+                                if local_function_schemas
+                                else None
+                            ),
+                            "metadata": local_metadata,
+                        }
+                else:
+                    if remote_utterances:
+                        layer_routes[route] = {
+                            "utterances": list(remote_utterances),
+                            "function_schemas": (
+                                remote_function_schemas
+                                if remote_function_schemas
+                                else None
+                            ),
+                            "metadata": remote_metadata,
+                        }
+
+            elif self.sync == "merge-force-local":
+                if route in local_dict:
+                    utterances_to_include = local_utterances - remote_utterances
+                    routes_to_delete.extend(
+                        [
+                            (route, utterance)
+                            for utterance in remote_utterances
+                            if utterance not in local_utterances
+                        ]
+                    )
+                    if local_utterances:
+                        layer_routes[route] = {
+                            "utterances": list(local_utterances),
+                            "function_schemas": (
+                                local_function_schemas
+                                if local_function_schemas
+                                else None
+                            ),
+                            "metadata": local_metadata,
+                        }
+                else:
+                    if remote_utterances:
+                        layer_routes[route] = {
+                            "utterances": list(remote_utterances),
+                            "function_schemas": (
+                                remote_function_schemas
+                                if remote_function_schemas
+                                else None
+                            ),
+                            "metadata": remote_metadata,
+                        }
+
+            elif self.sync == "merge":
+                utterances_to_include = local_utterances - remote_utterances
+                if local_utterances or remote_utterances:
+                    # Here metadata are merged, with local metadata taking precedence for same keys
+                    merged_metadata = {**remote_metadata, **local_metadata}
+                    merged_function_schemas = {
+                        **remote_function_schemas,
+                        **local_function_schemas,
+                    }
+                    layer_routes[route] = {
+                        "utterances": list(remote_utterances.union(local_utterances)),
+                        "function_schemas": (
+                            merged_function_schemas if merged_function_schemas else None
+                        ),
+                        "metadata": merged_metadata,
+                    }
+
+            else:
+                raise ValueError("Invalid sync mode specified")
+
+            # Add utterances if metadata has changed or if there are new utterances
+            if (metadata_changed or function_schema_changed) and self.sync in [
+                "local",
+                "merge-force-local",
+            ]:
+                for utterance in local_utterances:
+                    routes_to_add.append(
+                        (
+                            route,
+                            utterance,
+                            local_function_schemas if local_function_schemas else None,
+                            local_metadata,
+                        )
+                    )
+            if (metadata_changed or function_schema_changed) and self.sync == "merge":
+                for utterance in local_utterances:
+                    routes_to_add.append(
+                        (
+                            route,
+                            utterance,
+                            (
+                                merged_function_schemas
+                                if merged_function_schemas
+                                else None
+                            ),
+                            merged_metadata,
+                        )
+                    )
+            elif utterances_to_include:
+                for utterance in utterances_to_include:
+                    routes_to_add.append(
+                        (
+                            route,
+                            utterance,
+                            local_function_schemas if local_function_schemas else None,
+                            local_metadata,
+                        )
+                    )
+
+        return routes_to_add, routes_to_delete, layer_routes
+
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records."""
         if self.index is not None:
@@ -207,6 +459,8 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""
@@ -215,18 +469,52 @@ class PineconeIndex(BaseIndex):
             self.index = self._init_index(force_create=True)
 
         vectors_to_upsert = [
-            PineconeRecord(values=vector, route=route, utterance=utterance).to_dict()
-            for vector, route, utterance in zip(embeddings, routes, utterances)
+            PineconeRecord(
+                values=vector,
+                route=route,
+                utterance=utterance,
+                function_schema=json.dumps(function_schema),
+                metadata=metadata,
+            ).to_dict()
+            for vector, route, utterance, function_schema, metadata in zip(
+                embeddings, routes, utterances, function_schemas, metadata_list  # type: ignore
+            )
         ]
 
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
 
+    def _remove_and_sync(self, routes_to_delete: dict):
+        for route, utterances in routes_to_delete.items():
+            remote_routes = self._get_routes_with_ids(route_name=route)
+            ids_to_delete = [
+                r["id"]
+                for r in remote_routes
+                if (r["route"], r["utterance"])
+                in zip([route] * len(utterances), utterances)
+            ]
+            if ids_to_delete and self.index:
+                self.index.delete(ids=ids_to_delete, namespace=self.namespace)
+
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
         ids, _ = self._get_all(prefix=f"{clean_route}#")
         return ids
+
+    def _get_routes_with_ids(self, route_name: str):
+        clean_route = clean_route_name(route_name)
+        ids, metadata = self._get_all(prefix=f"{clean_route}#", include_metadata=True)
+        route_tuples = []
+        for id, data in zip(ids, metadata):
+            route_tuples.append(
+                {
+                    "id": id,
+                    "route": data["sr_route"],
+                    "utterance": data["sr_utterance"],
+                }
+            )
+        return route_tuples
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
@@ -235,59 +523,34 @@ class PineconeIndex(BaseIndex):
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
         all_vector_ids = []
-        next_page_token = None
-
-        if prefix:
-            prefix_str = f"?prefix={prefix}"
-        else:
-            prefix_str = ""
-
-        # Construct the request URL for listing vectors. Adjust parameters as needed.
-        list_url = f"https://{self.host}/vectors/list{prefix_str}"
-        params: Dict = {}
-        if self.namespace:
-            params["namespace"] = self.namespace
-        headers = {"Api-Key": self.api_key}
         metadata = []
 
-        while True:
-            if next_page_token:
-                params["paginationToken"] = next_page_token
+        for ids in self.index.list(prefix=prefix, namespace=self.namespace):
+            all_vector_ids.extend(ids)
 
-            # Make the request to list vectors. Adjust headers and parameters as needed.
-            response = requests.get(list_url, params=params, headers=headers)
-            response_data = response.json()
-
-            # Extract vector IDs from the response and add them to the list
-            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
-            # check that there are vector IDs, otherwise break the loop
-            if not vector_ids:
-                break
-            all_vector_ids.extend(vector_ids)
-
-            # if we need metadata, we fetch it
             if include_metadata:
-                res_meta = self.index.fetch(ids=vector_ids, namespace=self.namespace)
-                # extract metadata only
-                metadata.extend([x["metadata"] for x in res_meta["vectors"].values()])
-
-            # Check if there's a next page token; if not, break the loop
-            next_page_token = response_data.get("pagination", {}).get("next")
-            if not next_page_token:
-                break
+                for id in ids:
+                    res_meta = (
+                        self.index.fetch(ids=[id], namespace=self.namespace)
+                        if self.index
+                        else {}
+                    )
+                    metadata.extend(
+                        [x["metadata"] for x in res_meta["vectors"].values()]
+                    )
 
         return all_vector_ids, metadata
 
     def get_routes(self) -> List[Tuple]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
+        """Gets a list of route and utterance objects currently stored in the
+        index, including additional metadata.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+        :return: A list of tuples, each containing route, utterance, function
+        schema and additional metadata.
+        :rtype: List[Tuple]
         """
-        # Get all records
         _, metadata = self._get_all(include_metadata=True)
-        route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
+        route_tuples = parse_route_info(metadata=metadata)
         return route_tuples
 
     def delete(self, route_name: str):
@@ -316,7 +579,24 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """Search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.index is None:
             raise ValueError("Index is not populated.")
         query_vector_list = vector.tolist()
@@ -326,6 +606,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = self.index.query(
             vector=[query_vector_list],
+            sparse_vector=kwargs.get("sparse_vector", None),
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -340,7 +621,25 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
+        """
+        Asynchronously search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
+        :type kwargs: Any
+        :keyword sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[dict]
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises ValueError: If the index is not populated.
+        """
         if self.async_client is None or self.host is None:
             raise ValueError("Async client or host are not initialized.")
         query_vector_list = vector.tolist()
@@ -350,6 +649,7 @@ class PineconeIndex(BaseIndex):
             filter_query = None
         results = await self._async_query(
             vector=query_vector_list,
+            sparse_vector=kwargs.get("sparse_vector", None),
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -359,6 +659,18 @@ class PineconeIndex(BaseIndex):
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
 
+    async def aget_routes(self) -> list[tuple]:
+        """Asynchronously get a list of route and utterance objects currently
+        stored in the index.
+
+        :return: A list of (route_name, utterance) objects.
+        :rtype: List[Tuple]
+        """
+        if self.async_client is None or self.host is None:
+            raise ValueError("Async client or host are not initialized.")
+
+        return await self._async_get_routes()
+
     def delete_index(self):
         self.client.delete_index(self.index_name)
 
@@ -366,6 +678,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
+        sparse_vector: Optional[dict] = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,
@@ -373,6 +686,7 @@ class PineconeIndex(BaseIndex):
     ):
         params = {
             "vector": vector,
+            "sparse_vector": sparse_vector,
             "namespace": namespace,
             "filter": filter,
             "top_k": top_k,
@@ -413,5 +727,143 @@ class PineconeIndex(BaseIndex):
         async with self.async_client.get(f"{self.base_url}/indexes/{name}") as response:
             return await response.json(content_type=None)
 
+    async def _async_get_all(
+        self, prefix: Optional[str] = None, include_metadata: bool = False
+    ) -> tuple[list[str], list[dict]]:
+        """Retrieves all vector IDs from the Pinecone index using pagination
+        asynchronously.
+
+        :param prefix: The prefix to filter the vectors by.
+        :type prefix: Optional[str]
+        :param include_metadata: Whether to include metadata in the response.
+        :type include_metadata: bool
+        :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
+        :rtype: tuple[list[str], list[dict]]
+        """
+        if self.index is None:
+            raise ValueError("Index is None, could not retrieve vector IDs.")
+
+        all_vector_ids = []
+        next_page_token = None
+
+        if prefix:
+            prefix_str = f"?prefix={prefix}"
+        else:
+            prefix_str = ""
+
+        list_url = f"https://{self.host}/vectors/list{prefix_str}"
+        params: dict = {}
+        if self.namespace:
+            params["namespace"] = self.namespace
+        metadata = []
+
+        while True:
+            if next_page_token:
+                params["paginationToken"] = next_page_token
+
+            async with self.async_client.get(
+                list_url, params=params, headers={"Api-Key": self.api_key}
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Error fetching vectors: {error_text}")
+                    break
+
+                response_data = await response.json(content_type=None)
+
+            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+            if not vector_ids:
+                break
+            all_vector_ids.extend(vector_ids)
+
+            if include_metadata:
+                metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
+                metadata_results = await asyncio.gather(*metadata_tasks)
+                metadata.extend(metadata_results)
+
+            next_page_token = response_data.get("pagination", {}).get("next")
+            if not next_page_token:
+                break
+
+        return all_vector_ids, metadata
+
+    async def _async_fetch_metadata(self, vector_id: str) -> dict:
+        """Fetch metadata for a single vector ID asynchronously using the
+        async_client.
+
+        :param vector_id: The ID of the vector to fetch metadata for.
+        :type vector_id: str
+        :return: A dictionary containing the metadata for the vector.
+        :rtype: dict
+        """
+        url = f"https://{self.host}/vectors/fetch"
+
+        params = {
+            "ids": [vector_id],
+        }
+
+        headers = {
+            "Api-Key": self.api_key,
+        }
+
+        async with self.async_client.get(
+            url, params=params, headers=headers
+        ) as response:
+            if response.status != 200:
+                error_text = await response.text()
+                logger.error(f"Error fetching metadata: {error_text}")
+                return {}
+
+            try:
+                response_data = await response.json(content_type=None)
+            except Exception as e:
+                logger.warning(f"No metadata found for vector {vector_id}: {e}")
+                return {}
+
+            return (
+                response_data.get("vectors", {}).get(vector_id, {}).get("metadata", {})
+            )
+
+    async def _async_get_routes(self) -> List[Tuple]:
+        """Asynchronously gets a list of route and utterance objects currently
+        stored in the index, including additional metadata.
+
+        :return: A list of tuples, each containing route, utterance, function
+        schema and additional metadata.
+        :rtype: List[Tuple]
+        """
+        _, metadata = await self._async_get_all(include_metadata=True)
+        route_info = parse_route_info(metadata=metadata)
+        return route_info  # type: ignore
+
     def __len__(self):
         return self.index.describe_index_stats()["total_vector_count"]
+
+
+def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
+    """Parses metadata from Pinecone index to extract route, utterance, function
+    schema and additional metadata.
+
+    :param metadata: List of metadata dictionaries.
+    :type metadata: List[Dict[str, Any]]
+    :return: A list of tuples, each containing route, utterance, function schema and additional metadata.
+    :rtype: List[Tuple]
+    """
+    route_info = []
+    for record in metadata:
+        sr_route = record.get("sr_route", "")
+        sr_utterance = record.get("sr_utterance", "")
+        sr_function_schema = json.loads(record.get("sr_function_schema", "{}"))
+        if sr_function_schema == {}:
+            sr_function_schema = None
+
+        additional_metadata = {
+            key: value
+            for key, value in record.items()
+            if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
+        }
+        # TODO: Not a fan of tuple packing here
+        route_info.append(
+            (sr_route, sr_utterance, sr_function_schema, additional_metadata)
+        )
+    return route_info
