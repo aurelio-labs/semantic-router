@@ -13,6 +13,8 @@
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
+#### [Read the Docs](https://docs.aurelio.ai/semantic-router/index.html)
+
 ---
 
 ## Quickstart
