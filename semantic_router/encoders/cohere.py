@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 
 import cohere
-from cohere.types.embed_response import EmbedResponse_EmbeddingsByType
+from cohere.types.embed_response import EmbeddingsByTypeEmbedResponse
 
 from semantic_router.encoders import BaseEncoder
 from semantic_router.utils.defaults import EncoderDefault
@@ -46,7 +46,7 @@ class CohereEncoder(BaseEncoder):
                 texts=docs, input_type=self.input_type, model=self.name
             )
             # Check for unsupported type.
-            if isinstance(embeds, EmbedResponse_EmbeddingsByType):
+            if isinstance(embeds, EmbeddingsByTypeEmbedResponse):
                 raise NotImplementedError(
                     "Handling of EmbedByTypeResponseEmbeddings is not implemented."
                 )
