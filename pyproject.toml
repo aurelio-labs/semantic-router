@@ -1,17 +1,8 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.65"
+version = "0.0.68"
 description = "Super fast semantic router for AI decision making"
-authors = [
-    "James Briggs <james@aurelio.ai>",
-    "Siraj Aizlewood <siraj@aurelio.ai>",
-    "Simonas Jakubonis <simonas@aurelio.ai>",
-    "Luca Mannini <luca@aurelio.ai>",
-    "Bogdan Buduroiu <bogdan@aurelio.ai>",
-    "Ismail Ashraq <ashraq@aurelio.ai>",
-    "Daniel Griffin <daniel@aurelio.ai>",
-    "Tolga Arslan <tolga@aurelio.ai>"
-]
+authors = ["Aurelio AI <hello@aurelio.ai>"]
 readme = "README.md"
 packages = [{include = "semantic_router"}]
 license = "MIT"
@@ -20,7 +11,7 @@ license = "MIT"
 python = ">=3.9,<3.13"
 pydantic = "^2.5.3"
 openai = ">=1.10.0,<2.0.0"
-cohere = ">=5.00,<6.00"
+cohere = ">=5.9.4,<6.00"
 mistralai= {version = ">=0.0.12,<0.1.0", optional = true}
 numpy = "^1.25.2"
 colorlog = "^6.8.0"
@@ -37,7 +28,7 @@ torchvision = { version = ">=0.17.0,<0.18.0", optional = true}
 pillow = { version = ">=10.2.0,<11.0.0", optional = true}
 tiktoken = ">=0.6.0,<1.0.0"
 matplotlib = { version = "^3.8.3", optional = true}
-qdrant-client = {version = "^1.8.0", optional = true}
+qdrant-client = {version = "^1.11.1", optional = true}
 google-cloud-aiplatform = {version = "^1.45.0", optional = true}
 requests-mock = "^1.12.1"
 boto3 = { version = "^1.34.98", optional = true }

@@ -250,7 +250,6 @@ class RouteLayer:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = self._encode(text=text)
-
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
@@ -448,7 +447,10 @@ class RouteLayer:
         if route_name not in [route.name for route in self.routes]:
             err_msg = f"Route `{route_name}` not found in RouteLayer"
             logger.warning(err_msg)
-            self.index.delete(route_name=route_name)
+            try:
+                self.index.delete(route_name=route_name)
+            except Exception as e:
+                logger.error(f"Failed to delete route from the index: {e}")
         else:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
@@ -503,12 +505,8 @@ class RouteLayer:
             local_utterances,
             local_function_schemas,
             local_metadata,
-            dimensions=len(self.encoder(["dummy"])[0]),
+            dimensions=self.index.dimensions or len(self.encoder(["dummy"])[0]),
         )
-
-        logger.info(f"Routes to add: {routes_to_add}")
-        logger.info(f"Routes to delete: {routes_to_delete}")
-        logger.info(f"Layer routes: {layer_routes_dict}")
 
         data_to_delete = {}  # type: ignore
         for route, utterance in routes_to_delete:
