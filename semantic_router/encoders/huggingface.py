@@ -212,7 +212,7 @@ class HFEndpointEncoder(BaseEncoder):
             ValueError: If no embeddings are returned for a document.
         """
 
-        batch_size=50
+        batch_size=32
         embeddings = []
         for i in range(0, len(docs), batch_size):
             batch = docs[i:i + batch_size]
