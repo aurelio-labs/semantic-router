@@ -177,7 +177,7 @@ class RouteLayer:
     index: BaseIndex
 
     def __init__(
-        self,
+        self
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
@@ -832,22 +832,6 @@ class RouteLayer:
 
     def _get_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
-    
-    def update_route_thresholds(self, threshold_dict: Dict[str, float]):
-        """
-        Update thresholds for specified routes.
-
-        :param threshold_dict: A dictionary mapping route names to new threshold values.
-        :type threshold_dict: Dict[str, float]
-        """
-        for route_name, new_threshold in threshold_dict.items():
-            route = self.get(route_name)
-            if route:
-                old_threshold = route.score_threshold
-                route.score_threshold = new_threshold
-                logger.info(f"Updated threshold for route '{route_name}' from {old_threshold} to {new_threshold}")
-            else:
-                logger.warning(f"Route '{route_name}' not found. Skipping threshold update.")
 
 
 def threshold_random_search(
