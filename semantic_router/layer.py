@@ -435,7 +435,12 @@ class RouteLayer:
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
-    def update(self, name: str, threshold: Optional[float] = None, utterances: Optional[List[str]] = None):
+    def update(
+        self,
+        name: str,
+        threshold: Optional[float] = None,
+        utterances: Optional[List[str]] = None,
+    ):
         """Updates the route specified in name. Allows the update of
         threshold and/or utterances. If no values are provided via the
         threshold or utterances parameters, those fields are not updated.
@@ -446,16 +451,22 @@ class RouteLayer:
         """
 
         if threshold is None and utterances is None:
-            raise ValueError("At least one of 'threshold' or 'utterances' must be provided.")
+            raise ValueError(
+                "At least one of 'threshold' or 'utterances' must be provided."
+            )
         if utterances:
-            raise NotImplementedError("The update method cannot be used for updating utterances yet.")
-        
+            raise NotImplementedError(
+                "The update method cannot be used for updating utterances yet."
+            )
+
         route = self.get(name)
         if route:
             if threshold:
                 old_threshold = route.score_threshold
                 route.score_threshold = threshold
-                logger.info(f"Updated threshold for route '{route.name}' from {old_threshold} to {threshold}")
+                logger.info(
+                    f"Updated threshold for route '{route.name}' from {old_threshold} to {threshold}"
+                )
         else:
             raise ValueError(f"Route '{name}' not found. Nothing updated.")
 
