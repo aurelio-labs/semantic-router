@@ -462,6 +462,7 @@ class PineconeIndex(BaseIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
+        # TODO: Maybe include threshold in the metadata.
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:
