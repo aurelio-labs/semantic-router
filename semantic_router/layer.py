@@ -437,6 +437,7 @@ class RouteLayer:
 
     def update(self, route_name: str, utterances: List[str]):
         raise NotImplementedError("This method has not yet been implemented.")
+        # TODO: update utterances in the index and in the routes
 
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
