@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.69"
+version = "0.0.70"
 description = "Super fast semantic router for AI decision making"
 authors = ["Aurelio AI <hello@aurelio.ai>"]
 readme = "README.md"
