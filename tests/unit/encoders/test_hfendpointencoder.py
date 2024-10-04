@@ -66,3 +66,20 @@ class TestHFEndpointEncoder:
         )
         embeddings = encoder(["Hello World!"])
         assert embeddings == [[0.1, 0.2, 0.3]]
+
+    def test_initialization_failure_query_exception(self, requests_mock, mocker):
+        # Mock the query method to raise an exception
+        mocker.patch(
+            "semantic_router.encoders.huggingface.HFEndpointEncoder.query",
+            side_effect=Exception("Initialization error"),
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            HFEndpointEncoder(
+                huggingface_url="https://api-inference.huggingface.co/models/bert-base-uncased",
+                huggingface_api_key="test-api-key",
+            )
+        assert (
+            "HuggingFace endpoint client failed to initialize. Error: Initialization error"
+            in str(exc_info.value)
+        )
