@@ -1,5 +1,6 @@
 import pytest
 from semantic_router.encoders.huggingface import HFEndpointEncoder
+from unittest import mock
 
 
 @pytest.fixture
@@ -118,3 +119,24 @@ class TestHFEndpointEncoder:
         )
         embeddings = encoder(["Hello World!", "Test"])
         assert embeddings == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+
+    def test_query_with_estimated_time(self, encoder, requests_mock):
+        # Mock the response to simulate a 503 status with an estimated_time
+        requests_mock.post(
+            "https://api-inference.huggingface.co/models/bert-base-uncased",
+            [
+                {
+                    "json": {"estimated_time": 2},
+                    "status_code": 503,
+                },
+                {
+                    "json": [0.1, 0.2, 0.3],
+                    "status_code": 200,
+                },
+            ],
+        )
+
+        with mock.patch("time.sleep", return_value=None) as mock_sleep:
+            response = encoder.query({"inputs": "Hello World!", "parameters": {}})
+            assert response == [0.1, 0.2, 0.3]
+            mock_sleep.assert_called_once_with(2)
