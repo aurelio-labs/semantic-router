@@ -529,12 +529,14 @@ class RouteLayer:
     def is_synced(self) -> bool:
         if not self.index.sync:
             raise ValueError("Index is not set to sync with remote index.")
-        
+
         local_route_names, local_utterances, local_function_schemas, local_metadata = (
             self._extract_routes_details(self.routes, include_metadata=True)
         )
-        return self.index.is_synced(local_route_names, local_utterances, local_function_schemas, local_metadata)
-                
+        return self.index.is_synced(
+            local_route_names, local_utterances, local_function_schemas, local_metadata
+        )
+
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
         local_route_names, local_utterances, local_function_schemas, local_metadata = (

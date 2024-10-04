@@ -112,17 +112,17 @@ class BaseIndex(BaseModel):
 
     def is_synced(
         self,
-        local_route_names: List[str], 
-        local_utterances_list: List[str], 
-        local_function_schemas_list: List[Dict[str, Any]], 
-        local_metadata_list: List[Dict[str, Any]]
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas_list: List[Dict[str, Any]],
+        local_metadata_list: List[Dict[str, Any]],
     ) -> bool:
         """
         Checks whether local and remote index are synchronized.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
-    
+
     def _sync_index(
         self,
         local_route_names: List[str],

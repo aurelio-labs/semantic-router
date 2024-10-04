@@ -217,11 +217,11 @@ class PineconeIndex(BaseIndex):
 
     def _format_routes_dict_for_sync(
         self,
-        local_route_names: List[str], 
-        local_utterances_list: List[str], 
-        local_function_schemas_list: List[Dict[str, Any]], 
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas_list: List[Dict[str, Any]],
         local_metadata_list: List[Dict[str, Any]],
-        remote_routes: List[Tuple]
+        remote_routes: List[Tuple],
     ) -> Tuple[Dict, Dict]:
         remote_dict: Dict[str, Dict[str, Any]] = {
             route: {
@@ -252,13 +252,13 @@ class PineconeIndex(BaseIndex):
             local_dict[route]["metadata"] = metadata
 
         return local_dict, remote_dict
-    
+
     def is_synced(
         self,
-        local_route_names: List[str], 
-        local_utterances_list: List[str], 
-        local_function_schemas_list: List[Dict[str, Any]], 
-        local_metadata_list: List[Dict[str, Any]]
+        local_route_names: List[str],
+        local_utterances_list: List[str],
+        local_function_schemas_list: List[Dict[str, Any]],
+        local_metadata_list: List[Dict[str, Any]],
     ) -> bool:
         remote_routes = self.get_routes()
 
@@ -267,7 +267,7 @@ class PineconeIndex(BaseIndex):
             local_utterances_list,
             local_function_schemas_list,
             local_metadata_list,
-            remote_routes
+            remote_routes,
         )
         logger.info(f"LOCAL: {local_dict}")
         logger.info(f"REMOTE: {remote_dict}")
@@ -292,7 +292,7 @@ class PineconeIndex(BaseIndex):
                 or local_metadata != remote_metadata
             ):
                 return False
-            
+
         return True
 
     def _sync_index(
@@ -314,7 +314,7 @@ class PineconeIndex(BaseIndex):
             local_utterances_list,
             local_function_schemas_list,
             local_metadata_list,
-            remote_routes
+            remote_routes,
         )
 
         all_routes = set(remote_dict.keys()).union(local_dict.keys())
