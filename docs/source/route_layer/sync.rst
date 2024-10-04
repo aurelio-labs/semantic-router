@@ -68,3 +68,9 @@ You can try this yourself by running the following:
     rl = RouteLayer(encoder=encoder, routes=routes, index=pc_index)
 
 When initializing the `PineconeIndex` object, we can specify the `sync` parameter.
+
+Checking for Synchronization
+----------------------------
+
+To verify whether the local and remote instances are synchronized, you can use the `is_synced` method. This method checks if the routes, utterances, and associated metadata in the local instance match those stored in the remote index.
+Consider that if the `sync` flag is not set (e.g. for indexes different from Pinecone), it raises an error. If the index supports sync feature and everything aligns, it returns `True`, indicating that the local and remote instances are synchronized, otherwise it returns `False`.
