@@ -807,7 +807,9 @@ class RouteLayer:
 
             remote_routes = self.index.get_routes()
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes, utterances, metadata = map(list, zip(*remote_routes))
+            routes, utterances, function_schemas, metadata = map(
+                list, zip(*remote_routes)
+            )
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
             self.index.add(
