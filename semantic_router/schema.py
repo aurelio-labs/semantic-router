@@ -16,6 +16,8 @@ class EncoderType(Enum):
     CLIP = "clip"
     GOOGLE = "google"
     BEDROCK = "bedrock"
+    GIGACHAT = "gigachat"
+
 
 
 class EncoderInfo(BaseModel):

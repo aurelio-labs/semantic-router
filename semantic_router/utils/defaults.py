@@ -36,3 +36,8 @@ class EncoderDefault(Enum):
             "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"
         )
     }
+    GIGACHAT = {
+        "embedding_model": os.getenv(
+            "GIGACHAT_EMBEDDING_MODEL", "Embeddings"
+        )
+    }
