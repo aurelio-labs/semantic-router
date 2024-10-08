@@ -435,8 +435,40 @@ class RouteLayer:
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
-    def update(self, route_name: str, utterances: List[str]):
-        raise NotImplementedError("This method has not yet been implemented.")
+    def update(
+        self,
+        name: str,
+        threshold: Optional[float] = None,
+        utterances: Optional[List[str]] = None,
+    ):
+        """Updates the route specified in name. Allows the update of
+        threshold and/or utterances. If no values are provided via the
+        threshold or utterances parameters, those fields are not updated.
+        If neither field is provided raises a ValueError.
+
+        The name must exist within the local RouteLayer, if not a
+        KeyError will be raised.
+        """
+
+        if threshold is None and utterances is None:
+            raise ValueError(
+                "At least one of 'threshold' or 'utterances' must be provided."
+            )
+        if utterances:
+            raise NotImplementedError(
+                "The update method cannot be used for updating utterances yet."
+            )
+
+        route = self.get(name)
+        if route:
+            if threshold:
+                old_threshold = route.score_threshold
+                route.score_threshold = threshold
+                logger.info(
+                    f"Updated threshold for route '{route.name}' from {old_threshold} to {threshold}"
+                )
+        else:
+            raise ValueError(f"Route '{name}' not found. Nothing updated.")
 
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
@@ -493,6 +525,17 @@ class RouteLayer:
         except Exception as e:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
+
+    def is_synced(self) -> bool:
+        if not self.index.sync:
+            raise ValueError("Index is not set to sync with remote index.")
+
+        local_route_names, local_utterances, local_function_schemas, local_metadata = (
+            self._extract_routes_details(self.routes, include_metadata=True)
+        )
+        return self.index.is_synced(
+            local_route_names, local_utterances, local_function_schemas, local_metadata
+        )
 
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
