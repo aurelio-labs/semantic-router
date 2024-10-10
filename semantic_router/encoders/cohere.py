@@ -9,6 +9,7 @@ from semantic_router.utils.defaults import EncoderDefault
 
 class CohereEncoder(BaseEncoder):
     _client: Any = PrivateAttr()
+    _embed_type: Any = PrivateAttr()
     type: str = "cohere"
     input_type: Optional[str] = "search_query"
 
@@ -40,7 +41,7 @@ class CohereEncoder(BaseEncoder):
         try:
             import cohere
             from cohere.types.embed_response import EmbeddingsByTypeEmbedResponse
-            self.EmbeddingsByTypeEmbedResponse = EmbeddingsByTypeEmbedResponse
+            self._embed_type = EmbeddingsByTypeEmbedResponse
         except ImportError:
             raise ImportError(
                 "Please install Cohere to use CohereEncoder. "
@@ -66,7 +67,7 @@ class CohereEncoder(BaseEncoder):
                 texts=docs, input_type=self.input_type, model=self.name
             )
             # Check for unsupported type.
-            if isinstance(embeds, self.EmbeddingsByTypeEmbedResponse):
+            if isinstance(embeds, self._embed_type):
                 raise NotImplementedError(
                     "Handling of EmbedByTypeResponseEmbeddings is not implemented."
                 )
