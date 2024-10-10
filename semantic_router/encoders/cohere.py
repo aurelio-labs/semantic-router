@@ -29,7 +29,7 @@ class CohereEncoder(BaseEncoder):
         )
         self.input_type = input_type
         self._client = self._initialize_client(cohere_api_key)
-    
+
     def _initialize_client(self, cohere_api_key: Optional[str] = None):
         """Initializes the Cohere client.
 
@@ -41,6 +41,7 @@ class CohereEncoder(BaseEncoder):
         try:
             import cohere
             from cohere.types.embed_response import EmbeddingsByTypeEmbedResponse
+
             self._embed_type = EmbeddingsByTypeEmbedResponse
         except ImportError:
             raise ImportError(
