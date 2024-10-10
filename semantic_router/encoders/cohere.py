@@ -8,7 +8,7 @@ from semantic_router.utils.defaults import EncoderDefault
 
 
 class CohereEncoder(BaseEncoder):
-    client: Any = PrivateAttr()
+    _client: Any = PrivateAttr()
     type: str = "cohere"
     input_type: Optional[str] = "search_query"
 
@@ -27,7 +27,7 @@ class CohereEncoder(BaseEncoder):
             input_type=input_type,  # type: ignore
         )
         self.input_type = input_type
-        self.client = self._initialize_client(cohere_api_key)
+        self._client = self._initialize_client(cohere_api_key)
     
     def _initialize_client(self, cohere_api_key: Optional[str] = None):
         """Initializes the Cohere client.
@@ -59,10 +59,10 @@ class CohereEncoder(BaseEncoder):
         return client
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("Cohere client is not initialized.")
         try:
-            embeds = self.client.embed(
+            embeds = self._client.embed(
                 texts=docs, input_type=self.input_type, model=self.name
             )
             # Check for unsupported type.
