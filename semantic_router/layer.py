@@ -250,7 +250,6 @@ class RouteLayer:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = self._encode(text=text)
-
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
@@ -436,8 +435,40 @@ class RouteLayer:
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
 
-    def update(self, route_name: str, utterances: List[str]):
-        raise NotImplementedError("This method has not yet been implemented.")
+    def update(
+        self,
+        name: str,
+        threshold: Optional[float] = None,
+        utterances: Optional[List[str]] = None,
+    ):
+        """Updates the route specified in name. Allows the update of
+        threshold and/or utterances. If no values are provided via the
+        threshold or utterances parameters, those fields are not updated.
+        If neither field is provided raises a ValueError.
+
+        The name must exist within the local RouteLayer, if not a
+        KeyError will be raised.
+        """
+
+        if threshold is None and utterances is None:
+            raise ValueError(
+                "At least one of 'threshold' or 'utterances' must be provided."
+            )
+        if utterances:
+            raise NotImplementedError(
+                "The update method cannot be used for updating utterances yet."
+            )
+
+        route = self.get(name)
+        if route:
+            if threshold:
+                old_threshold = route.score_threshold
+                route.score_threshold = threshold
+                logger.info(
+                    f"Updated threshold for route '{route.name}' from {old_threshold} to {threshold}"
+                )
+        else:
+            raise ValueError(f"Route '{name}' not found. Nothing updated.")
 
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
@@ -448,7 +479,10 @@ class RouteLayer:
         if route_name not in [route.name for route in self.routes]:
             err_msg = f"Route `{route_name}` not found in RouteLayer"
             logger.warning(err_msg)
-            self.index.delete(route_name=route_name)
+            try:
+                self.index.delete(route_name=route_name)
+            except Exception as e:
+                logger.error(f"Failed to delete route from the index: {e}")
         else:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
@@ -492,6 +526,17 @@ class RouteLayer:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
 
+    def is_synced(self) -> bool:
+        if not self.index.sync:
+            raise ValueError("Index is not set to sync with remote index.")
+
+        local_route_names, local_utterances, local_function_schemas, local_metadata = (
+            self._extract_routes_details(self.routes, include_metadata=True)
+        )
+        return self.index.is_synced(
+            local_route_names, local_utterances, local_function_schemas, local_metadata
+        )
+
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
         local_route_names, local_utterances, local_function_schemas, local_metadata = (
@@ -503,12 +548,8 @@ class RouteLayer:
             local_utterances,
             local_function_schemas,
             local_metadata,
-            dimensions=len(self.encoder(["dummy"])[0]),
+            dimensions=self.index.dimensions or len(self.encoder(["dummy"])[0]),
         )
-
-        logger.info(f"Routes to add: {routes_to_add}")
-        logger.info(f"Routes to delete: {routes_to_delete}")
-        logger.info(f"Layer routes: {layer_routes_dict}")
 
         data_to_delete = {}  # type: ignore
         for route, utterance in routes_to_delete:
@@ -766,7 +807,9 @@ class RouteLayer:
 
             remote_routes = self.index.get_routes()
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes, utterances, metadata = map(list, zip(*remote_routes))
+            routes, utterances, function_schemas, metadata = map(
+                list, zip(*remote_routes)
+            )
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
             self.index.add(

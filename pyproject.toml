@@ -1,17 +1,8 @@
 [tool.poetry]
 name = "semantic-router"
-version = "0.0.65"
+version = "0.0.72"
 description = "Super fast semantic router for AI decision making"
-authors = [
-    "James Briggs <james@aurelio.ai>",
-    "Siraj Aizlewood <siraj@aurelio.ai>",
-    "Simonas Jakubonis <simonas@aurelio.ai>",
-    "Luca Mannini <luca@aurelio.ai>",
-    "Bogdan Buduroiu <bogdan@aurelio.ai>",
-    "Ismail Ashraq <ashraq@aurelio.ai>",
-    "Daniel Griffin <daniel@aurelio.ai>",
-    "Tolga Arslan <tolga@aurelio.ai>"
-]
+authors = ["Aurelio AI <hello@aurelio.ai>"]
 readme = "README.md"
 packages = [{include = "semantic_router"}]
 license = "MIT"
@@ -20,7 +11,7 @@ license = "MIT"
 python = ">=3.9,<3.13"
 pydantic = "^2.5.3"
 openai = ">=1.10.0,<2.0.0"
-cohere = ">=5.00,<6.00"
+cohere = {version = ">=5.9.4,<6.00", optional = true}
 mistralai= {version = ">=0.0.12,<0.1.0", optional = true}
 numpy = "^1.25.2"
 colorlog = "^6.8.0"
@@ -31,7 +22,7 @@ transformers = {version = ">=4.36.2", optional = true}
 tokenizers = {version = ">=0.19", optional = true}
 llama-cpp-python = {version = ">=0.2.28,<0.2.86", optional = true}
 colorama = "^0.4.6"
-pinecone-client = {version=">=3.0.0,<4.0.0", optional = true}
+pinecone = {version=">=5.0.0", optional = true}
 regex = ">=2023.12.25"
 torchvision = { version = ">=0.17.0,<0.18.0", optional = true}
 pillow = { version = ">=10.2.0,<11.0.0", optional = true}
@@ -52,7 +43,7 @@ sphinxawesome-theme = {version = "^5.2.0", optional = true}
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
 local = ["torch", "transformers", "tokenizers", "huggingface-hub", "llama-cpp-python"]
-pinecone = ["pinecone-client"]
+pinecone = ["pinecone"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
 processing = ["matplotlib"]
 mistralai = ["mistralai"]
@@ -63,6 +54,7 @@ bedrock = ["boto3", "botocore"]
 postgres = ["psycopg2"]
 fastembed = ["fastembed"]
 docs = ["sphinx", "sphinxawesome-theme"]
+cohere = ["cohere"]
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.0"
