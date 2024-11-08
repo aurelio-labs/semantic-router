@@ -3,6 +3,8 @@ from typing import Any, List, Optional, Tuple, Union, Dict
 import numpy as np
 from pydantic.v1 import BaseModel
 
+from semantic_router.schema import ConfigParameter
+
 
 class BaseIndex(BaseModel):
     """
@@ -140,6 +142,22 @@ class BaseIndex(BaseModel):
         - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
         - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
         - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
+
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def _read_hash(self) -> ConfigParameter:
+        """
+        Read the hash of the previously written index.
+
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def _write_config(self, config: ConfigParameter):
+        """
+        Write a config parameter to the index.
 
         This method should be implemented by subclasses.
         """

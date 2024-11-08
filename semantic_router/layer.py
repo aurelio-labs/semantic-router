@@ -2,6 +2,7 @@ import importlib
 import json
 import os
 import random
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -13,7 +14,7 @@ from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import EncoderType, RouteChoice
+from semantic_router.schema import ConfigParameter, EncoderType, RouteChoice
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -169,6 +170,13 @@ class LayerConfig:
         else:
             self.routes = [route for route in self.routes if route.name != name]
             logger.info(f"Removed route `{name}`")
+
+    def get_hash(self) -> ConfigParameter:
+        layer = self.to_dict()
+        return ConfigParameter(
+            field="sr_hash",
+            value=hashlib.sha256(json.dumps(layer).encode()).hexdigest(),
+        )
 
 
 class RouteLayer:
@@ -526,15 +534,32 @@ class RouteLayer:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
 
-    def is_synced(self) -> bool:
-        if not self.index.sync:
-            raise ValueError("Index is not set to sync with remote index.")
+    def _get_hash(self) -> ConfigParameter:
+        config = self.to_config()
+        return config.get_hash()
 
+    def is_synced(self) -> bool:
+        """Check if the local and remote route layer instances are synchronized.
+        """
+        #if not self.index.sync:
+        #    raise ValueError("Index is not set to sync with remote index.")
+
+        # first check hash
+        local_hash = self._get_hash()
+        remote_hash = self.index._read_hash()
+        if local_hash.value == remote_hash.value:
+            return True
+        # TODO: we may be able to remove the below logic
+        # if hashes are different, double check
         local_route_names, local_utterances, local_function_schemas, local_metadata = (
             self._extract_routes_details(self.routes, include_metadata=True)
         )
+        # return result of double check
         return self.index.is_synced(
-            local_route_names, local_utterances, local_function_schemas, local_metadata
+            local_route_names=local_route_names,
+            local_utterances_list=local_utterances,
+            local_function_schemas_list=local_function_schemas,
+            local_metadata_list=local_metadata,
         )
 
     def _add_and_sync_routes(self, routes: List[Route]):

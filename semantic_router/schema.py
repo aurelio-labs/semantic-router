@@ -1,6 +1,7 @@
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Union, Any, Dict
-from pydantic.v1 import BaseModel
+from pydantic.v1 import BaseModel, Field
 
 
 class EncoderType(Enum):
@@ -63,6 +64,23 @@ class DocumentSplit(BaseModel):
     def content(self) -> str:
         return " ".join([doc if isinstance(doc, str) else "" for doc in self.docs])
 
+class ConfigParameter(BaseModel):
+    field: str
+    value: str
+    namespace: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
+    def to_pinecone(self, dimensions: int):
+        return {
+            "id": f"{self.field}#{self.namespace}",
+            "values": [0.1] * dimensions,
+            "metadata": {
+                "value": self.value,
+                "created_at": self.created_at,
+                "namespace": self.namespace,
+                "field": self.field,
+            },
+        }
 
 class Metric(Enum):
     COSINE = "cosine"

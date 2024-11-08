@@ -11,6 +11,7 @@ import numpy as np
 from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
+from semantic_router.schema import ConfigParameter
 from semantic_router.utils.logger import logger
 
 
@@ -23,7 +24,7 @@ class PineconeRecord(BaseModel):
     values: List[float]
     route: str
     utterance: str
-    function_schema: str
+    function_schema: str = "{}"
     metadata: Dict[str, Any] = {}  # Additional metadata dictionary
 
     def __init__(self, **data):
@@ -75,7 +76,7 @@ class PineconeIndex(BaseIndex):
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
-        sync: str = "local",
+        sync: Optional[str] = None,
         init_async_index: bool = False,
     ):
         super().__init__()
@@ -85,6 +86,8 @@ class PineconeIndex(BaseIndex):
         self.cloud = cloud
         self.region = region
         self.host = host
+        if namespace == "sr_config":
+            raise ValueError("Namespace 'sr_config' is reserved for internal use.")
         self.namespace = namespace
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
@@ -673,6 +676,32 @@ class PineconeIndex(BaseIndex):
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
+
+    def _read_hash(self) -> ConfigParameter:
+        hash_record = self.index.fetch(
+            ids=[f"sr_hash#{self.namespace}"],
+            namespace="sr_config",
+        )
+        if hash_record["vectors"]:
+            return ConfigParameter(
+                field="sr_hash",
+                value=hash_record["vectors"]["sr_hash"]["metadata"]["value"],
+                created_at=hash_record["vectors"]["sr_hash"]["metadata"]["created_at"],
+                namespace=self.namespace,
+            )
+        else:
+            raise ValueError("Configuration for hash parameter not found in index.")
+
+    def _write_config(self, config: ConfigParameter) -> None:
+        """Method to write a config parameter to the remote Pinecone index.
+
+        :param config: The config parameter to write to the index.
+        :type config: ConfigParameter
+        """
+        self.index.upsert(
+            vectors=[config.to_pinecone(dimensions=self.dimensions)],
+            namespace="sr_config",
+        )
 
     async def aquery(
         self,
