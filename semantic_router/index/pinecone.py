@@ -678,6 +678,8 @@ class PineconeIndex(BaseIndex):
         return np.array(scores), route_names
 
     def _read_hash(self) -> ConfigParameter:
+        if self.index is None:
+            raise ValueError("Index has not been initialized.")
         hash_record = self.index.fetch(
             ids=[f"sr_hash#{self.namespace}"],
             namespace="sr_config",
@@ -698,6 +700,10 @@ class PineconeIndex(BaseIndex):
         :param config: The config parameter to write to the index.
         :type config: ConfigParameter
         """
+        if self.index is None:
+            raise ValueError("Index has not been initialized.")
+        if self.dimensions is None:
+            raise ValueError("Must set PineconeIndex.dimensions before writing config.")
         self.index.upsert(
             vectors=[config.to_pinecone(dimensions=self.dimensions)],
             namespace="sr_config",

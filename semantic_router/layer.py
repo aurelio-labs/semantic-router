@@ -539,9 +539,8 @@ class RouteLayer:
         return config.get_hash()
 
     def is_synced(self) -> bool:
-        """Check if the local and remote route layer instances are synchronized.
-        """
-        #if not self.index.sync:
+        """Check if the local and remote route layer instances are synchronized."""
+        # if not self.index.sync:
         #    raise ValueError("Index is not set to sync with remote index.")
 
         # first check hash
@@ -549,7 +548,7 @@ class RouteLayer:
         remote_hash = self.index._read_hash()
         if local_hash.value == remote_hash.value:
             return True
-        # TODO: we may be able to remove the below logic
+        # TODO: we may be able to remove the below logic
         # if hashes are different, double check
         local_route_names, local_utterances, local_function_schemas, local_metadata = (
             self._extract_routes_details(self.routes, include_metadata=True)

@@ -64,15 +64,18 @@ class DocumentSplit(BaseModel):
     def content(self) -> str:
         return " ".join([doc if isinstance(doc, str) else "" for doc in self.docs])
 
+
 class ConfigParameter(BaseModel):
     field: str
     value: str
-    namespace: str = ""
+    namespace: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
     def to_pinecone(self, dimensions: int):
+        if self.namespace is None:
+            namespace = ""
         return {
-            "id": f"{self.field}#{self.namespace}",
+            "id": f"{self.field}#{namespace}",
             "values": [0.1] * dimensions,
             "metadata": {
                 "value": self.value,
@@ -81,6 +84,7 @@ class ConfigParameter(BaseModel):
                 "field": self.field,
             },
         }
+
 
 class Metric(Enum):
     COSINE = "cosine"
