@@ -127,7 +127,9 @@ class LayerConfig:
     @classmethod
     def from_tuples(
         cls,
-        route_tuples: List[Tuple[str, str]],
+        route_tuples: List[
+            Tuple[str, str, Optional[List[Dict[str, Any]]], Dict[str, Any]]
+        ],
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
@@ -142,25 +144,25 @@ class LayerConfig:
         :param encoder_name: The name of the encoder to use, defaults to None.
         :type encoder_name: Optional[str], optional
         """
-        routes: List[Route] = []
-        routes_dict: Dict[str, List[str]] = {}
-        # first create a dictionary of routes mapping to all their utterances,
-        # function_schema, and metadata
+        routes_dict: Dict[str, Route] = {}
+        # first create a dictionary of route names to Route objects
+        # TODO: duplicated code with BaseIndex.get_routes()
         for route_name, utterance, function_schema, metadata in route_tuples:
-            routes_dict.setdefault(
-                route_name,
-                {
-                    "function_schemas": None,
-                    "metadata": {},
-                },
-            )
-            routes_dict[route_name]["utterances"] = routes_dict[route_name].get(
-                "utterances", []
-            )
-            routes_dict[route_name]["utterances"].append(utterance)
+            # if the route is not in the dictionary, add it
+            if route_name not in routes_dict:
+                routes_dict[route_name] = Route(
+                    name=route_name,
+                    utterances=[utterance],
+                    function_schemas=function_schema,
+                    metadata=metadata,
+                )
+            else:
+                # otherwise, add the utterance to the route
+                routes_dict[route_name].utterances.append(utterance)
         # then create a list of routes from the dictionary
-        for route_name, route_data in routes_dict.items():
-            routes.append(Route(name=route_name, **route_data))
+        routes: List[Route] = []
+        for route_name, route in routes_dict.items():
+            routes.append(route)
         return cls(routes=routes, encoder_type=encoder_type, encoder_name=encoder_name)
 
     @classmethod
@@ -216,7 +218,7 @@ class LayerConfig:
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
 
-    def _get_diff(self, other: "LayerConfig") -> List[Dict[str, Any]]:
+    def _get_diff(self, other: "LayerConfig") -> List[str]:
         """Get the difference between two LayerConfigs.
 
         :param other: The LayerConfig to compare to.
@@ -224,6 +226,8 @@ class LayerConfig:
         :return: A list of differences between the two LayerConfigs.
         :rtype: List[Dict[str, Any]]
         """
+        # TODO: formalize diffs into likely LayerDiff objects that can then
+        # output different formats as required to enable smarter syncs
         self_yaml = yaml.dump(self.to_dict())
         other_yaml = yaml.dump(other.to_dict())
         differ = Differ()

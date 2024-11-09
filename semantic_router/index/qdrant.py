@@ -227,7 +227,9 @@ class QdrantIndex(BaseIndex):
 
             results.extend(records)
 
-        route_tuples = [
+        route_tuples: List[
+            Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
+        ] = [
             (
                 x.payload[SR_ROUTE_PAYLOAD_KEY],
                 x.payload[SR_UTTERANCE_PAYLOAD_KEY],

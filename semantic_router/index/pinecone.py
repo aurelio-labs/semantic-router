@@ -539,6 +539,13 @@ class PineconeIndex(BaseIndex):
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
         Retrieves all vector IDs from the Pinecone index using pagination.
+
+        :param prefix: The prefix to filter the vectors by.
+        :type prefix: Optional[str]
+        :param include_metadata: Whether to include metadata in the response.
+        :type include_metadata: bool
+        :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
+        :rtype: tuple[list[str], list[dict]]
         """
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
@@ -560,18 +567,6 @@ class PineconeIndex(BaseIndex):
                     )
 
         return all_vector_ids, metadata
-
-    def get_utterances(self) -> List[Tuple]:
-        """Gets a list of route and utterance objects currently stored in the
-        index, including additional metadata.
-
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
-        """
-        _, metadata = self._get_all(include_metadata=True)
-        route_tuples = parse_route_info(metadata=metadata)
-        return route_tuples
 
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
@@ -877,46 +872,5 @@ class PineconeIndex(BaseIndex):
                 response_data.get("vectors", {}).get(vector_id, {}).get("metadata", {})
             )
 
-    async def _async_get_routes(self) -> List[Tuple]:
-        """Asynchronously gets a list of route and utterance objects currently
-        stored in the index, including additional metadata.
-
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
-        """
-        _, metadata = await self._async_get_all(include_metadata=True)
-        route_info = parse_route_info(metadata=metadata)
-        return route_info  # type: ignore
-
     def __len__(self):
         return self.index.describe_index_stats()["total_vector_count"]
-
-
-def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
-    """Parses metadata from Pinecone index to extract route, utterance, function
-    schema and additional metadata.
-
-    :param metadata: List of metadata dictionaries.
-    :type metadata: List[Dict[str, Any]]
-    :return: A list of tuples, each containing route, utterance, function schema and additional metadata.
-    :rtype: List[Tuple]
-    """
-    route_info = []
-    for record in metadata:
-        sr_route = record.get("sr_route", "")
-        sr_utterance = record.get("sr_utterance", "")
-        sr_function_schema = json.loads(record.get("sr_function_schema", "{}"))
-        if sr_function_schema == {}:
-            sr_function_schema = None
-
-        additional_metadata = {
-            key: value
-            for key, value in record.items()
-            if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
-        }
-        # TODO: Not a fan of tuple packing here
-        route_info.append(
-            (sr_route, sr_utterance, sr_function_schema, additional_metadata)
-        )
-    return route_info

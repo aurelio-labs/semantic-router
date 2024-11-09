@@ -422,19 +422,6 @@ class PostgresIndex(BaseIndex):
 
         return all_vector_ids, metadata
 
-    def get_utterances(self) -> List[Tuple]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
-
-        :return: A list of (route_name, utterance, function_schema, metadata) tuples.
-        :rtype: List[Tuple]
-        """
-        # Get all records with metadata
-        _, metadata = self._get_all(include_metadata=True)
-        # Create a list of (route_name, utterance, function_schema, metadata) tuples
-        route_tuples = [(x["sr_route"], x["sr_utterance"], None, {}) for x in metadata]
-        return route_tuples
-
     def delete_all(self):
         """
         Deletes all records from the Postgres index.
