@@ -1,7 +1,5 @@
 import importlib
 import os
-import tempfile
-from unittest.mock import patch
 from datetime import datetime
 import pytest
 import time
@@ -10,8 +8,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.layer import LayerConfig, RouteLayer
-from semantic_router.llms.base import BaseLLM
+from semantic_router.layer import RouteLayer
 from semantic_router.route import Route
 from platform import python_version
 
@@ -214,7 +211,9 @@ class TestRouteLayer:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_second_initialization_not_synced(self, openai_encoder, routes_2, index_cls):
+    def test_second_initialization_not_synced(
+        self, openai_encoder, routes_2, index_cls
+    ):
         index = init_index(index_cls)
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes_2, top_k=10, index=index, sync=None
