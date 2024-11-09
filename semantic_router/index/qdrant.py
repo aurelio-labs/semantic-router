@@ -199,12 +199,12 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Tuple]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
         Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+            List[Tuple]: A list of (route_name, utterance, function_schema, metadata) objects.
         """
 
         from qdrant_client import grpc
@@ -228,7 +228,12 @@ class QdrantIndex(BaseIndex):
             results.extend(records)
 
         route_tuples = [
-            (x.payload[SR_ROUTE_PAYLOAD_KEY], x.payload[SR_UTTERANCE_PAYLOAD_KEY])
+            (
+                x.payload[SR_ROUTE_PAYLOAD_KEY],
+                x.payload[SR_UTTERANCE_PAYLOAD_KEY],
+                None,
+                {},
+            )
             for x in results
         ]
         return route_tuples

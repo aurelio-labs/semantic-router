@@ -423,17 +423,17 @@ class PostgresIndex(BaseIndex):
 
         return all_vector_ids, metadata
 
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Tuple]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
-        :return: A list of (route_name, utterance) tuples.
+        :return: A list of (route_name, utterance, function_schema, metadata) tuples.
         :rtype: List[Tuple]
         """
         # Get all records with metadata
         _, metadata = self._get_all(include_metadata=True)
-        # Create a list of (route_name, utterance) tuples
-        route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
+        # Create a list of (route_name, utterance, function_schema, metadata) tuples
+        route_tuples = [(x["sr_route"], x["sr_utterance"], None, {}) for x in metadata]
         return route_tuples
 
     def delete_all(self):
@@ -463,7 +463,7 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def aget_routes(self):
-        logger.error("Sync remove is not implemented for PostgresIndex.")
+        raise NotImplementedError("Sync remove is not implemented for PostgresIndex.")
 
     def __len__(self):
         """

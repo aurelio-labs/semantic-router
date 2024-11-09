@@ -1,3 +1,4 @@
+from difflib import Differ
 import importlib
 import json
 import os
@@ -123,6 +124,68 @@ class LayerConfig:
                 encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
             )
 
+    @classmethod
+    def from_tuples(
+        cls,
+        route_tuples: List[Tuple[str, str]],
+        encoder_type: str = "openai",
+        encoder_name: Optional[str] = None,
+    ):
+        """Initialize a LayerConfig from a list of tuples of routes and
+        utterances.
+
+        :param route_tuples: A list of tuples, each containing a route name and an
+            associated utterance.
+        :type route_tuples: List[Tuple[str, str]]
+        :param encoder_type: The type of encoder to use, defaults to "openai".
+        :type encoder_type: str, optional
+        :param encoder_name: The name of the encoder to use, defaults to None.
+        :type encoder_name: Optional[str], optional
+        """
+        routes: List[Route] = []
+        routes_dict: Dict[str, List[str]] = {}
+        # first create a dictionary of routes mapping to all their utterances,
+        # function_schema, and metadata
+        for route_name, utterance, function_schema, metadata in route_tuples:
+            routes_dict.setdefault(
+                route_name,
+                {
+                    "function_schemas": None,
+                    "metadata": {},
+                },
+            )
+            routes_dict[route_name]["utterances"] = routes_dict[route_name].get(
+                "utterances", []
+            )
+            routes_dict[route_name]["utterances"].append(utterance)
+        # then create a list of routes from the dictionary
+        for route_name, route_data in routes_dict.items():
+            routes.append(Route(name=route_name, **route_data))
+        return cls(routes=routes, encoder_type=encoder_type, encoder_name=encoder_name)
+
+    @classmethod
+    def from_index(
+        cls,
+        index: BaseIndex,
+        encoder_type: str = "openai",
+        encoder_name: Optional[str] = None,
+    ):
+        """Initialize a LayerConfig from a BaseIndex object.
+
+        :param index: The index to initialize the LayerConfig from.
+        :type index: BaseIndex
+        :param encoder_type: The type of encoder to use, defaults to "openai".
+        :type encoder_type: str, optional
+        :param encoder_name: The name of the encoder to use, defaults to None.
+        :type encoder_name: Optional[str], optional
+        """
+        remote_routes = index.get_utterances()
+        return cls.from_tuples(
+            route_tuples=remote_routes,
+            encoder_type=encoder_type,
+            encoder_name=encoder_name,
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "encoder_type": self.encoder_type,
@@ -152,6 +215,30 @@ class LayerConfig:
                 json.dump(self.to_dict(), f, indent=4)
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
+
+    def _get_diff(self, other: "LayerConfig") -> List[Dict[str, Any]]:
+        """Get the difference between two LayerConfigs.
+
+        :param other: The LayerConfig to compare to.
+        :type other: LayerConfig
+        :return: A list of differences between the two LayerConfigs.
+        :rtype: List[Dict[str, Any]]
+        """
+        self_yaml = yaml.dump(self.to_dict())
+        other_yaml = yaml.dump(other.to_dict())
+        differ = Differ()
+        return list(differ.compare(self_yaml.splitlines(), other_yaml.splitlines()))
+
+    def show_diff(self, other: "LayerConfig") -> str:
+        """Show the difference between two LayerConfigs.
+
+        :param other: The LayerConfig to compare to.
+        :type other: LayerConfig
+        :return: A string showing the difference between the two LayerConfigs.
+        :rtype: str
+        """
+        diff = self._get_diff(other)
+        return "\n".join(diff)
 
     def add(self, route: Route):
         self.routes.append(route)
@@ -499,7 +586,7 @@ class RouteLayer:
         """Pulls out the latest routes from the index."""
         raise NotImplementedError("This method has not yet been implemented.")
         route_mapping = {route.name: route for route in self.routes}
-        index_routes = self.index.get_routes()
+        index_routes = self.index.get_utterances()
         new_routes_names = []
         new_routes = []
         for route_name, utterance in index_routes:
@@ -548,18 +635,45 @@ class RouteLayer:
         remote_hash = self.index._read_hash()
         if local_hash.value == remote_hash.value:
             return True
-        # TODO: we may be able to remove the below logic
-        # if hashes are different, double check
-        local_route_names, local_utterances, local_function_schemas, local_metadata = (
-            self._extract_routes_details(self.routes, include_metadata=True)
+        else:
+            return False
+
+    def get_utterance_diff(self) -> List[str]:
+        """Get the difference between the local and remote utterances. Returns
+        a list of strings showing what is different in the remote when compared
+        to the local. For example:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "- route2: utterance3",
+         "- route2: utterance4"]
+
+        Tells us that the remote is missing "route2: utterance3" and "route2:
+        utterance4", which do exist locally. If we see:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "+ route2: utterance3",
+         "+ route2: utterance4"]
+
+        This diff tells us that the remote has "route2: utterance3" and
+        "route2: utterance4", which do not exist locally.
+        """
+        # first we get remote and local utterances
+        remote_utterances = [f"{x[0]}: {x[1]}" for x in self.index.get_utterances()]
+        local_routes, local_utterance_arr, _ = self._extract_routes_details(
+            self.routes, include_metadata=False
         )
-        # return result of double check
-        return self.index.is_synced(
-            local_route_names=local_route_names,
-            local_utterances_list=local_utterances,
-            local_function_schemas_list=local_function_schemas,
-            local_metadata_list=local_metadata,
-        )
+        local_utterances = [
+            f"{x[0]}: {x[1]}" for x in zip(local_routes, local_utterance_arr)
+        ]
+        # sort local and remote utterances
+        local_utterances.sort()
+        remote_utterances.sort()
+        # now get diff
+        differ = Differ()
+        diff = list(differ.compare(local_utterances, remote_utterances))
+        return diff
 
     def _add_and_sync_routes(self, routes: List[Route]):
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
@@ -829,7 +943,7 @@ class RouteLayer:
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_routes()
+            remote_routes = self.index.get_utterances()
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
             routes, utterances, function_schemas, metadata = map(
                 list, zip(*remote_routes)

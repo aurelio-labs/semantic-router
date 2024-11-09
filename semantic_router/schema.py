@@ -80,7 +80,7 @@ class ConfigParameter(BaseModel):
             "metadata": {
                 "value": self.value,
                 "created_at": self.created_at,
-                "namespace": self.namespace,
+                "namespace": namespace,
                 "field": self.field,
             },
         }

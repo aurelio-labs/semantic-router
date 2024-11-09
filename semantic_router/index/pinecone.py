@@ -218,6 +218,7 @@ class PineconeIndex(BaseIndex):
             logger.warning("Index could not be initialized.")
         self.host = index_stats["host"] if index_stats else None
 
+    # TODO: deprecate?
     def _format_routes_dict_for_sync(
         self,
         local_route_names: List[str],
@@ -256,48 +257,6 @@ class PineconeIndex(BaseIndex):
 
         return local_dict, remote_dict
 
-    def is_synced(
-        self,
-        local_route_names: List[str],
-        local_utterances_list: List[str],
-        local_function_schemas_list: List[Dict[str, Any]],
-        local_metadata_list: List[Dict[str, Any]],
-    ) -> bool:
-        remote_routes = self.get_routes()
-
-        local_dict, remote_dict = self._format_routes_dict_for_sync(
-            local_route_names,
-            local_utterances_list,
-            local_function_schemas_list,
-            local_metadata_list,
-            remote_routes,
-        )
-        logger.info(f"LOCAL: {local_dict}")
-        logger.info(f"REMOTE: {remote_dict}")
-
-        all_routes = set(remote_dict.keys()).union(local_dict.keys())
-
-        for route in all_routes:
-            local_utterances = local_dict.get(route, {}).get("utterances", set())
-            remote_utterances = remote_dict.get(route, {}).get("utterances", set())
-            local_function_schemas = (
-                local_dict.get(route, {}).get("function_schemas", {}) or {}
-            )
-            remote_function_schemas = (
-                remote_dict.get(route, {}).get("function_schemas", {}) or {}
-            )
-            local_metadata = local_dict.get(route, {}).get("metadata", {})
-            remote_metadata = remote_dict.get(route, {}).get("metadata", {})
-
-            if (
-                local_utterances != remote_utterances
-                or local_function_schemas != remote_function_schemas
-                or local_metadata != remote_metadata
-            ):
-                return False
-
-        return True
-
     def _sync_index(
         self,
         local_route_names: List[str],
@@ -310,7 +269,7 @@ class PineconeIndex(BaseIndex):
             self.dimensions = self.dimensions or dimensions
             self.index = self._init_index(force_create=True)
 
-        remote_routes = self.get_routes()
+        remote_routes = self.get_utterances()
 
         local_dict, remote_dict = self._format_routes_dict_for_sync(
             local_route_names,
@@ -602,7 +561,7 @@ class PineconeIndex(BaseIndex):
 
         return all_vector_ids, metadata
 
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Tuple]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
@@ -680,15 +639,16 @@ class PineconeIndex(BaseIndex):
     def _read_hash(self) -> ConfigParameter:
         if self.index is None:
             raise ValueError("Index has not been initialized.")
+        hash_id = f"sr_hash#{self.namespace}"
         hash_record = self.index.fetch(
-            ids=[f"sr_hash#{self.namespace}"],
+            ids=[hash_id],
             namespace="sr_config",
         )
         if hash_record["vectors"]:
             return ConfigParameter(
                 field="sr_hash",
-                value=hash_record["vectors"]["sr_hash"]["metadata"]["value"],
-                created_at=hash_record["vectors"]["sr_hash"]["metadata"]["created_at"],
+                value=hash_record["vectors"][hash_id]["metadata"]["value"],
+                created_at=hash_record["vectors"][hash_id]["metadata"]["created_at"],
                 namespace=self.namespace,
             )
         else:

@@ -72,5 +72,35 @@ When initializing the `PineconeIndex` object, we can specify the `sync` paramete
 Checking for Synchronization
 ----------------------------
 
-To verify whether the local and remote instances are synchronized, you can use the `is_synced` method. This method checks if the routes, utterances, and associated metadata in the local instance match those stored in the remote index.
-Consider that if the `sync` flag is not set (e.g. for indexes different from Pinecone), it raises an error. If the index supports sync feature and everything aligns, it returns `True`, indicating that the local and remote instances are synchronized, otherwise it returns `False`.
+To verify whether the local and remote instances are synchronized, you can use
+the `RouteLayer.is_synced` method. This method checks if the routes, utterances,
+and associated metadata in the local instance match those stored in the remote
+index.
+
+The `is_synced` method works in two steps. The first is our *fast* sync check.
+The fast check creates a hash of our local route layer which is constructed
+from:
+
+- `encoder_type` and `encoder_name`
+- `route` names
+- `route` utterances
+- `route` description
+- `route` function schemas (if any)
+- `route` llm (if any)
+- `route` score threshold
+- `route` metadata (if any)
+
+The fast check then compares this hash to the hash of the remote index. If
+the hashes match, we know that the local and remote instances are synchronized
+and we can return `True`. If the hashes do not match, we need to perform a
+*slow* sync check.
+
+The slow sync check works by creating a `LayerConfig` object from the remote
+index and then comparing this to our local `LayerConfig` object. If the two
+objects match, we know that the local and remote instances are synchronized and
+we can return `True`. If the two objects do not match, we need to perform a
+diff.
+
+The diff works by creating a list of all the routes in the remote index and
+then comparing these to the routes in our local instance. Any differences
+between the remote and local routes are shown in the diff.

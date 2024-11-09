@@ -252,14 +252,14 @@ class TestRouteLayer:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0]]
         assert route_layer.index is not None
-        assert len(route_layer.index.get_routes()) == 2
+        assert len(route_layer.index.get_utterances()) == 2
 
         # Add route2 and check
         route_layer.add(route=routes[1])
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0], routes[1]]
-        assert len(route_layer.index.get_routes()) == 5
+        assert len(route_layer.index.get_utterances()) == 5
 
     def test_list_route_names(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
@@ -306,7 +306,7 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.index is not None
-        assert len(route_layer.index.get_routes()) == 5
+        assert len(route_layer.index.get_utterances()) == 5
 
     def test_query_and_classification(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls, dimensions=3)
@@ -381,7 +381,7 @@ class TestRouteLayer:
                 encoder=openai_encoder, routes=routes_2, index=pinecone_index
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert route_layer.index.get_routes() == [
+            assert route_layer.index.get_utterances() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
@@ -393,7 +393,7 @@ class TestRouteLayer:
             )
 
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert route_layer.index.get_routes() == [
+            assert route_layer.index.get_utterances() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
@@ -405,7 +405,7 @@ class TestRouteLayer:
             )
 
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert route_layer.index.get_routes() == [
+            assert route_layer.index.get_utterances() == [
                 ("Route 1", "Hello", None, {}),
                 ("Route 2", "Hi", None, {}),
             ], "The routes in the index should match the local routes"
@@ -417,7 +417,7 @@ class TestRouteLayer:
             )
 
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert route_layer.index.get_routes() == [
+            assert route_layer.index.get_utterances() == [
                 ("Route 1", "Hello", None, {"type": "default"}),
                 ("Route 1", "Hi", None, {"type": "default"}),
                 ("Route 2", "Bye", None, {}),
@@ -432,7 +432,7 @@ class TestRouteLayer:
             )
 
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert route_layer.index.get_routes() == [
+            assert route_layer.index.get_utterances() == [
                 ("Route 1", "Hello", None, {"type": "default"}),
                 ("Route 1", "Hi", None, {"type": "default"}),
                 ("Route 1", "Goodbye", None, {"type": "default"}),

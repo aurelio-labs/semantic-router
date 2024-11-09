@@ -60,7 +60,7 @@ class LocalIndex(BaseIndex):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for LocalIndex.")
 
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Tuple]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 

@@ -4,6 +4,7 @@ import numpy as np
 from pydantic.v1 import BaseModel
 
 from semantic_router.schema import ConfigParameter
+from semantic_router.route import Route
 
 
 class BaseIndex(BaseModel):
@@ -37,16 +38,33 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def get_routes(self):
-        """
-        Retrieves a list of routes and their associated utterances from the index.
-        This method should be implemented by subclasses.
+    def get_routes(self) -> List[Route]:
+        """Gets a list of route objects currently stored in the index.
 
-        :returns: A list of tuples, each containing a route name and an associated utterance.
-        :rtype: list[tuple]
-        :raises NotImplementedError: If the method is not implemented by the subclass.
+        :return: A list of Route objects.
+        :rtype: List[Route]
         """
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        route_tuples = self.get_utterances()
+        routes_dict: Dict[str, List[str]] = {}
+        # first create a dictionary of routes mapping to all their utterances,
+        # function_schema, and metadata
+        for route_name, utterance, function_schema, metadata in route_tuples:
+            routes_dict.setdefault(
+                route_name,
+                {
+                    "function_schemas": None,
+                    "metadata": {},
+                },
+            )
+            routes_dict[route_name]["utterances"] = routes_dict[route_name].get(
+                "utterances", []
+            )
+            routes_dict[route_name]["utterances"].append(utterance)
+        # then create a list of routes from the dictionary
+        routes: List[Route] = []
+        for route_name, route_data in routes_dict.items():
+            routes.append(Route(name=route_name, **route_data))
+        return routes
 
     def _remove_and_sync(self, routes_to_delete: dict):
         """
