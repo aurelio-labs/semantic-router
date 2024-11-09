@@ -190,6 +190,9 @@ def get_test_indexes():
 
 @pytest.mark.parametrize("index_cls", get_test_indexes())
 class TestRouteLayer:
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         _ = RouteLayer(
@@ -198,6 +201,9 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
@@ -205,6 +211,9 @@ class TestRouteLayer:
         )
         assert route_layer.is_synced()
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_second_initialization_not_synced(self, openai_encoder, routes_2, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
@@ -212,6 +221,9 @@ class TestRouteLayer:
         )
         assert not route_layer.is_synced()
 
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_utterance_diff(self, openai_encoder, routes_2, index_cls):
         index = init_index(index_cls)
 
