@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import Metric
-from semantic_router.utils.logger import logger
 
 
 class MetricPgVecOperatorMap(Enum):
