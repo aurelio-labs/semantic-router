@@ -198,8 +198,6 @@ class TestRouteLayer:
         _ = RouteLayer(
             encoder=openai_encoder, routes=routes, top_k=10, index=index, sync=None
         )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -209,6 +207,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, top_k=10, index=index, sync=None
         )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.is_synced()
 
     @pytest.mark.skipif(
@@ -219,6 +219,8 @@ class TestRouteLayer:
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes_2, top_k=10, index=index, sync=None
         )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert not route_layer.is_synced()
 
     @pytest.mark.skipif(
@@ -226,10 +228,11 @@ class TestRouteLayer:
     )
     def test_utterance_diff(self, openai_encoder, routes_2, index_cls):
         index = init_index(index_cls)
-
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes_2, top_k=10, index=index, sync=None
         )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         diff = route_layer.get_utterance_diff()
         assert "+ Route 1: Hi" in diff
         assert "  Route 1: Hello" in diff
