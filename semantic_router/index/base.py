@@ -50,7 +50,15 @@ class BaseIndex(BaseModel):
         _, metadata = self._get_all(include_metadata=True)
         route_tuples: List[
             Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
-        ] = [(x["sr_route"], x["sr_utterance"], None, {}) for x in metadata]
+        ] = [
+            (
+                x["sr_route"],
+                x["sr_utterance"],
+                x.get("sr_function_schema", None),
+                x.get("sr_metadata", {}),
+            )
+            for x in metadata
+        ]
         return route_tuples
 
     def get_routes(self) -> List[Route]:
