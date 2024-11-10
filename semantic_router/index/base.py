@@ -54,7 +54,7 @@ class BaseIndex(BaseModel):
             (
                 x["sr_route"],
                 x["sr_utterance"],
-                x.get("sr_function_schema", None),
+                None if (fc := x.get("sr_function_schema", None)) == "null" else fc,
                 x.get("sr_metadata", {}),
             )
             for x in metadata
