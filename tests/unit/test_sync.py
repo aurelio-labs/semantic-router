@@ -212,12 +212,8 @@ class TestRouteLayer:
         self, openai_encoder, routes, routes_2, index_cls
     ):
         index = init_index(index_cls, sync=None)
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index
-        )
-        route_layer2 = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, index=index
-        )
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        _ = RouteLayer(encoder=openai_encoder, routes=routes_2, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.is_synced() is False
