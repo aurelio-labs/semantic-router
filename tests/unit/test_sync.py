@@ -209,15 +209,18 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_second_initialization_not_synced(
-        self, openai_encoder, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls
     ):
-        index = init_index(index_cls)
+        index = init_index(index_cls, sync=None)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, top_k=10, index=index
+            encoder=openai_encoder, routes=routes, index=index
+        )
+        route_layer2 = RouteLayer(
+            encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert not route_layer.is_synced()
+        assert route_layer.is_synced() is False
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
