@@ -488,6 +488,8 @@ class PineconeIndex(BaseIndex):
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
 
+        print([(r, u, fs, m) for r, u, fs, m in zip(routes, utterances, function_schemas, metadata_list)])
+
         vectors_to_upsert = [
             PineconeRecord(
                 values=vector,
@@ -635,6 +637,7 @@ class PineconeIndex(BaseIndex):
         if self.index is None:
             raise ValueError("Index has not been initialized.")
         hash_id = f"sr_hash#{self.namespace}"
+        print(f"hash_id: {hash_id}")
         hash_record = self.index.fetch(
             ids=[hash_id],
             namespace="sr_config",

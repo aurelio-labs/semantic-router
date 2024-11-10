@@ -530,6 +530,7 @@ class RouteLayer:
         )
 
         self.routes.append(route)
+        self._write_hash()  # update current hash in index
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -625,15 +626,26 @@ class RouteLayer:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
 
+        self._write_hash()
+
     def _get_hash(self) -> ConfigParameter:
         config = self.to_config()
         return config.get_hash()
 
-    def is_synced(self) -> bool:
-        """Check if the local and remote route layer instances are synchronized."""
-        # if not self.index.sync:
-        #    raise ValueError("Index is not set to sync with remote index.")
+    def _write_hash(self) -> ConfigParameter:
+        config = self.to_config()
+        hash_config = config.get_hash()
+        self.index._write_config(config=hash_config)
+        return hash_config
 
+    def is_synced(self) -> bool:
+        """Check if the local and remote route layer instances are
+        synchronized.
+
+        :return: True if the local and remote route layers are synchronized,
+            False otherwise.
+        :rtype: bool
+        """
         # first check hash
         local_hash = self._get_hash()
         remote_hash = self.index._read_hash()
@@ -674,6 +686,8 @@ class RouteLayer:
         # sort local and remote utterances
         local_utterances.sort()
         remote_utterances.sort()
+        print(remote_utterances)
+        print(local_utterances)
         # now get diff
         differ = Differ()
         diff = list(differ.compare(local_utterances, remote_utterances))
@@ -740,6 +754,7 @@ class RouteLayer:
                     metadata=data.get("metadata", {}),
                 )
             )
+        self._write_hash()
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False

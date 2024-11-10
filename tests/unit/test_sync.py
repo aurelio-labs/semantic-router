@@ -38,7 +38,7 @@ def init_index(
     index_cls,
     dimensions: Optional[int] = None,
     namespace: Optional[str] = "",
-    sync: str = "local",
+    sync: str = None,
 ):
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
@@ -175,7 +175,7 @@ def test_data():
 
 
 def get_test_indexes():
-    indexes = [LocalIndex]
+    indexes = []
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
@@ -193,7 +193,7 @@ class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         _ = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index, sync=None
+            encoder=openai_encoder, routes=routes, top_k=10, index=index
         )
 
     @pytest.mark.skipif(
@@ -202,7 +202,7 @@ class TestRouteLayer:
     def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index, sync=None
+            encoder=openai_encoder, routes=routes, top_k=10, index=index
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -216,7 +216,7 @@ class TestRouteLayer:
     ):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, top_k=10, index=index, sync=None
+            encoder=openai_encoder, routes=routes_2, top_k=10, index=index
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -225,14 +225,22 @@ class TestRouteLayer:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_utterance_diff(self, openai_encoder, routes_2, index_cls):
+    def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, top_k=10, index=index, sync=None
+        _ = RouteLayer(
+            encoder=openai_encoder, routes=routes, top_k=10, index=index
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        diff = route_layer.get_utterance_diff()
-        assert "+ Route 1: Hi" in diff
+        route_layer_2 = RouteLayer(
+            encoder=openai_encoder, routes=routes_2, top_k=10, index=index
+        )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        diff = route_layer_2.get_utterance_diff()
         assert "  Route 1: Hello" in diff
-        assert "- Route 2: Hi" in diff
+        assert "+ Route 1: Hi" in diff
+        assert "+ Route 2: Au revoir" in diff
+        assert "+ Route 2: Bye" in diff
+        assert "+ Route 2: Goodbye" in diff
+        assert "  Route 2: Hi" in diff
