@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 
+from semantic_router.schema import ConfigParameter
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
@@ -138,6 +139,9 @@ class LocalIndex(BaseIndex):
 
     def aget_routes(self):
         logger.error("Sync remove is not implemented for LocalIndex.")
+
+    def _write_config(self, config: ConfigParameter):
+        logger.warning("No config is written for LocalIndex.")
 
     def delete(self, route_name: str):
         """

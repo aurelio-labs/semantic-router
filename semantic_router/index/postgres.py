@@ -8,7 +8,8 @@ import psycopg2
 from pydantic import BaseModel
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import Metric
+from semantic_router.schema import ConfigParameter, Metric
+from semantic_router.utils.logger import logger
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -450,6 +451,9 @@ class PostgresIndex(BaseIndex):
 
     def aget_routes(self):
         raise NotImplementedError("Sync remove is not implemented for PostgresIndex.")
+
+    def _write_config(self, config: ConfigParameter):
+        logger.warning("No config is written for PostgresIndex.")
 
     def __len__(self):
         """
