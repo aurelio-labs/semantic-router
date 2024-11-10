@@ -189,7 +189,7 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_initialization(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
+        index = init_index(index_cls, sync="local")
         _ = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10, index=index)
 
     @pytest.mark.skipif(
