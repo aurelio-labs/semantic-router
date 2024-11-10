@@ -6,7 +6,6 @@ import time
 from typing import Optional
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.pinecone import PineconeIndex
-from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import RouteLayer
 from semantic_router.route import Route
 from platform import python_version
@@ -176,7 +175,7 @@ def test_data():
 def get_test_indexes():
     indexes = []
 
-    #if importlib.util.find_spec("qdrant_client") is not None:
+    # if importlib.util.find_spec("qdrant_client") is not None:
     #    indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
