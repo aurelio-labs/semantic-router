@@ -48,17 +48,7 @@ class BaseIndex(BaseModel):
         :rtype: List[Tuple]
         """
         _, metadata = self._get_all(include_metadata=True)
-        route_tuples: List[
-            Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
-        ] = [
-            (
-                x["sr_route"],
-                x["sr_utterance"],
-                None if (fc := x.get("sr_function_schema", None)) == "null" else fc,
-                x.get("sr_metadata", {}),
-            )
-            for x in metadata
-        ]
+        route_tuples = parse_route_info(metadata=metadata)
         return route_tuples
 
     def get_routes(self) -> List[Route]:
@@ -264,7 +254,7 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
         sr_route = record.get("sr_route", "")
         sr_utterance = record.get("sr_utterance", "")
         sr_function_schema = json.loads(record.get("sr_function_schema", "{}"))
-        if sr_function_schema == {}:
+        if sr_function_schema == {} or sr_function_schema == "null":
             sr_function_schema = None
 
         additional_metadata = {
