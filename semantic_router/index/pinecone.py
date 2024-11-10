@@ -488,8 +488,6 @@ class PineconeIndex(BaseIndex):
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
 
-        print([(r, u, fs, m) for r, u, fs, m in zip(routes, utterances, function_schemas, metadata_list)])
-
         vectors_to_upsert = [
             PineconeRecord(
                 values=vector,

@@ -5,7 +5,6 @@ import pytest
 import time
 from typing import Optional
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
-from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.layer import RouteLayer
@@ -38,7 +37,7 @@ def init_index(
     index_cls,
     dimensions: Optional[int] = None,
     namespace: Optional[str] = "",
-    sync: str = None,
+    sync: Optional[str] = None,
 ):
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
@@ -192,9 +191,7 @@ class TestRouteLayer:
     )
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        _ = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index
-        )
+        _ = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10, index=index)
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -227,9 +224,7 @@ class TestRouteLayer:
     )
     def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
         index = init_index(index_cls)
-        _ = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index
-        )
+        _ = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         route_layer_2 = RouteLayer(
