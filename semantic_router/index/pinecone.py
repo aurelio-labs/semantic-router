@@ -633,7 +633,11 @@ class PineconeIndex(BaseIndex):
 
     def _read_hash(self) -> ConfigParameter:
         if self.index is None:
-            raise ValueError("Index has not been initialized.")
+            return ConfigParameter(
+                field="sr_hash",
+                value="",
+                namespace=self.namespace,
+            )
         hash_id = f"sr_hash#{self.namespace}"
         print(f"hash_id: {hash_id}")
         hash_record = self.index.fetch(

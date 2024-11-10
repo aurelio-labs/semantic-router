@@ -515,6 +515,16 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
+        """Add a route to the local RouteLayer and index.
+
+        :param route: The route to add.
+        :type route: Route
+        """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
         embedded_utterances = self.encoder(route.utterances)
         self.index.add(
             embeddings=embedded_utterances,
@@ -530,7 +540,14 @@ class RouteLayer:
         )
 
         self.routes.append(route)
-        self._write_hash()  # update current hash in index
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -549,6 +566,11 @@ class RouteLayer:
         The name must exist within the local RouteLayer, if not a
         KeyError will be raised.
         """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
 
         if threshold is None and utterances is None:
             raise ValueError(
@@ -570,12 +592,27 @@ class RouteLayer:
         else:
             raise ValueError(f"Route '{name}' not found. Nothing updated.")
 
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
+
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
 
         :param route_name: the name of the route to be deleted
         :type str:
         """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
         if route_name not in [route.name for route in self.routes]:
             err_msg = f"Route `{route_name}` not found in RouteLayer"
             logger.warning(err_msg)
@@ -586,6 +623,15 @@ class RouteLayer:
         else:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
+
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
     def _refresh_routes(self):
         """Pulls out the latest routes from the index."""
@@ -605,6 +651,12 @@ class RouteLayer:
             self.routes.append(route)
 
     def _add_routes(self, routes: List[Route]):
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
         if not routes:
             logger.warning("No routes provided to add.")
             return
@@ -626,7 +678,14 @@ class RouteLayer:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
 
-        self._write_hash()
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
     def _get_hash(self) -> ConfigParameter:
         config = self.to_config()
@@ -686,14 +745,18 @@ class RouteLayer:
         # sort local and remote utterances
         local_utterances.sort()
         remote_utterances.sort()
-        print(remote_utterances)
-        print(local_utterances)
         # now get diff
         differ = Differ()
         diff = list(differ.compare(local_utterances, remote_utterances))
         return diff
 
     def _add_and_sync_routes(self, routes: List[Route]):
+        # get current local hash
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
         # create embeddings for all routes and sync at startup with remote ones based on sync setting
         local_route_names, local_utterances, local_function_schemas, local_metadata = (
             self._extract_routes_details(routes, include_metadata=True)
@@ -754,7 +817,15 @@ class RouteLayer:
                     metadata=data.get("metadata", {}),
                 )
             )
-        self._write_hash()
+        # update hash IF index and local hash were aligned
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
