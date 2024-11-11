@@ -652,7 +652,12 @@ class PineconeIndex(BaseIndex):
                 namespace=self.namespace,
             )
         else:
-            raise ValueError("Configuration for hash parameter not found in index.")
+            logger.warning("Configuration for hash parameter not found in index.")
+            return ConfigParameter(
+                field="sr_hash",
+                value="",
+                namespace=self.namespace,
+            )
 
     def _write_config(self, config: ConfigParameter) -> None:
         """Method to write a config parameter to the remote Pinecone index.
