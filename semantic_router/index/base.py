@@ -188,7 +188,7 @@ class BaseIndex(BaseModel):
         return ConfigParameter(
             field="sr_hash",
             value="",
-            namespace=self.namespace,
+            namespace="",
         )
 
     def _write_config(self, config: ConfigParameter):
