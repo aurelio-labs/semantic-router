@@ -69,7 +69,7 @@ class LocalIndex(BaseIndex):
             List[Tuple]: A list of (route_name, utterance) objects.
         """
         if self.routes is None or self.utterances is None:
-            raise ValueError("No routes have been added to the index.")
+            return []
         return list(zip(self.routes, self.utterances))
 
     def describe(self) -> Dict:
