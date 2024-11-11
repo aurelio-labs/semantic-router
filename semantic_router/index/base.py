@@ -136,12 +136,22 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    def delete_all(self):
+        """
+        Deletes all records from the index.
+        """
+        logger.warning("This method should be implemented by subclasses.")
+        self.index = None
+        self.routes = None
+        self.utterances = None
+
     def delete_index(self):
         """
         Deletes or resets the index.
         This method should be implemented by subclasses.
         """
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        logger.warning("This method should be implemented by subclasses.")
+        self.index = None
 
     def is_synced(
         self,
