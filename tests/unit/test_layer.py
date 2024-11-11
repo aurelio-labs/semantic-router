@@ -237,6 +237,16 @@ class TestRouteLayer:
         assert openai_encoder.score_threshold == 0.3
         assert route_layer_openai.score_threshold == 0.3
 
+    def test_delete_all(self, openai_encoder, index_cls):
+        index = init_index(index_cls, sync="local")
+        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        route_layer.index.delete_all()
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
+        assert route_layer.index.get_utterances() == []
+
     def test_add_route(self, routes, openai_encoder, index_cls):
         index = init_index(index_cls, sync="local")
         route_layer = RouteLayer(
