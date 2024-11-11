@@ -6,6 +6,7 @@ from pydantic.v1 import BaseModel
 
 from semantic_router.schema import ConfigParameter
 from semantic_router.route import Route
+from semantic_router.utils.logger import logger
 
 
 class BaseIndex(BaseModel):
@@ -183,7 +184,12 @@ class BaseIndex(BaseModel):
 
         This method should be implemented by subclasses.
         """
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        logger.warning("This method should be implemented by subclasses.")
+        return ConfigParameter(
+            field="sr_hash",
+            value="",
+            namespace=self.namespace,
+        )
 
     def _write_config(self, config: ConfigParameter):
         """
@@ -191,7 +197,7 @@ class BaseIndex(BaseModel):
 
         This method should be implemented by subclasses.
         """
-        raise NotImplementedError("This method should be implemented by subclasses.")
+        logger.warning("This method should be implemented by subclasses.")
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
