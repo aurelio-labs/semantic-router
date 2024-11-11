@@ -212,32 +212,36 @@ class QdrantIndex(BaseIndex):
         results = []
         next_offset = None
         stop_scrolling = False
-        while not stop_scrolling:
-            records, next_offset = self.client.scroll(
-                self.index_name,
-                limit=SCROLL_SIZE,
-                offset=next_offset,
-                with_payload=True,
-            )
-            stop_scrolling = next_offset is None or (
-                isinstance(next_offset, grpc.PointId)
-                and next_offset.num == 0
-                and next_offset.uuid == ""
-            )
+        try:
+            while not stop_scrolling:
+                records, next_offset = self.client.scroll(
+                    self.index_name,
+                    limit=SCROLL_SIZE,
+                    offset=next_offset,
+                    with_payload=True,
+                )
+                stop_scrolling = next_offset is None or (
+                    isinstance(next_offset, grpc.PointId)
+                    and next_offset.num == 0
+                    and next_offset.uuid == ""
+                )
 
-            results.extend(records)
+                results.extend(records)
 
-        route_tuples: List[
-            Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
-        ] = [
-            (
-                x.payload[SR_ROUTE_PAYLOAD_KEY],
-                x.payload[SR_UTTERANCE_PAYLOAD_KEY],
-                None,
-                {},
-            )
-            for x in results
-        ]
+            route_tuples: List[
+                Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
+            ] = [
+                (
+                    x.payload[SR_ROUTE_PAYLOAD_KEY],
+                    x.payload[SR_UTTERANCE_PAYLOAD_KEY],
+                    None,
+                    {},
+                )
+                for x in results
+            ]
+        except ValueError as e:
+            logger.warning(f"Index likely empty, error: {e}")
+            return []
         return route_tuples
 
     def delete(self, route_name: str):
