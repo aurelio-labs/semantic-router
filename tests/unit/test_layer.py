@@ -249,9 +249,7 @@ class TestRouteLayer:
 
     def test_add_route(self, routes, openai_encoder, index_cls):
         index = init_index(index_cls, sync="local")
-        route_layer = RouteLayer(
-            encoder=openai_encoder, routes=[], index=index
-        )
+        route_layer = RouteLayer(encoder=openai_encoder, routes=[], index=index)
 
         # Initially, the local routes list should be empty
         assert route_layer.routes == []
