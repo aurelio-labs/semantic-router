@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 
-from semantic_router.schema import ConfigParameter
+from semantic_router.schema import ConfigParameter, Utterance
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
@@ -61,7 +61,7 @@ class LocalIndex(BaseIndex):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for LocalIndex.")
 
-    def get_utterances(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Utterance]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
@@ -70,7 +70,9 @@ class LocalIndex(BaseIndex):
         """
         if self.routes is None or self.utterances is None:
             return []
-        return list(zip(self.routes, self.utterances))
+        return [
+            Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)
+        ]
 
     def describe(self) -> Dict:
         return {

@@ -4,7 +4,7 @@ import json
 import numpy as np
 from pydantic.v1 import BaseModel
 
-from semantic_router.schema import ConfigParameter
+from semantic_router.schema import ConfigParameter, Utterance
 from semantic_router.route import Route
 from semantic_router.utils.logger import logger
 
@@ -40,7 +40,7 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def get_utterances(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
@@ -50,7 +50,7 @@ class BaseIndex(BaseModel):
         """
         _, metadata = self._get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
-        return route_tuples
+        return [Utterance.from_tuple(x) for x in route_tuples]
 
     def get_routes(self) -> List[Route]:
         """Gets a list of route objects currently stored in the index.

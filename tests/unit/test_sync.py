@@ -237,3 +237,101 @@ class TestRouteLayer:
         assert "+ Route 2: Bye" in diff
         assert "+ Route 2: Goodbye" in diff
         assert "  Route 2: Hi" in diff
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_local(self, openai_encoder, routes, routes_2, routes_4, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST LOCAL
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_2, index=pinecone_index,
+                auto_sync="local"
+            )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            assert route_layer.index.get_utterances() == [
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_remote(self, openai_encoder, routes, index_cls):
+        if index_cls is PineconeIndex:
+
+            # TEST REMOTE
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index,
+                auto_sync="remote"
+            )
+
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            assert route_layer.index.get_utterances() == [
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_merge_force_remote(self, openai_encoder, routes, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST MERGE FORCE REMOTE
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index,
+                auto_sync="merge-force-remote"
+            )
+
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            assert route_layer.index.get_utterances() == [
+                ("Route 1", "Hello", None, {}),
+                ("Route 2", "Hi", None, {}),
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_merge_force_local(self, openai_encoder, routes, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST MERGE FORCE LOCAL
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index,
+                auto_sync="merge-force-local"
+            )
+
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            assert route_layer.index.get_utterances() == [
+                ("Route 1", "Hello", None, {"type": "default"}),
+                ("Route 1", "Hi", None, {"type": "default"}),
+                ("Route 2", "Bye", None, {}),
+                ("Route 2", "Au revoir", None, {}),
+                ("Route 2", "Goodbye", None, {}),
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_merge(self, openai_encoder, routes_4, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST MERGE
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_4, index=pinecone_index,
+                auto_sync="merge"
+            )
+
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            assert route_layer.index.get_utterances() == [
+                ("Route 1", "Hello", None, {"type": "default"}),
+                ("Route 1", "Hi", None, {"type": "default"}),
+                ("Route 1", "Goodbye", None, {"type": "default"}),
+                ("Route 2", "Bye", None, {}),
+                ("Route 2", "Asparagus", None, {}),
+                ("Route 2", "Au revoir", None, {}),
+                ("Route 2", "Goodbye", None, {}),
+            ], "The routes in the index should match the local routes"

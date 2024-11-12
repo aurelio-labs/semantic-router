@@ -238,6 +238,7 @@ class TestRouteLayer:
         assert route_layer_openai.score_threshold == 0.3
 
     def test_delete_index(self, openai_encoder, routes, index_cls):
+        # TODO merge .delete_index() and .delete_all() and get working
         index = init_index(index_cls)
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
         if index_cls is PineconeIndex:
