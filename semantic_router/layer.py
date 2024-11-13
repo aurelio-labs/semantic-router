@@ -497,6 +497,7 @@ class RouteLayer:
                 data_to_delete.setdefault(
                     utt_obj.route, []
                 ).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
             self.index._remove_and_sync(data_to_delete)
         if strategy["remote"]["upsert"]:
             utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]

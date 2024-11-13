@@ -274,13 +274,19 @@ class UtteranceDiff(BaseModel):
                     "delete": local_only
                 }
             }
-        elif sync_mode == "merge-force-remote":
-            # get set of route names that exist in both local and remote
-            routes_in_both = set([utt.route for utt in local_and_remote])
+        elif sync_mode == "merge-force-remote":  # merge-to-local merge-join-local
+            # get set of route names that exist in local (we keep these if
+            # they are in remote)
+            local_route_names = set([utt.route for utt in local_only])
+            # if we see route: utterance exists in local, we do not pull it in
+            # from remote
+            local_route_utt_strs = set([utt.to_str() for utt in local_only])
             # get remote utterances that belong to routes_in_both
-            remote_to_keep = [utt for utt in remote_only if utt.route in routes_in_both]
+            remote_to_keep = [utt for utt in remote_only if (
+                utt.route in local_route_names and utt.to_str() not in local_route_utt_strs
+            )]
             # get remote utterances that do NOT belong to routes_in_both
-            remote_to_delete = [utt for utt in remote_only if utt.route not in routes_in_both]
+            remote_to_delete = [utt for utt in remote_only if utt.route not in local_route_names]
             return {
                 "remote": {
                     "upsert": local_only,
@@ -291,7 +297,7 @@ class UtteranceDiff(BaseModel):
                     "delete": []
                 }
             }
-        elif sync_mode == "merge-force-local":
+        elif sync_mode == "merge-force-local":  # merge-to-remote merge-join-remote
             # get set of route names that exist in both local and remote
             routes_in_both = set([utt.route for utt in local_and_remote])
             # get local utterances that belong to routes_in_both
