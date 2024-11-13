@@ -3,6 +3,7 @@ from difflib import Differ
 from enum import Enum
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic.v1 import BaseModel, Field
+from semantic_router.utils.logger import logger
 
 
 class EncoderType(Enum):
@@ -94,7 +95,7 @@ class Utterance(BaseModel):
     route: str
     utterance: str
     function_schemas: Optional[List[Dict]] = None
-    metadata: Optional[Dict] = None
+    metadata: dict = {}
     diff_tag: str = " "
 
     @classmethod
@@ -112,7 +113,7 @@ class Utterance(BaseModel):
         """
         route, utterance = tuple_obj[0], tuple_obj[1]
         function_schemas = tuple_obj[2] if len(tuple_obj) > 2 else None
-        metadata = tuple_obj[3] if len(tuple_obj) > 3 else None
+        metadata = tuple_obj[3] if len(tuple_obj) > 3 else {}
         return cls(
             route=route,
             utterance=utterance,
@@ -133,8 +134,8 @@ class Utterance(BaseModel):
             return f"{self.route}: {self.utterance} | {self.function_schemas} | {self.metadata}"
         return f"{self.route}: {self.utterance}"
 
-    def to_diff_str(self):
-        return f"{self.diff_tag} {self.to_str()}"
+    def to_diff_str(self, include_metadata: bool = False):
+        return f"{self.diff_tag} {self.to_str(include_metadata=include_metadata)}"
 
 
 class SyncMode(Enum):
@@ -160,8 +161,8 @@ class UtteranceDiff(BaseModel):
         local_utterances: List[Utterance],
         remote_utterances: List[Utterance]
     ):
-        local_utterances_map = {x.to_str(): x for x in local_utterances}
-        remote_utterances_map = {x.to_str(): x for x in remote_utterances}
+        local_utterances_map = {x.to_str(include_metadata=True): x for x in local_utterances}
+        remote_utterances_map = {x.to_str(include_metadata=True): x for x in remote_utterances}
         # sort local and remote utterances
         local_utterances_str = list(local_utterances_map.keys())
         local_utterances_str.sort()
@@ -175,12 +176,15 @@ class UtteranceDiff(BaseModel):
         for line in diff_obj:
             utterance_str = line[2:]
             utterance_diff_tag = line[0]
+            if utterance_diff_tag == "?":
+                # this is a new line from diff string, we can ignore
+                continue
             utterance = remote_utterances_map[utterance_str] if utterance_diff_tag == "+" else local_utterances_map[utterance_str]
             utterance.diff_tag = utterance_diff_tag
             utterance_diffs.append(utterance)
         return UtteranceDiff(diff=utterance_diffs)
 
-    def to_utterance_str(self) -> List[str]:
+    def to_utterance_str(self, include_metadata: bool = False) -> List[str]:
         """Outputs the utterance diff as a list of diff strings. Returns a list
         of strings showing what is different in the remote when compared to the
         local. For example:
@@ -201,7 +205,7 @@ class UtteranceDiff(BaseModel):
         This diff tells us that the remote has "route2: utterance3" and
         "route2: utterance4", which do not exist locally.
         """
-        return [x.to_diff_str() for x in self.diff]
+        return [x.to_diff_str(include_metadata=include_metadata) for x in self.diff]
 
     def get_tag(self, diff_tag: str) -> List[Utterance]:
         """Get all utterances with a given diff tag.

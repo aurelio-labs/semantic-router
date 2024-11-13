@@ -311,15 +311,21 @@ class RouteLayer:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
         if self.auto_sync:
-            # initialize index now
-            dims = self.encoder.dimensions
-            self.index._init_index(force_create=True, dimensions=dims)
+            # initialize index now, check if we need dimensions
+            if self.index.dimensions is None:
+                dims = len(self.encoder(["test"])[0])
+                self.index.dimensions = dims
+            # now init index
+            self.index.index = self.index._init_index(force_create=True)
             if len(self.routes) > 0:
-                self._add_and_sync_routes(routes=self.routes)
-            else:
-                self._add_and_sync_routes(routes=[])
-        elif len(self.routes) > 0:
-            self._add_routes(routes=self.routes)
+                local_utterances = self.to_config().to_utterances()
+                remote_utterances = self.index.get_utterances()
+                diff = UtteranceDiff.from_utterances(
+                    local_utterances=local_utterances,
+                    remote_utterances=remote_utterances
+                )
+                sync_strategy = diff.get_sync_strategy(self.auto_sync)
+                self._execute_sync_strategy(sync_strategy)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(
@@ -803,7 +809,7 @@ class RouteLayer:
         else:
             return False
 
-    def get_utterance_diff(self) -> List[str]:
+    def get_utterance_diff(self, include_metadata: bool = False) -> List[str]:
         """Get the difference between the local and remote utterances. Returns
         a list of strings showing what is different in the remote when compared
         to the local. For example:
@@ -831,7 +837,7 @@ class RouteLayer:
         diff_obj = UtteranceDiff.from_utterances(
             local_utterances=local_utterances, remote_utterances=remote_utterances
         )
-        return diff_obj.to_utterance_str()
+        return diff_obj.to_utterance_str(include_metadata=include_metadata)
 
     def _add_and_sync_routes(self, routes: List[Route]):
         self.routes.extend(routes)

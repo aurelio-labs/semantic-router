@@ -278,6 +278,8 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
             for key, value in record.items()
             if key not in ["sr_route", "sr_utterance", "sr_function_schema"]
         }
+        if additional_metadata is None:
+            additional_metadata = {}
         # TODO: Not a fan of tuple packing here
         route_info.append(
             (sr_route, sr_utterance, sr_function_schema, additional_metadata)
