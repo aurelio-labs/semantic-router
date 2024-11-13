@@ -12,7 +12,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 12
+PINECONE_SLEEP = 6
 
 
 def mock_encoder_call(utterances):
@@ -199,7 +199,7 @@ class TestRouteLayer:
     def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index
+            encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -212,7 +212,10 @@ class TestRouteLayer:
         self, openai_encoder, routes, routes_2, index_cls
     ):
         index = init_index(index_cls, sync=None)
-        _ = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        _ = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local"
+        )
         route_layer = RouteLayer(encoder=openai_encoder, routes=routes_2, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -223,21 +226,23 @@ class TestRouteLayer:
     )
     def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
         index = init_index(index_cls)
-        _ = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10, index=index)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        _ = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local"
+        )
         route_layer_2 = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, top_k=10, index=index
+            encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        diff = route_layer_2.get_utterance_diff()
-        assert "  Route 1: Hello" in diff
-        assert "+ Route 1: Hi" in diff
-        assert "+ Route 2: Au revoir" in diff
-        assert "+ Route 2: Bye" in diff
-        assert "+ Route 2: Goodbye" in diff
-        assert "  Route 2: Hi" in diff
+        diff = route_layer_2.get_utterance_diff(include_metadata=True)
+        assert "+ Route 1: Hello | None | {'type': 'default'}" in diff
+        assert "+ Route 1: Hi | None | {'type': 'default'}" in diff
+        assert "- Route 1: Hello | None | {}" in diff
+        assert "+ Route 2: Au revoir | None | {}" in diff
+        assert "- Route 2: Hi | None | {}" in diff
+        assert "+ Route 2: Bye | None | {}" in diff
+        assert "+ Route 2: Goodbye | None | {}" in diff
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
