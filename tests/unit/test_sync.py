@@ -12,7 +12,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 6
+PINECONE_SLEEP = 12
 
 
 def mock_encoder_call(utterances):
@@ -290,9 +290,6 @@ class TestRouteLayer:
                 Utterance(route="Route 2", utterance="Hi"),
             ], "The routes in the index should match the local routes"
 
-            # clear index
-            route_layer.index.index.delete(namespace="", delete_all=True)
-
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
@@ -317,6 +314,71 @@ class TestRouteLayer:
             # we sort to ensure order is the same
             local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
             assert local_utterances == [
+                Utterance(route='Route 1', utterance='Hello'),
+                Utterance(route='Route 1', utterance='Hi'),
+                Utterance(route='Route 2', utterance='Au revoir'),
+                Utterance(route='Route 2', utterance='Bye'),
+                Utterance(route='Route 2', utterance='Goodbye'),
+                Utterance(route='Route 2', utterance='Hi')
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_merge_force_local(self, openai_encoder, routes, routes_2, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST MERGE FORCE LOCAL
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index,
+                auto_sync="local"
+            )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_2, index=pinecone_index,
+                auto_sync="merge-force-local"
+            )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            # confirm local and remote are synced
+            assert route_layer.is_synced()
+            # now confirm utterances are correct
+            local_utterances = route_layer.index.get_utterances()
+            # we sort to ensure order is the same
+            local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+            assert local_utterances == [
+                Utterance(route='Route 1', utterance='Hello', metadata={'type': 'default'}),
+                Utterance(route='Route 1', utterance='Hi', metadata={'type': 'default'}),
+                Utterance(route='Route 2', utterance='Au revoir'),
+                Utterance(route='Route 2', utterance='Bye'),
+                Utterance(route='Route 2', utterance='Goodbye'),
+                Utterance(route='Route 2', utterance='Hi'),
+                Utterance(route='Route 3', utterance='Boo')
+            ], "The routes in the index should match the local routes"
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls):
+        if index_cls is PineconeIndex:
+            # TEST MERGE
+            pinecone_index = init_index(index_cls)
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes_2, index=pinecone_index,
+                auto_sync="local"
+            )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            route_layer = RouteLayer(
+                encoder=openai_encoder, routes=routes, index=pinecone_index,
+                auto_sync="merge"
+            )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            # confirm local and remote are synced
+            assert route_layer.is_synced()
+            # now confirm utterances are correct
+            local_utterances = route_layer.index.get_utterances()
+            # we sort to ensure order is the same
+            local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+            assert local_utterances == [
                 Utterance(
                     route='Route 1', utterance='Hello',
                     metadata={'type': 'default'}
@@ -328,82 +390,8 @@ class TestRouteLayer:
                 Utterance(route='Route 2', utterance='Au revoir'),
                 Utterance(route='Route 2', utterance='Bye'),
                 Utterance(route='Route 2', utterance='Goodbye'),
-                Utterance(route='Route 2', utterance='Hi')
-            ], "The routes in the index should match the local routes"
-
-            # clear index
-            route_layer.index.index.delete(namespace="", delete_all=True)
-
-    @pytest.mark.skipif(
-        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
-    )
-    def test_auto_sync_merge_force_local(self, openai_encoder, routes, routes_2, index_cls):
-        if index_cls is PineconeIndex:
-            # TEST MERGE FORCE LOCAL
-            pinecone_index = init_index(index_cls)
-            route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes_2, index=pinecone_index,
-                auto_sync="local"
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=pinecone_index,
-                auto_sync="merge-force-remote"
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            # confirm local and remote are synced
-            assert route_layer.is_synced()
-            # now confirm utterances are correct
-            local_utterances = route_layer.index.get_utterances()
-            # we sort to ensure order is the same
-            local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
-            assert local_utterances == [
-                Utterance(route='Route 1', utterance='Hello'),
-                Utterance(
-                    route='Route 1', utterance='Hi',
-                    metadata={'type': 'default'}
-                ),
-                Utterance(route='Route 2', utterance='Au revoir'),
-                Utterance(route='Route 2', utterance='Bye'),
-                Utterance(route='Route 2', utterance='Goodbye'),
-                Utterance(route='Route 2', utterance='Hi')
-            ], "The routes in the index should match the local routes"
-
-            # clear index
-            route_layer.index.index.delete(namespace="", delete_all=True)
-
-    @pytest.mark.skipif(
-        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
-    )
-    def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls):
-        if index_cls is PineconeIndex:
-            # TEST MERGE
-            pinecone_index = init_index(index_cls)
-            route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=pinecone_index,
-                auto_sync="local"
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes_2, index=pinecone_index,
-                auto_sync="merge"
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            # confirm local and remote are synced
-            assert route_layer.is_synced()
-            # now confirm utterances are correct
-            local_utterances = route_layer.index.get_utterances()
-            # we sort to ensure order is the same
-            local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
-            assert local_utterances == [
-                ("Route 1", "Hello", None, {"type": "default"}),
-                ("Route 1", "Hi", None, {"type": "default"}),
-                ("Route 1", "Goodbye", None, {"type": "default"}),
-                ("Route 2", "Bye", None, {}),
-                ("Route 2", "Asparagus", None, {}),
-                ("Route 2", "Au revoir", None, {}),
-                ("Route 2", "Goodbye", None, {}),
-                ("Route 3", "Boo", None, {}),
+                Utterance(route='Route 2', utterance='Hi'),
+                Utterance(route='Route 3', utterance='Boo')
             ], "The routes in the index should match the local routes"
 
             # clear index
