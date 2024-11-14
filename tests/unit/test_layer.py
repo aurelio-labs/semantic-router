@@ -252,7 +252,12 @@ class TestRouteLayer:
 
     def test_add_route(self, routes, openai_encoder, index_cls):
         index = init_index(index_cls, sync="local")
-        route_layer = RouteLayer(encoder=openai_encoder, routes=[], index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=[], index=index,
+            auto_sync="local"
+        )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
 
         # Initially, the local routes list should be empty
         assert route_layer.routes == []
