@@ -193,7 +193,9 @@ class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local" if index_cls is PineconeIndex else None,
+            top_k=10,
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
