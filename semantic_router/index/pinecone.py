@@ -484,6 +484,8 @@ class PineconeIndex(BaseIndex):
         batch_size: int = 100,
     ):
         """Add vectors to Pinecone in batches."""
+        temp = '\n'.join([f"{x[0]}: {x[1]}" for x in zip(routes, utterances)])
+        logger.warning("TEMP | add:\n"+temp)
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
@@ -506,6 +508,8 @@ class PineconeIndex(BaseIndex):
             self._batch_upsert(batch)
 
     def _remove_and_sync(self, routes_to_delete: dict):
+        temp = '\n'.join([f"{route}: {utterances}" for route, utterances in routes_to_delete.items()])
+        logger.warning("TEMP | _remove_and_sync:\n"+temp)
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)
             ids_to_delete = [

@@ -255,7 +255,7 @@ class UtteranceDiff(BaseModel):
         elif sync_mode == "local":
             return {
                 "remote": {
-                    "upsert": local_only,
+                    "upsert": local_only,# + remote_updates,
                     "delete": remote_only
                 },
                 "local": {
@@ -281,11 +281,11 @@ class UtteranceDiff(BaseModel):
             # if we see route: utterance exists in local, we do not pull it in
             # from remote
             local_route_utt_strs = set([utt.to_str() for utt in local_only])
-            # get remote utterances that belong to routes_in_both
+            # get remote utterances that are in local
             remote_to_keep = [utt for utt in remote_only if (
                 utt.route in local_route_names and utt.to_str() not in local_route_utt_strs
             )]
-            # get remote utterances that do NOT belong to routes_in_both
+            # get remote utterances that are NOT in local
             remote_to_delete = [utt for utt in remote_only if utt.route not in local_route_names]
             return {
                 "remote": {
@@ -298,12 +298,18 @@ class UtteranceDiff(BaseModel):
                 }
             }
         elif sync_mode == "merge-force-local":  # merge-to-remote merge-join-remote
-            # get set of route names that exist in both local and remote
-            routes_in_both = set([utt.route for utt in local_and_remote])
-            # get local utterances that belong to routes_in_both
-            local_to_keep = [utt for utt in local_only if utt.route in routes_in_both]
-            # get local utterances that do NOT belong to routes_in_both
-            local_to_delete = [utt for utt in local_only if utt.route not in routes_in_both]
+            # get set of route names that exist in remote (we keep these if
+            # they are in local)
+            remote_route_names = set([utt.route for utt in remote_only])
+            # if we see route: utterance exists in remote, we do not pull it in
+            # from local
+            remote_route_utt_strs = set([utt.to_str() for utt in remote_only])
+            # get local utterances that are in remote
+            local_to_keep = [utt for utt in local_only if (
+                utt.route in remote_route_names and utt.to_str() not in remote_route_utt_strs
+            )]
+            # get local utterances that are NOT in remote
+            local_to_delete = [utt for utt in local_only if utt.route not in remote_route_names]
             return {
                 "remote": {
                     "upsert": local_to_keep,

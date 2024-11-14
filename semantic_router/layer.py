@@ -521,7 +521,7 @@ class RouteLayer:
         :param utterances: The utterances to add to the local RouteLayer.
         :type utterances: List[Utterance]
         """
-        new_routes = {}
+        new_routes = {route.name: route for route in self.routes}
         for utt_obj in utterances:
             if utt_obj.route not in new_routes.keys():
                 new_routes[utt_obj.route] = Route(
@@ -531,8 +531,13 @@ class RouteLayer:
                     metadata=utt_obj.metadata
                 )
             else:
-                new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
-        self.routes.extend(list(new_routes.values()))
+                if utt_obj.utterance not in new_routes[utt_obj.route].utterances:
+                    new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
+                new_routes[utt_obj.route].function_schemas = utt_obj.function_schemas
+                new_routes[utt_obj.route].metadata = utt_obj.metadata
+        temp = '\n'.join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
+        logger.warning("TEMP | _local_upsert:\n"+temp)
+        self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
         """Deletes routes from the local RouteLayer.
@@ -540,8 +545,40 @@ class RouteLayer:
         :param utterances: The utterances to delete from the local RouteLayer.
         :type utterances: List[Utterance]
         """
-        route_names = set([utt.route for utt in utterances])
-        self.routes = [route for route in self.routes if route.name not in route_names]
+        # create dictionary of route names to utterances
+        route_dict = {}
+        for utt in utterances:
+            route_dict.setdefault(utt.route, []).append(utt.utterance)
+        temp = '\n'.join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n"+temp)
+        # iterate over current routes and delete specific utterance if found
+        new_routes = []
+        for route in self.routes:
+            if route.name in route_dict.keys():
+                # drop utterances that are in route_dict deletion list
+                new_utterances = list(set(route.utterances) - set(route_dict[route.name]))
+                if len(new_utterances) == 0:
+                    # the route is now empty, so we skip it
+                    continue
+                else:
+                    new_routes.append(
+                        Route(
+                            name=route.name,
+                            utterances=new_utterances,
+                            # use existing function schemas and metadata
+                            function_schemas=route.function_schemas,
+                            metadata=route.metadata
+                        )
+                    )
+                logger.warning(f"TEMP | _local_delete OLD | {route.name}: {route.utterances}")
+                logger.warning(f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}")
+            else:
+                # the route is not in the route_dict, so we keep it as is
+                new_routes.append(route)
+        temp = '\n'.join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n"+temp)
+        
+        self.routes = new_routes
 
 
     def _retrieve_top_route(
