@@ -50,16 +50,16 @@ class LocalIndex(BaseIndex):
         if self.sync is not None:
             logger.warning("Sync remove is not implemented for LocalIndex.")
 
-    def _sync_index(
-        self,
-        local_route_names: List[str],
-        local_utterances: List[str],
-        local_function_schemas: List[Dict[str, Any]],
-        local_metadata: List[Dict[str, Any]],
-        dimensions: int,
-    ):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for LocalIndex.")
+    # def _sync_index(
+    #     self,
+    #     local_route_names: List[str],
+    #     local_utterances: List[str],
+    #     local_function_schemas: List[Dict[str, Any]],
+    #     local_metadata: List[Dict[str, Any]],
+    #     dimensions: int,
+    # ):
+    #     if self.sync is not None:
+    #         logger.error("Sync remove is not implemented for LocalIndex.")
 
     def get_utterances(self) -> List[Utterance]:
         """
@@ -70,9 +70,7 @@ class LocalIndex(BaseIndex):
         """
         if self.routes is None or self.utterances is None:
             return []
-        return [
-            Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)
-        ]
+        return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
     def describe(self) -> Dict:
         return {

@@ -1,4 +1,3 @@
-from difflib import Differ
 import importlib
 import json
 import os
@@ -13,9 +12,16 @@ from tqdm.auto import tqdm
 from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
+from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import ConfigParameter, EncoderType, RouteChoice, Utterance, UtteranceDiff
+from semantic_router.schema import (
+    ConfigParameter,
+    EncoderType,
+    RouteChoice,
+    Utterance,
+    UtteranceDiff,
+)
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -183,7 +189,7 @@ class LayerConfig:
         """
         remote_routes = index.get_utterances()
         return cls.from_tuples(
-            route_tuples=remote_routes,
+            route_tuples=[utt.to_tuple() for utt in remote_routes],
             encoder_type=encoder_type,
             encoder_name=encoder_name,
         )
@@ -226,14 +232,17 @@ class LayerConfig:
         """
         utterances = []
         for route in self.routes:
-            utterances.extend([
-                Utterance(
-                    route=route.name,
-                    utterance=x,
-                    function_schemas=route.function_schemas,
-                    metadata=route.metadata
-                ) for x in route.utterances
-            ])
+            utterances.extend(
+                [
+                    Utterance(
+                        route=route.name,
+                        utterance=x,
+                        function_schemas=route.function_schemas,
+                        metadata=route.metadata or {},
+                    )
+                    for x in route.utterances
+                ]
+            )
         return utterances
 
     def add(self, route: Route):
@@ -316,13 +325,14 @@ class RouteLayer:
                 dims = len(self.encoder(["test"])[0])
                 self.index.dimensions = dims
             # now init index
-            self.index.index = self.index._init_index(force_create=True)
+            if isinstance(self.index, PineconeIndex):
+                self.index.index = self.index._init_index(force_create=True)
             if len(self.routes) > 0:
                 local_utterances = self.to_config().to_utterances()
                 remote_utterances = self.index.get_utterances()
                 diff = UtteranceDiff.from_utterances(
                     local_utterances=local_utterances,
-                    remote_utterances=remote_utterances
+                    remote_utterances=remote_utterances,
                 )
                 sync_strategy = diff.get_sync_strategy(self.auto_sync)
                 self._execute_sync_strategy(sync_strategy)
@@ -480,7 +490,7 @@ class RouteLayer:
         )
         # generate sync strategy
         sync_strategy = diff.to_sync_strategy()
-        # and execute
+        # and execute
         self._execute_sync_strategy(sync_strategy)
         return diff.to_utterance_str()
 
@@ -494,9 +504,7 @@ class RouteLayer:
         if strategy["remote"]["delete"]:
             data_to_delete = {}  # type: ignore
             for utt_obj in strategy["remote"]["delete"]:
-                data_to_delete.setdefault(
-                    utt_obj.route, []
-                ).append(utt_obj.utterance)
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
             # TODO: switch to remove without sync??
             self.index._remove_and_sync(data_to_delete)
         if strategy["remote"]["upsert"]:
@@ -505,7 +513,9 @@ class RouteLayer:
                 embeddings=self.encoder(utterances_text),
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
-                function_schemas=[utt.function_schemas for utt in strategy["remote"]["upsert"]],
+                function_schemas=[
+                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
         if strategy["local"]["delete"]:
@@ -528,15 +538,15 @@ class RouteLayer:
                     name=utt_obj.route,
                     utterances=[utt_obj.utterance],
                     function_schemas=utt_obj.function_schemas,
-                    metadata=utt_obj.metadata
+                    metadata=utt_obj.metadata,
                 )
             else:
                 if utt_obj.utterance not in new_routes[utt_obj.route].utterances:
                     new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
                 new_routes[utt_obj.route].function_schemas = utt_obj.function_schemas
                 new_routes[utt_obj.route].metadata = utt_obj.metadata
-        temp = '\n'.join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
-        logger.warning("TEMP | _local_upsert:\n"+temp)
+        temp = "\n".join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
+        logger.warning("TEMP | _local_upsert:\n" + temp)
         self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
@@ -546,17 +556,19 @@ class RouteLayer:
         :type utterances: List[Utterance]
         """
         # create dictionary of route names to utterances
-        route_dict = {}
+        route_dict: dict[str, List[str]] = {}
         for utt in utterances:
             route_dict.setdefault(utt.route, []).append(utt.utterance)
-        temp = '\n'.join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n"+temp)
+        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n" + temp)
         # iterate over current routes and delete specific utterance if found
         new_routes = []
         for route in self.routes:
             if route.name in route_dict.keys():
                 # drop utterances that are in route_dict deletion list
-                new_utterances = list(set(route.utterances) - set(route_dict[route.name]))
+                new_utterances = list(
+                    set(route.utterances) - set(route_dict[route.name])
+                )
                 if len(new_utterances) == 0:
                     # the route is now empty, so we skip it
                     continue
@@ -567,19 +579,22 @@ class RouteLayer:
                             utterances=new_utterances,
                             # use existing function schemas and metadata
                             function_schemas=route.function_schemas,
-                            metadata=route.metadata
+                            metadata=route.metadata,
                         )
                     )
-                logger.warning(f"TEMP | _local_delete OLD | {route.name}: {route.utterances}")
-                logger.warning(f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}")
+                logger.warning(
+                    f"TEMP | _local_delete OLD | {route.name}: {route.utterances}"
+                )
+                logger.warning(
+                    f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}"
+                )
             else:
                 # the route is not in the route_dict, so we keep it as is
                 new_routes.append(route)
-        temp = '\n'.join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n"+temp)
-        
-        self.routes = new_routes
+        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n" + temp)
 
+        self.routes = new_routes
 
     def _retrieve_top_route(
         self, vector: List[float], route_filter: Optional[List[str]] = None

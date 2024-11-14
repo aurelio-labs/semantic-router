@@ -4,7 +4,7 @@ import numpy as np
 from pydantic.v1 import Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter, Metric
+from semantic_router.schema import ConfigParameter, Metric, Utterance
 from semantic_router.utils.logger import logger
 
 DEFAULT_COLLECTION_NAME = "semantic-router-index"
@@ -163,16 +163,16 @@ class QdrantIndex(BaseIndex):
         if self.sync is not None:
             logger.error("Sync remove is not implemented for QdrantIndex.")
 
-    def _sync_index(
-        self,
-        local_route_names: List[str],
-        local_utterances_list: List[str],
-        local_function_schemas: List[Dict[str, Any]],
-        local_metadata_list: List[Dict[str, Any]],
-        dimensions: int,
-    ):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for QdrantIndex.")
+    # def _sync_index(
+    #     self,
+    #     local_route_names: List[str],
+    #     local_utterances_list: List[str],
+    #     local_function_schemas: List[Dict[str, Any]],
+    #     local_metadata_list: List[Dict[str, Any]],
+    #     dimensions: int,
+    # ):
+    #     if self.sync is not None:
+    #         logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def add(
         self,
@@ -199,7 +199,7 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_utterances(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Utterance]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
@@ -228,21 +228,19 @@ class QdrantIndex(BaseIndex):
 
                 results.extend(records)
 
-            route_tuples: List[
-                Tuple[str, str, Optional[Dict[str, Any]], Dict[str, Any]]
-            ] = [
-                (
-                    x.payload[SR_ROUTE_PAYLOAD_KEY],
-                    x.payload[SR_UTTERANCE_PAYLOAD_KEY],
-                    None,
-                    {},
+            utterances: List[Utterance] = [
+                Utterance(
+                    route=x.payload[SR_ROUTE_PAYLOAD_KEY],
+                    utterance=x.payload[SR_UTTERANCE_PAYLOAD_KEY],
+                    function_schemas=None,
+                    metadata={},
                 )
                 for x in results
             ]
         except ValueError as e:
             logger.warning(f"Index likely empty, error: {e}")
             return []
-        return route_tuples
+        return utterances
 
     def delete(self, route_name: str):
         from qdrant_client import models

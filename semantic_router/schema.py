@@ -20,9 +20,6 @@ class EncoderType(Enum):
     GOOGLE = "google"
     BEDROCK = "bedrock"
 
-    def to_list():
-        return [encoder.value for encoder in EncoderType]
-
 
 class EncoderInfo(BaseModel):
     name: str
@@ -118,10 +115,15 @@ class Utterance(BaseModel):
             route=route,
             utterance=utterance,
             function_schemas=function_schemas,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def to_tuple(self):
+        """Convert an Utterance object to a tuple.
+
+        :return: A tuple containing (route, utterance, function schemas, metadata).
+        :rtype: Tuple
+        """
         return (
             self.route,
             self.utterance,
@@ -142,6 +144,7 @@ class SyncMode(Enum):
     """Synchronization modes for local (route layer) and remote (index)
     instances.
     """
+
     ERROR = "error"
     REMOTE = "remote"
     LOCAL = "local"
@@ -149,20 +152,23 @@ class SyncMode(Enum):
     MERGE_FORCE_LOCAL = "merge-force-local"
     MERGE = "merge"
 
-    def to_list() -> List[str]:
-        return [mode.value for mode in SyncMode]
+
+SYNC_MODES = [x.value for x in SyncMode]
+
 
 class UtteranceDiff(BaseModel):
     diff: List[Utterance]
 
     @classmethod
     def from_utterances(
-        cls,
-        local_utterances: List[Utterance],
-        remote_utterances: List[Utterance]
+        cls, local_utterances: List[Utterance], remote_utterances: List[Utterance]
     ):
-        local_utterances_map = {x.to_str(include_metadata=True): x for x in local_utterances}
-        remote_utterances_map = {x.to_str(include_metadata=True): x for x in remote_utterances}
+        local_utterances_map = {
+            x.to_str(include_metadata=True): x for x in local_utterances
+        }
+        remote_utterances_map = {
+            x.to_str(include_metadata=True): x for x in remote_utterances
+        }
         # sort local and remote utterances
         local_utterances_str = list(local_utterances_map.keys())
         local_utterances_str.sort()
@@ -179,7 +185,11 @@ class UtteranceDiff(BaseModel):
             if utterance_diff_tag == "?":
                 # this is a new line from diff string, we can ignore
                 continue
-            utterance = remote_utterances_map[utterance_str] if utterance_diff_tag == "+" else local_utterances_map[utterance_str]
+            utterance = (
+                remote_utterances_map[utterance_str]
+                if utterance_diff_tag == "+"
+                else local_utterances_map[utterance_str]
+            )
             utterance.diff_tag = utterance_diff_tag
             utterance_diffs.append(utterance)
         return UtteranceDiff(diff=utterance_diffs)
@@ -229,12 +239,16 @@ class UtteranceDiff(BaseModel):
         :return: A dictionary describing the synchronization strategy.
         :rtype: dict
         """
-        if sync_mode not in SyncMode.to_list():
-            raise ValueError(f"sync_mode must be one of {SyncMode.to_list()}")
+        if sync_mode not in SYNC_MODES:
+            raise ValueError(f"sync_mode must be one of {SYNC_MODES}")
         local_only = self.get_tag("-")
-        local_only_mapper = {utt.route: (utt.function_schemas, utt.metadata) for utt in local_only}
+        local_only_mapper = {
+            utt.route: (utt.function_schemas, utt.metadata) for utt in local_only
+        }
         remote_only = self.get_tag("+")
-        remote_only_mapper = {utt.route: (utt.function_schemas, utt.metadata) for utt in remote_only}
+        remote_only_mapper = {
+            utt.route: (utt.function_schemas, utt.metadata) for utt in remote_only
+        }
         local_and_remote = self.get_tag(" ")
         if sync_mode == "error":
             if len(local_only) > 0 or len(remote_only) > 0:
@@ -245,36 +259,21 @@ class UtteranceDiff(BaseModel):
                 )
             else:
                 return {
-                    "remote": {
-                        "upsert": [],
-                        "delete": []
-                    },
-                    "local": {
-                        "upsert": [],
-                        "delete": []
-                    }
+                    "remote": {"upsert": [], "delete": []},
+                    "local": {"upsert": [], "delete": []},
                 }
         elif sync_mode == "local":
             return {
                 "remote": {
-                    "upsert": local_only,# + remote_updates,
-                    "delete": remote_only
+                    "upsert": local_only,  # + remote_updates,
+                    "delete": remote_only,
                 },
-                "local": {
-                    "upsert": [],
-                    "delete": []
-                }
+                "local": {"upsert": [], "delete": []},
             }
         elif sync_mode == "remote":
             return {
-                "remote": {
-                    "upsert": [],
-                    "delete": []
-                },
-                "local": {
-                    "upsert": remote_only,
-                    "delete": local_only
-                }
+                "remote": {"upsert": [], "delete": []},
+                "local": {"upsert": remote_only, "delete": local_only},
             }
         elif sync_mode == "merge-force-remote":  # merge-to-local merge-join-local
             # PRIORITIZE LOCAL
@@ -282,12 +281,17 @@ class UtteranceDiff(BaseModel):
             # they are in remote)
             local_route_names = set([utt.route for utt in local_only])
             # if we see route: utterance exists in local, we do not pull it in
-            # from remote
+            # from remote
             local_route_utt_strs = set([utt.to_str() for utt in local_only])
             # get remote utterances that are in local
-            remote_to_keep = [utt for utt in remote_only if (
-                utt.route in local_route_names and utt.to_str() not in local_route_utt_strs
-            )]
+            remote_to_keep = [
+                utt
+                for utt in remote_only
+                if (
+                    utt.route in local_route_names
+                    and utt.to_str() not in local_route_utt_strs
+                )
+            ]
             # overwrite remote routes with local metadata and function schemas
             logger.info(f"local_only_mapper: {local_only_mapper}")
             remote_to_update = [
@@ -295,11 +299,14 @@ class UtteranceDiff(BaseModel):
                     route=utt.route,
                     utterance=utt.utterance,
                     metadata=local_only_mapper[utt.route][1],
-                    function_schemas=local_only_mapper[utt.route][0]
-                ) for utt in remote_only if (
-                    utt.route in local_only_mapper and (
-                        utt.metadata != local_only_mapper[utt.route][1] or
-                        utt.function_schemas != local_only_mapper[utt.route][0]
+                    function_schemas=local_only_mapper[utt.route][0],
+                )
+                for utt in remote_only
+                if (
+                    utt.route in local_only_mapper
+                    and (
+                        utt.metadata != local_only_mapper[utt.route][1]
+                        or utt.function_schemas != local_only_mapper[utt.route][0]
                     )
                 )
             ]
@@ -308,64 +315,69 @@ class UtteranceDiff(BaseModel):
                     route=utt.route,
                     utterance=utt.utterance,
                     metadata=local_only_mapper[utt.route][1],
-                    function_schemas=local_only_mapper[utt.route][0]
-                ) for utt in remote_to_keep if utt.to_str() not in [
-                    x.to_str() for x in remote_to_update
-                ]
+                    function_schemas=local_only_mapper[utt.route][0],
+                )
+                for utt in remote_to_keep
+                if utt.to_str() not in [x.to_str() for x in remote_to_update]
             ]
-            # get remote utterances that are NOT in local
-            remote_to_delete = [utt for utt in remote_only if utt.route not in local_route_names]
+            # get remote utterances that are NOT in local
+            remote_to_delete = [
+                utt for utt in remote_only if utt.route not in local_route_names
+            ]
             return {
                 "remote": {
                     "upsert": local_only + remote_to_update,
-                    "delete": remote_to_delete
+                    "delete": remote_to_delete,
                 },
-                "local": {
-                    "upsert": remote_to_keep,
-                    "delete": []
-                }
+                "local": {"upsert": remote_to_keep, "delete": []},
             }
         elif sync_mode == "merge-force-local":  # merge-to-remote merge-join-remote
             # get set of route names that exist in remote (we keep these if
             # they are in local)
             remote_route_names = set([utt.route for utt in remote_only])
             # if we see route: utterance exists in remote, we do not pull it in
-            # from local
+            # from local
             remote_route_utt_strs = set([utt.to_str() for utt in remote_only])
             # get local utterances that are in remote
-            local_to_keep = [utt for utt in local_only if (
-                utt.route in remote_route_names and utt.to_str() not in remote_route_utt_strs
-            )]
+            local_to_keep = [
+                utt
+                for utt in local_only
+                if (
+                    utt.route in remote_route_names
+                    and utt.to_str() not in remote_route_utt_strs
+                )
+            ]
             # overwrite remote routes with local metadata and function schemas
             local_to_keep = [
                 Utterance(
                     route=utt.route,
                     utterance=utt.utterance,
                     metadata=remote_only_mapper[utt.route][1],
-                    function_schemas=remote_only_mapper[utt.route][0]
-                ) for utt in local_to_keep
+                    function_schemas=remote_only_mapper[utt.route][0],
+                )
+                for utt in local_to_keep
             ]
             # get local utterances that are NOT in remote
-            local_to_delete = [utt for utt in local_only if utt.route not in remote_route_names]
+            local_to_delete = [
+                utt for utt in local_only if utt.route not in remote_route_names
+            ]
             return {
-                "remote": {
-                    "upsert": local_to_keep,
-                    "delete": []
-                },
-                "local": {
-                    "upsert": remote_only,
-                    "delete": local_to_delete
-                }
+                "remote": {"upsert": local_to_keep, "delete": []},
+                "local": {"upsert": remote_only, "delete": local_to_delete},
             }
         elif sync_mode == "merge":
             # overwrite remote routes with local metadata and function schemas
             remote_only_updated = [
-                Utterance(
-                    route=utt.route,
-                    utterance=utt.utterance,
-                    metadata=local_only_mapper[utt.route][1],
-                    function_schemas=local_only_mapper[utt.route][0]
-                ) if utt.route in local_only_mapper else utt
+                (
+                    Utterance(
+                        route=utt.route,
+                        utterance=utt.utterance,
+                        metadata=local_only_mapper[utt.route][1],
+                        function_schemas=local_only_mapper[utt.route][0],
+                    )
+                    if utt.route in local_only_mapper
+                    else utt
+                )
                 for utt in remote_only
             ]
             # propogate same to shared routes
@@ -374,25 +386,26 @@ class UtteranceDiff(BaseModel):
                     route=utt.route,
                     utterance=utt.utterance,
                     metadata=local_only_mapper[utt.route][1],
-                    function_schemas=local_only_mapper[utt.route][0]
-                ) for utt in local_and_remote if (
-                    utt.route in local_only_mapper and (
-                        utt.metadata != local_only_mapper[utt.route][1] or
-                        utt.function_schemas != local_only_mapper[utt.route][0]
+                    function_schemas=local_only_mapper[utt.route][0],
+                )
+                for utt in local_and_remote
+                if (
+                    utt.route in local_only_mapper
+                    and (
+                        utt.metadata != local_only_mapper[utt.route][1]
+                        or utt.function_schemas != local_only_mapper[utt.route][0]
                     )
                 )
             ]
             return {
                 "remote": {
                     "upsert": local_only + shared_updated + remote_only_updated,
-                    "delete": []
+                    "delete": [],
                 },
-                "local": {
-                    "upsert": remote_only_updated + shared_updated,
-                    "delete": []
-                }
+                "local": {"upsert": remote_only_updated + shared_updated, "delete": []},
             }
-        
+        else:
+            raise ValueError(f"sync_mode must be one of {SYNC_MODES}")
 
 
 class Metric(Enum):

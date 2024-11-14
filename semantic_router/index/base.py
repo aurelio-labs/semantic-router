@@ -58,21 +58,21 @@ class BaseIndex(BaseModel):
         :return: A list of Route objects.
         :rtype: List[Route]
         """
-        route_tuples = self.get_utterances()
+        utterances = self.get_utterances()
         routes_dict: Dict[str, Route] = {}
         # first create a dictionary of route names to Route objects
-        for route_name, utterance, function_schema, metadata in route_tuples:
+        for utt in utterances:
             # if the route is not in the dictionary, add it
-            if route_name not in routes_dict:
-                routes_dict[route_name] = Route(
-                    name=route_name,
-                    utterances=[utterance],
-                    function_schemas=function_schema,
-                    metadata=metadata,
+            if utt.route not in routes_dict:
+                routes_dict[utt.route] = Route(
+                    name=utt.route,
+                    utterances=[utt.utterance],
+                    function_schemas=utt.function_schemas,
+                    metadata=utt.metadata,
                 )
             else:
                 # otherwise, add the utterance to the route
-                routes_dict[route_name].utterances.append(utterance)
+                routes_dict[utt.route].utterances.append(utt.utterance)
         # then create a list of routes from the dictionary
         routes: List[Route] = []
         for route_name, route in routes_dict.items():
@@ -166,27 +166,27 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def _sync_index(
-        self,
-        local_route_names: List[str],
-        local_utterances: List[str],
-        local_function_schemas: List[Dict[str, Any]],
-        local_metadata: List[Dict[str, Any]],
-        dimensions: int,
-    ):
-        """
-        Synchronize the local index with the remote index based on the specified mode.
-        Modes:
-        - "error": Raise an error if local and remote are not synchronized.
-        - "remote": Take remote as the source of truth and update local to align.
-        - "local": Take local as the source of truth and update remote to align.
-        - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
-        - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
-        - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
+    # def _sync_index(
+    #     self,
+    #     local_route_names: List[str],
+    #     local_utterances: List[str],
+    #     local_function_schemas: List[Dict[str, Any]],
+    #     local_metadata: List[Dict[str, Any]],
+    #     dimensions: int,
+    # ):
+    #     """
+    #     Synchronize the local index with the remote index based on the specified mode.
+    #     Modes:
+    #     - "error": Raise an error if local and remote are not synchronized.
+    #     - "remote": Take remote as the source of truth and update local to align.
+    #     - "local": Take local as the source of truth and update remote to align.
+    #     - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
+    #     - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
+    #     - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
 
-        This method should be implemented by subclasses.
-        """
-        raise NotImplementedError("This method should be implemented by subclasses.")
+    #     This method should be implemented by subclasses.
+    #     """
+    #     raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _read_hash(self) -> ConfigParameter:
         """
