@@ -24,7 +24,6 @@ class BaseIndex(BaseModel):
     dimensions: Union[int, None] = None
     type: str = "base"
     init_async_index: bool = False
-    sync: Union[str, None] = None
 
     def add(
         self,
@@ -152,41 +151,6 @@ class BaseIndex(BaseModel):
         """
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
-
-    def is_synced(
-        self,
-        local_route_names: List[str],
-        local_utterances_list: List[str],
-        local_function_schemas_list: List[Dict[str, Any]],
-        local_metadata_list: List[Dict[str, Any]],
-    ) -> bool:
-        """
-        Checks whether local and remote index are synchronized.
-        This method should be implemented by subclasses.
-        """
-        raise NotImplementedError("This method should be implemented by subclasses.")
-
-    # def _sync_index(
-    #     self,
-    #     local_route_names: List[str],
-    #     local_utterances: List[str],
-    #     local_function_schemas: List[Dict[str, Any]],
-    #     local_metadata: List[Dict[str, Any]],
-    #     dimensions: int,
-    # ):
-    #     """
-    #     Synchronize the local index with the remote index based on the specified mode.
-    #     Modes:
-    #     - "error": Raise an error if local and remote are not synchronized.
-    #     - "remote": Take remote as the source of truth and update local to align.
-    #     - "local": Take local as the source of truth and update remote to align.
-    #     - "merge-force-remote": Merge both local and remote taking only remote routes features when a route with same route name is present both locally and remotely.
-    #     - "merge-force-local": Merge both local and remote taking only local routes features when a route with same route name is present both locally and remotely.
-    #     - "merge": Merge both local and remote, merging also local and remote features when a route with same route name is present both locally and remotely.
-
-    #     This method should be implemented by subclasses.
-    #     """
-    #     raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _read_hash(self) -> ConfigParameter:
         """

@@ -450,7 +450,7 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def aget_routes(self):
-        raise NotImplementedError("Sync remove is not implemented for PostgresIndex.")
+        raise NotImplementedError("Async get is not implemented for PostgresIndex.")
 
     def _write_config(self, config: ConfigParameter):
         logger.warning("No config is written for PostgresIndex.")

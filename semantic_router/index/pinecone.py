@@ -76,7 +76,6 @@ class PineconeIndex(BaseIndex):
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
-        sync: Optional[str] = None,
         init_async_index: bool = False,
     ):
         super().__init__()
@@ -92,7 +91,6 @@ class PineconeIndex(BaseIndex):
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
-        self.sync = sync
 
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")

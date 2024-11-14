@@ -160,19 +160,7 @@ class QdrantIndex(BaseIndex):
             )
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for QdrantIndex.")
-
-    # def _sync_index(
-    #     self,
-    #     local_route_names: List[str],
-    #     local_utterances_list: List[str],
-    #     local_function_schemas: List[Dict[str, Any]],
-    #     local_metadata_list: List[Dict[str, Any]],
-    #     dimensions: int,
-    # ):
-    #     if self.sync is not None:
-    #         logger.error("Sync remove is not implemented for QdrantIndex.")
+        logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def add(
         self,
