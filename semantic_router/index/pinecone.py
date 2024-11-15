@@ -492,6 +492,7 @@ class PineconeIndex(BaseIndex):
 
     def delete_index(self):
         self.client.delete_index(self.index_name)
+        self.index = None
 
     # __ASYNC CLIENT METHODS__
     async def _async_query(

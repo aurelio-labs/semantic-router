@@ -47,6 +47,9 @@ class BaseIndex(BaseModel):
         schema and additional metadata.
         :rtype: List[Tuple]
         """
+        if self.index is None:
+            logger.warning("Index is None, could not retrieve utterances.")
+            return []
         _, metadata = self._get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
         return [Utterance.from_tuple(x) for x in route_tuples]
@@ -212,6 +215,9 @@ class BaseIndex(BaseModel):
         schema and additional metadata.
         :rtype: List[Tuple]
         """
+        if self.index is None:
+            logger.warning("Index is None, could not retrieve route info.")
+            return []
         _, metadata = await self._async_get_all(include_metadata=True)
         route_info = parse_route_info(metadata=metadata)
         return route_info  # type: ignore

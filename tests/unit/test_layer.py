@@ -232,24 +232,26 @@ class TestIndexEncoders:
         route_layer_none = RouteLayer(encoder=None)
         assert route_layer_none.score_threshold == openai_encoder.score_threshold
 
-    def test_initialization_dynamic_route(
-        self, encoder_cls, dynamic_routes, index_cls
-    ):
-        index = init_index(index_cls)
-        encoder = encoder_cls()
-        route_layer = RouteLayer(
-            encoder=encoder, routes=dynamic_routes, index=index,
-            auto_sync="local" if index_cls is PineconeIndex else None,
-        )
-        assert route_layer.score_threshold == encoder.score_threshold
-
 
 @pytest.mark.parametrize("index_cls", get_test_indexes())
 class TestRouteLayer:
+    def test_initialization_dynamic_route(
+        self, dynamic_routes, index_cls
+    ):
+        index = init_index(index_cls)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=dynamic_routes, index=index,
+            auto_sync="local",
+        )
+        assert route_layer.score_threshold == openai_encoder.score_threshold
+
     def test_delete_index(self, openai_encoder, routes, index_cls):
         # TODO merge .delete_index() and .delete_all() and get working
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local",
+        )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         route_layer.index.delete_index()
