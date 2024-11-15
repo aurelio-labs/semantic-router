@@ -329,16 +329,16 @@ class RouteLayer:
             if isinstance(self.index, PineconeIndex):
                 logger.debug("Initializing PineconeIndex index")
                 self.index.index = self.index._init_index(force_create=True)
-                logger.debug("Checking for diffs")
-                local_utterances = self.to_config().to_utterances()
-                remote_utterances = self.index.get_utterances()
-                diff = UtteranceDiff.from_utterances(
-                    local_utterances=local_utterances,
-                    remote_utterances=remote_utterances,
-                )
-                sync_strategy = diff.get_sync_strategy(self.auto_sync)
-                logger.debug(f"Sync strategy: {sync_strategy}")
-                self._execute_sync_strategy(sync_strategy)
+            logger.debug("Checking for diffs")
+            local_utterances = self.to_config().to_utterances()
+            remote_utterances = self.index.get_utterances()
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=remote_utterances,
+            )
+            sync_strategy = diff.get_sync_strategy(self.auto_sync)
+            logger.debug(f"Sync strategy: {sync_strategy}")
+            self._execute_sync_strategy(sync_strategy)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(

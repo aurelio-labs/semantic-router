@@ -16,7 +16,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 12
+PINECONE_SLEEP = 3
 
 
 def mock_encoder_call(utterances):
@@ -236,7 +236,7 @@ class TestIndexEncoders:
 @pytest.mark.parametrize("index_cls", get_test_indexes())
 class TestRouteLayer:
     def test_initialization_dynamic_route(
-        self, dynamic_routes, index_cls
+        self, dynamic_routes, openai_encoder, index_cls
     ):
         index = init_index(index_cls)
         route_layer = RouteLayer(
@@ -305,7 +305,7 @@ class TestRouteLayer:
         index = init_index(index_cls)
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index,
-            auto_sync="local" if index_cls is PineconeIndex else None,
+            auto_sync="local",
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
