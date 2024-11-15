@@ -199,7 +199,7 @@ def get_test_encoders():
     for encoder in get_test_encoders()
 ])
 class TestIndexEncoders:
-    def test_initialization(self, routes, index_cls, encoder_cls):
+    def test_initialization(self, routes, openai_encoder, index_cls, encoder_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
             encoder=encoder_cls(), routes=routes, index=index,
