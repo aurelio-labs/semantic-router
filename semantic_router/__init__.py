@@ -4,4 +4,4 @@ from semantic_router.route import Route
 
 __all__ = ["RouteLayer", "HybridRouteLayer", "Route", "LayerConfig"]
 
-__version__ = "0.1.0-alpha.1"
+__version__ = "0.1.0.dev0"
