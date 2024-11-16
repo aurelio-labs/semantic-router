@@ -43,7 +43,9 @@ def init_index(
     """
     if index_cls is PineconeIndex:
         index = index_cls(
-            index_name=TEST_ID, dimensions=dimensions, namespace=namespace,
+            index_name=TEST_ID,
+            dimensions=dimensions,
+            namespace=namespace,
         )
     else:
         index = index_cls()
@@ -192,7 +194,10 @@ class TestRouteLayer:
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         _ = RouteLayer(
-            encoder=openai_encoder, routes=routes, top_k=10, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            top_k=10,
+            index=index,
             auto_sync="local",
         )
 
