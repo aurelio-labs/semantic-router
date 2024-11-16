@@ -1,5 +1,5 @@
 Synchronizing the Route Layer with Indexes
-===========================================
+==========================================
 
 The `RouteLayer` class is the main class in the semantic router package. It
 contains the routes and allows us to interact with the underlying index. Both
@@ -147,11 +147,26 @@ objects match, we know that the local and remote instances are synchronized and
 we can return `True`. If the two objects do not match, we must investigate and
 decide how to synchronize the two instances.
 
-Resolving Synchronization Differences
--------------------------------------
+To quickly sync the local and remote instances we can use the `RouteLayer.sync`
+method. This method is equivalent to the `auto_sync` strategy specified when
+initializing the `RouteLayer` object. So, if we assume our local `RouteLayer`
+object contains the ground truth routes, we would use the `local` strategy to
+copy our local routes to the remote instance.
 
-The first step in resolving synchronization differences is to understand the
-nature of the differences. We can get a readable diff using the
+.. code-block:: python
+
+    rl.sync(sync_mode="local")
+
+After running the above code, we can check whether the local and remote
+instances are synchronized by rerunning `rl.is_synced()`, which should now
+return `True`.
+
+Investigating Synchronization Differences
+-----------------------------------------
+
+We may often need to further investigate and understand *why* our local and
+remote instances have become desynchronized. The first step in further investigation and resolution of synchronization
+differences is to see the differences. We can get a readable diff using the
 `RouteLayer.get_utterance_diff` method.
 
 .. code-block:: python
@@ -218,3 +233,39 @@ each diff tag like so:
 
     # all utterances that exist in both local and remote
     diff.get_utterances(diff_tag=' ')
+
+These can be investigated if needed. Once we're happy with our understanding
+of the issues we can resolve them by executing a synchronization by running
+the `RouteLayer._execute_sync_strategy` method:
+
+.. code-block:: python
+
+    rl._execute_sync_strategy(sync_mode="local")
+
+Once complete, we can confirm that our local and remote instances are
+synchronized by running `rl.is_synced()`:
+
+.. code-block:: python
+
+    rl.is_synced()
+
+If the above returns `True` we are now synchronized!
+
+                      .=                
+                     :%%*               
+                    -%%%%#              
+                   =%%%%%%#.            
+                  +%%%%%%%+             
+                 *%%%%%%%=              
+               .#%%%%%%%-               
+              .#%%%%%%%: -%:            
+             :%%%%%%%#. =%%%=           
+            -%%%%%%%#  *%%%%%+          
+           =%%%%%%%*  -%%%%%%%*         
+          .-------:    -%%%%%%%#        
+    :*****************+ :%%%%%%%#.      
+   -%%%%%%%%%%%%%%%%%%%* .#%%%%%%%:     
+  =%%%%%%%%%%%%%%%%%%%%%#..#%%%%%%%-    
+ +%%%%%%%%%%%%%%%%%%%%%%%#. *%%%%%%%=   
+                             +%%%%%%%+  
+                              =#######+
