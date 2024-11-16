@@ -186,6 +186,7 @@ def get_test_indexes():
 
     return indexes
 
+
 def get_test_encoders():
     encoders = [OpenAIEncoder]
     if importlib.util.find_spec("cohere") is not None:
@@ -193,17 +194,23 @@ def get_test_encoders():
     return encoders
 
 
-@pytest.mark.parametrize("index_cls,encoder_cls", [
-    (index, encoder) 
-    for index in get_test_indexes() 
-    for encoder in get_test_encoders()
-])
+@pytest.mark.parametrize(
+    "index_cls,encoder_cls",
+    [
+        (index, encoder)
+        for index in get_test_indexes()
+        for encoder in get_test_encoders()
+    ],
+)
 class TestIndexEncoders:
     def test_initialization(self, routes, openai_encoder, index_cls, encoder_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=encoder_cls(), routes=routes, index=index,
-            auto_sync="local", top_k=10,
+            encoder=encoder_cls(),
+            routes=routes,
+            index=index,
+            auto_sync="local",
+            top_k=10,
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -218,9 +225,7 @@ class TestIndexEncoders:
             else 0 == 2
         )
 
-    def test_initialization_different_encoders(
-        self, encoder_cls, index_cls
-    ):
+    def test_initialization_different_encoders(self, encoder_cls, index_cls):
         index = init_index(index_cls)
         encoder = encoder_cls()
         route_layer = RouteLayer(encoder=encoder, index=index)
@@ -239,7 +244,9 @@ class TestRouteLayer:
     ):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=dynamic_routes, index=index,
+            encoder=openai_encoder,
+            routes=dynamic_routes,
+            index=index,
             auto_sync="local",
         )
         assert route_layer.score_threshold == openai_encoder.score_threshold
@@ -248,7 +255,9 @@ class TestRouteLayer:
         # TODO merge .delete_index() and .delete_all() and get working
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -261,8 +270,7 @@ class TestRouteLayer:
     def test_add_route(self, routes, openai_encoder, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=[], index=index,
-            auto_sync="local"
+            encoder=openai_encoder, routes=[], index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
@@ -290,7 +298,9 @@ class TestRouteLayer:
     def test_list_route_names(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -303,7 +313,9 @@ class TestRouteLayer:
     def test_delete_route(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -336,7 +348,8 @@ class TestRouteLayer:
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, index=index,
+            encoder=openai_encoder,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -350,7 +363,9 @@ class TestRouteLayer:
     def test_query_and_classification(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls, dimensions=3)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -361,7 +376,9 @@ class TestRouteLayer:
     def test_query_filter(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls, dimensions=3)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -382,7 +399,9 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             pineconeindex = init_index(index_cls, dimensions=3)
             route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=pineconeindex,
+                encoder=openai_encoder,
+                routes=routes,
+                index=pineconeindex,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -402,7 +421,9 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             pineconeindex = init_index(index_cls, namespace="test")
             route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=pineconeindex,
+                encoder=openai_encoder,
+                routes=routes,
+                index=pineconeindex,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -424,7 +445,9 @@ class TestRouteLayer:
     def test_query_with_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -442,7 +465,9 @@ class TestRouteLayer:
     def test_semantic_classify(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -459,7 +484,9 @@ class TestRouteLayer:
     def test_semantic_classify_multiple_routes(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
@@ -488,7 +515,8 @@ class TestRouteLayer:
     def test_pass_threshold(self, openai_encoder, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, index=index,
+            encoder=openai_encoder,
+            index=index,
             auto_sync="local",
         )
         assert not route_layer._pass_threshold([], 0.3)
@@ -497,7 +525,8 @@ class TestRouteLayer:
     def test_failover_score_threshold(self, openai_encoder, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, index=index,
+            encoder=openai_encoder,
+            index=index,
             auto_sync="local",
         )
         assert route_layer.score_threshold == 0.3
@@ -510,7 +539,9 @@ class TestRouteLayer:
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             index = init_index(index_cls)
             route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=index,
+                encoder=openai_encoder,
+                routes=routes,
+                index=index,
                 auto_sync="local",
             )
             route_layer.to_json(temp_path)
@@ -533,7 +564,9 @@ class TestRouteLayer:
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             index = init_index(index_cls)
             route_layer = RouteLayer(
-                encoder=openai_encoder, routes=routes, index=index,
+                encoder=openai_encoder,
+                routes=routes,
+                index=index,
                 auto_sync="local",
             )
             route_layer.to_yaml(temp_path)
@@ -735,7 +768,9 @@ class TestRouteLayer:
     def test_retrieve_with_text(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         text = "Hello"
@@ -748,7 +783,9 @@ class TestRouteLayer:
     def test_retrieve_with_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         vector = [0.1, 0.2, 0.3]
@@ -761,7 +798,9 @@ class TestRouteLayer:
     def test_retrieve_without_text_or_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         with pytest.raises(ValueError, match="Either text or vector must be provided"):
@@ -770,7 +809,9 @@ class TestRouteLayer:
     def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes, index=index,
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
             auto_sync="local",
         )
         text = "Asparagus"
@@ -780,7 +821,9 @@ class TestRouteLayer:
     def test_retrieve_one_match(self, openai_encoder, routes_3, index_cls):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes_3, index=index,
+            encoder=openai_encoder,
+            routes=routes_3,
+            index=index,
             auto_sync="local",
         )
         text = "Hello"
@@ -796,7 +839,9 @@ class TestRouteLayer:
     ):
         index = init_index(index_cls)
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes_2, index=index,
+            encoder=openai_encoder,
+            routes=routes_2,
+            index=index,
             auto_sync="local",
         )
         text = "Hello"
@@ -871,7 +916,8 @@ class TestRouteLayer:
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes,
+            encoder=openai_encoder,
+            routes=routes,
             auto_sync="local",
         )
         # unpack test data
@@ -881,7 +927,8 @@ class TestLayerFit:
 
     def test_fit(self, openai_encoder, routes, test_data):
         route_layer = RouteLayer(
-            encoder=openai_encoder, routes=routes,
+            encoder=openai_encoder,
+            routes=routes,
             auto_sync="local",
         )
         # unpack test data

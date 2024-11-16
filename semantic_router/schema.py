@@ -90,7 +90,7 @@ class ConfigParameter(BaseModel):
 
 class Utterance(BaseModel):
     route: str
-    utterance: str
+    utterance: Union[str, Any]
     function_schemas: Optional[List[Dict]] = None
     metadata: dict = {}
     diff_tag: str = " "

@@ -645,4 +645,6 @@ class PineconeIndex(BaseIndex):
             )
 
     def __len__(self):
-        return self.index.describe_index_stats()["namespaces"][self.namespace]["vector_count"]
+        return self.index.describe_index_stats()["namespaces"][self.namespace][
+            "vector_count"
+        ]
