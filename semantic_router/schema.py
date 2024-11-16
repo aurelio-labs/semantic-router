@@ -55,18 +55,6 @@ class Message(BaseModel):
         return f"{self.role}: {self.content}"
 
 
-class DocumentSplit(BaseModel):
-    docs: List[Union[str, Any]]
-    is_triggered: bool = False
-    triggered_score: Optional[float] = None
-    token_count: Optional[int] = None
-    metadata: Optional[Dict] = None
-
-    @property
-    def content(self) -> str:
-        return " ".join([doc if isinstance(doc, str) else "" for doc in self.docs])
-
-
 class ConfigParameter(BaseModel):
     field: str
     value: str

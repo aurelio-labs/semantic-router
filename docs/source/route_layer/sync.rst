@@ -1,18 +1,19 @@
-Synchronizing with Remote Instances
-===================================
+Synchronizing the Route Layer with Indexes
+===========================================
 
-Semantic router supports several *remote instances* that store our routes and
-utterances, such as Pinecone or Qdrant, supported via the `PineconeIndex` and
-`QdrantIndex` respectively.
+The `RouteLayer` class is the main class in the semantic router package. It
+contains the routes and allows us to interact with the underlying index. Both
+the `RouteLayer` and the various index classes support synchronization
+strategies that allow us to synchronize the routes and utterances in the layer
+with the underlying index.
 
-Using these remote instances is optional, but it allows us to scale our
-semantic router to a larger number of routes and utterances. However, we must
-decide how to synchronize between our local metadata and the remote instance —
-particularly when reinitializing a local instance that should connect to an
-existing remote instance.
+This functionality becomes increasingly important when using the semantic
+router in a distributed environment. For example, when using one of the *remote
+instances*, such as `PineconeIndex` or `QdrantIndex`. Deciding the correct
+synchronization strategy for these remote indexes will save application time
+and reduce the risk of errors.
 
-Semantic router supports several synchronization strategies that can be passed
-to the `sync` parameter of the various `BaseIndex` objects. Those strategies
+Semantic router supports several synchronization strategies. Those strategies
 are:
 
 * `error`: Raise an error if local and remote are not synchronized.
@@ -27,33 +28,55 @@ are:
 * `merge`: Merge both local and remote, merging also local and remote utterances
   when a route with same route name is present both locally and remotely.
 
-You can try this yourself by running the following:
+There are two ways to specify the synchronization strategy. The first is to
+specify the strategy when initializing the `RouteLayer` object via the
+`auto_sync` parameter. The second is to trigger synchronization directly via
+the `RouteLayer.sync` method.
+
+---
+
+Using the `auto_sync` parameter
+-------------------------------
+
+The `auto_sync` parameter is used to specify the synchronization strategy when
+initializing the `RouteLayer` object. Depending on the chosen strategy, the
+`RouteLayer` object will automatically synchronize with the defined index. As
+this happens on initialization, this will often increase the initialization
+time of the `RouteLayer` object.
+
+Let's see an example of `auto_sync` in action.
 
 .. code-block:: python
 
     from semantic_router import Route
-    from semantic_router.encoders import OpenAIEncoder
-    from semantic_router.index.pinecone import PineconeIndex
-    from semantic_router.layer import RouteLayer
 
-
+    # we could use this as a guide for our chatbot to avoid political conversations
     politics = Route(
         name="politics",
         utterances=[
             "isn't politics the best thing ever",
             "why don't you tell me about your political opinions",
             "don't you just love the president",
+            "don't you just hate the president",
+            "they're going to destroy this country!",
+            "they will save the country!",
         ],
     )
 
+    # this could be used as an indicator to our chatbot to switch to a more
+    # conversational prompt
     chitchat = Route(
         name="chitchat",
         utterances=[
             "how's the weather today?",
             "how are things going?",
+            "lovely weather today",
+            "the weather is horrendous",
+            "let's go to the chippy",
         ],
     )
 
+    # we place both of our decisions together into single list
     routes = [politics, chitchat]
 
     encoder = OpenAIEncoder(openai_api_key=openai_api_key)
@@ -62,12 +85,23 @@ You can try this yourself by running the following:
         api_key=pinecone_api_key,
         region="us-east-1",
         index_name="sync-example",
-        sync="local",  # here we specify the synchronization strategy
+    )
+    # before initializing the RouteLayer with auto_sync we should initialize
+    # the index
+    pc_index.index = pc_index._init_index(force_create=True)
+
+    # now we can initialize the RouteLayer with local auto_sync
+    rl = RouteLayer(
+        encoder=encoder, routes=routes, index=pc_index,
+        auto_sync="local"
     )
 
-    rl = RouteLayer(encoder=encoder, routes=routes, index=pc_index)
+Now we can run `rl.is_synced()` to confirm that our local and remote instances
+are synchronized.
 
-When initializing the `PineconeIndex` object, we can specify the `sync` parameter.
+.. code-block:: python
+
+    rl.is_synced()
 
 Checking for Synchronization
 ----------------------------

@@ -400,7 +400,6 @@ class PineconeIndex(BaseIndex):
                 namespace=self.namespace,
             )
         hash_id = f"sr_hash#{self.namespace}"
-        print(f"hash_id: {hash_id}")
         hash_record = self.index.fetch(
             ids=[hash_id],
             namespace="sr_config",
