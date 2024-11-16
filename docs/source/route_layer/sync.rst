@@ -17,16 +17,28 @@ Semantic router supports several synchronization strategies. Those strategies
 are:
 
 * `error`: Raise an error if local and remote are not synchronized.
+
 * `remote`: Take remote as the source of truth and update local to align.
+
 * `local`: Take local as the source of truth and update remote to align.
-* `merge-force-remote`: Merge both local and remote taking only remote routes
-  utterances when a route with same route name is present both locally and
-  remotely.
-* `merge-force-local`: Merge both local and remote taking only local routes
-  utterances when a route with same route name is present both locally and
-  remotely.
-* `merge`: Merge both local and remote, merging also local and remote utterances
-  when a route with same route name is present both locally and remotely.
+
+* `merge-force-local`: Merge both local and remote keeping local as the
+  priority. Remote utterances are only merged into local *if* a matching route
+  for the utterance is found in local, all other route-utterances are dropped.
+  Where a route exists in both local and remote, but each contains different
+  `function_schema` or `metadata` information, the local version takes priority
+  and local `function_schemas` and `metadata` is propogated to all remote
+  utterances belonging to the given route.
+
+* `merge-force-remote`: Merge both local and remote keeping remote as the
+  priority. Local utterances are only merged into remote *if* a matching route
+  for the utterance is found in the remote, all other route-utterances are
+  dropped. Where a route exists in both local and remote, but each contains
+  different `function_schema` or `metadata` information, the remote version takes
+  priotity and remote `function_schemas` and `metadata` are propogated to all
+  local routes.
+
+* `merge`: Merge both local and remote, merging also local and remote utterances when a route with same route name is present both locally and remotely. If a route exists in both local and remote but contains different `function_schemas` or `metadata` information, the local version takes priority and local `function_schemas` and `metadata` are propogated to all remote routes.
 
 There are two ways to specify the synchronization strategy. The first is to
 specify the strategy when initializing the `RouteLayer` object via the
@@ -132,9 +144,77 @@ and we can return `True`. If the hashes do not match, we need to perform a
 The slow sync check works by creating a `LayerConfig` object from the remote
 index and then comparing this to our local `LayerConfig` object. If the two
 objects match, we know that the local and remote instances are synchronized and
-we can return `True`. If the two objects do not match, we need to perform a
-diff.
+we can return `True`. If the two objects do not match, we must investigate and
+decide how to synchronize the two instances.
+
+Resolving Synchronization Differences
+-------------------------------------
+
+The first step in resolving synchronization differences is to understand the
+nature of the differences. We can get a readable diff using the
+`RouteLayer.get_utterance_diff` method.
+
+.. code-block:: python
+
+    diff = rl.get_utterance_diff()
+
+.. code-block:: python
+
+    ["- politics: don't you just hate the president",
+    "- politics: don't you just love the president",
+    "- politics: isn't politics the best thing ever",
+    '- politics: they will save the country!',
+    "- politics: they're going to destroy this country!",
+    "- politics: why don't you tell me about your political opinions",
+    '+ chitchat: how\'s the weather today?',
+    '+ chitchat: how are things going?',
+    '+ chitchat: lovely weather today',
+    '+ chitchat: the weather is horrendous',
+    '+ chitchat: let\'s go to the chippy']
 
 The diff works by creating a list of all the routes in the remote index and
 then comparing these to the routes in our local instance. Any differences
-between the remote and local routes are shown in the diff.
+between the remote and local routes are shown in the above diff.
+
+Now, to resolve these differences we will need to initialize an `UtteranceDiff`
+object. This object will contain the differences between the remote and local
+utterances. We can then use this object to decide how to synchronize the two
+instances. To initialize the `UtteranceDiff` object we need to get our local
+and remote utterances.
+
+.. code-block:: python
+
+    local_utterances = rl.to_config().to_utterances()
+    remote_utterances = rl.index.get_utterances()
+
+We create an utterance diff object like so:
+
+.. code-block:: python
+
+    diff = UtteranceDiff.from_utterances(
+        local_utterances=local_utterances, remote_utterances=remote_utterances
+    )
+
+`UtteranceDiff` objects include all diff information inside the `diff`
+attribute (which is a list of `Utterance` objects). Each of our `Utterance`
+objects inside `UtteranceDiff.diff` now contain a populated `diff_tag`
+attribute, where:
+
+- `diff_tag='+'` indicates the utterance exists in the remote instance *only*.
+- `diff_tag='-'` indicates the utterance exists in the local instance *only*.
+- `diff_tag=' '` indicates the utterance exists in both the local and remote
+  instances.
+
+After initializing an `UtteranceDiff` object we can get all utterances with
+each diff tag like so:
+
+.. code-block:: python
+
+    # all utterances that exist only in remote
+    diff.get_utterances(diff_tag='+')
+
+    # all utterances that exist only in local
+    diff.get_utterances(diff_tag='-')
+
+    # all utterances that exist in both local and remote
+    diff.get_utterances(diff_tag=' ')

@@ -263,7 +263,7 @@ class UtteranceDiff(BaseModel):
                 "remote": {"upsert": [], "delete": []},
                 "local": {"upsert": remote_only, "delete": local_only},
             }
-        elif sync_mode == "merge-force-remote":  # merge-to-local merge-join-local
+        elif sync_mode == "merge-force-local":  # merge-to-local merge-join-local
             # PRIORITIZE LOCAL
             # get set of route names that exist in local (we keep these if
             # they are in remote)
@@ -319,7 +319,7 @@ class UtteranceDiff(BaseModel):
                 },
                 "local": {"upsert": remote_to_keep, "delete": []},
             }
-        elif sync_mode == "merge-force-local":  # merge-to-remote merge-join-remote
+        elif sync_mode == "merge-force-remote":  # merge-to-remote merge-join-remote
             # get set of route names that exist in remote (we keep these if
             # they are in local)
             remote_route_names = set([utt.route for utt in remote_only])

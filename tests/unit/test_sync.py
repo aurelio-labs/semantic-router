@@ -303,11 +303,11 @@ class TestRouteLayer:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_auto_sync_merge_force_remote(
+    def test_auto_sync_merge_force_local(
         self, openai_encoder, routes, routes_2, index_cls
     ):
         if index_cls is PineconeIndex:
-            # TEST MERGE FORCE REMOTE
+            # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls)
             route_layer = RouteLayer(
                 encoder=openai_encoder,
@@ -320,7 +320,7 @@ class TestRouteLayer:
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
-                auto_sync="merge-force-remote",
+                auto_sync="merge-force-local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             # confirm local and remote are synced
@@ -341,7 +341,7 @@ class TestRouteLayer:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_auto_sync_merge_force_local(
+    def test_auto_sync_merge_force_remote(
         self, openai_encoder, routes, routes_2, index_cls
     ):
         if index_cls is PineconeIndex:
@@ -358,7 +358,7 @@ class TestRouteLayer:
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
-                auto_sync="merge-force-local",
+                auto_sync="merge-force-remote",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             # confirm local and remote are synced

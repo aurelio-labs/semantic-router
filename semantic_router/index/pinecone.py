@@ -95,15 +95,12 @@ class PineconeIndex(BaseIndex):
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
 
-        logger.debug("Init PineconeIndex sync client")
         self.client = self._initialize_client(api_key=self.api_key)
         if init_async_index:
-            logger.debug("Init PineconeIndex async client")
             self.async_client = self._initialize_async_client(api_key=self.api_key)
         else:
             self.async_client = None
         # try initializing index
-        logger.debug("Init PineconeIndex index")
         self.index = self._init_index()
 
     def _initialize_client(self, api_key: Optional[str] = None):
@@ -171,7 +168,6 @@ class PineconeIndex(BaseIndex):
             index = self.client.Index(self.index_name)
             time.sleep(0.5)
         elif index_exists:
-            logger.debug("Index exists, returning index")
             # if the index exists we just return it
             index = self.client.Index(self.index_name)
             # grab the dimensions from the index

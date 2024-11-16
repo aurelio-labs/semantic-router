@@ -320,16 +320,13 @@ class RouteLayer:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
         if self.auto_sync:
-            logger.debug(f"Auto sync enabled: {self.auto_sync}")
             # initialize index now, check if we need dimensions
             if self.index.dimensions is None:
                 dims = len(self.encoder(["test"])[0])
                 self.index.dimensions = dims
             # now init index
             if isinstance(self.index, PineconeIndex):
-                logger.debug("Initializing PineconeIndex index")
                 self.index.index = self.index._init_index(force_create=True)
-            logger.debug("Checking for diffs")
             local_utterances = self.to_config().to_utterances()
             remote_utterances = self.index.get_utterances()
             diff = UtteranceDiff.from_utterances(
@@ -337,7 +334,6 @@ class RouteLayer:
                 remote_utterances=remote_utterances,
             )
             sync_strategy = diff.get_sync_strategy(self.auto_sync)
-            logger.debug(f"Sync strategy: {sync_strategy}")
             self._execute_sync_strategy(sync_strategy)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
