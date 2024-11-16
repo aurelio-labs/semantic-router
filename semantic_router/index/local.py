@@ -155,6 +155,8 @@ class LocalIndex(BaseIndex):
         Deletes the index, effectively clearing it and setting it to None.
         """
         self.index = None
+        self.routes = None
+        self.utterances = None
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route."""

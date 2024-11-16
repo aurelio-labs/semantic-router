@@ -16,7 +16,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 3
+PINECONE_SLEEP = 6
 
 
 def mock_encoder_call(utterances):
@@ -203,8 +203,7 @@ class TestIndexEncoders:
         index = init_index(index_cls)
         route_layer = RouteLayer(
             encoder=encoder_cls(), routes=routes, index=index,
-            auto_sync="local" if index_cls is PineconeIndex else None,
-            top_k=10,
+            auto_sync="local", top_k=10,
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -212,7 +211,7 @@ class TestIndexEncoders:
         assert openai_encoder.score_threshold == 0.3
         assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
-        assert len(route_layer.index) if route_layer.index is not None else 0 == 5
+        assert len(route_layer.index) == 5
         assert (
             len(set(route_layer._get_route_names()))
             if route_layer._get_route_names() is not None
@@ -292,7 +291,7 @@ class TestRouteLayer:
         index = init_index(index_cls)
         route_layer = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index,
-            auto_sync="local" if index_cls is PineconeIndex else None,
+            auto_sync="local",
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
@@ -735,7 +734,10 @@ class TestRouteLayer:
 
     def test_retrieve_with_text(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local",
+        )
         text = "Hello"
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) >= 1, "Expected at least one result"
@@ -745,7 +747,10 @@ class TestRouteLayer:
 
     def test_retrieve_with_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local",
+        )
         vector = [0.1, 0.2, 0.3]
         results = route_layer.retrieve_multiple_routes(vector=vector)
         assert len(results) >= 1, "Expected at least one result"
@@ -755,13 +760,19 @@ class TestRouteLayer:
 
     def test_retrieve_without_text_or_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local",
+        )
         with pytest.raises(ValueError, match="Either text or vector must be provided"):
             route_layer.retrieve_multiple_routes()
 
     def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes, index=index,
+            auto_sync="local",
+        )
         text = "Asparagus"
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 0, f"Expected no results, but got {len(results)}"
@@ -859,14 +870,20 @@ class TestRouteLayer:
 
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes,
+            auto_sync="local",
+        )
         # unpack test data
         X, y = zip(*test_data)
         # evaluate
         route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
 
     def test_fit(self, openai_encoder, routes, test_data):
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes)
+        route_layer = RouteLayer(
+            encoder=openai_encoder, routes=routes,
+            auto_sync="local",
+        )
         # unpack test data
         X, y = zip(*test_data)
         route_layer.fit(X=X, y=y, batch_size=int(len(test_data) / 5))
