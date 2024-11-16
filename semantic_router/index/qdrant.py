@@ -4,7 +4,7 @@ import numpy as np
 from pydantic.v1 import Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import Metric
+from semantic_router.schema import ConfigParameter, Metric, Utterance
 from semantic_router.utils.logger import logger
 
 DEFAULT_COLLECTION_NAME = "semantic-router-index"
@@ -160,19 +160,7 @@ class QdrantIndex(BaseIndex):
             )
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for QdrantIndex.")
-
-    def _sync_index(
-        self,
-        local_route_names: List[str],
-        local_utterances_list: List[str],
-        local_function_schemas: List[Dict[str, Any]],
-        local_metadata_list: List[Dict[str, Any]],
-        dimensions: int,
-    ):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for QdrantIndex.")
+        logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def add(
         self,
@@ -199,12 +187,12 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Utterance]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
         Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+            List[Tuple]: A list of (route_name, utterance, function_schema, metadata) objects.
         """
 
         from qdrant_client import grpc
@@ -212,26 +200,35 @@ class QdrantIndex(BaseIndex):
         results = []
         next_offset = None
         stop_scrolling = False
-        while not stop_scrolling:
-            records, next_offset = self.client.scroll(
-                self.index_name,
-                limit=SCROLL_SIZE,
-                offset=next_offset,
-                with_payload=True,
-            )
-            stop_scrolling = next_offset is None or (
-                isinstance(next_offset, grpc.PointId)
-                and next_offset.num == 0
-                and next_offset.uuid == ""
-            )
+        try:
+            while not stop_scrolling:
+                records, next_offset = self.client.scroll(
+                    self.index_name,
+                    limit=SCROLL_SIZE,
+                    offset=next_offset,
+                    with_payload=True,
+                )
+                stop_scrolling = next_offset is None or (
+                    isinstance(next_offset, grpc.PointId)
+                    and next_offset.num == 0
+                    and next_offset.uuid == ""
+                )
 
-            results.extend(records)
+                results.extend(records)
 
-        route_tuples = [
-            (x.payload[SR_ROUTE_PAYLOAD_KEY], x.payload[SR_UTTERANCE_PAYLOAD_KEY])
-            for x in results
-        ]
-        return route_tuples
+            utterances: List[Utterance] = [
+                Utterance(
+                    route=x.payload[SR_ROUTE_PAYLOAD_KEY],
+                    utterance=x.payload[SR_UTTERANCE_PAYLOAD_KEY],
+                    function_schemas=None,
+                    metadata={},
+                )
+                for x in results
+            ]
+        except ValueError as e:
+            logger.warning(f"Index likely empty, error: {e}")
+            return []
+        return utterances
 
     def delete(self, route_name: str):
         from qdrant_client import models
@@ -347,6 +344,9 @@ class QdrantIndex(BaseIndex):
             raise ValueError(f"Unsupported Qdrant similarity metric: {metric}")
 
         return mapping[metric]
+
+    def _write_config(self, config: ConfigParameter):
+        logger.warning("No config is written for QdrantIndex.")
 
     def __len__(self):
         return self.client.get_collection(self.index_name).points_count

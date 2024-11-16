@@ -8,7 +8,7 @@ import psycopg2
 from pydantic import BaseModel
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import Metric
+from semantic_router.schema import ConfigParameter, Metric
 from semantic_router.utils.logger import logger
 
 
@@ -423,19 +423,6 @@ class PostgresIndex(BaseIndex):
 
         return all_vector_ids, metadata
 
-    def get_routes(self) -> List[Tuple]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
-
-        :return: A list of (route_name, utterance) tuples.
-        :rtype: List[Tuple]
-        """
-        # Get all records with metadata
-        _, metadata = self._get_all(include_metadata=True)
-        # Create a list of (route_name, utterance) tuples
-        route_tuples = [(x["sr_route"], x["sr_utterance"]) for x in metadata]
-        return route_tuples
-
     def delete_all(self):
         """
         Deletes all records from the Postgres index.
@@ -463,7 +450,10 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def aget_routes(self):
-        logger.error("Sync remove is not implemented for PostgresIndex.")
+        raise NotImplementedError("Async get is not implemented for PostgresIndex.")
+
+    def _write_config(self, config: ConfigParameter):
+        logger.warning("No config is written for PostgresIndex.")
 
     def __len__(self):
         """

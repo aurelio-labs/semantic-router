@@ -2,6 +2,7 @@ import importlib
 import json
 import os
 import random
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -11,9 +12,16 @@ from tqdm.auto import tqdm
 from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
+from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.schema import EncoderType, RouteChoice
+from semantic_router.schema import (
+    ConfigParameter,
+    EncoderType,
+    RouteChoice,
+    Utterance,
+    UtteranceDiff,
+)
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -122,6 +130,70 @@ class LayerConfig:
                 encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
             )
 
+    @classmethod
+    def from_tuples(
+        cls,
+        route_tuples: List[
+            Tuple[str, str, Optional[List[Dict[str, Any]]], Dict[str, Any]]
+        ],
+        encoder_type: str = "openai",
+        encoder_name: Optional[str] = None,
+    ):
+        """Initialize a LayerConfig from a list of tuples of routes and
+        utterances.
+
+        :param route_tuples: A list of tuples, each containing a route name and an
+            associated utterance.
+        :type route_tuples: List[Tuple[str, str]]
+        :param encoder_type: The type of encoder to use, defaults to "openai".
+        :type encoder_type: str, optional
+        :param encoder_name: The name of the encoder to use, defaults to None.
+        :type encoder_name: Optional[str], optional
+        """
+        routes_dict: Dict[str, Route] = {}
+        # first create a dictionary of route names to Route objects
+        # TODO: duplicated code with BaseIndex.get_routes()
+        for route_name, utterance, function_schema, metadata in route_tuples:
+            # if the route is not in the dictionary, add it
+            if route_name not in routes_dict:
+                routes_dict[route_name] = Route(
+                    name=route_name,
+                    utterances=[utterance],
+                    function_schemas=function_schema,
+                    metadata=metadata,
+                )
+            else:
+                # otherwise, add the utterance to the route
+                routes_dict[route_name].utterances.append(utterance)
+        # then create a list of routes from the dictionary
+        routes: List[Route] = []
+        for route_name, route in routes_dict.items():
+            routes.append(route)
+        return cls(routes=routes, encoder_type=encoder_type, encoder_name=encoder_name)
+
+    @classmethod
+    def from_index(
+        cls,
+        index: BaseIndex,
+        encoder_type: str = "openai",
+        encoder_name: Optional[str] = None,
+    ):
+        """Initialize a LayerConfig from a BaseIndex object.
+
+        :param index: The index to initialize the LayerConfig from.
+        :type index: BaseIndex
+        :param encoder_type: The type of encoder to use, defaults to "openai".
+        :type encoder_type: str, optional
+        :param encoder_name: The name of the encoder to use, defaults to None.
+        :type encoder_name: Optional[str], optional
+        """
+        remote_routes = index.get_utterances()
+        return cls.from_tuples(
+            route_tuples=[utt.to_tuple() for utt in remote_routes],
+            encoder_type=encoder_type,
+            encoder_name=encoder_name,
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "encoder_type": self.encoder_type,
@@ -152,6 +224,27 @@ class LayerConfig:
             elif ext in [".yaml", ".yml"]:
                 yaml.safe_dump(self.to_dict(), f)
 
+    def to_utterances(self) -> List[Utterance]:
+        """Convert the routes to a list of Utterance objects.
+
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
+        """
+        utterances = []
+        for route in self.routes:
+            utterances.extend(
+                [
+                    Utterance(
+                        route=route.name,
+                        utterance=x,
+                        function_schemas=route.function_schemas,
+                        metadata=route.metadata or {},
+                    )
+                    for x in route.utterances
+                ]
+            )
+        return utterances
+
     def add(self, route: Route):
         self.routes.append(route)
         logger.info(f"Added route `{route.name}`")
@@ -170,6 +263,13 @@ class LayerConfig:
             self.routes = [route for route in self.routes if route.name != name]
             logger.info(f"Removed route `{name}`")
 
+    def get_hash(self) -> ConfigParameter:
+        layer = self.to_dict()
+        return ConfigParameter(
+            field="sr_hash",
+            value=hashlib.sha256(json.dumps(layer).encode()).hexdigest(),
+        )
+
 
 class RouteLayer:
     score_threshold: float
@@ -184,6 +284,7 @@ class RouteLayer:
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
         aggregation: str = "sum",
+        auto_sync: Optional[str] = None,
     ):
         self.index: BaseIndex = index if index is not None else LocalIndex()
         if encoder is None:
@@ -211,20 +312,29 @@ class RouteLayer:
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
+        self.auto_sync = auto_sync
 
         # set route score thresholds if not already set
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # if routes list has been passed, we initialize index now
-        if self.index.sync:
-            # initialize index now
-            if len(self.routes) > 0:
-                self._add_and_sync_routes(routes=self.routes)
-            else:
-                self._add_and_sync_routes(routes=[])
-        elif len(self.routes) > 0:
-            self._add_routes(routes=self.routes)
+        if self.auto_sync:
+            # initialize index now, check if we need dimensions
+            if self.index.dimensions is None:
+                dims = len(self.encoder(["test"])[0])
+                self.index.dimensions = dims
+            # now init index
+            if isinstance(self.index, PineconeIndex):
+                self.index.index = self.index._init_index(force_create=True)
+            local_utterances = self.to_config().to_utterances()
+            remote_utterances = self.index.get_utterances()
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=remote_utterances,
+            )
+            sync_strategy = diff.get_sync_strategy(self.auto_sync)
+            self._execute_sync_strategy(sync_strategy)
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(
@@ -348,6 +458,143 @@ class RouteLayer:
 
         return route_choices
 
+    def sync(self, sync_mode: str, force: bool = False) -> List[str]:
+        """Runs a sync of the local routes with the remote index.
+
+        :param sync_mode: The mode to sync the routes with the remote index.
+        :type sync_mode: str
+        :param force: Whether to force the sync even if the local and remote
+            hashes already match. Defaults to False.
+        :type force: bool, optional
+        :return: A list of diffs describing the addressed differences between
+            the local and remote route layers.
+        :rtype: List[str]
+        """
+        if not force and self.is_synced():
+            logger.warning("Local and remote route layers are already synchronized.")
+            # create utterance diff to return, but just using local instance
+            # for speed
+            local_utterances = self.to_config().to_utterances()
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=local_utterances,
+            )
+            return diff.to_utterance_str()
+        # otherwise we continue with the sync, first creating a diff
+        local_utterances = self.to_config().to_utterances()
+        remote_utterances = self.index.get_utterances()
+        diff = UtteranceDiff.from_utterances(
+            local_utterances=local_utterances,
+            remote_utterances=remote_utterances,
+        )
+        # generate sync strategy
+        sync_strategy = diff.to_sync_strategy()
+        # and execute
+        self._execute_sync_strategy(sync_strategy)
+        return diff.to_utterance_str()
+
+    def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
+        """Executes the provided sync strategy, either deleting or upserting
+        routes from the local and remote instances as defined in the strategy.
+
+        :param strategy: The sync strategy to execute.
+        :type strategy: Dict[str, Dict[str, List[Utterance]]]
+        """
+        if strategy["remote"]["delete"]:
+            data_to_delete = {}  # type: ignore
+            for utt_obj in strategy["remote"]["delete"]:
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
+            self.index._remove_and_sync(data_to_delete)
+        if strategy["remote"]["upsert"]:
+            utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
+            self.index.add(
+                embeddings=self.encoder(utterances_text),
+                routes=[utt.route for utt in strategy["remote"]["upsert"]],
+                utterances=utterances_text,
+                function_schemas=[
+                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                ],
+                metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
+            )
+        if strategy["local"]["delete"]:
+            self._local_delete(utterances=strategy["local"]["delete"])
+        if strategy["local"]["upsert"]:
+            self._local_upsert(utterances=strategy["local"]["upsert"])
+        # update hash
+        self._write_hash()
+
+    def _local_upsert(self, utterances: List[Utterance]):
+        """Adds new routes to the RouteLayer.
+
+        :param utterances: The utterances to add to the local RouteLayer.
+        :type utterances: List[Utterance]
+        """
+        new_routes = {route.name: route for route in self.routes}
+        for utt_obj in utterances:
+            if utt_obj.route not in new_routes.keys():
+                new_routes[utt_obj.route] = Route(
+                    name=utt_obj.route,
+                    utterances=[utt_obj.utterance],
+                    function_schemas=utt_obj.function_schemas,
+                    metadata=utt_obj.metadata,
+                )
+            else:
+                if utt_obj.utterance not in new_routes[utt_obj.route].utterances:
+                    new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
+                new_routes[utt_obj.route].function_schemas = utt_obj.function_schemas
+                new_routes[utt_obj.route].metadata = utt_obj.metadata
+        temp = "\n".join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
+        logger.warning("TEMP | _local_upsert:\n" + temp)
+        self.routes = list(new_routes.values())
+
+    def _local_delete(self, utterances: List[Utterance]):
+        """Deletes routes from the local RouteLayer.
+
+        :param utterances: The utterances to delete from the local RouteLayer.
+        :type utterances: List[Utterance]
+        """
+        # create dictionary of route names to utterances
+        route_dict: dict[str, List[str]] = {}
+        for utt in utterances:
+            route_dict.setdefault(utt.route, []).append(utt.utterance)
+        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n" + temp)
+        # iterate over current routes and delete specific utterance if found
+        new_routes = []
+        for route in self.routes:
+            if route.name in route_dict.keys():
+                # drop utterances that are in route_dict deletion list
+                new_utterances = list(
+                    set(route.utterances) - set(route_dict[route.name])
+                )
+                if len(new_utterances) == 0:
+                    # the route is now empty, so we skip it
+                    continue
+                else:
+                    new_routes.append(
+                        Route(
+                            name=route.name,
+                            utterances=new_utterances,
+                            # use existing function schemas and metadata
+                            function_schemas=route.function_schemas,
+                            metadata=route.metadata,
+                        )
+                    )
+                logger.warning(
+                    f"TEMP | _local_delete OLD | {route.name}: {route.utterances}"
+                )
+                logger.warning(
+                    f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}"
+                )
+            else:
+                # the route is not in the route_dict, so we keep it as is
+                new_routes.append(route)
+        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
+        logger.warning("TEMP | _local_delete:\n" + temp)
+
+        self.routes = new_routes
+
     def _retrieve_top_route(
         self, vector: List[float], route_filter: Optional[List[str]] = None
     ) -> Tuple[Optional[Route], List[float]]:
@@ -416,6 +663,16 @@ class RouteLayer:
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
+        """Add a route to the local RouteLayer and index.
+
+        :param route: The route to add.
+        :type route: Route
+        """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
         embedded_utterances = self.encoder(route.utterances)
         self.index.add(
             embeddings=embedded_utterances,
@@ -431,6 +688,14 @@ class RouteLayer:
         )
 
         self.routes.append(route)
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -449,6 +714,11 @@ class RouteLayer:
         The name must exist within the local RouteLayer, if not a
         KeyError will be raised.
         """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
 
         if threshold is None and utterances is None:
             raise ValueError(
@@ -470,12 +740,27 @@ class RouteLayer:
         else:
             raise ValueError(f"Route '{name}' not found. Nothing updated.")
 
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
+
     def delete(self, route_name: str):
         """Deletes a route given a specific route name.
 
         :param route_name: the name of the route to be deleted
         :type str:
         """
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
         if route_name not in [route.name for route in self.routes]:
             err_msg = f"Route `{route_name}` not found in RouteLayer"
             logger.warning(err_msg)
@@ -487,11 +772,20 @@ class RouteLayer:
             self.routes = [route for route in self.routes if route.name != route_name]
             self.index.delete(route_name=route_name)
 
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
+
     def _refresh_routes(self):
         """Pulls out the latest routes from the index."""
         raise NotImplementedError("This method has not yet been implemented.")
         route_mapping = {route.name: route for route in self.routes}
-        index_routes = self.index.get_routes()
+        index_routes = self.index.get_utterances()
         new_routes_names = []
         new_routes = []
         for route_name, utterance in index_routes:
@@ -505,6 +799,12 @@ class RouteLayer:
             self.routes.append(route)
 
     def _add_routes(self, routes: List[Route]):
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
         if not routes:
             logger.warning("No routes provided to add.")
             return
@@ -526,78 +826,84 @@ class RouteLayer:
             logger.error(f"Failed to add routes to the index: {e}")
             raise Exception("Indexing error occurred") from e
 
-    def is_synced(self) -> bool:
-        if not self.index.sync:
-            raise ValueError("Index is not set to sync with remote index.")
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "details."
+            )
 
-        local_route_names, local_utterances, local_function_schemas, local_metadata = (
-            self._extract_routes_details(self.routes, include_metadata=True)
+    def _get_hash(self) -> ConfigParameter:
+        config = self.to_config()
+        return config.get_hash()
+
+    def _write_hash(self) -> ConfigParameter:
+        config = self.to_config()
+        hash_config = config.get_hash()
+        self.index._write_config(config=hash_config)
+        return hash_config
+
+    def is_synced(self) -> bool:
+        """Check if the local and remote route layer instances are
+        synchronized.
+
+        :return: True if the local and remote route layers are synchronized,
+            False otherwise.
+        :rtype: bool
+        """
+        # first check hash
+        local_hash = self._get_hash()
+        remote_hash = self.index._read_hash()
+        if local_hash.value == remote_hash.value:
+            return True
+        else:
+            return False
+
+    def get_utterance_diff(self, include_metadata: bool = False) -> List[str]:
+        """Get the difference between the local and remote utterances. Returns
+        a list of strings showing what is different in the remote when compared
+        to the local. For example:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "- route2: utterance3",
+         "- route2: utterance4"]
+
+        Tells us that the remote is missing "route2: utterance3" and "route2:
+        utterance4", which do exist locally. If we see:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "+ route2: utterance3",
+         "+ route2: utterance4"]
+
+        This diff tells us that the remote has "route2: utterance3" and
+        "route2: utterance4", which do not exist locally.
+        """
+        # first we get remote and local utterances
+        remote_utterances = self.index.get_utterances()
+        local_utterances = self.to_config().to_utterances()
+
+        diff_obj = UtteranceDiff.from_utterances(
+            local_utterances=local_utterances, remote_utterances=remote_utterances
         )
-        return self.index.is_synced(
-            local_route_names, local_utterances, local_function_schemas, local_metadata
-        )
+        return diff_obj.to_utterance_str(include_metadata=include_metadata)
 
     def _add_and_sync_routes(self, routes: List[Route]):
-        # create embeddings for all routes and sync at startup with remote ones based on sync setting
-        local_route_names, local_utterances, local_function_schemas, local_metadata = (
-            self._extract_routes_details(routes, include_metadata=True)
+        self.routes.extend(routes)
+        # first we get remote and local utterances
+        remote_utterances = self.index.get_utterances()
+        local_utterances = self.to_config().to_utterances()
+
+        diff_obj = UtteranceDiff.from_utterances(
+            local_utterances=local_utterances, remote_utterances=remote_utterances
         )
-
-        routes_to_add, routes_to_delete, layer_routes_dict = self.index._sync_index(
-            local_route_names,
-            local_utterances,
-            local_function_schemas,
-            local_metadata,
-            dimensions=self.index.dimensions or len(self.encoder(["dummy"])[0]),
-        )
-
-        data_to_delete = {}  # type: ignore
-        for route, utterance in routes_to_delete:
-            data_to_delete.setdefault(route, []).append(utterance)
-        self.index._remove_and_sync(data_to_delete)
-
-        # Prepare data for addition
-        if routes_to_add:
-            (
-                route_names_to_add,
-                all_utterances_to_add,
-                function_schemas_to_add,
-                metadata_to_add,
-            ) = map(list, zip(*routes_to_add))
-        else:
-            (
-                route_names_to_add,
-                all_utterances_to_add,
-                function_schemas_to_add,
-                metadata_to_add,
-            ) = ([], [], [], [])
-
-        embedded_utterances_to_add = (
-            self.encoder(all_utterances_to_add) if all_utterances_to_add else []
-        )
-
-        self.index.add(
-            embeddings=embedded_utterances_to_add,
-            routes=route_names_to_add,
-            utterances=all_utterances_to_add,
-            function_schemas=function_schemas_to_add,
-            metadata_list=metadata_to_add,
-        )
-
-        # Update local route layer state
-        self.routes = []
-        for route, data in layer_routes_dict.items():
-            function_schemas = data.get("function_schemas", None)
-            if function_schemas is not None:
-                function_schemas = [function_schemas]
-            self.routes.append(
-                Route(
-                    name=route,
-                    utterances=data.get("utterances", []),
-                    function_schemas=function_schemas,
-                    metadata=data.get("metadata", {}),
-                )
-            )
+        sync_strategy = diff_obj.get_sync_strategy(sync_mode=self.auto_sync)
+        self._execute_sync_strategy(strategy=sync_strategy)
+        # update remote hash
+        self._write_hash()
 
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
@@ -805,7 +1111,7 @@ class RouteLayer:
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_routes()
+            remote_routes = self.index.get_utterances()
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
             routes, utterances, function_schemas, metadata = map(
                 list, zip(*remote_routes)

@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 
+from semantic_router.schema import ConfigParameter, Utterance
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
@@ -46,21 +47,9 @@ class LocalIndex(BaseIndex):
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        if self.sync is not None:
-            logger.warning("Sync remove is not implemented for LocalIndex.")
+        logger.warning("Sync remove is not implemented for LocalIndex.")
 
-    def _sync_index(
-        self,
-        local_route_names: List[str],
-        local_utterances: List[str],
-        local_function_schemas: List[Dict[str, Any]],
-        local_metadata: List[Dict[str, Any]],
-        dimensions: int,
-    ):
-        if self.sync is not None:
-            logger.error("Sync remove is not implemented for LocalIndex.")
-
-    def get_routes(self) -> List[Tuple]:
+    def get_utterances(self) -> List[Utterance]:
         """
         Gets a list of route and utterance objects currently stored in the index.
 
@@ -68,8 +57,8 @@ class LocalIndex(BaseIndex):
             List[Tuple]: A list of (route_name, utterance) objects.
         """
         if self.routes is None or self.utterances is None:
-            raise ValueError("No routes have been added to the index.")
-        return list(zip(self.routes, self.utterances))
+            return []
+        return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
     def describe(self) -> Dict:
         return {
@@ -139,6 +128,9 @@ class LocalIndex(BaseIndex):
     def aget_routes(self):
         logger.error("Sync remove is not implemented for LocalIndex.")
 
+    def _write_config(self, config: ConfigParameter):
+        logger.warning("No config is written for LocalIndex.")
+
     def delete(self, route_name: str):
         """
         Delete all records of a specific route from the index.
@@ -163,6 +155,8 @@ class LocalIndex(BaseIndex):
         Deletes the index, effectively clearing it and setting it to None.
         """
         self.index = None
+        self.routes = None
+        self.utterances = None
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route."""
