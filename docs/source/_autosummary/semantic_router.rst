@@ -36,7 +36,5 @@
    semantic_router.llms
    semantic_router.route
    semantic_router.schema
-   semantic_router.splitters
-   semantic_router.text
    semantic_router.utils
 
