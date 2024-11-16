@@ -37,14 +37,13 @@ def init_index(
     index_cls,
     dimensions: Optional[int] = None,
     namespace: Optional[str] = "",
-    sync: Optional[str] = None,
 ):
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
     if index_cls is PineconeIndex:
         index = index_cls(
-            index_name=TEST_ID, dimensions=dimensions, namespace=namespace, sync=sync
+            index_name=TEST_ID, dimensions=dimensions, namespace=namespace,
         )
     else:
         index = index_cls()
@@ -191,8 +190,11 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_initialization(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls, sync="local")
-        _ = RouteLayer(encoder=openai_encoder, routes=routes, top_k=10, index=index)
+        index = init_index(index_cls)
+        _ = RouteLayer(
+            encoder=openai_encoder, routes=routes, top_k=10, index=index,
+            auto_sync="local",
+        )
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -212,7 +214,7 @@ class TestRouteLayer:
     def test_second_initialization_not_synced(
         self, openai_encoder, routes, routes_2, index_cls
     ):
-        index = init_index(index_cls, sync=None)
+        index = init_index(index_cls)
         _ = RouteLayer(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -272,7 +274,6 @@ class TestRouteLayer:
     )
     def test_auto_sync_remote(self, openai_encoder, routes, routes_2, index_cls):
         if index_cls is PineconeIndex:
-
             # TEST REMOTE
             pinecone_index = init_index(index_cls)
             _ = RouteLayer(
