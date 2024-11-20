@@ -389,7 +389,7 @@ class TestRouteLayer:
             encoder=openai_encoder,
             routes=[],
             index=init_index(index_cls),
-            sync=None,
+            auto_sync=None,
         )
         route_layer.sync("remote")
         time.sleep(PINECONE_SLEEP)  # allow for index to be populated
