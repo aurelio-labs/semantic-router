@@ -488,7 +488,7 @@ class RouteLayer:
             remote_utterances=remote_utterances,
         )
         # generate sync strategy
-        sync_strategy = diff.to_sync_strategy()
+        sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
         # and execute
         self._execute_sync_strategy(sync_strategy)
         return diff.to_utterance_str()

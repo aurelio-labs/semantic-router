@@ -98,6 +98,8 @@ class Utterance(BaseModel):
         """
         route, utterance = tuple_obj[0], tuple_obj[1]
         function_schemas = tuple_obj[2] if len(tuple_obj) > 2 else None
+        if isinstance(function_schemas, dict):
+            function_schemas = [function_schemas]
         metadata = tuple_obj[3] if len(tuple_obj) > 3 else {}
         return cls(
             route=route,
