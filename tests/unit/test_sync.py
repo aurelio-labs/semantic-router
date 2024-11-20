@@ -384,6 +384,21 @@ class TestRouteLayer:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
+    def test_sync(self, openai_encoder, index_cls):
+        route_layer = RouteLayer(
+            encoder=openai_encoder,
+            routes=[],
+            index=init_index(index_cls),
+            auto_sync=None,
+        )
+        route_layer.sync("remote")
+        time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        # confirm local and remote are synced
+        assert route_layer.is_synced()
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
     def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls):
         if index_cls is PineconeIndex:
             # TEST MERGE
