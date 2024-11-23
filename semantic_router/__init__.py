@@ -1,6 +1,6 @@
-from semantic_router.routers import LayerConfig, RouteLayer, HybridRouteLayer
+from semantic_router.routers import RouterConfig, RouteLayer, HybridRouter
 from semantic_router.route import Route
 
-__all__ = ["RouteLayer", "HybridRouteLayer", "Route", "LayerConfig"]
+__all__ = ["RouteLayer", "HybridRouter", "Route", "RouterConfig"]
 
 __version__ = "0.1.0.dev2"

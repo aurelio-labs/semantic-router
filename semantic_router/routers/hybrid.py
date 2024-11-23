@@ -13,13 +13,13 @@ from semantic_router.route import Route
 from semantic_router.index.hybrid_local import HybridLocalIndex
 from semantic_router.schema import RouteChoice
 from semantic_router.utils.logger import logger
-from semantic_router.routers.base import BaseRouteLayer
+from semantic_router.routers.base import BaseRouter
 from semantic_router.llms import BaseLLM
 
 
-class HybridRouteLayer(BaseRouteLayer):
-    """A hybrid layer that uses both dense and sparse embeddings to classify routes.
-    """
+class HybridRouter(BaseRouter):
+    """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
+
     # there are a few additional attributes for hybrid
     sparse_encoder: BM25Encoder = Field(default_factory=BM25Encoder)
     alpha: float = 0.3
@@ -74,7 +74,7 @@ class HybridRouteLayer(BaseRouteLayer):
     @validator("sparse_encoder", pre=True, always=True)
     def set_sparse_encoder(cls, v):
         return v if v is not None else BM25Encoder()
-    
+
     @validator("index", pre=True, always=True)
     def set_index(cls, v):
         return v if v is not None else HybridLocalIndex()
@@ -87,10 +87,10 @@ class HybridRouteLayer(BaseRouteLayer):
         # TODO: add alpha as a parameter
         # create dense query vector
         xq_d = np.array(self.encoder(text))
-        #xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
+        # xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
         # create sparse query vector
         xq_s = np.array(self.sparse_encoder(text))
-        #xq_s = np.squeeze(xq_s)
+        # xq_s = np.squeeze(xq_s)
         # convex scaling
         xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
         return xq_d, xq_s
@@ -107,10 +107,10 @@ class HybridRouteLayer(BaseRouteLayer):
         dense_vec, sparse_vec = await asyncio.gather(dense_coro, sparse_coro)
         # create dense query vector
         xq_d = np.array(dense_vec)
-        #xq_d = np.squeeze(xq_d)  # reduce to 1d array
+        # xq_d = np.squeeze(xq_d)  # reduce to 1d array
         # create sparse query vector
         xq_s = np.array(sparse_vec)
-        #xq_s = np.squeeze(xq_s)
+        # xq_s = np.squeeze(xq_s)
         # convex scaling
         xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
         return xq_d, xq_s
@@ -137,15 +137,18 @@ class HybridRouteLayer(BaseRouteLayer):
             vector=np.array(vector) if isinstance(vector, list) else vector,
             top_k=self.top_k,
             route_filter=route_filter,
-            sparse_vector=np.array(sparse_vector) if isinstance(sparse_vector, list) else sparse_vector,
+            sparse_vector=(
+                np.array(sparse_vector)
+                if isinstance(sparse_vector, list)
+                else sparse_vector
+            ),
         )
-        top_class, top_class_scores = self._semantic_classify(list(zip(scores, route_names)))
+        top_class, top_class_scores = self._semantic_classify(
+            list(zip(scores, route_names))
+        )
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
-            return RouteChoice(
-                name=top_class,
-                similarity_score=max(top_class_scores)
-            )
+            return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
         else:
             return RouteChoice()
 

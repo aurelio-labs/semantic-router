@@ -1,10 +1,10 @@
-from semantic_router.routers.base import BaseRouteLayer, LayerConfig
+from semantic_router.routers.base import BaseRouter, RouterConfig
 from semantic_router.routers.semantic import RouteLayer
-from semantic_router.routers.hybrid import HybridRouteLayer
+from semantic_router.routers.hybrid import HybridRouter
 
 __all__ = [
-    "BaseRouteLayer",
-    "LayerConfig",
+    "BaseRouter",
+    "RouterConfig",
     "RouteLayer",
-    "HybridRouteLayer",
+    "HybridRouter",
 ]

@@ -10,7 +10,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import LayerConfig, RouteLayer
+from semantic_router.routers import RouterConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
 from platform import python_version
@@ -588,8 +588,8 @@ class TestRouteLayer:
             layer_json()
         )  # Assuming layer_json() returns a valid JSON string
 
-        # Load the LayerConfig from the temporary file
-        layer_config = LayerConfig.from_file(str(config_path))
+        # Load the RouterConfig from the temporary file
+        layer_config = RouterConfig.from_file(str(config_path))
 
         # Assertions to verify the loaded configuration
         assert layer_config.encoder_type == "cohere"
@@ -604,8 +604,8 @@ class TestRouteLayer:
             layer_yaml()
         )  # Assuming layer_yaml() returns a valid YAML string
 
-        # Load the LayerConfig from the temporary file
-        layer_config = LayerConfig.from_file(str(config_path))
+        # Load the RouterConfig from the temporary file
+        layer_config = RouterConfig.from_file(str(config_path))
 
         # Assertions to verify the loaded configuration
         assert layer_config.encoder_type == "cohere"
@@ -615,7 +615,7 @@ class TestRouteLayer:
 
     def test_from_file_invalid_path(self, index_cls):
         with pytest.raises(FileNotFoundError) as excinfo:
-            LayerConfig.from_file("nonexistent_path.json")
+            RouterConfig.from_file("nonexistent_path.json")
         assert "[Errno 2] No such file or directory: 'nonexistent_path.json'" in str(
             excinfo.value
         )
@@ -626,7 +626,7 @@ class TestRouteLayer:
         config_path.write_text(layer_json())
 
         with pytest.raises(ValueError) as excinfo:
-            LayerConfig.from_file(str(config_path))
+            RouterConfig.from_file(str(config_path))
         assert "Unsupported file type" in str(excinfo.value)
 
     def test_from_file_invalid_config(self, tmp_path, index_cls):
@@ -645,10 +645,10 @@ class TestRouteLayer:
 
         # Patch the is_valid function to return False for this test
         with patch("semantic_router.layer.is_valid", return_value=False):
-            # Attempt to load the LayerConfig from the temporary file
+            # Attempt to load the RouterConfig from the temporary file
             # and assert that it raises an exception due to invalid configuration
             with pytest.raises(Exception) as excinfo:
-                LayerConfig.from_file(str(config_path))
+                RouterConfig.from_file(str(config_path))
             assert "Invalid config JSON or YAML" in str(
                 excinfo.value
             ), "Loading an invalid configuration should raise an exception."
@@ -675,8 +675,8 @@ class TestRouteLayer:
         with open(config_path, "w") as file:
             file.write(llm_config_json)
 
-        # Load the LayerConfig from the temporary file
-        layer_config = LayerConfig.from_file(str(config_path))
+        # Load the RouterConfig from the temporary file
+        layer_config = RouterConfig.from_file(str(config_path))
 
         # Using BaseLLM because trying to create a usable Mock LLM is a nightmare.
         assert isinstance(
@@ -939,61 +939,61 @@ class TestLayerFit:
 # Add more tests for edge cases and error handling as needed.
 
 
-class TestLayerConfig:
+class TestRouterConfig:
     def test_init(self):
-        layer_config = LayerConfig()
+        layer_config = RouterConfig()
         assert layer_config.routes == []
 
     def test_to_file_json(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         with patch("builtins.open", mock_open()) as mocked_open:
             layer_config.to_file("data/test_output.json")
             mocked_open.assert_called_once_with("data/test_output.json", "w")
 
     def test_to_file_yaml(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         with patch("builtins.open", mock_open()) as mocked_open:
             layer_config.to_file("data/test_output.yaml")
             mocked_open.assert_called_once_with("data/test_output.yaml", "w")
 
     def test_to_file_invalid(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         with pytest.raises(ValueError):
             layer_config.to_file("test_output.txt")
 
     def test_from_file_json(self):
         mock_json_data = layer_json()
         with patch("builtins.open", mock_open(read_data=mock_json_data)) as mocked_open:
-            layer_config = LayerConfig.from_file("data/test.json")
+            layer_config = RouterConfig.from_file("data/test.json")
             mocked_open.assert_called_once_with("data/test.json", "r")
-            assert isinstance(layer_config, LayerConfig)
+            assert isinstance(layer_config, RouterConfig)
 
     def test_from_file_yaml(self):
         mock_yaml_data = layer_yaml()
         with patch("builtins.open", mock_open(read_data=mock_yaml_data)) as mocked_open:
-            layer_config = LayerConfig.from_file("data/test.yaml")
+            layer_config = RouterConfig.from_file("data/test.yaml")
             mocked_open.assert_called_once_with("data/test.yaml", "r")
-            assert isinstance(layer_config, LayerConfig)
+            assert isinstance(layer_config, RouterConfig)
 
     def test_from_file_invalid(self):
         with open("test.txt", "w") as f:
             f.write("dummy content")
         with pytest.raises(ValueError):
-            LayerConfig.from_file("test.txt")
+            RouterConfig.from_file("test.txt")
         os.remove("test.txt")
 
     def test_to_dict(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         assert layer_config.to_dict()["routes"] == [route.to_dict()]
 
     def test_add(self):
         route = Route(name="test", utterances=["utterance"])
         route2 = Route(name="test2", utterances=["utterance2"])
-        layer_config = LayerConfig()
+        layer_config = RouterConfig()
         layer_config.add(route)
         # confirm route added
         assert layer_config.routes == [route]
@@ -1003,17 +1003,17 @@ class TestLayerConfig:
 
     def test_get(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         assert layer_config.get("test") == route
 
     def test_get_not_found(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         assert layer_config.get("not_found") is None
 
     def test_remove(self):
         route = Route(name="test", utterances=["utterance"])
-        layer_config = LayerConfig(routes=[route])
+        layer_config = RouterConfig(routes=[route])
         layer_config.remove("test")
         assert layer_config.routes == []
 

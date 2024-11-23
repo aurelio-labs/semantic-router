@@ -43,9 +43,7 @@ class LocalIndex(BaseIndex):
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        logger.warning(
-            f"Sync remove is not implemented for {self.__class__.__name__}."
-        )
+        logger.warning(f"Sync remove is not implemented for {self.__class__.__name__}.")
 
     def get_utterances(self) -> List[Utterance]:
         """

@@ -1,13 +1,9 @@
-import importlib
 import json
-import os
 import random
-import hashlib
 from typing import Any, Dict, List, Optional, Tuple, Union
-from pydantic.v1 import validator, BaseModel, Field
+from pydantic.v1 import validator, Field
 
 import numpy as np
-import yaml  # type: ignore
 from tqdm.auto import tqdm
 
 from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
@@ -16,15 +12,13 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouteLayer
+from semantic_router.routers.base import BaseRouter, RouterConfig
 from semantic_router.schema import (
     ConfigParameter,
-    EncoderType,
     RouteChoice,
     Utterance,
     UtteranceDiff,
 )
-from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
@@ -58,222 +52,7 @@ def is_valid(layer_config: str) -> bool:
         return False
 
 
-class LayerConfig:
-    """
-    Generates a LayerConfig object that can be used for initializing a
-    RouteLayer.
-    """
-
-    routes: List[Route] = []
-
-    def __init__(
-        self,
-        routes: List[Route] = [],
-        encoder_type: str = "openai",
-        encoder_name: Optional[str] = None,
-    ):
-        self.encoder_type = encoder_type
-        if encoder_name is None:
-            for encode_type in EncoderType:
-                if encode_type.value == self.encoder_type:
-                    if self.encoder_type == EncoderType.HUGGINGFACE.value:
-                        raise NotImplementedError(
-                            "HuggingFace encoder not supported by LayerConfig yet."
-                        )
-                    encoder_name = EncoderDefault[encode_type.name].value[
-                        "embedding_model"
-                    ]
-                    break
-            logger.info(f"Using default {encoder_type} encoder: {encoder_name}")
-        self.encoder_name = encoder_name
-        self.routes = routes
-
-    @classmethod
-    def from_file(cls, path: str) -> "LayerConfig":
-        logger.info(f"Loading route config from {path}")
-        _, ext = os.path.splitext(path)
-        with open(path, "r") as f:
-            if ext == ".json":
-                layer = json.load(f)
-            elif ext in [".yaml", ".yml"]:
-                layer = yaml.safe_load(f)
-            else:
-                raise ValueError(
-                    "Unsupported file type. Only .json and .yaml are supported"
-                )
-
-            if not is_valid(json.dumps(layer)):
-                raise Exception("Invalid config JSON or YAML")
-
-            encoder_type = layer["encoder_type"]
-            encoder_name = layer["encoder_name"]
-            routes = []
-            for route_data in layer["routes"]:
-                # Handle the 'llm' field specially if it exists
-                if "llm" in route_data and route_data["llm"] is not None:
-                    llm_data = route_data.pop(
-                        "llm"
-                    )  # Remove 'llm' from route_data and handle it separately
-                    # Use the module path directly from llm_data without modification
-                    llm_module_path = llm_data["module"]
-                    # Dynamically import the module and then the class from that module
-                    llm_module = importlib.import_module(llm_module_path)
-                    llm_class = getattr(llm_module, llm_data["class"])
-                    # Instantiate the LLM class with the provided model name
-                    llm = llm_class(name=llm_data["model"])
-                    # Reassign the instantiated llm object back to route_data
-                    route_data["llm"] = llm
-
-                # Dynamically create the Route object using the remaining route_data
-                route = Route(**route_data)
-                routes.append(route)
-
-            return cls(
-                encoder_type=encoder_type, encoder_name=encoder_name, routes=routes
-            )
-
-    @classmethod
-    def from_tuples(
-        cls,
-        route_tuples: List[
-            Tuple[str, str, Optional[List[Dict[str, Any]]], Dict[str, Any]]
-        ],
-        encoder_type: str = "openai",
-        encoder_name: Optional[str] = None,
-    ):
-        """Initialize a LayerConfig from a list of tuples of routes and
-        utterances.
-
-        :param route_tuples: A list of tuples, each containing a route name and an
-            associated utterance.
-        :type route_tuples: List[Tuple[str, str]]
-        :param encoder_type: The type of encoder to use, defaults to "openai".
-        :type encoder_type: str, optional
-        :param encoder_name: The name of the encoder to use, defaults to None.
-        :type encoder_name: Optional[str], optional
-        """
-        routes_dict: Dict[str, Route] = {}
-        # first create a dictionary of route names to Route objects
-        # TODO: duplicated code with BaseIndex.get_routes()
-        for route_name, utterance, function_schema, metadata in route_tuples:
-            # if the route is not in the dictionary, add it
-            if route_name not in routes_dict:
-                routes_dict[route_name] = Route(
-                    name=route_name,
-                    utterances=[utterance],
-                    function_schemas=function_schema,
-                    metadata=metadata,
-                )
-            else:
-                # otherwise, add the utterance to the route
-                routes_dict[route_name].utterances.append(utterance)
-        # then create a list of routes from the dictionary
-        routes: List[Route] = []
-        for route_name, route in routes_dict.items():
-            routes.append(route)
-        return cls(routes=routes, encoder_type=encoder_type, encoder_name=encoder_name)
-
-    @classmethod
-    def from_index(
-        cls,
-        index: BaseIndex,
-        encoder_type: str = "openai",
-        encoder_name: Optional[str] = None,
-    ):
-        """Initialize a LayerConfig from a BaseIndex object.
-
-        :param index: The index to initialize the LayerConfig from.
-        :type index: BaseIndex
-        :param encoder_type: The type of encoder to use, defaults to "openai".
-        :type encoder_type: str, optional
-        :param encoder_name: The name of the encoder to use, defaults to None.
-        :type encoder_name: Optional[str], optional
-        """
-        remote_routes = index.get_utterances()
-        return cls.from_tuples(
-            route_tuples=[utt.to_tuple() for utt in remote_routes],
-            encoder_type=encoder_type,
-            encoder_name=encoder_name,
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "encoder_type": self.encoder_type,
-            "encoder_name": self.encoder_name,
-            "routes": [route.to_dict() for route in self.routes],
-        }
-
-    def to_file(self, path: str):
-        """Save the routes to a file in JSON or YAML format"""
-        logger.info(f"Saving route config to {path}")
-        _, ext = os.path.splitext(path)
-
-        # Check file extension before creating directories or files
-        if ext not in [".json", ".yaml", ".yml"]:
-            raise ValueError(
-                "Unsupported file type. Only .json and .yaml are supported"
-            )
-
-        dir_name = os.path.dirname(path)
-
-        # Create the directory if it doesn't exist and dir_name is not an empty string
-        if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
-        with open(path, "w") as f:
-            if ext == ".json":
-                json.dump(self.to_dict(), f, indent=4)
-            elif ext in [".yaml", ".yml"]:
-                yaml.safe_dump(self.to_dict(), f)
-
-    def to_utterances(self) -> List[Utterance]:
-        """Convert the routes to a list of Utterance objects.
-
-        :return: A list of Utterance objects.
-        :rtype: List[Utterance]
-        """
-        utterances = []
-        for route in self.routes:
-            utterances.extend(
-                [
-                    Utterance(
-                        route=route.name,
-                        utterance=x,
-                        function_schemas=route.function_schemas,
-                        metadata=route.metadata or {},
-                    )
-                    for x in route.utterances
-                ]
-            )
-        return utterances
-
-    def add(self, route: Route):
-        self.routes.append(route)
-        logger.info(f"Added route `{route.name}`")
-
-    def get(self, name: str) -> Optional[Route]:
-        for route in self.routes:
-            if route.name == name:
-                return route
-        logger.error(f"Route `{name}` not found")
-        return None
-
-    def remove(self, name: str):
-        if name not in [route.name for route in self.routes]:
-            logger.error(f"Route `{name}` not found")
-        else:
-            self.routes = [route for route in self.routes if route.name != name]
-            logger.info(f"Removed route `{name}`")
-
-    def get_hash(self) -> ConfigParameter:
-        layer = self.to_dict()
-        return ConfigParameter(
-            field="sr_hash",
-            value=hashlib.sha256(json.dumps(layer).encode()).hexdigest(),
-        )
-
-
-class RouteLayer(BaseRouteLayer):
+class RouteLayer(BaseRouter):
     index: BaseIndex = Field(default_factory=LocalIndex)
 
     @validator("index", pre=True, always=True)
@@ -655,18 +434,18 @@ class RouteLayer(BaseRouteLayer):
 
     @classmethod
     def from_json(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_yaml(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
+    def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
 
@@ -1069,8 +848,8 @@ class RouteLayer(BaseRouteLayer):
                     route.name, self.score_threshold
                 )
 
-    def to_config(self) -> LayerConfig:
-        return LayerConfig(
+    def to_config(self) -> RouterConfig:
+        return RouterConfig(
             encoder_type=self.encoder.type,
             encoder_name=self.encoder.name,
             routes=self.routes,

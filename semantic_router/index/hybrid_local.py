@@ -5,7 +5,6 @@ from numpy.linalg import norm
 
 from semantic_router.schema import ConfigParameter, Utterance
 from semantic_router.index.local import LocalIndex
-from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
 from typing import Any
 
@@ -104,7 +103,9 @@ class HybridLocalIndex(LocalIndex):
             # calculate sparse vec similarity
             sparse_norm = norm(self.sparse_index, axis=1)
             xq_s_norm = norm(xq_s)  # TODO: this used to be xq_s.T, should work without
-            sim_s = np.squeeze(np.dot(self.sparse_index, xq_s.T)) / (sparse_norm * xq_s_norm)
+            sim_s = np.squeeze(np.dot(self.sparse_index, xq_s.T)) / (
+                sparse_norm * xq_s_norm
+            )
             total_sim = sim_d + sim_s
             # get indices of top_k records
             top_k = min(top_k, total_sim.shape[0])

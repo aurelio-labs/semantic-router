@@ -57,10 +57,10 @@ def is_valid(layer_config: str) -> bool:
         return False
 
 
-class LayerConfig:
+class RouterConfig:
     """
-    Generates a LayerConfig object that can be used for initializing a
-    RouteLayer.
+    Generates a RouterConfig object that can be used for initializing a
+    Routers.
     """
 
     routes: List[Route] = []
@@ -80,7 +80,7 @@ class LayerConfig:
                 if encode_type.value == self.encoder_type:
                     if self.encoder_type == EncoderType.HUGGINGFACE.value:
                         raise NotImplementedError(
-                            "HuggingFace encoder not supported by LayerConfig yet."
+                            "HuggingFace encoder not supported by RouterConfig yet."
                         )
                     encoder_name = EncoderDefault[encode_type.name].value[
                         "embedding_model"
@@ -91,7 +91,7 @@ class LayerConfig:
         self.routes = routes
 
     @classmethod
-    def from_file(cls, path: str) -> "LayerConfig":
+    def from_file(cls, path: str) -> "RouterConfig":
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
@@ -143,7 +143,7 @@ class LayerConfig:
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
-        """Initialize a LayerConfig from a list of tuples of routes and
+        """Initialize a RouterConfig from a list of tuples of routes and
         utterances.
 
         :param route_tuples: A list of tuples, each containing a route name and an
@@ -182,9 +182,9 @@ class LayerConfig:
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
-        """Initialize a LayerConfig from a BaseIndex object.
+        """Initialize a RouterConfig from a BaseIndex object.
 
-        :param index: The index to initialize the LayerConfig from.
+        :param index: The index to initialize the RouterConfig from.
         :type index: BaseIndex
         :param encoder_type: The type of encoder to use, defaults to "openai".
         :type encoder_type: str, optional
@@ -275,7 +275,7 @@ class LayerConfig:
         )
 
 
-class BaseRouteLayer(BaseModel):
+class BaseRouter(BaseModel):
     encoder: BaseEncoder
     index: BaseIndex = Field(default_factory=BaseIndex)
     score_threshold: Optional[float] = Field(default=None)
@@ -365,7 +365,7 @@ class BaseRouteLayer(BaseModel):
     def _set_score_threshold(self):
         """Set the score threshold for the layer based on the encoder
         score threshold.
-        
+
         When no score threshold is used a default `None` value
         is used, which means that a route will always be returned when
         the layer is called."""
@@ -688,18 +688,18 @@ class BaseRouteLayer(BaseModel):
 
     @classmethod
     def from_json(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
     def from_yaml(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes)
 
     @classmethod
-    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
+    def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
 
@@ -1115,8 +1115,8 @@ class BaseRouteLayer(BaseModel):
                     route.name, self.score_threshold
                 )
 
-    def to_config(self) -> LayerConfig:
-        return LayerConfig(
+    def to_config(self) -> RouterConfig:
+        return RouterConfig(
             encoder_type=self.encoder.type,
             encoder_name=self.encoder.name,
             routes=self.routes,
@@ -1226,7 +1226,7 @@ class BaseRouteLayer(BaseModel):
 
 
 def threshold_random_search(
-    route_layer: BaseRouteLayer,
+    route_layer: BaseRouter,
     search_range: Union[int, float],
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""
