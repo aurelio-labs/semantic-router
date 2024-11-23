@@ -8,7 +8,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
     TfidfEncoder,
 )
-from semantic_router.hybrid_layer import HybridRouteLayer
+from semantic_router.OLD_hybrid_layer import HybridRouteLayer
 from semantic_router.route import Route
 
 

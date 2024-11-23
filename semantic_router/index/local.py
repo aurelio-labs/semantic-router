@@ -10,14 +10,10 @@ from typing import Any
 
 
 class LocalIndex(BaseIndex):
-    def __init__(
-        self,
-        index: Optional[np.ndarray] = None,
-        routes: Optional[np.ndarray] = None,
-        utterances: Optional[np.ndarray] = None,
-    ):
-        super().__init__(index=index, routes=routes, utterances=utterances)
-        self.type = "local"
+    type: str = "local"
+
+    def __init__(self):
+        super().__init__()
 
     class Config:
         # Stop pydantic from complaining about Optional[np.ndarray]type hints.
@@ -47,7 +43,9 @@ class LocalIndex(BaseIndex):
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        logger.warning("Sync remove is not implemented for LocalIndex.")
+        logger.warning(
+            f"Sync remove is not implemented for {self.__class__.__name__}."
+        )
 
     def get_utterances(self) -> List[Utterance]:
         """

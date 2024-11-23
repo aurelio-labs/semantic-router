@@ -10,7 +10,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.layer import LayerConfig, RouteLayer
+from semantic_router.routers import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
 from platform import python_version

@@ -18,12 +18,12 @@ class BaseIndex(BaseModel):
 
     # You can define common attributes here if there are any.
     # For example, a placeholder for the index attribute:
-    index: Optional[Any] = None
     routes: Optional[np.ndarray] = None
     utterances: Optional[np.ndarray] = None
     dimensions: Union[int, None] = None
     type: str = "base"
     init_async_index: bool = False
+    index: Optional[Any] = None
 
     def add(
         self,

@@ -3,7 +3,8 @@ import json
 import os
 import random
 import hashlib
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from pydantic.v1 import BaseModel, Field, validator
 
 import numpy as np
 import yaml  # type: ignore
@@ -63,6 +64,9 @@ class LayerConfig:
     """
 
     routes: List[Route] = []
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(
         self,
@@ -271,22 +275,47 @@ class LayerConfig:
         )
 
 
-class RouteLayer:
-    score_threshold: float
+class BaseRouteLayer(BaseModel):
     encoder: BaseEncoder
-    index: BaseIndex
+    index: BaseIndex = Field(default_factory=BaseIndex)
+    score_threshold: Optional[float] = None
+    routes: List[Route] = []
+    llm: Optional[BaseLLM] = None
+    top_k: int = 5
+    aggregation: str = "mean"
+    aggregation_method: Optional[Callable] = None
+    auto_sync: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @validator("score_threshold", pre=True, always=True)
+    def set_score_threshold(cls, v):
+        return float(v) if v is not None else None
+
+    @validator("index", pre=True, always=True)
+    def set_index(cls, v):
+        return v if v is not None else LocalIndex()
 
     def __init__(
         self,
         encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: Optional[List[Route]] = None,
+        routes: List[Route] = [],
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
-        aggregation: str = "sum",
+        aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
-        self.index: BaseIndex = index if index is not None else LocalIndex()
+        super().__init__(
+            encoder=encoder,
+            llm=llm,
+            routes=routes,
+            index=index,
+            top_k=top_k,
+            aggregation=aggregation,
+            auto_sync=auto_sync,
+        )
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -640,7 +669,7 @@ class RouteLayer:
 
     def __str__(self):
         return (
-            f"RouteLayer(encoder={self.encoder}, "
+            f"{self.__class__.__name__}(encoder={self.encoder}, "
             f"score_threshold={self.score_threshold}, "
             f"routes={self.routes})"
         )
@@ -745,8 +774,8 @@ class RouteLayer:
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
             )
 
     def delete(self, route_name: str):
@@ -762,7 +791,7 @@ class RouteLayer:
             current_remote_hash = current_local_hash
 
         if route_name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{route_name}` not found in RouteLayer"
+            err_msg = f"Route `{route_name}` not found in {self.__class__.__name__}"
             logger.warning(err_msg)
             try:
                 self.index.delete(route_name=route_name)
@@ -777,8 +806,8 @@ class RouteLayer:
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
             )
 
     def _refresh_routes(self):
@@ -831,8 +860,8 @@ class RouteLayer:
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
             )
 
     def _get_hash(self) -> ConfigParameter:
@@ -891,20 +920,6 @@ class RouteLayer:
         )
         return diff_obj.to_utterance_str(include_metadata=include_metadata)
 
-    def _add_and_sync_routes(self, routes: List[Route]):
-        self.routes.extend(routes)
-        # first we get remote and local utterances
-        remote_utterances = self.index.get_utterances()
-        local_utterances = self.to_config().to_utterances()
-
-        diff_obj = UtteranceDiff.from_utterances(
-            local_utterances=local_utterances, remote_utterances=remote_utterances
-        )
-        sync_strategy = diff_obj.get_sync_strategy(sync_mode=self.auto_sync)
-        self._execute_sync_strategy(strategy=sync_strategy)
-        # update remote hash
-        self._write_hash()
-
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
     ) -> Tuple:
@@ -922,18 +937,30 @@ class RouteLayer:
         return route_names, utterances, function_schemas
 
     def _encode(self, text: str) -> Any:
-        """Given some text, encode it."""
-        # create query vector
-        xq = np.array(self.encoder([text]))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
-        return xq
+        """Generates embeddings for a given text.
+
+        Must be implemented by a subclass.
+
+        :param text: The text to encode.
+        :type text: str
+        :return: The embeddings of the text.
+        :rtype: Any
+        """
+        # TODO: should encode "content" rather than text
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     async def _async_encode(self, text: str) -> Any:
-        """Given some text, encode it."""
-        # create query vector
-        xq = np.array(await self.encoder.acall(docs=[text]))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
-        return xq
+        """Asynchronously generates embeddings for a given text.
+
+        Must be implemented by a subclass.
+
+        :param text: The text to encode.
+        :type text: str
+        :return: The embeddings of the text.
+        :rtype: Any
+        """
+        # TODO: should encode "content" rather than text
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _retrieve(
         self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
@@ -956,6 +983,7 @@ class RouteLayer:
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _set_aggregation_method(self, aggregation: str = "sum"):
+        # TODO is this really needed?
         if aggregation == "sum":
             return lambda x: sum(x)
         elif aggregation == "mean":
@@ -1186,7 +1214,7 @@ class RouteLayer:
 
 
 def threshold_random_search(
-    route_layer: RouteLayer,
+    route_layer: BaseRouteLayer,
     search_range: Union[int, float],
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""
