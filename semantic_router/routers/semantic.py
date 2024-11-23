@@ -4,7 +4,7 @@ import os
 import random
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple, Union
-from pydantic.v1 import BaseModel
+from pydantic.v1 import validator, BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore
@@ -16,6 +16,7 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
+from semantic_router.routers.base import BaseRouteLayer
 from semantic_router.schema import (
     ConfigParameter,
     EncoderType,
@@ -272,14 +273,12 @@ class LayerConfig:
         )
 
 
-class RouteLayer(BaseModel):
-    score_threshold: float
-    encoder: BaseEncoder
-    index: BaseIndex
-    llm: Optional[BaseLLM] = None
-    top_k: int = 5
-    aggregation: str = "mean"
-    auto_sync: Optional[str] = None
+class RouteLayer(BaseRouteLayer):
+    index: BaseIndex = Field(default_factory=LocalIndex)
+
+    @validator("index", pre=True, always=True)
+    def set_index(cls, v):
+        return v if v is not None else LocalIndex()
 
     def __init__(
         self,
@@ -291,7 +290,15 @@ class RouteLayer(BaseModel):
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
-        self.index: BaseIndex = index if index is not None else LocalIndex()
+        super().__init__(
+            encoder=encoder,
+            llm=llm,
+            routes=routes.copy() if routes else [],
+            index=index,
+            top_k=top_k,
+            aggregation=aggregation,
+            auto_sync=auto_sync,
+        )
         if encoder is None:
             logger.warning(
                 "No encoder provided. Using default OpenAIEncoder. Ensure "
@@ -302,12 +309,8 @@ class RouteLayer(BaseModel):
             self.encoder = encoder
         self.llm = llm
         self.routes = routes if routes else []
-        if self.encoder.score_threshold is None:
-            raise ValueError(
-                "No score threshold provided for encoder. Please set the score threshold "
-                "in the encoder config."
-            )
-        self.score_threshold = self.encoder.score_threshold
+        # set score threshold using default method
+        self._set_score_threshold()
         self.top_k = top_k
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")

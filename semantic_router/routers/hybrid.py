@@ -3,7 +3,6 @@ import asyncio
 from pydantic.v1 import validator, Field
 
 import numpy as np
-from numpy.linalg import norm
 
 from semantic_router.encoders import (
     BaseEncoder,
@@ -69,6 +68,8 @@ class HybridRouteLayer(BaseRouteLayer):
         if routes:
             for route in routes:
                 self.add(route)
+        # set score threshold using default method
+        self._set_score_threshold()  # TODO: we can't really use this with hybrid...
 
     @validator("sparse_encoder", pre=True, always=True)
     def set_sparse_encoder(cls, v):

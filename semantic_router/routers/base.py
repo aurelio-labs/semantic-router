@@ -278,7 +278,7 @@ class LayerConfig:
 class BaseRouteLayer(BaseModel):
     encoder: BaseEncoder
     index: BaseIndex = Field(default_factory=BaseIndex)
-    score_threshold: Optional[float] = None
+    score_threshold: Optional[float] = Field(default=None)
     routes: List[Route] = []
     llm: Optional[BaseLLM] = None
     top_k: int = 5
@@ -288,10 +288,6 @@ class BaseRouteLayer(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-
-    @validator("score_threshold", pre=True, always=True)
-    def set_score_threshold(cls, v):
-        return float(v) if v is not None else None
 
     @validator("index", pre=True, always=True)
     def set_index(cls, v):
@@ -326,12 +322,13 @@ class BaseRouteLayer(BaseModel):
             self.encoder = encoder
         self.llm = llm
         self.routes = routes if routes else []
-        if self.encoder.score_threshold is None:
-            raise ValueError(
-                "No score threshold provided for encoder. Please set the score threshold "
-                "in the encoder config."
-            )
-        self.score_threshold = self.encoder.score_threshold
+        if self.encoder.score_threshold is not None:
+            self.score_threshold = self.encoder.score_threshold
+            if self.score_threshold is None:
+                logger.warning(
+                    "No score threshold value found in encoder. Using the default "
+                    "'None' value can lead to unexpected results."
+                )
         self.top_k = top_k
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
@@ -364,6 +361,21 @@ class BaseRouteLayer(BaseModel):
             )
             sync_strategy = diff.get_sync_strategy(self.auto_sync)
             self._execute_sync_strategy(sync_strategy)
+
+    def _set_score_threshold(self):
+        """Set the score threshold for the layer based on the encoder
+        score threshold.
+        
+        When no score threshold is used a default `None` value
+        is used, which means that a route will always be returned when
+        the layer is called."""
+        if self.encoder.score_threshold is not None:
+            self.score_threshold = self.encoder.score_threshold
+            if self.score_threshold is None:
+                logger.warning(
+                    "No score threshold value found in encoder. Using the default "
+                    "'None' value can lead to unexpected results."
+                )
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(
