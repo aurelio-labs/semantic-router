@@ -52,7 +52,7 @@ def is_valid(layer_config: str) -> bool:
         return False
 
 
-class RouteLayer(BaseRouter):
+class SemanticRouter(BaseRouter):
     index: BaseIndex = Field(default_factory=LocalIndex)
 
     @validator("index", pre=True, always=True)
@@ -312,9 +312,9 @@ class RouteLayer(BaseRouter):
         self._write_hash()
 
     def _local_upsert(self, utterances: List[Utterance]):
-        """Adds new routes to the RouteLayer.
+        """Adds new routes to the SemanticRouter.
 
-        :param utterances: The utterances to add to the local RouteLayer.
+        :param utterances: The utterances to add to the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         new_routes = {route.name: route for route in self.routes}
@@ -336,9 +336,9 @@ class RouteLayer(BaseRouter):
         self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
-        """Deletes routes from the local RouteLayer.
+        """Deletes routes from the local SemanticRouter.
 
-        :param utterances: The utterances to delete from the local RouteLayer.
+        :param utterances: The utterances to delete from the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         # create dictionary of route names to utterances
@@ -427,7 +427,7 @@ class RouteLayer(BaseRouter):
 
     def __str__(self):
         return (
-            f"RouteLayer(encoder={self.encoder}, "
+            f"SemanticRouter(encoder={self.encoder}, "
             f"score_threshold={self.score_threshold}, "
             f"routes={self.routes})"
         )
@@ -450,7 +450,7 @@ class RouteLayer(BaseRouter):
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
-        """Add a route to the local RouteLayer and index.
+        """Add a route to the local SemanticRouter and index.
 
         :param route: The route to add.
         :type route: Route
@@ -480,7 +480,7 @@ class RouteLayer(BaseRouter):
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
                 "details."
             )
 
@@ -498,7 +498,7 @@ class RouteLayer(BaseRouter):
         threshold or utterances parameters, those fields are not updated.
         If neither field is provided raises a ValueError.
 
-        The name must exist within the local RouteLayer, if not a
+        The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
         """
         current_local_hash = self._get_hash()
@@ -532,7 +532,7 @@ class RouteLayer(BaseRouter):
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
                 "details."
             )
 
@@ -549,7 +549,7 @@ class RouteLayer(BaseRouter):
             current_remote_hash = current_local_hash
 
         if route_name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{route_name}` not found in RouteLayer"
+            err_msg = f"Route `{route_name}` not found in SemanticRouter"
             logger.warning(err_msg)
             try:
                 self.index.delete(route_name=route_name)
@@ -564,7 +564,7 @@ class RouteLayer(BaseRouter):
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
                 "details."
             )
 
@@ -618,7 +618,7 @@ class RouteLayer(BaseRouter):
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
                 "details."
             )
 
@@ -959,7 +959,7 @@ class RouteLayer(BaseRouter):
 
 
 def threshold_random_search(
-    route_layer: RouteLayer,
+    route_layer: SemanticRouter,
     search_range: Union[int, float],
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""

@@ -566,9 +566,9 @@ class BaseRouter(BaseModel):
         self._write_hash()
 
     def _local_upsert(self, utterances: List[Utterance]):
-        """Adds new routes to the RouteLayer.
+        """Adds new routes to the SemanticRouter.
 
-        :param utterances: The utterances to add to the local RouteLayer.
+        :param utterances: The utterances to add to the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         new_routes = {route.name: route for route in self.routes}
@@ -590,9 +590,9 @@ class BaseRouter(BaseModel):
         self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
-        """Deletes routes from the local RouteLayer.
+        """Deletes routes from the local SemanticRouter.
 
-        :param utterances: The utterances to delete from the local RouteLayer.
+        :param utterances: The utterances to delete from the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         # create dictionary of route names to utterances
@@ -704,7 +704,7 @@ class BaseRouter(BaseModel):
         return cls(encoder=encoder, routes=config.routes, index=index)
 
     def add(self, route: Route):
-        """Add a route to the local RouteLayer and index.
+        """Add a route to the local SemanticRouter and index.
 
         :param route: The route to add.
         :type route: Route
@@ -734,7 +734,7 @@ class BaseRouter(BaseModel):
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
+                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
                 "details."
             )
 
@@ -752,7 +752,7 @@ class BaseRouter(BaseModel):
         threshold or utterances parameters, those fields are not updated.
         If neither field is provided raises a ValueError.
 
-        The name must exist within the local RouteLayer, if not a
+        The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
         """
         current_local_hash = self._get_hash()

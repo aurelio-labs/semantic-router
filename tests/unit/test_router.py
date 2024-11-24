@@ -10,7 +10,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import RouterConfig, RouteLayer
+from semantic_router.routers import RouterConfig, SemanticRouter
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
 from platform import python_version
@@ -205,7 +205,7 @@ def get_test_encoders():
 class TestIndexEncoders:
     def test_initialization(self, routes, openai_encoder, index_cls, encoder_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=encoder_cls(),
             routes=routes,
             index=index,
@@ -228,22 +228,22 @@ class TestIndexEncoders:
     def test_initialization_different_encoders(self, encoder_cls, index_cls):
         index = init_index(index_cls)
         encoder = encoder_cls()
-        route_layer = RouteLayer(encoder=encoder, index=index)
+        route_layer = SemanticRouter(encoder=encoder, index=index)
         assert route_layer.score_threshold == encoder.score_threshold
 
     def test_initialization_no_encoder(self, openai_encoder, index_cls, encoder_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
-        route_layer_none = RouteLayer(encoder=None)
+        route_layer_none = SemanticRouter(encoder=None)
         assert route_layer_none.score_threshold == openai_encoder.score_threshold
 
 
 @pytest.mark.parametrize("index_cls", get_test_indexes())
-class TestRouteLayer:
+class TestSemanticRouter:
     def test_initialization_dynamic_route(
         self, dynamic_routes, openai_encoder, index_cls
     ):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=dynamic_routes,
             index=index,
@@ -254,7 +254,7 @@ class TestRouteLayer:
     def test_delete_index(self, openai_encoder, routes, index_cls):
         # TODO merge .delete_index() and .delete_all() and get working
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -269,7 +269,7 @@ class TestRouteLayer:
 
     def test_add_route(self, routes, openai_encoder, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder, routes=[], index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
@@ -297,7 +297,7 @@ class TestRouteLayer:
 
     def test_list_route_names(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -312,7 +312,7 @@ class TestRouteLayer:
 
     def test_delete_route(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -337,7 +337,7 @@ class TestRouteLayer:
 
     def test_remove_route_not_found(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)
         # Attempt to remove a route that does not exist
@@ -347,7 +347,7 @@ class TestRouteLayer:
 
     def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             index=index,
             auto_sync="local",
@@ -362,7 +362,7 @@ class TestRouteLayer:
 
     def test_query_and_classification(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls, dimensions=3)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -375,7 +375,7 @@ class TestRouteLayer:
 
     def test_query_filter(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls, dimensions=3)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -398,7 +398,7 @@ class TestRouteLayer:
     def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
         if index_cls is PineconeIndex:
             pineconeindex = init_index(index_cls, dimensions=3)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pineconeindex,
@@ -420,7 +420,7 @@ class TestRouteLayer:
     def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
         if index_cls is PineconeIndex:
             pineconeindex = init_index(index_cls, namespace="test")
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pineconeindex,
@@ -438,13 +438,13 @@ class TestRouteLayer:
             route_layer.index.index.delete(namespace="test", delete_all=True)
 
     def test_query_with_no_index(self, openai_encoder, index_cls):
-        route_layer = RouteLayer(encoder=openai_encoder)
+        route_layer = SemanticRouter(encoder=openai_encoder)
         with pytest.raises(ValueError):
             assert route_layer(text="Anything").name is None
 
     def test_query_with_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -458,13 +458,13 @@ class TestRouteLayer:
 
     def test_query_with_no_text_or_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         with pytest.raises(ValueError):
             route_layer()
 
     def test_semantic_classify(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -483,7 +483,7 @@ class TestRouteLayer:
 
     def test_semantic_classify_multiple_routes(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -505,7 +505,7 @@ class TestRouteLayer:
         self, openai_encoder, dynamic_routes, index_cls
     ):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder, routes=dynamic_routes, index=index
         )
         vector = [0.1, 0.2, 0.3]
@@ -514,7 +514,7 @@ class TestRouteLayer:
 
     def test_pass_threshold(self, openai_encoder, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             index=index,
             auto_sync="local",
@@ -524,7 +524,7 @@ class TestRouteLayer:
 
     def test_failover_score_threshold(self, openai_encoder, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             index=index,
             auto_sync="local",
@@ -538,7 +538,7 @@ class TestRouteLayer:
             temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             index = init_index(index_cls)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=index,
@@ -546,7 +546,7 @@ class TestRouteLayer:
             )
             route_layer.to_json(temp_path)
             assert os.path.exists(temp_path)
-            route_layer_from_file = RouteLayer.from_json(temp_path)
+            route_layer_from_file = SemanticRouter.from_json(temp_path)
             if index_cls is PineconeIndex:
                 time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
@@ -563,7 +563,7 @@ class TestRouteLayer:
             temp.close()  # Close the file to ensure it can be opened again on Windows
             os.environ["OPENAI_API_KEY"] = "test_api_key"
             index = init_index(index_cls)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=index,
@@ -571,7 +571,7 @@ class TestRouteLayer:
             )
             route_layer.to_yaml(temp_path)
             assert os.path.exists(temp_path)
-            route_layer_from_file = RouteLayer.from_yaml(temp_path)
+            route_layer_from_file = SemanticRouter.from_yaml(temp_path)
             if index_cls is PineconeIndex:
                 time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
@@ -690,12 +690,12 @@ class TestRouteLayer:
     def test_config(self, openai_encoder, routes, index_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         # confirm route creation functions as expected
         layer_config = route_layer.to_config()
         assert layer_config.routes == route_layer.routes
         # now load from config and confirm it's the same
-        route_layer_from_config = RouteLayer.from_config(layer_config, index)
+        route_layer_from_config = SemanticRouter.from_config(layer_config, index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert (
@@ -705,14 +705,14 @@ class TestRouteLayer:
 
     def test_get_thresholds(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         assert route_layer.get_thresholds() == {"Route 1": 0.3, "Route 2": 0.3}
 
     def test_with_multiple_routes_passing_threshold(
         self, openai_encoder, routes, index_cls
     ):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         route_layer.score_threshold = 0.5  # Set the score_threshold if needed
         # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
         query_results = [
@@ -730,7 +730,7 @@ class TestRouteLayer:
 
     def test_with_no_routes_passing_threshold(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         route_layer.score_threshold = 0.5
         # Override _pass_threshold to always return False for this test
         route_layer._pass_threshold = lambda scores, threshold: False
@@ -746,7 +746,7 @@ class TestRouteLayer:
 
     def test_with_no_query_results(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         route_layer.score_threshold = 0.5
         query_results = []
         expected = []
@@ -757,7 +757,7 @@ class TestRouteLayer:
 
     def test_with_unrecognized_route(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         route_layer.score_threshold = 0.5
         # Test with a route name that does not exist in the route_layer's routes
         query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
@@ -767,7 +767,7 @@ class TestRouteLayer:
 
     def test_retrieve_with_text(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -782,7 +782,7 @@ class TestRouteLayer:
 
     def test_retrieve_with_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -797,7 +797,7 @@ class TestRouteLayer:
 
     def test_retrieve_without_text_or_vector(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -808,7 +808,7 @@ class TestRouteLayer:
 
     def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -820,7 +820,7 @@ class TestRouteLayer:
 
     def test_retrieve_one_match(self, openai_encoder, routes_3, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes_3,
             index=index,
@@ -838,7 +838,7 @@ class TestRouteLayer:
         self, openai_encoder, routes_2, index_cls
     ):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes_2,
             index=index,
@@ -857,7 +857,7 @@ class TestRouteLayer:
         self, openai_encoder, routes, index_cls
     ):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         unsupported_aggregation = "unsupported_aggregation_method"
         with pytest.raises(
             ValueError,
@@ -867,7 +867,7 @@ class TestRouteLayer:
 
     def test_refresh_routes_not_implemented(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         with pytest.raises(
             NotImplementedError, match="This method has not yet been implemented."
         ):
@@ -875,7 +875,7 @@ class TestRouteLayer:
 
     def test_update_threshold(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         route_name = "Route 1"
         new_threshold = 0.8
         route_layer.update(name=route_name, threshold=new_threshold)
@@ -886,7 +886,7 @@ class TestRouteLayer:
 
     def test_update_non_existent_route(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         non_existent_route = "Non-existent Route"
         with pytest.raises(
             ValueError,
@@ -896,7 +896,7 @@ class TestRouteLayer:
 
     def test_update_without_parameters(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         with pytest.raises(
             ValueError,
             match="At least one of 'threshold' or 'utterances' must be provided.",
@@ -905,7 +905,7 @@ class TestRouteLayer:
 
     def test_update_utterances_not_implemented(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
         with pytest.raises(
             NotImplementedError,
             match="The update method cannot be used for updating utterances yet.",
@@ -915,7 +915,7 @@ class TestRouteLayer:
 
 class TestLayerFit:
     def test_eval(self, openai_encoder, routes, test_data):
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             auto_sync="local",
@@ -926,7 +926,7 @@ class TestLayerFit:
         route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
 
     def test_fit(self, openai_encoder, routes, test_data):
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             auto_sync="local",
@@ -1019,7 +1019,7 @@ class TestRouterConfig:
 
     def test_setting_aggregation_methods(self, openai_encoder, routes):
         for agg in ["sum", "mean", "max"]:
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 aggregation=agg,
@@ -1041,7 +1041,7 @@ class TestRouterConfig:
             {"route": "Route 3", "score": 1.0},
         ]
         for agg in ["sum", "mean", "max"]:
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 aggregation=agg,

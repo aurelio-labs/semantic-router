@@ -7,7 +7,7 @@ from typing import Optional
 from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.schema import Utterance
-from semantic_router.routers.base import RouteLayer
+from semantic_router.routers.base import SemanticRouter
 from semantic_router.route import Route
 from platform import python_version
 
@@ -187,13 +187,13 @@ def get_test_indexes():
 
 
 @pytest.mark.parametrize("index_cls", get_test_indexes())
-class TestRouteLayer:
+class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_initialization(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        _ = RouteLayer(
+        _ = SemanticRouter(
             encoder=openai_encoder,
             routes=routes,
             top_k=10,
@@ -206,7 +206,7 @@ class TestRouteLayer:
     )
     def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
@@ -220,10 +220,10 @@ class TestRouteLayer:
         self, openai_encoder, routes, routes_2, index_cls
     ):
         index = init_index(index_cls)
-        _ = RouteLayer(
+        _ = SemanticRouter(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer = RouteLayer(encoder=openai_encoder, routes=routes_2, index=index)
+        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes_2, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.is_synced() is False
@@ -233,10 +233,10 @@ class TestRouteLayer:
     )
     def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
         index = init_index(index_cls)
-        _ = RouteLayer(
+        _ = SemanticRouter(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer_2 = RouteLayer(encoder=openai_encoder, routes=routes_2, index=index)
+        route_layer_2 = SemanticRouter(encoder=openai_encoder, routes=routes_2, index=index)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         diff = route_layer_2.get_utterance_diff(include_metadata=True)
@@ -256,13 +256,13 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST LOCAL
             pinecone_index = init_index(index_cls)
-            _ = RouteLayer(
+            _ = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -281,14 +281,14 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST REMOTE
             pinecone_index = init_index(index_cls)
-            _ = RouteLayer(
+            _ = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
@@ -309,14 +309,14 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -347,14 +347,14 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -385,7 +385,7 @@ class TestRouteLayer:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_sync(self, openai_encoder, index_cls):
-        route_layer = RouteLayer(
+        route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=[],
             index=init_index(index_cls),
@@ -403,14 +403,14 @@ class TestRouteLayer:
         if index_cls is PineconeIndex:
             # TEST MERGE
             pinecone_index = init_index(index_cls)
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = RouteLayer(
+            route_layer = SemanticRouter(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
