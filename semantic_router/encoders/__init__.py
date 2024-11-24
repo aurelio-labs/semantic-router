@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from semantic_router.encoders.aurelio import AurelioSparseEncoder
 from semantic_router.encoders.base import BaseEncoder
 from semantic_router.encoders.bedrock import BedrockEncoder
 from semantic_router.encoders.bm25 import BM25Encoder
@@ -17,6 +18,7 @@ from semantic_router.encoders.zure import AzureOpenAIEncoder
 from semantic_router.schema import EncoderType
 
 __all__ = [
+    "AurelioSparseEncoder",
     "BaseEncoder",
     "AzureOpenAIEncoder",
     "CohereEncoder",
