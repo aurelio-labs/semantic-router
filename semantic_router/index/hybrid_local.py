@@ -11,12 +11,11 @@ from typing import Any
 
 class HybridLocalIndex(LocalIndex):
     type: str = "hybrid_local"
-    sparse_index: Optional[np.ndarray] = None
+    sparse_index: Optional[list[dict]] = None
     route_names: Optional[np.ndarray] = None
 
-    class Config:
-        # Stop pydantic from complaining about Optional[np.ndarray]type hints.
-        arbitrary_types_allowed = True
+    def __init__(self):
+        super().__init__()
 
     def add(
         self,
@@ -25,7 +24,7 @@ class HybridLocalIndex(LocalIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
-        sparse_embeddings: Optional[List[List[float]]] = None,
+        sparse_embeddings: Optional[List[dict[int, float]]] = None,
     ):
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")
@@ -34,7 +33,6 @@ class HybridLocalIndex(LocalIndex):
         if metadata_list:
             raise ValueError("Metadata is not supported for HybridLocalIndex.")
         embeds = np.array(embeddings)
-        sparse_embeds = np.array(sparse_embeddings)
         routes_arr = np.array(routes)
         if isinstance(utterances[0], str):
             utterances_arr = np.array(utterances)
@@ -42,13 +40,13 @@ class HybridLocalIndex(LocalIndex):
             utterances_arr = np.array(utterances, dtype=object)
         if self.index is None or self.sparse_index is None:
             self.index = embeds
-            self.sparse_index = sparse_embeds
+            self.sparse_index = sparse_embeddings
             self.routes = routes_arr
             self.utterances = utterances_arr
         else:
             # TODO: we should probably switch to an `upsert` method and standardize elsewhere
             self.index = np.concatenate([self.index, embeds])
-            self.sparse_index = np.concatenate([self.sparse_index, sparse_embeds])
+            self.sparse_index.extend(sparse_embeddings)
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
@@ -68,13 +66,23 @@ class HybridLocalIndex(LocalIndex):
             "dimensions": self.index.shape[1] if self.index is not None else 0,
             "vectors": self.index.shape[0] if self.index is not None else 0,
         }
+    
+    def _sparse_dot_product(self, vec_a: dict[int, float], vec_b: dict[int, float]) -> float:
+        # switch vecs to ensure first is smallest for more efficiency
+        if len(vec_a) > len(vec_b):
+            vec_a, vec_b = vec_b, vec_a
+        return sum(vec_a[i] * vec_b.get(i, 0) for i in vec_a)
+    
+    def _sparse_index_dot_product(self, vec_a: dict[int, float]) -> list[float]:
+        dot_products = [self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index]
+        return dot_products
 
     def query(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[np.ndarray] = None,
+        sparse_vector: Optional[dict[int, float]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query and return top_k results.
 
@@ -85,7 +93,7 @@ class HybridLocalIndex(LocalIndex):
         :param route_filter: A list of route names to filter the search results, defaults to None.
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: The sparse vector to search for, must be provided.
-        :type sparse_vector: np.ndarray
+        :type sparse_vector: dict[int, float]
         """
         if route_filter:
             raise ValueError("Route filter is not supported for HybridLocalIndex.")
@@ -101,11 +109,7 @@ class HybridLocalIndex(LocalIndex):
             xq_d_norm = norm(xq_d)  # TODO: this used to be xq_d.T, should work without
             sim_d = np.squeeze(np.dot(self.index, xq_d.T)) / (index_norm * xq_d_norm)
             # calculate sparse vec similarity
-            sparse_norm = norm(self.sparse_index, axis=1)
-            xq_s_norm = norm(xq_s)  # TODO: this used to be xq_s.T, should work without
-            sim_s = np.squeeze(np.dot(self.sparse_index, xq_s.T)) / (
-                sparse_norm * xq_s_norm
-            )
+            sim_s = np.array(self._sparse_index_dot_product(xq_s))
             total_sim = sim_d + sim_s
             # get indices of top_k records
             top_k = min(top_k, total_sim.shape[0])
@@ -122,7 +126,7 @@ class HybridLocalIndex(LocalIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[np.ndarray] = None,
+        sparse_vector: Optional[dict[int, float]] = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query and return top_k results. This method calls the
         sync `query` method as everything uses numpy computations which is CPU-bound
@@ -135,7 +139,7 @@ class HybridLocalIndex(LocalIndex):
         :param route_filter: A list of route names to filter the search results, defaults to None.
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: The sparse vector to search for, must be provided.
-        :type sparse_vector: np.ndarray
+        :type sparse_vector: dict[int, float]
         """
         return self.query(
             vector=vector,
@@ -145,10 +149,10 @@ class HybridLocalIndex(LocalIndex):
         )
 
     def aget_routes(self):
-        logger.error("Sync remove is not implemented for LocalIndex.")
+        logger.error(f"Sync remove is not implemented for {self.__class__.__name__}.")
 
     def _write_config(self, config: ConfigParameter):
-        logger.warning("No config is written for LocalIndex.")
+        logger.warning(f"No config is written for {self.__class__.__name__}.")
 
     def delete(self, route_name: str):
         """

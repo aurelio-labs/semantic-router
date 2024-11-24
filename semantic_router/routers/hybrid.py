@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 import asyncio
-from pydantic.v1 import validator, Field
+from pydantic.v1 import Field
 
 import numpy as np
 
@@ -21,14 +21,13 @@ class HybridRouter(BaseRouter):
     """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
 
     # there are a few additional attributes for hybrid
-    sparse_encoder: BM25Encoder = Field(default_factory=BM25Encoder)
+    sparse_encoder: Optional[BaseEncoder] = Field(default=None)
     alpha: float = 0.3
-    index: HybridLocalIndex = Field(default_factory=HybridLocalIndex)
 
     def __init__(
         self,
         encoder: BaseEncoder,
-        sparse_encoder: Optional[BM25Encoder] = None,
+        sparse_encoder: Optional[BaseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: List[Route] = [],
         index: Optional[HybridLocalIndex] = None,
@@ -40,46 +39,47 @@ class HybridRouter(BaseRouter):
         super().__init__(
             encoder=encoder,
             llm=llm,
-            routes=routes.copy(),
+            #routes=routes.copy(),
             index=index,
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
         # initialize sparse encoder
+        self._set_sparse_encoder(sparse_encoder=sparse_encoder)
+        # set alpha
+        self.alpha = alpha
+        # create copy of routes
+        routes_copy = routes.copy()
+        # fit sparse encoder if needed
+        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
+            self.sparse_encoder, "fit"
+        ):
+            self.sparse_encoder.fit(routes_copy)
+        # initialize index if not provided
+        self._set_index(index=index)
+        # add routes if we have them
+        if routes_copy:
+            for route in routes_copy:
+                self.add(route)
+        # set score threshold using default method
+        self._set_score_threshold()  # TODO: we can't really use this with hybrid...
+
+    def _set_index(self, index: Optional[HybridLocalIndex]):
+        if index is None:
+            logger.warning("No index provided. Using default HybridLocalIndex.")
+            self.index = HybridLocalIndex()
+        else:
+            self.index = index
+    
+    def _set_sparse_encoder(self, sparse_encoder: Optional[BaseEncoder]):
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             self.sparse_encoder = BM25Encoder()
         else:
             self.sparse_encoder = sparse_encoder
-        # set alpha
-        self.alpha = alpha
-        # fit sparse encoder if needed
-        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
-            self.sparse_encoder, "fit"
-        ):
-            self.sparse_encoder.fit(routes)
-        # initialize index if not provided
-        # TODO: add check for hybrid compatible index
-        if self.index is None:
-            logger.warning("No index provided. Using default HybridLocalIndex.")
-            self.index = HybridLocalIndex()
-        # add routes if we have them
-        if routes:
-            for route in routes:
-                self.add(route)
-        # set score threshold using default method
-        self._set_score_threshold()  # TODO: we can't really use this with hybrid...
 
-    @validator("sparse_encoder", pre=True, always=True)
-    def set_sparse_encoder(cls, v):
-        return v if v is not None else BM25Encoder()
-
-    @validator("index", pre=True, always=True)
-    def set_index(cls, v):
-        return v if v is not None else HybridLocalIndex()
-
-    def _encode(self, text: List[str]) -> Any:
+    def _encode(self, text: list[str]) -> tuple[np.ndarray, list[dict[int, float]]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
         """
@@ -88,12 +88,12 @@ class HybridRouter(BaseRouter):
         # create dense query vector
         xq_d = np.array(self.encoder(text))
         # xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
-        # create sparse query vector
-        xq_s = np.array(self.sparse_encoder(text))
+        # create sparse query vector dict
+        xq_s_dict = self.sparse_encoder(text)
         # xq_s = np.squeeze(xq_s)
         # convex scaling
-        xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
-        return xq_d, xq_s
+        xq_d, xq_s_dict = self._convex_scaling(xq_d, xq_s_dict)
+        return xq_d, xq_s_dict
 
     async def _async_encode(self, text: List[str]) -> Any:
         """Given some text, generates dense and sparse embeddings, then scales them
@@ -121,7 +121,7 @@ class HybridRouter(BaseRouter):
         vector: Optional[List[float]] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[List[float]] = None,
+        sparse_vector: Optional[dict[int, float]] = None,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -137,11 +137,7 @@ class HybridRouter(BaseRouter):
             vector=np.array(vector) if isinstance(vector, list) else vector,
             top_k=self.top_k,
             route_filter=route_filter,
-            sparse_vector=(
-                np.array(sparse_vector)
-                if isinstance(sparse_vector, list)
-                else sparse_vector
-            ),
+            sparse_vector=sparse_vector[0]
         )
         top_class, top_class_scores = self._semantic_classify(
             list(zip(scores, route_names))
@@ -169,11 +165,13 @@ class HybridRouter(BaseRouter):
         # TODO: in some places we say vector, sparse_vector and in others
         # TODO: we say embeddings, sparse_embeddings
 
-    def _convex_scaling(self, dense: np.ndarray, sparse: np.ndarray):
+    def _convex_scaling(self, dense: np.ndarray, sparse: list[dict[int, float]]):
         # scale sparse and dense vecs
-        dense = np.array(dense) * self.alpha
-        sparse = np.array(sparse) * (1 - self.alpha)
-        return dense, sparse
+        scaled_dense = np.array(dense) * self.alpha
+        scaled_sparse = []
+        for sparse_dict in sparse:
+            scaled_sparse.append({k: v * (1 - self.alpha) for k, v in sparse_dict.items()})
+        return scaled_dense, scaled_sparse
 
     def _set_aggregation_method(self, aggregation: str = "sum"):
         if aggregation == "sum":

@@ -4,7 +4,7 @@ from pydantic.v1 import Field
 
 from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders.base import BaseEncoder
 
 
 class AurelioSparseEncoder(BaseEncoder):

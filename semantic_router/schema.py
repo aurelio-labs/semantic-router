@@ -7,6 +7,7 @@ from semantic_router.utils.logger import logger
 
 
 class EncoderType(Enum):
+    AURELIO = "aurelio"
     AZURE = "azure"
     COHERE = "cohere"
     OPENAI = "openai"

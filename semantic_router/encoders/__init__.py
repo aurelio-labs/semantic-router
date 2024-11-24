@@ -51,6 +51,8 @@ class AutoEncoder:
             self.model = CohereEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
             self.model = OpenAIEncoder(name=name)
+        elif self.type == EncoderType.AURELIO:
+            self.model = AurelioSparseEncoder(name=name)
         elif self.type == EncoderType.BM25:
             if name is None:
                 name = "bm25"
