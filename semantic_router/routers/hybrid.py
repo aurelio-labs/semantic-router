@@ -154,7 +154,6 @@ class HybridRouter(BaseRouter):
         route_names = [route.name] * len(route.utterances)
 
         # create embeddings for all routes
-        logger.info(f"Encoding route {route.name}")
         dense_embeds, sparse_embeds = self._encode(route.utterances)
         self.index.add(
             embeddings=dense_embeds,
