@@ -22,6 +22,7 @@ def clean_route_name(route_name: str) -> str:
 class PineconeRecord(BaseModel):
     id: str = ""
     values: List[float]
+    sparse_values: Optional[dict[int, float]] = None
     route: str
     utterance: str
     function_schema: str = "{}"
@@ -42,11 +43,17 @@ class PineconeRecord(BaseModel):
         )
 
     def to_dict(self):
-        return {
+        d = {
             "id": self.id,
             "values": self.values,
             "metadata": self.metadata,
         }
+        if self.sparse_values:
+            d["sparse_values"] = {
+                "indices": list(self.sparse_values.keys()),
+                "values": list(self.sparse_values.values()),
+            }
+        return d
 
 
 class PineconeIndex(BaseIndex):
@@ -54,7 +61,7 @@ class PineconeIndex(BaseIndex):
     api_key: Optional[str] = None
     index_name: str = "index"
     dimensions: Union[int, None] = None
-    metric: str = "cosine"
+    metric: str = "dotproduct"
     cloud: str = "aws"
     region: str = "us-west-2"
     host: str = ""
@@ -70,7 +77,7 @@ class PineconeIndex(BaseIndex):
         api_key: Optional[str] = None,
         index_name: str = "index",
         dimensions: Optional[int] = None,
-        metric: str = "cosine",
+        metric: str = "dotproduct",
         cloud: str = "aws",
         region: str = "us-west-2",
         host: str = "",
@@ -233,6 +240,7 @@ class PineconeIndex(BaseIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
+        sparse_embeddings: Optional[List[dict[int, float]]] = None,
     ):
         """Add vectors to Pinecone in batches."""
         temp = "\n".join([f"{x[0]}: {x[1]}" for x in zip(routes, utterances)])
@@ -240,17 +248,22 @@ class PineconeIndex(BaseIndex):
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
+        if function_schemas is None:
+            function_schemas = [None] * len(embeddings)
+        if sparse_embeddings is None:
+            sparse_embeddings = [None] * len(embeddings)
 
         vectors_to_upsert = [
             PineconeRecord(
                 values=vector,
+                sparse_values=sparse_dict,
                 route=route,
                 utterance=utterance,
                 function_schema=json.dumps(function_schema),
                 metadata=metadata,
             ).to_dict()
-            for vector, route, utterance, function_schema, metadata in zip(
-                embeddings, routes, utterances, function_schemas, metadata_list  # type: ignore
+            for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
+                embeddings, routes, utterances, function_schemas, metadata_list, sparse_embeddings  # type: ignore
             )
         ]
 
@@ -523,7 +536,7 @@ class PineconeIndex(BaseIndex):
         dimension: int,
         cloud: str,
         region: str,
-        metric: str = "cosine",
+        metric: str = "dotproduct",
     ):
         params = {
             "name": name,
