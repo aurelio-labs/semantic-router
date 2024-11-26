@@ -5,6 +5,7 @@ from pydantic.v1 import Field
 from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
 
 from semantic_router.encoders.base import BaseEncoder
+from semantic_router.schema import SparseEmbedding
 
 
 class AurelioSparseEncoder(BaseEncoder):
@@ -28,19 +29,15 @@ class AurelioSparseEncoder(BaseEncoder):
         self.client = AurelioClient(api_key=api_key)
         self.async_client = AsyncAurelioClient(api_key=api_key)
 
-    def __call__(self, docs: list[str]) -> list[dict[int, float]]:
+    def __call__(self, docs: list[str]) -> list[SparseEmbedding]:
         res: EmbeddingResponse = self.client.embedding(input=docs, model=self.name)
-        embeds = [r.embedding.model_dump() for r in res.data]
-        # convert sparse vector to {index: value} format
-        sparse_dicts = [{i: v for i, v in zip(e["indices"], e["values"])} for e in embeds]
-        return sparse_dicts
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
     
-    async def acall(self, docs: list[str]) -> list[dict[int, float]]:
+    async def acall(self, docs: list[str]) -> list[SparseEmbedding]:
         res: EmbeddingResponse = await self.async_client.embedding(input=docs, model=self.name)
-        embeds = [r.embedding.model_dump() for r in res.data]
-        # convert sparse vector to {index: value} format
-        sparse_dicts = [{i: v for i, v in zip(e["indices"], e["values"])} for e in embeds]
-        return sparse_dicts
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
 
     def fit(self, docs: List[str]):
         raise NotImplementedError("AurelioSparseEncoder does not support fit.")

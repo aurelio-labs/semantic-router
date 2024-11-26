@@ -53,12 +53,6 @@ def is_valid(layer_config: str) -> bool:
 
 
 class SemanticRouter(BaseRouter):
-    index: BaseIndex = Field(default_factory=LocalIndex)
-
-    @validator("index", pre=True, always=True)
-    def set_index(cls, v):
-        return v if v is not None else LocalIndex()
-
     def __init__(
         self,
         encoder: Optional[BaseEncoder] = None,
@@ -72,56 +66,15 @@ class SemanticRouter(BaseRouter):
         super().__init__(
             encoder=encoder,
             llm=llm,
-            routes=routes.copy() if routes else [],
+            routes=routes if routes else [],
             index=index,
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
-        if encoder is None:
-            logger.warning(
-                "No encoder provided. Using default OpenAIEncoder. Ensure "
-                "that you have set OPENAI_API_KEY in your environment."
-            )
-            self.encoder = OpenAIEncoder()
-        else:
-            self.encoder = encoder
-        self.llm = llm
-        self.routes = routes if routes else []
-        # set score threshold using default method
-        self._set_score_threshold()
-        self.top_k = top_k
-        if self.top_k < 1:
-            raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
-        self.aggregation = aggregation
-        if self.aggregation not in ["sum", "mean", "max"]:
-            raise ValueError(
-                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
-            )
-        self.aggregation_method = self._set_aggregation_method(self.aggregation)
-        self.auto_sync = auto_sync
-
-        # set route score thresholds if not already set
-        for route in self.routes:
-            if route.score_threshold is None:
-                route.score_threshold = self.score_threshold
-        # if routes list has been passed, we initialize index now
+        # run initialize index now if auto sync is active
         if self.auto_sync:
-            # initialize index now, check if we need dimensions
-            if self.index.dimensions is None:
-                dims = len(self.encoder(["test"])[0])
-                self.index.dimensions = dims
-            # now init index
-            if isinstance(self.index, PineconeIndex):
-                self.index.index = self.index._init_index(force_create=True)
-            local_utterances = self.to_config().to_utterances()
-            remote_utterances = self.index.get_utterances()
-            diff = UtteranceDiff.from_utterances(
-                local_utterances=local_utterances,
-                remote_utterances=remote_utterances,
-            )
-            sync_strategy = diff.get_sync_strategy(self.auto_sync)
-            self._execute_sync_strategy(sync_strategy)
+            self._init_index_state()
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(
@@ -331,8 +284,6 @@ class SemanticRouter(BaseRouter):
                     new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
                 new_routes[utt_obj.route].function_schemas = utt_obj.function_schemas
                 new_routes[utt_obj.route].metadata = utt_obj.metadata
-        temp = "\n".join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
-        logger.warning("TEMP | _local_upsert:\n" + temp)
         self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
@@ -345,8 +296,6 @@ class SemanticRouter(BaseRouter):
         route_dict: dict[str, List[str]] = {}
         for utt in utterances:
             route_dict.setdefault(utt.route, []).append(utt.utterance)
-        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n" + temp)
         # iterate over current routes and delete specific utterance if found
         new_routes = []
         for route in self.routes:
@@ -368,17 +317,9 @@ class SemanticRouter(BaseRouter):
                             metadata=route.metadata,
                         )
                     )
-                logger.warning(
-                    f"TEMP | _local_delete OLD | {route.name}: {route.utterances}"
-                )
-                logger.warning(
-                    f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}"
-                )
             else:
                 # the route is not in the route_dict, so we keep it as is
                 new_routes.append(route)
-        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n" + temp)
 
         self.routes = new_routes
 
@@ -448,41 +389,6 @@ class SemanticRouter(BaseRouter):
     def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         return cls(encoder=encoder, routes=config.routes, index=index)
-
-    def add(self, route: Route):
-        """Add a route to the local SemanticRouter and index.
-
-        :param route: The route to add.
-        :type route: Route
-        """
-        current_local_hash = self._get_hash()
-        current_remote_hash = self.index._read_hash()
-        if current_remote_hash.value == "":
-            # if remote hash is empty, the index is to be initialized
-            current_remote_hash = current_local_hash
-        embedded_utterances = self.encoder(route.utterances)
-        self.index.add(
-            embeddings=embedded_utterances,
-            routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,
-            function_schemas=(
-                route.function_schemas * len(route.utterances)
-                if route.function_schemas
-                else [{}] * len(route.utterances)
-            ),
-            metadata_list=[route.metadata if route.metadata else {}]
-            * len(route.utterances),
-        )
-
-        self.routes.append(route)
-        if current_local_hash.value == current_remote_hash.value:
-            self._write_hash()  # update current hash in index
-        else:
-            logger.warning(
-                "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
-                "details."
-            )
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]

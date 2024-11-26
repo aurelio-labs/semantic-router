@@ -11,7 +11,7 @@ import numpy as np
 from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter
+from semantic_router.schema import ConfigParameter, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 
@@ -243,8 +243,6 @@ class PineconeIndex(BaseIndex):
         sparse_embeddings: Optional[List[dict[int, float]]] = None,
     ):
         """Add vectors to Pinecone in batches."""
-        temp = "\n".join([f"{x[0]}: {x[1]}" for x in zip(routes, utterances)])
-        logger.warning("TEMP | add:\n" + temp)
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
@@ -272,10 +270,6 @@ class PineconeIndex(BaseIndex):
             self._batch_upsert(batch)
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        temp = "\n".join(
-            [f"{route}: {utterances}" for route, utterances in routes_to_delete.items()]
-        )
-        logger.warning("TEMP | _remove_and_sync:\n" + temp)
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)
             ids_to_delete = [
@@ -364,6 +358,7 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
         **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query vector and return the top_k results.
@@ -374,10 +369,10 @@ class PineconeIndex(BaseIndex):
         :type top_k: int, optional
         :param route_filter: A list of route names to filter the search results, defaults to None.
         :type route_filter: Optional[List[str]], optional
+        :param sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[SparseEmbedding]
         :param kwargs: Additional keyword arguments for the query, including sparse_vector.
         :type kwargs: Any
-        :keyword sparse_vector: An optional sparse vector to include in the query.
-        :type sparse_vector: Optional[dict]
         :return: A tuple containing an array of scores and a list of route names.
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
@@ -389,9 +384,13 @@ class PineconeIndex(BaseIndex):
             filter_query = {"sr_route": {"$in": route_filter}}
         else:
             filter_query = None
+        if sparse_vector is not None:
+            if isinstance(sparse_vector, dict):
+                sparse_vector = SparseEmbedding.from_dict(sparse_vector)
+            sparse_vector = sparse_vector.to_pinecone()
         results = self.index.query(
             vector=[query_vector_list],
-            sparse_vector=kwargs.get("sparse_vector", None),
+            sparse_vector=sparse_vector,
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -653,6 +652,8 @@ class PineconeIndex(BaseIndex):
             )
 
     def __len__(self):
-        return self.index.describe_index_stats()["namespaces"][self.namespace][
-            "vector_count"
-        ]
+        namespace_stats = self.index.describe_index_stats()["namespaces"].get(self.namespace)
+        if namespace_stats:
+            return namespace_stats["vector_count"]
+        else:
+            return 0

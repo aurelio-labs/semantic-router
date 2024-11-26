@@ -4,7 +4,7 @@ from enum import Enum
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic.v1 import BaseModel, Field
 from semantic_router.utils.logger import logger
-
+from aurelio_sdk.schema import BM25Embedding
 
 class EncoderType(Enum):
     AURELIO = "aurelio"
@@ -404,3 +404,39 @@ class Metric(Enum):
     DOTPRODUCT = "dotproduct"
     EUCLIDEAN = "euclidean"
     MANHATTAN = "manhattan"
+
+
+class SparseValue(BaseModel):
+    index: int
+    value: float
+
+
+class SparseEmbedding(BaseModel):
+    embedding: List[SparseValue]
+
+    def to_dict(self):
+        return {x.index: x.value for x in self.embedding}
+    
+    def to_pinecone(self):
+        return {
+            "indices": [x.index for x in self.embedding],
+            "values": [x.value for x in self.embedding],
+        }
+    
+    @classmethod
+    def from_dict(cls, sparse_dict: dict):
+        return cls(embedding=[SparseValue(index=i, value=v) for i, v in sparse_dict.items()])
+    
+    @classmethod
+    def from_aurelio(cls, embedding: BM25Embedding):
+        return cls(embedding=[
+            SparseValue(
+                index=i,
+                value=v
+            ) for i, v in zip(embedding.indices, embedding.values)
+        ])
+    
+    # dictionary interface
+    def items(self):
+        return [(x.index, x.value) for x in self.embedding]
+

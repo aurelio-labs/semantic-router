@@ -11,7 +11,7 @@ from semantic_router.encoders import (
 )
 from semantic_router.route import Route
 from semantic_router.index.hybrid_local import HybridLocalIndex
-from semantic_router.schema import RouteChoice
+from semantic_router.schema import RouteChoice, SparseEmbedding
 from semantic_router.utils.logger import logger
 from semantic_router.routers.base import BaseRouter
 from semantic_router.llms import BaseLLM
@@ -36,10 +36,13 @@ class HybridRouter(BaseRouter):
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
     ):
+        if index is None:
+            logger.warning("No index provided. Using default HybridLocalIndex.")
+            index = HybridLocalIndex()
         super().__init__(
             encoder=encoder,
             llm=llm,
-            #routes=routes.copy(),
+            routes=routes,
             index=index,
             top_k=top_k,
             aggregation=aggregation,
@@ -49,28 +52,14 @@ class HybridRouter(BaseRouter):
         self._set_sparse_encoder(sparse_encoder=sparse_encoder)
         # set alpha
         self.alpha = alpha
-        # create copy of routes
-        routes_copy = routes.copy()
         # fit sparse encoder if needed
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
         ):
-            self.sparse_encoder.fit(routes_copy)
-        # initialize index if not provided
-        self._set_index(index=index)
-        # add routes if we have them
-        if routes_copy:
-            for route in routes_copy:
-                self.add(route)
-        # set score threshold using default method
-        self._set_score_threshold()  # TODO: we can't really use this with hybrid...
-
-    def _set_index(self, index: Optional[HybridLocalIndex]):
-        if index is None:
-            logger.warning("No index provided. Using default HybridLocalIndex.")
-            self.index = HybridLocalIndex()
-        else:
-            self.index = index
+            self.sparse_encoder.fit(self.routes)
+        # run initialize index now if auto sync is active
+        if self.auto_sync:
+            self._init_index_state()
     
     def _set_sparse_encoder(self, sparse_encoder: Optional[BaseEncoder]):
         if sparse_encoder is None:
@@ -121,7 +110,7 @@ class HybridRouter(BaseRouter):
         vector: Optional[List[float]] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[dict[int, float]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> RouteChoice:
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -147,22 +136,6 @@ class HybridRouter(BaseRouter):
             return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
         else:
             return RouteChoice()
-
-    def add(self, route: Route):
-        self.routes += [route]
-
-        route_names = [route.name] * len(route.utterances)
-
-        # create embeddings for all routes
-        dense_embeds, sparse_embeds = self._encode(route.utterances)
-        self.index.add(
-            embeddings=dense_embeds,
-            sparse_embeddings=sparse_embeds,
-            routes=route_names,  # TODO: aligning names of routes v route_names
-            utterances=route.utterances,
-        )
-        # TODO: in some places we say vector, sparse_vector and in others
-        # TODO: we say embeddings, sparse_embeddings
 
     def _convex_scaling(self, dense: np.ndarray, sparse: list[dict[int, float]]):
         # scale sparse and dense vecs
