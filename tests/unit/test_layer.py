@@ -10,6 +10,7 @@ from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
+from semantic_router.index.milvus import MilvusIndex
 from semantic_router.layer import LayerConfig, RouteLayer
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
@@ -181,6 +182,8 @@ def get_test_indexes():
 
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
+    if importlib.util.find_spec("pymilvus") is not None:
+        indexes.append(MilvusIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
 
