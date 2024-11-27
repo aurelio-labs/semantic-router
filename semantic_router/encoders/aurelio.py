@@ -19,9 +19,11 @@ class AurelioSparseEncoder(SparseEncoder):
 
     def __init__(
         self,
-        name: str = "bm25",
+        name: str | None = None,
         api_key: Optional[str] = None,
     ):
+        if name is None:
+            name = "bm25"
         super().__init__(name=name)
         if api_key is None:
             api_key = os.getenv("AURELIO_API_KEY")

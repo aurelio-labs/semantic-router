@@ -223,7 +223,7 @@ class PineconeIndex(BaseIndex):
             # if the index doesn't exist and we don't have the dimensions
             # we raise warning
             logger.warning("Index could not be initialized.")
-        self.host = index_stats["host"] if index_stats else None
+        self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records."""
@@ -466,7 +466,7 @@ class PineconeIndex(BaseIndex):
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
         """
-        if self.async_client is None or self.host is None:
+        if self.async_client is None or self.host == "":
             raise ValueError("Async client or host are not initialized.")
         query_vector_list = vector.tolist()
         if route_filter is not None:
@@ -492,7 +492,7 @@ class PineconeIndex(BaseIndex):
         :return: A list of (route_name, utterance) objects.
         :rtype: List[Tuple]
         """
-        if self.async_client is None or self.host is None:
+        if self.async_client is None or self.host == "":
             raise ValueError("Async client or host are not initialized.")
 
         return await self._async_get_routes()
@@ -519,6 +519,8 @@ class PineconeIndex(BaseIndex):
             "top_k": top_k,
             "include_metadata": include_metadata,
         }
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
         async with self.async_client.post(
             f"https://{self.host}/query",
             json=params,
@@ -569,6 +571,8 @@ class PineconeIndex(BaseIndex):
         """
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
 
         all_vector_ids = []
         next_page_token = None
@@ -623,6 +627,8 @@ class PineconeIndex(BaseIndex):
         :return: A dictionary containing the metadata for the vector.
         :rtype: dict
         """
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
         url = f"https://{self.host}/vectors/fetch"
 
         params = {

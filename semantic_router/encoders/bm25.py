@@ -12,9 +12,11 @@ class BM25Encoder(TfidfEncoder):
 
     def __init__(
         self,
-        name: str = "bm25",
+        name: str | None = None,
         use_default_params: bool = True,
     ):
+        if name is None:
+            name = "bm25"
         super().__init__(name=name)
         try:
             from pinecone_text.sparse import BM25Encoder as encoder

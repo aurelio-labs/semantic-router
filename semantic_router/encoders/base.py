@@ -35,9 +35,7 @@ class SparseEncoder(BaseModel):
     def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def acall(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+    async def acall(self, docs: List[str]) -> list[SparseEmbedding]:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _array_to_sparse_embeddings(

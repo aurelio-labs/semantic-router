@@ -700,18 +700,27 @@ class BaseRouter(BaseModel):
     def from_json(cls, file_path: str):
         config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from JSON.")
 
     @classmethod
     def from_yaml(cls, file_path: str):
         config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from YAML.")
 
     @classmethod
     def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes, index=index)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes, index=index)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from config.")
 
     def add(self, route: Route):
         """Add a route to the local SemanticRouter and index.

@@ -15,7 +15,9 @@ class TfidfEncoder(SparseEncoder):
     idf: ndarray = np.array([])
     word_index: Dict = {}
 
-    def __init__(self, name: str = "tfidf"):
+    def __init__(self, name: str | None = None):
+        if name is None:
+            name = "tfidf"
         super().__init__(name=name)
         self.word_index = {}
         self.idf = np.array([])
