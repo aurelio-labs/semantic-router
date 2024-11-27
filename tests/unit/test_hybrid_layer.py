@@ -2,13 +2,13 @@ import pytest
 
 from semantic_router.encoders import (
     AzureOpenAIEncoder,
-    BaseEncoder,
+    DenseEncoder,
     BM25Encoder,
     CohereEncoder,
     OpenAIEncoder,
     TfidfEncoder,
 )
-from semantic_router.OLD_hybrid_layer import HybridRouter
+from semantic_router.routers import HybridRouter
 from semantic_router.route import Route
 
 
@@ -26,8 +26,8 @@ def mock_encoder_call(utterances):
 
 @pytest.fixture
 def base_encoder(mocker):
-    mock_base_encoder = BaseEncoder(name="test-encoder", score_threshold=0.5)
-    mocker.patch.object(BaseEncoder, "__call__", return_value=[[0.1, 0.2, 0.3]])
+    mock_base_encoder = DenseEncoder(name="test-encoder", score_threshold=0.5)
+    mocker.patch.object(DenseEncoder, "__call__", return_value=[[0.1, 0.2, 0.3]])
     return mock_base_encoder
 
 

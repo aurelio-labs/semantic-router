@@ -10,7 +10,7 @@ from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 import tiktoken
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 from semantic_router.schema import EncoderInfo
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
@@ -35,7 +35,7 @@ model_configs = {
 }
 
 
-class OpenAIEncoder(BaseEncoder):
+class OpenAIEncoder(DenseEncoder):
     client: Optional[openai.Client]
     async_client: Optional[openai.AsyncClient]
     dimensions: Union[int, NotGiven] = NotGiven()

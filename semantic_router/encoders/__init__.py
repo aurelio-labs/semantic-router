@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from semantic_router.encoders.aurelio import AurelioSparseEncoder
-from semantic_router.encoders.base import BaseEncoder
+from semantic_router.encoders.base import DenseEncoder, SparseEncoder
 from semantic_router.encoders.bedrock import BedrockEncoder
 from semantic_router.encoders.bm25 import BM25Encoder
 from semantic_router.encoders.clip import CLIPEncoder
@@ -19,7 +19,8 @@ from semantic_router.schema import EncoderType
 
 __all__ = [
     "AurelioSparseEncoder",
-    "BaseEncoder",
+    "DenseEncoder",
+    "SparseEncoder",
     "AzureOpenAIEncoder",
     "CohereEncoder",
     "OpenAIEncoder",
@@ -39,7 +40,7 @@ __all__ = [
 class AutoEncoder:
     type: EncoderType
     name: Optional[str]
-    model: BaseEncoder
+    model: DenseEncoder | SparseEncoder
 
     def __init__(self, type: str, name: Optional[str]):
         self.type = EncoderType(type)

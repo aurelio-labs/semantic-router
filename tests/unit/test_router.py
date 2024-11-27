@@ -6,7 +6,7 @@ from datetime import datetime
 import pytest
 import time
 from typing import Optional
-from semantic_router.encoders import BaseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
@@ -102,7 +102,7 @@ routes:
 
 @pytest.fixture
 def base_encoder():
-    return BaseEncoder(name="test-encoder", score_threshold=0.5)
+    return DenseEncoder(name="test-encoder", score_threshold=0.5)
 
 
 @pytest.fixture

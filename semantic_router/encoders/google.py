@@ -1,7 +1,7 @@
 """
 This module provides the GoogleEncoder class for generating embeddings using Google's AI Platform.
 
-The GoogleEncoder class is a subclass of BaseEncoder and utilizes the TextEmbeddingModel from the
+The GoogleEncoder class is a subclass of DenseEncoder and utilizes the TextEmbeddingModel from the
 Google AI Platform to generate embeddings for given documents. It requires a Google Cloud project ID
 and supports customization of the pre-trained model, score threshold, location, and API endpoint.
 
@@ -19,11 +19,11 @@ Classes:
 import os
 from typing import Any, List, Optional
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
 
-class GoogleEncoder(BaseEncoder):
+class GoogleEncoder(DenseEncoder):
     """GoogleEncoder class for generating embeddings using Google's AI Platform.
 
     Attributes:

@@ -6,11 +6,11 @@ import numpy as np
 from numpy import ndarray
 from numpy.linalg import norm
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import SparseEncoder
 from semantic_router.route import Route
 
 
-class TfidfEncoder(BaseEncoder):
+class TfidfEncoder(SparseEncoder):
     idf: ndarray = np.array([])
     word_index: Dict = {}
 

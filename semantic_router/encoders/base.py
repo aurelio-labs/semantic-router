@@ -2,8 +2,10 @@ from typing import Any, Coroutine, List, Optional
 
 from pydantic.v1 import BaseModel, Field, validator
 
+from semantic_router.schema import SparseEmbedding
 
-class BaseEncoder(BaseModel):
+
+class DenseEncoder(BaseModel):
     name: str
     score_threshold: Optional[float] = None
     type: str = Field(default="base")
@@ -19,4 +21,18 @@ class BaseEncoder(BaseModel):
         raise NotImplementedError("Subclasses must implement this method")
 
     def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[List[float]]]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+
+class SparseEncoder(BaseModel):
+    name: str
+    type: str = Field(default="base")
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def acall(self, docs: List[str]) -> Coroutine[Any, Any, List[SparseEmbedding]]:
         raise NotImplementedError("Subclasses must implement this method")

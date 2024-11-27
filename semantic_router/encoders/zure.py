@@ -8,12 +8,12 @@ from openai._types import NotGiven
 from openai import OpenAIError
 from openai.types import CreateEmbeddingResponse
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
-class AzureOpenAIEncoder(BaseEncoder):
+class AzureOpenAIEncoder(DenseEncoder):
     client: Optional[openai.AzureOpenAI] = None
     async_client: Optional[openai.AsyncAzureOpenAI] = None
     dimensions: Union[int, NotGiven] = NotGiven()

@@ -5,7 +5,7 @@ from pydantic.v1 import Field
 import numpy as np
 
 from semantic_router.encoders import (
-    BaseEncoder,
+    DenseEncoder,
     BM25Encoder,
     TfidfEncoder,
 )
@@ -21,13 +21,13 @@ class HybridRouter(BaseRouter):
     """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
 
     # there are a few additional attributes for hybrid
-    sparse_encoder: Optional[BaseEncoder] = Field(default=None)
+    sparse_encoder: Optional[DenseEncoder] = Field(default=None)
     alpha: float = 0.3
 
     def __init__(
         self,
-        encoder: BaseEncoder,
-        sparse_encoder: Optional[BaseEncoder] = None,
+        encoder: DenseEncoder,
+        sparse_encoder: Optional[DenseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: List[Route] = [],
         index: Optional[HybridLocalIndex] = None,
@@ -61,7 +61,7 @@ class HybridRouter(BaseRouter):
         if self.auto_sync:
             self._init_index_state()
     
-    def _set_sparse_encoder(self, sparse_encoder: Optional[BaseEncoder]):
+    def _set_sparse_encoder(self, sparse_encoder: Optional[DenseEncoder]):
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             self.sparse_encoder = BM25Encoder()

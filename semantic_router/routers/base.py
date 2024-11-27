@@ -10,7 +10,7 @@ import numpy as np
 import yaml  # type: ignore
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
+from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
@@ -307,7 +307,7 @@ class RouterConfig:
 
 
 class BaseRouter(BaseModel):
-    encoder: BaseEncoder
+    encoder: DenseEncoder
     index: BaseIndex = Field(default_factory=BaseIndex)
     score_threshold: Optional[float] = Field(default=None)
     routes: List[Route] = []
@@ -322,7 +322,7 @@ class BaseRouter(BaseModel):
 
     def __init__(
         self,
-        encoder: Optional[BaseEncoder] = None,
+        encoder: Optional[DenseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: List[Route] = [],
         index: Optional[BaseIndex] = None,  # type: ignore

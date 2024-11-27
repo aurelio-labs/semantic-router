@@ -4,11 +4,11 @@ from pydantic.v1 import Field
 
 from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
 
-from semantic_router.encoders.base import BaseEncoder
+from semantic_router.encoders.base import SparseEncoder
 from semantic_router.schema import SparseEmbedding
 
 
-class AurelioSparseEncoder(BaseEncoder):
+class AurelioSparseEncoder(SparseEncoder):
     model: Optional[Any] = None
     idx_mapping: Optional[Dict[int, int]] = None
     client: AurelioClient = Field(default_factory=AurelioClient, exclude=True)

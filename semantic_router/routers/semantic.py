@@ -6,7 +6,7 @@ from pydantic.v1 import validator, Field
 import numpy as np
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
+from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
@@ -55,7 +55,7 @@ def is_valid(layer_config: str) -> bool:
 class SemanticRouter(BaseRouter):
     def __init__(
         self,
-        encoder: Optional[BaseEncoder] = None,
+        encoder: Optional[DenseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore

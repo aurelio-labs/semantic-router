@@ -1,7 +1,7 @@
 """
 This module provides the BedrockEncoder class for generating embeddings using Amazon's Bedrock Platform.
 
-The BedrockEncoder class is a subclass of BaseEncoder and utilizes the TextEmbeddingModel from the
+The BedrockEncoder class is a subclass of DenseEncoder and utilizes the TextEmbeddingModel from the
 Amazon's Bedrock Platform to generate embeddings for given documents. It requires an AWS Access Key ID
 and AWS Secret Access Key and supports customization of the pre-trained model, score threshold, and region.
 
@@ -21,12 +21,12 @@ from typing import List, Optional, Any
 import os
 from time import sleep
 import tiktoken
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
 
-class BedrockEncoder(BaseEncoder):
+class BedrockEncoder(DenseEncoder):
     client: Any = None
     type: str = "bedrock"
     input_type: Optional[str] = "search_query"

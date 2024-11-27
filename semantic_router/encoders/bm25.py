@@ -1,10 +1,10 @@
 from typing import Any, Dict, List, Optional
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import SparseEncoder
 from semantic_router.utils.logger import logger
 
 
-class BM25Encoder(BaseEncoder):
+class BM25Encoder(SparseEncoder):
     model: Optional[Any] = None
     idx_mapping: Optional[Dict[int, int]] = None
     type: str = "sparse"

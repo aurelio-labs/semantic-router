@@ -3,10 +3,10 @@ from typing import Any, List, Optional
 import numpy as np
 from pydantic.v1 import PrivateAttr
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 
 
-class FastEmbedEncoder(BaseEncoder):
+class FastEmbedEncoder(DenseEncoder):
     type: str = "fastembed"
     name: str = "BAAI/bge-small-en-v1.5"
     max_length: int = 512
