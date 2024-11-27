@@ -426,11 +426,10 @@ class SparseEmbedding(BaseModel):
                 "Column 0 should contain index positions, and column 1 should contain respective values."
             )
         return cls(embedding=array)
-    
+
     @classmethod
     def from_vector(cls, vector: np.ndarray):
-        """Consumes an array of sparse vectors containing zero-values.
-        """
+        """Consumes an array of sparse vectors containing zero-values."""
         if vector.ndim != 1:
             raise ValueError(f"Expected a 1D array, got a {vector.ndim}D array.")
         return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)

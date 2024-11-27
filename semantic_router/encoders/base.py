@@ -35,12 +35,15 @@ class SparseEncoder(BaseModel):
     def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def acall(self, docs: List[str]) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+    async def acall(
+        self, docs: List[str]
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
         raise NotImplementedError("Subclasses must implement this method")
-    
-    def _array_to_sparse_embeddings(self, sparse_arrays: np.ndarray) -> List[SparseEmbedding]:
-        """Consumes several sparse vectors containing zero-values and returns a compact array.
-        """
+
+    def _array_to_sparse_embeddings(
+        self, sparse_arrays: np.ndarray
+    ) -> List[SparseEmbedding]:
+        """Consumes several sparse vectors containing zero-values and returns a compact array."""
         if sparse_arrays.ndim != 2:
             raise ValueError(f"Expected a 2D array, got a {sparse_arrays.ndim}D array.")
         # get coordinates of non-zero values
@@ -50,4 +53,3 @@ class SparseEncoder(BaseModel):
         arr_range = range(compact_array[:, 0].max().astype(int) + 1)
         arrs = [compact_array[compact_array[:, 0] == i, :][:, 1:3] for i in arr_range]
         return [SparseEmbedding.from_compact_array(arr) for arr in arrs]
-

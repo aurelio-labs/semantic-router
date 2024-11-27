@@ -60,4 +60,3 @@ class BM25Encoder(TfidfEncoder):
                     position = self.idx_mapping[idx]
                     embeds[i][position] = val
         return embeds
-

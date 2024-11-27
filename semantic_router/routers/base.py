@@ -317,7 +317,7 @@ class BaseRouter(BaseModel):
         self.llm = llm
         self.routes = routes.copy() if routes else []
         # initialize index
-        self.index =self._get_index(index=index)
+        self.index = self._get_index(index=index)
         # set score threshold using default method
         self._set_score_threshold()
         self.top_k = top_k
@@ -346,7 +346,7 @@ class BaseRouter(BaseModel):
         else:
             index = index
         return index
-    
+
     def _get_encoder(self, encoder: Optional[DenseEncoder]) -> DenseEncoder:
         if encoder is None:
             logger.warning("No encoder provided. Using default OpenAIEncoder.")
@@ -506,19 +506,20 @@ class BaseRouter(BaseModel):
         categories_with_scores = self._semantic_classify_multiple_routes(results)
         print(f"{categories_with_scores=}")
         return [
-            RouteChoice(name=category, similarity_score=score) for category, score in categories_with_scores
+            RouteChoice(name=category, similarity_score=score)
+            for category, score in categories_with_scores
         ]
 
-        #route_choices = []
+        # route_choices = []
         # TODO JB: do we need this check? Maybe we should be returning directly
-        #for category, score in categories_with_scores:
+        # for category, score in categories_with_scores:
         #    route = self.check_for_matching_routes(category)
         #    if route:
         #        route_choice = RouteChoice(name=route.name, similarity_score=score)
         #        route_choices.append(route_choice)
 
-        #return route_choices
-    
+        # return route_choices
+
     def _retrieve_top_route(
         self, vector: List[float], route_filter: Optional[List[str]] = None
     ) -> Tuple[Optional[Route], List[float]]:
