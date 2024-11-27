@@ -644,7 +644,7 @@ class TestSemanticRouter:
             file.write(invalid_config_json)
 
         # Patch the is_valid function to return False for this test
-        with patch("semantic_router.layer.is_valid", return_value=False):
+        with patch("semantic_router.routers.base.is_valid", return_value=False):
             # Attempt to load the RouterConfig from the temporary file
             # and assert that it raises an exception due to invalid configuration
             with pytest.raises(Exception) as excinfo:
@@ -720,8 +720,6 @@ class TestSemanticRouter:
             {"route": "Route 2", "score": 0.7},
             {"route": "Route 1", "score": 0.8},
         ]
-        # Override _pass_threshold to always return True for this test
-        route_layer._pass_threshold = lambda scores, threshold: True
         expected = [("Route 1", 0.8), ("Route 2", 0.7)]
         results = route_layer._semantic_classify_multiple_routes(query_results)
         assert sorted(results) == sorted(
@@ -731,9 +729,8 @@ class TestSemanticRouter:
     def test_with_no_routes_passing_threshold(self, openai_encoder, routes, index_cls):
         index = init_index(index_cls)
         route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
-        # Override _pass_threshold to always return False for this test
-        route_layer._pass_threshold = lambda scores, threshold: False
+        # set threshold to 1.0 so that no routes pass
+        route_layer.score_threshold = 1.0
         query_results = [
             {"route": "Route 1", "score": 0.3},
             {"route": "Route 2", "score": 0.2},
@@ -815,11 +812,13 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         text = "Asparagus"
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
         results = route_layer.retrieve_multiple_routes(text=text)
         assert len(results) == 0, f"Expected no results, but got {len(results)}"
 
     def test_retrieve_one_match(self, openai_encoder, routes_3, index_cls):
-        index = init_index(index_cls)
+        index = init_index(index_cls, dimensions=3)
         route_layer = SemanticRouter(
             encoder=openai_encoder,
             routes=routes_3,
@@ -827,6 +826,8 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         text = "Hello"
+        # set low threshold
+        route_layer.set_threshold(threshold=0.1, route_name="Route 1")
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)
         results = route_layer.retrieve_multiple_routes(text=text)
@@ -845,6 +846,7 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         text = "Hello"
+        route_layer.set_threshold(threshold=0.01, route_name=None)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)
         results = route_layer.retrieve_multiple_routes(text=text)

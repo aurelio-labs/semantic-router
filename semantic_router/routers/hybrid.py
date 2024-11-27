@@ -10,7 +10,7 @@ from semantic_router.encoders import (
     TfidfEncoder,
 )
 from semantic_router.route import Route
-from semantic_router.index.hybrid_local import HybridLocalIndex
+from semantic_router.index import BaseIndex, HybridLocalIndex
 from semantic_router.schema import RouteChoice, SparseEmbedding
 from semantic_router.utils.logger import logger
 from semantic_router.routers.base import BaseRouter
@@ -39,6 +39,7 @@ class HybridRouter(BaseRouter):
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
+        encoder = self._get_encoder(encoder=encoder)
         super().__init__(
             encoder=encoder,
             llm=llm,
@@ -60,6 +61,14 @@ class HybridRouter(BaseRouter):
         # run initialize index now if auto sync is active
         if self.auto_sync:
             self._init_index_state()
+
+    def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
+        if index is None:
+            logger.warning("No index provided. Using default HybridLocalIndex.")
+            index = HybridLocalIndex()
+        else:
+            index = index
+        return index
 
     def _set_sparse_encoder(self, sparse_encoder: Optional[DenseEncoder]):
         if sparse_encoder is None:
@@ -146,43 +155,3 @@ class HybridRouter(BaseRouter):
                 {k: v * (1 - self.alpha) for k, v in sparse_dict.items()}
             )
         return scaled_dense, scaled_sparse
-
-    def _set_aggregation_method(self, aggregation: str = "sum"):
-        if aggregation == "sum":
-            return lambda x: sum(x)
-        elif aggregation == "mean":
-            return lambda x: np.mean(x)
-        elif aggregation == "max":
-            return lambda x: max(x)
-        else:
-            raise ValueError(
-                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
-            )
-
-    def _semantic_classify(self, query_results: List[Tuple]) -> Tuple[str, List[float]]:
-        scores_by_class: Dict[str, List[float]] = {}
-        for score, route in query_results:
-            if route in scores_by_class:
-                scores_by_class[route].append(score)
-            else:
-                scores_by_class[route] = [score]
-
-        # Calculate total score for each class
-        total_scores = {
-            route: self.aggregation_method(scores)
-            for route, scores in scores_by_class.items()
-        }
-        top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
-
-        # Return the top class and its associated scores
-        if top_class is not None:
-            return str(top_class), scores_by_class.get(top_class, [])
-        else:
-            logger.warning("No classification found for semantic classifier.")
-            return "", []
-
-    def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
-        if scores:
-            return max(scores) > threshold
-        else:
-            return False

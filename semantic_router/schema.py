@@ -428,9 +428,12 @@ class SparseEmbedding(BaseModel):
         return cls(embedding=array)
     
     @classmethod
-    def from_array(cls, array: np.ndarray):
-        """Consumes a single sparse vector which contains zero-values.
+    def from_vector(cls, vector: np.ndarray):
+        """Consumes an array of sparse vectors containing zero-values.
         """
+        if vector.ndim != 1:
+            raise ValueError(f"Expected a 1D array, got a {vector.ndim}D array.")
+        return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)
 
     @classmethod
     def from_aurelio(cls, embedding: BM25Embedding):
