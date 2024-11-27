@@ -1,10 +1,11 @@
 from typing import Any, Dict, List, Optional
 
-from semantic_router.encoders import SparseEncoder
+from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.utils.logger import logger
+from semantic_router.schema import SparseEmbedding
 
 
-class BM25Encoder(SparseEncoder):
+class BM25Encoder(TfidfEncoder):
     model: Optional[Any] = None
     idx_mapping: Optional[Dict[int, int]] = None
     type: str = "sparse"
@@ -12,10 +13,9 @@ class BM25Encoder(SparseEncoder):
     def __init__(
         self,
         name: str = "bm25",
-        score_threshold: float = 0.82,
         use_default_params: bool = True,
     ):
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         try:
             from pinecone_text.sparse import BM25Encoder as encoder
         except ImportError:
@@ -40,12 +40,13 @@ class BM25Encoder(SparseEncoder):
         else:
             raise TypeError("Expected a dictionary for 'doc_freq'")
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
         if self.model is None or self.idx_mapping is None:
             raise ValueError("Model or index mapping is not initialized.")
         if len(docs) == 1:
             sparse_dicts = self.model.encode_queries(docs)
         elif len(docs) > 1:
+            print(docs)
             sparse_dicts = self.model.encode_documents(docs)
         else:
             raise ValueError("No documents to encode.")
@@ -60,8 +61,3 @@ class BM25Encoder(SparseEncoder):
                     embeds[i][position] = val
         return embeds
 
-    def fit(self, docs: List[str]):
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        self.model.fit(docs)
-        self._set_idx_mapping()

@@ -419,23 +419,28 @@ class SparseEmbedding(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_array(cls, array: np.ndarray):
+    def from_compact_array(cls, array: np.ndarray):
         if array.ndim != 2 or array.shape[1] != 2:
             raise ValueError(
                 f"Expected a 2D array with 2 columns, got a {array.ndim}D array with {array.shape[1]} columns. "
                 "Column 0 should contain index positions, and column 1 should contain respective values."
             )
         return cls(embedding=array)
+    
+    @classmethod
+    def from_array(cls, array: np.ndarray):
+        """Consumes a single sparse vector which contains zero-values.
+        """
 
     @classmethod
     def from_aurelio(cls, embedding: BM25Embedding):
         arr = np.array([embedding.indices, embedding.values]).T
-        return cls.from_array(arr)
+        return cls.from_compact_array(arr)
 
     @classmethod
     def from_dict(cls, sparse_dict: dict):
         arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
-        return cls.from_array(arr)
+        return cls.from_compact_array(arr)
 
     def to_dict(self):
         return {

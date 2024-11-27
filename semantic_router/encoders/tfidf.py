@@ -8,6 +8,7 @@ from numpy.linalg import norm
 
 from semantic_router.encoders import SparseEncoder
 from semantic_router.route import Route
+from semantic_router.schema import SparseEmbedding
 
 
 class TfidfEncoder(SparseEncoder):
@@ -19,7 +20,7 @@ class TfidfEncoder(SparseEncoder):
         self.word_index = {}
         self.idf = np.array([])
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
         if len(self.word_index) == 0 or self.idf.size == 0:
             raise ValueError("Vectorizer is not initialized.")
         if len(docs) == 0:
@@ -28,7 +29,7 @@ class TfidfEncoder(SparseEncoder):
         docs = [self._preprocess(doc) for doc in docs]
         tf = self._compute_tf(docs)
         tfidf = tf * self.idf
-        return tfidf
+        return self._array_to_sparse_embeddings(tfidf)
 
     def fit(self, routes: List[Route]):
         docs = []
