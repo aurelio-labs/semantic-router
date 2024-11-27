@@ -66,15 +66,19 @@ class HybridLocalIndex(LocalIndex):
             "dimensions": self.index.shape[1] if self.index is not None else 0,
             "vectors": self.index.shape[0] if self.index is not None else 0,
         }
-    
-    def _sparse_dot_product(self, vec_a: dict[int, float], vec_b: dict[int, float]) -> float:
+
+    def _sparse_dot_product(
+        self, vec_a: dict[int, float], vec_b: dict[int, float]
+    ) -> float:
         # switch vecs to ensure first is smallest for more efficiency
         if len(vec_a) > len(vec_b):
             vec_a, vec_b = vec_b, vec_a
         return sum(vec_a[i] * vec_b.get(i, 0) for i in vec_a)
-    
+
     def _sparse_index_dot_product(self, vec_a: dict[int, float]) -> list[float]:
-        dot_products = [self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index]
+        dot_products = [
+            self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index
+        ]
         return dot_products
 
     def query(

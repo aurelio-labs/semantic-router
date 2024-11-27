@@ -1,10 +1,12 @@
 from datetime import datetime
 from difflib import Differ
 from enum import Enum
+import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic.v1 import BaseModel, Field
 from semantic_router.utils.logger import logger
 from aurelio_sdk.schema import BM25Embedding
+
 
 class EncoderType(Enum):
     AURELIO = "aurelio"
@@ -406,37 +408,53 @@ class Metric(Enum):
     MANHATTAN = "manhattan"
 
 
-class SparseValue(BaseModel):
-    index: int
-    value: float
-
-
 class SparseEmbedding(BaseModel):
-    embedding: List[SparseValue]
+    """Sparse embedding interface. Primarily uses numpy operations for faster
+    operations.
+    """
+    embedding: np.ndarray
 
-    def to_dict(self):
-        return {x.index: x.value for x in self.embedding}
-    
-    def to_pinecone(self):
-        return {
-            "indices": [x.index for x in self.embedding],
-            "values": [x.value for x in self.embedding],
-        }
-    
+    class Config:
+        arbitrary_types_allowed = True
+
     @classmethod
-    def from_dict(cls, sparse_dict: dict):
-        return cls(embedding=[SparseValue(index=i, value=v) for i, v in sparse_dict.items()])
+    def from_array(cls, array: np.ndarray):
+        if array.ndim != 2 or array.shape[1] != 2:
+            raise ValueError(
+                f"Expected a 2D array with 2 columns, got a {array.ndim}D array with {array.shape[1]} columns. "
+                "Column 0 should contain index positions, and column 1 should contain respective values."
+            )
+        return cls(embedding=array)
     
     @classmethod
     def from_aurelio(cls, embedding: BM25Embedding):
-        return cls(embedding=[
-            SparseValue(
-                index=i,
-                value=v
-            ) for i, v in zip(embedding.indices, embedding.values)
-        ])
+        arr = np.array([embedding.indices, embedding.values]).T
+        return cls.from_array(arr)
+    
+    @classmethod
+    def from_dict(cls, sparse_dict: dict):
+        arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
+        return cls.from_array(arr)
+    
+    def to_dict(self):
+        return {
+            i: v for i, v in zip(
+                self.embedding[:,0].astype(int),
+                self.embedding[:,1]
+            )
+        }
+    
+    def to_pinecone(self):
+        return {
+            "indices": self.embedding[:, 0].astype(int).tolist(),
+            "values": self.embedding[:, 1].tolist(),
+        }
     
     # dictionary interface
     def items(self):
-        return [(x.index, x.value) for x in self.embedding]
-
+        return [
+            (i, v) for i, v in zip(
+                self.embedding[:,0].astype(int),
+                self.embedding[:,1]
+            )
+        ]

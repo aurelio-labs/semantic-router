@@ -60,7 +60,7 @@ class HybridRouter(BaseRouter):
         # run initialize index now if auto sync is active
         if self.auto_sync:
             self._init_index_state()
-    
+
     def _set_sparse_encoder(self, sparse_encoder: Optional[DenseEncoder]):
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
@@ -126,7 +126,7 @@ class HybridRouter(BaseRouter):
             vector=np.array(vector) if isinstance(vector, list) else vector,
             top_k=self.top_k,
             route_filter=route_filter,
-            sparse_vector=sparse_vector[0]
+            sparse_vector=sparse_vector[0],
         )
         top_class, top_class_scores = self._semantic_classify(
             list(zip(scores, route_names))
@@ -142,7 +142,9 @@ class HybridRouter(BaseRouter):
         scaled_dense = np.array(dense) * self.alpha
         scaled_sparse = []
         for sparse_dict in sparse:
-            scaled_sparse.append({k: v * (1 - self.alpha) for k, v in sparse_dict.items()})
+            scaled_sparse.append(
+                {k: v * (1 - self.alpha) for k, v in sparse_dict.items()}
+            )
         return scaled_dense, scaled_sparse
 
     def _set_aggregation_method(self, aggregation: str = "sum"):

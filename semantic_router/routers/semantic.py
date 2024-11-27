@@ -1,15 +1,12 @@
 import json
 import random
 from typing import Any, Dict, List, Optional, Tuple, Union
-from pydantic.v1 import validator, Field
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
+from semantic_router.encoders import AutoEncoder, DenseEncoder
 from semantic_router.index.base import BaseIndex
-from semantic_router.index.local import LocalIndex
-from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers.base import BaseRouter, RouterConfig

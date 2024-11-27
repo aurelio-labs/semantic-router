@@ -652,7 +652,9 @@ class PineconeIndex(BaseIndex):
             )
 
     def __len__(self):
-        namespace_stats = self.index.describe_index_stats()["namespaces"].get(self.namespace)
+        namespace_stats = self.index.describe_index_stats()["namespaces"].get(
+            self.namespace
+        )
         if namespace_stats:
             return namespace_stats["vector_count"]
         else:

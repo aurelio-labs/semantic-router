@@ -4,7 +4,7 @@ import os
 import random
 import hashlib
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore
@@ -380,8 +380,7 @@ class BaseRouter(BaseModel):
             self.index = index
 
     def _init_index_state(self):
-        """Initializes an index (where required) and runs auto_sync if active.
-        """
+        """Initializes an index (where required) and runs auto_sync if active."""
         # initialize index now, check if we need dimensions
         if self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])

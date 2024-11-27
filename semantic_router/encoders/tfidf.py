@@ -14,9 +14,8 @@ class TfidfEncoder(SparseEncoder):
     idf: ndarray = np.array([])
     word_index: Dict = {}
 
-    def __init__(self, name: str = "tfidf", score_threshold: float = 0.82):
-        # TODO default score_threshold not thoroughly tested, should optimize
-        super().__init__(name=name, score_threshold=score_threshold)
+    def __init__(self, name: str = "tfidf"):
+        super().__init__(name=name)
         self.word_index = {}
         self.idf = np.array([])
 
@@ -29,7 +28,7 @@ class TfidfEncoder(SparseEncoder):
         docs = [self._preprocess(doc) for doc in docs]
         tf = self._compute_tf(docs)
         tfidf = tf * self.idf
-        return tfidf.tolist()
+        return tfidf
 
     def fit(self, routes: List[Route]):
         docs = []

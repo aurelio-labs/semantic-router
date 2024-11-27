@@ -223,7 +223,9 @@ class TestSemanticRouter:
         _ = SemanticRouter(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes_2, index=index)
+        route_layer = SemanticRouter(
+            encoder=openai_encoder, routes=routes_2, index=index
+        )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.is_synced() is False
@@ -236,7 +238,9 @@ class TestSemanticRouter:
         _ = SemanticRouter(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer_2 = SemanticRouter(encoder=openai_encoder, routes=routes_2, index=index)
+        route_layer_2 = SemanticRouter(
+            encoder=openai_encoder, routes=routes_2, index=index
+        )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         diff = route_layer_2.get_utterance_diff(include_metadata=True)

@@ -12,16 +12,17 @@ class AurelioSparseEncoder(SparseEncoder):
     model: Optional[Any] = None
     idx_mapping: Optional[Dict[int, int]] = None
     client: AurelioClient = Field(default_factory=AurelioClient, exclude=True)
-    async_client: AsyncAurelioClient = Field(default_factory=AsyncAurelioClient, exclude=True)
+    async_client: AsyncAurelioClient = Field(
+        default_factory=AsyncAurelioClient, exclude=True
+    )
     type: str = "sparse"
 
     def __init__(
         self,
         name: str = "bm25",
-        score_threshold: float = 1.0,
         api_key: Optional[str] = None,
     ):
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         if api_key is None:
             api_key = os.getenv("AURELIO_API_KEY")
         if api_key is None:
@@ -33,9 +34,11 @@ class AurelioSparseEncoder(SparseEncoder):
         res: EmbeddingResponse = self.client.embedding(input=docs, model=self.name)
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
-    
+
     async def acall(self, docs: list[str]) -> list[SparseEmbedding]:
-        res: EmbeddingResponse = await self.async_client.embedding(input=docs, model=self.name)
+        res: EmbeddingResponse = await self.async_client.embedding(
+            input=docs, model=self.name
+        )
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
