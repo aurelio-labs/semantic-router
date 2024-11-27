@@ -412,6 +412,7 @@ class SparseEmbedding(BaseModel):
     """Sparse embedding interface. Primarily uses numpy operations for faster
     operations.
     """
+
     embedding: np.ndarray
 
     class Config:
@@ -425,36 +426,31 @@ class SparseEmbedding(BaseModel):
                 "Column 0 should contain index positions, and column 1 should contain respective values."
             )
         return cls(embedding=array)
-    
+
     @classmethod
     def from_aurelio(cls, embedding: BM25Embedding):
         arr = np.array([embedding.indices, embedding.values]).T
         return cls.from_array(arr)
-    
+
     @classmethod
     def from_dict(cls, sparse_dict: dict):
         arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
         return cls.from_array(arr)
-    
+
     def to_dict(self):
         return {
-            i: v for i, v in zip(
-                self.embedding[:,0].astype(int),
-                self.embedding[:,1]
-            )
+            i: v for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])
         }
-    
+
     def to_pinecone(self):
         return {
             "indices": self.embedding[:, 0].astype(int).tolist(),
             "values": self.embedding[:, 1].tolist(),
         }
-    
+
     # dictionary interface
     def items(self):
         return [
-            (i, v) for i, v in zip(
-                self.embedding[:,0].astype(int),
-                self.embedding[:,1]
-            )
+            (i, v)
+            for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])
         ]

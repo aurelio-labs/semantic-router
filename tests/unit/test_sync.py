@@ -7,7 +7,7 @@ from typing import Optional
 from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.schema import Utterance
-from semantic_router.routers.base import SemanticRouter
+from semantic_router.routers import SemanticRouter
 from semantic_router.route import Route
 from platform import python_version
 
