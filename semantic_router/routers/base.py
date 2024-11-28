@@ -497,14 +497,10 @@ class BaseRouter(BaseModel):
             vector_arr = self._encode(text=[text])
         else:
             vector_arr = np.array(vector)
-        print(f"{text=}")
-        print(f"{vector_arr}")
         # get relevant utterances
         results = self._retrieve(xq=vector_arr)
-        print(f"{results=}")
         # decide most relevant routes
         categories_with_scores = self._semantic_classify_multiple_routes(results)
-        print(f"{categories_with_scores=}")
         return [
             RouteChoice(name=category, similarity_score=score)
             for category, score in categories_with_scores

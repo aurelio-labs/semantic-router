@@ -48,7 +48,6 @@ class BM25Encoder(TfidfEncoder):
         if len(docs) == 1:
             sparse_dicts = self.model.encode_queries(docs)
         elif len(docs) > 1:
-            print(docs)
             sparse_dicts = self.model.encode_documents(docs)
         else:
             raise ValueError("No documents to encode.")

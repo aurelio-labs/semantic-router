@@ -364,7 +364,6 @@ class PineconeIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-        **kwargs: Any,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query vector and return the top_k results.
 
