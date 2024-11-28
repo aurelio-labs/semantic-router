@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Dict
 import numpy as np
 from numpy.linalg import norm
 
-from semantic_router.schema import ConfigParameter, Utterance
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.index.local import LocalIndex
 from semantic_router.utils.logger import logger
 from typing import Any
@@ -76,6 +76,8 @@ class HybridLocalIndex(LocalIndex):
         return sum(vec_a[i] * vec_b.get(i, 0) for i in vec_a)
 
     def _sparse_index_dot_product(self, vec_a: dict[int, float]) -> list[float]:
+        if self.sparse_index is None:
+            raise ValueError("self.sparse_index is not populated.")
         dot_products = [
             self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index
         ]
@@ -86,7 +88,7 @@ class HybridLocalIndex(LocalIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[dict[int, float]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query and return top_k results.
 
@@ -103,9 +105,13 @@ class HybridLocalIndex(LocalIndex):
             raise ValueError("Route filter is not supported for HybridLocalIndex.")
 
         xq_d = vector.copy()
-        if sparse_vector is None:
-            raise ValueError("Sparse vector is required for HybridLocalIndex.")
-        xq_s = sparse_vector.copy()
+        # align sparse vector type
+        if isinstance(sparse_vector, SparseEmbedding):
+            xq_s = sparse_vector.to_dict()
+        elif isinstance(sparse_vector, dict):
+            xq_s = sparse_vector
+        else:
+            raise ValueError("Sparse vector must be a SparseEmbedding or dict.")
 
         if self.index is not None and self.sparse_index is not None:
             # calculate dense vec similarity
@@ -130,7 +136,7 @@ class HybridLocalIndex(LocalIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        sparse_vector: Optional[dict[int, float]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query and return top_k results. This method calls the
         sync `query` method as everything uses numpy computations which is CPU-bound

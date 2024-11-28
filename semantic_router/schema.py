@@ -444,6 +444,11 @@ class SparseEmbedding(BaseModel):
         arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
         return cls.from_compact_array(arr)
 
+    @classmethod
+    def from_pinecone_dict(cls, sparse_dict: dict):
+        arr = np.array([sparse_dict["indices"], sparse_dict["values"]]).T
+        return cls.from_compact_array(arr)
+
     def to_dict(self):
         return {
             i: v for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])

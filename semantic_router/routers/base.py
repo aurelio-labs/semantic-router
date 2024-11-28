@@ -1027,6 +1027,15 @@ class BaseRouter(BaseModel):
             )
 
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
+        """Classify the query results into a single class based on the highest total score.
+        If no classification is found, return an empty string and an empty list.
+
+        :param query_results: The query results to classify. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A tuple containing the top class and its associated scores.
+        :rtype: Tuple[str, List[float]]
+        """
         scores_by_class = self.group_scores_by_class(query_results)
 
         if self.aggregation_method is None:
@@ -1049,6 +1058,15 @@ class BaseRouter(BaseModel):
     async def _async_semantic_classify(
         self, query_results: List[Dict]
     ) -> Tuple[str, List[float]]:
+        """Classify the query results into a single class based on the highest total score.
+        If no classification is found, return an empty string and an empty list.
+
+        :param query_results: The query results to classify. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A tuple containing the top class and its associated scores.
+        :rtype: Tuple[str, List[float]]
+        """
         scores_by_class = await self.async_group_scores_by_class(query_results)
 
         if self.aggregation_method is None:
@@ -1125,8 +1143,8 @@ class BaseRouter(BaseModel):
         return scores_by_class
 
     def _pass_threshold(self, scores: List[float], threshold: float | None) -> bool:
-        """Test if the route score passes the minimum threshold. If a threshold of None is
-        set, then the route will always pass no matter how low it scores.
+        """Test if the route score passes the minimum threshold. A threshold of None defaults
+        to 0.0, so the route will always pass no matter how low it scores.
 
         :param scores: The scores to test.
         :type scores: List[float]
@@ -1168,9 +1186,9 @@ class BaseRouter(BaseModel):
             for route in self.routes:
                 route.score_threshold = threshold
         else:
-            route = self.get(route_name)
-            if route is not None:
-                route.score_threshold = threshold
+            route_get: Route | None = self.get(route_name)
+            if route_get is not None:
+                route_get.score_threshold = threshold
             else:
                 logger.error(f"Route `{route_name}` not found")
 
@@ -1190,9 +1208,8 @@ class BaseRouter(BaseModel):
         config.to_file(file_path)
 
     def get_thresholds(self) -> Dict[str, float]:
-        # TODO: float() below is hacky fix for lint, fix this with new type?
         thresholds = {
-            route.name: float(route.score_threshold or self.score_threshold)
+            route.name: route.score_threshold or self.score_threshold or 0.0
             for route in self.routes
         }
         return thresholds

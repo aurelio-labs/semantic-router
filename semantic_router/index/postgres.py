@@ -8,7 +8,7 @@ import psycopg2
 from pydantic import BaseModel
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter, Metric
+from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 
@@ -340,6 +340,7 @@ class PostgresIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Searches the index for the query vector and returns the top_k results.

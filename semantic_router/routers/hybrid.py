@@ -124,24 +124,34 @@ class HybridRouter(BaseRouter):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> RouteChoice:
+        vector_arr: np.ndarray | None = None
+        potential_sparse_vector: List[SparseEmbedding] | None = None
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector, potential_sparse_vector = self._encode(text=[text])
+            vector_arr, potential_sparse_vector = self._encode(text=[text])
         if sparse_vector is None:
             if text is None:
                 raise ValueError("Either text or sparse_vector must be provided")
-            sparse_vector = potential_sparse_vector
+            sparse_vector = (
+                potential_sparse_vector[0] if potential_sparse_vector else None
+            )
+        if sparse_vector is None:
+            raise ValueError("Sparse vector is required for HybridLocalIndex.")
+        vector_arr = vector_arr if vector_arr else np.array(vector)
         # TODO: add alpha as a parameter
         scores, route_names = self.index.query(
-            vector=np.array(vector) if isinstance(vector, list) else vector,
+            vector=vector_arr,
             top_k=self.top_k,
             route_filter=route_filter,
-            sparse_vector=sparse_vector[0],
+            sparse_vector=sparse_vector,
         )
         top_class, top_class_scores = self._semantic_classify(
-            list(zip(scores, route_names))
+            [
+                {"score": score, "route": route}
+                for score, route in zip(scores, route_names)
+            ]
         )
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:

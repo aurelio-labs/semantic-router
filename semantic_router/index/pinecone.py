@@ -237,19 +237,19 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
-        sparse_embeddings: Optional[List[dict[int, float]]] = None,
+        sparse_embeddings: Optional[Optional[List[dict[int, float]]]] = None,
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
         if function_schemas is None:
-            function_schemas = [None] * len(embeddings)
+            function_schemas = [{}] * len(embeddings)
         if sparse_embeddings is None:
-            sparse_embeddings = [None] * len(embeddings)
+            sparse_embeddings = [{}] * len(embeddings)
 
         vectors_to_upsert = [
             PineconeRecord(
@@ -261,7 +261,12 @@ class PineconeIndex(BaseIndex):
                 metadata=metadata,
             ).to_dict()
             for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
-                embeddings, routes, utterances, function_schemas, metadata_list, sparse_embeddings  # type: ignore
+                embeddings,
+                routes,
+                utterances,
+                function_schemas,
+                metadata_list,
+                sparse_embeddings,
             )
         ]
 
@@ -449,7 +454,7 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        **kwargs: Any,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Asynchronously search the index for the query vector and return the top_k results.
@@ -475,9 +480,17 @@ class PineconeIndex(BaseIndex):
             filter_query = {"sr_route": {"$in": route_filter}}
         else:
             filter_query = None
+        # set sparse_vector_obj
+        sparse_vector_obj: dict[str, Any] | None = None
+        if sparse_vector is not None:
+            if isinstance(sparse_vector, dict):
+                sparse_vector_obj = SparseEmbedding.from_dict(sparse_vector)
+            if isinstance(sparse_vector, SparseEmbedding):
+                # unnecessary if-statement but mypy didn't like this otherwise
+                sparse_vector_obj = sparse_vector.to_pinecone()
         results = await self._async_query(
             vector=query_vector_list,
-            sparse_vector=kwargs.get("sparse_vector", None),
+            sparse_vector=sparse_vector_obj,
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -507,7 +520,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
-        sparse_vector: Optional[dict] = None,
+        sparse_vector: dict[str, Any] | None = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,

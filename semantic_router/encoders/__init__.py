@@ -15,7 +15,7 @@ from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
-from semantic_router.schema import EncoderType
+from semantic_router.schema import EncoderType, SparseEmbedding
 
 __all__ = [
     "AurelioSparseEncoder",
@@ -79,5 +79,5 @@ class AutoEncoder:
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
-    def __call__(self, texts: List[str]) -> List[List[float]]:
+    def __call__(self, texts: List[str]) -> List[List[float]] | List[SparseEmbedding]:
         return self.model(texts)

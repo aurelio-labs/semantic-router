@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple, Dict
 
 import numpy as np
 
-from semantic_router.schema import ConfigParameter, Utterance
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.index.base import BaseIndex
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
@@ -68,6 +68,7 @@ class LocalIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query and return top_k results.
@@ -97,6 +98,7 @@ class LocalIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query and return top_k results.

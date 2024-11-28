@@ -75,7 +75,15 @@ def routes():
 
 
 sparse_encoder = BM25Encoder(use_default_params=False)
-sparse_encoder.fit(["The quick brown fox", "jumps over the lazy dog", "Hello, world!"])
+sparse_encoder.fit(
+    [
+        Route(
+            name="Route 1",
+            utterances=["The quick brown fox", "jumps over the lazy dog"],
+        ),
+        Route(name="Route 2", utterances=["Hello, world!"]),
+    ]
+)
 
 
 class TestHybridRouter:

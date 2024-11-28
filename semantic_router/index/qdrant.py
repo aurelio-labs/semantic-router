@@ -4,7 +4,7 @@ import numpy as np
 from pydantic.v1 import Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter, Metric, Utterance
+from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
 
 DEFAULT_COLLECTION_NAME = "semantic-router-index"
@@ -259,6 +259,7 @@ class QdrantIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         from qdrant_client import QdrantClient, models
 
@@ -292,6 +293,7 @@ class QdrantIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         from qdrant_client import AsyncQdrantClient, models
 

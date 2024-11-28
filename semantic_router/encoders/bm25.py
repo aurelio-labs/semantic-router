@@ -53,12 +53,8 @@ class BM25Encoder(TfidfEncoder):
         else:
             raise ValueError("No documents to encode.")
 
-        embeds = [[0.0] * len(self.idx_mapping)] * len(docs)
+        embeds = []
         for i, output in enumerate(sparse_dicts):
-            indices = output["indices"]
-            values = output["values"]
-            for idx, val in zip(indices, values):
-                if idx in self.idx_mapping:
-                    position = self.idx_mapping[idx]
-                    embeds[i][position] = val
+            if isinstance(output, dict):
+                embeds.append(SparseEmbedding.from_pinecone_dict(output))
         return embeds
