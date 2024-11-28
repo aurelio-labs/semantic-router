@@ -103,6 +103,7 @@ routes:
   - how are things going?
     """
 
+
 # not all indexes support metadata, so we map the feature here
 INCLUDE_METADATA_MAP = {
     PineconeIndex: True,
@@ -111,8 +112,11 @@ INCLUDE_METADATA_MAP = {
     QdrantIndex: False,
     PostgresIndex: False,
 }
+
+
 def include_metadata(index_cls):
     return INCLUDE_METADATA_MAP.get(index_cls, False)
+
 
 MERGE_FORCE_LOCAL_RESULT_WITH_METADATA = [
     Utterance(route="Route 1", utterance="Hello"),
@@ -131,6 +135,7 @@ MERGE_FORCE_LOCAL_RESULT_WITHOUT_METADATA = [
     Utterance(route="Route 2", utterance="Goodbye"),
     Utterance(route="Route 2", utterance="Hi"),
 ]
+
 
 @pytest.fixture
 def base_encoder():
@@ -367,9 +372,7 @@ class TestSemanticRouter:
             local_utterances = route_layer.index.get_utterances()
             # we sort to ensure order is the same
             # TODO JB: there is a bug here where if we include_metadata=True it fails
-            local_utterances.sort(
-                key=lambda x: x.to_str(include_metadata=False)
-            )
+            local_utterances.sort(key=lambda x: x.to_str(include_metadata=False))
             assert local_utterances == [
                 Utterance(route="Route 1", utterance="Hello"),
                 Utterance(route="Route 1", utterance="Hi"),

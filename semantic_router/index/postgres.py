@@ -140,8 +140,10 @@ class PostgresIndex(BaseIndex):
         try:
             import psycopg2
         except ImportError:
-            raise ImportError("Please install psycopg2 to use PostgresIndex. "
-                              "You can install it with: `pip install 'semantic-router[postgres]'`")
+            raise ImportError(
+                "Please install psycopg2 to use PostgresIndex. "
+                "You can install it with: `pip install 'semantic-router[postgres]'`"
+            )
         if connection_string:
             self.connection_string = connection_string
         else:

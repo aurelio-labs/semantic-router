@@ -52,7 +52,10 @@ class LocalIndex(BaseIndex):
         for route, utterances in routes_to_delete.items():
             # TODO JB: we should be able to vectorize this?
             for utterance in utterances:
-                mask &= ~((route_utterances[:, 0] == route) & (route_utterances[:, 1] == utterance))
+                mask &= ~(
+                    (route_utterances[:, 0] == route)
+                    & (route_utterances[:, 1] == utterance)
+                )
         # apply the mask to index, routes, and utterances
         self.index = self.index[mask]
         self.routes = self.routes[mask]
