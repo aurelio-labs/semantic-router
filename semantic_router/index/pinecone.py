@@ -387,7 +387,9 @@ class PineconeIndex(BaseIndex):
         if sparse_vector is not None:
             if isinstance(sparse_vector, dict):
                 sparse_vector = SparseEmbedding.from_dict(sparse_vector)
-            sparse_vector = sparse_vector.to_pinecone()
+            if isinstance(sparse_vector, SparseEmbedding):
+                # unnecessary if-statement but mypy didn't like this otherwise
+                sparse_vector = sparse_vector.to_pinecone()
         results = self.index.query(
             vector=[query_vector_list],
             sparse_vector=sparse_vector,

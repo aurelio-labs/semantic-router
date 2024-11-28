@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import List, Optional
 import asyncio
 from pydantic.v1 import Field
 
@@ -6,6 +6,7 @@ import numpy as np
 
 from semantic_router.encoders import (
     DenseEncoder,
+    SparseEncoder,
     BM25Encoder,
     TfidfEncoder,
 )
@@ -21,13 +22,13 @@ class HybridRouter(BaseRouter):
     """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
 
     # there are a few additional attributes for hybrid
-    sparse_encoder: Optional[DenseEncoder] = Field(default=None)
+    sparse_encoder: Optional[SparseEncoder] = Field(default=None)
     alpha: float = 0.3
 
     def __init__(
         self,
         encoder: DenseEncoder,
-        sparse_encoder: Optional[DenseEncoder] = None,
+        sparse_encoder: Optional[SparseEncoder] = None,
         llm: Optional[BaseLLM] = None,
         routes: List[Route] = [],
         index: Optional[HybridLocalIndex] = None,
@@ -70,47 +71,49 @@ class HybridRouter(BaseRouter):
             index = index
         return index
 
-    def _set_sparse_encoder(self, sparse_encoder: Optional[DenseEncoder]):
+    def _set_sparse_encoder(self, sparse_encoder: Optional[SparseEncoder]):
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             self.sparse_encoder = BM25Encoder()
         else:
             self.sparse_encoder = sparse_encoder
 
-    def _encode(self, text: list[str]) -> tuple[np.ndarray, list[dict[int, float]]]:
+    def _encode(self, text: list[str]) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
         """
+        if self.sparse_encoder is None:
+            raise ValueError("self.sparse_encoder is not set.")
         # TODO: should encode "content" rather than text
         # TODO: add alpha as a parameter
         # create dense query vector
         xq_d = np.array(self.encoder(text))
         # xq_d = np.squeeze(xq_d)  # Reduce to 1d array.
         # create sparse query vector dict
-        xq_s_dict = self.sparse_encoder(text)
+        xq_s = self.sparse_encoder(text)
         # xq_s = np.squeeze(xq_s)
         # convex scaling
-        xq_d, xq_s_dict = self._convex_scaling(xq_d, xq_s_dict)
-        return xq_d, xq_s_dict
+        xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
+        return xq_d, xq_s
 
-    async def _async_encode(self, text: List[str]) -> Any:
+    async def _async_encode(
+        self, text: List[str]
+    ) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
         """
+        if self.sparse_encoder is None:
+            raise ValueError("self.sparse_encoder is not set.")
         # TODO: should encode "content" rather than text
         # TODO: add alpha as a parameter
         # async encode both dense and sparse
         dense_coro = self.encoder.acall(text)
         sparse_coro = self.sparse_encoder.acall(text)
-        dense_vec, sparse_vec = await asyncio.gather(dense_coro, sparse_coro)
+        dense_vec, xq_s = await asyncio.gather(dense_coro, sparse_coro)
         # create dense query vector
         xq_d = np.array(dense_vec)
-        # xq_d = np.squeeze(xq_d)  # reduce to 1d array
-        # create sparse query vector
-        xq_s = np.array(sparse_vec)
-        # xq_s = np.squeeze(xq_s)
         # convex scaling
-        xq_d, xq_s = self._convex_scaling(xq_d, xq_s)
+        xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
     def __call__(
@@ -146,12 +149,18 @@ class HybridRouter(BaseRouter):
         else:
             return RouteChoice()
 
-    def _convex_scaling(self, dense: np.ndarray, sparse: list[dict[int, float]]):
+    def _convex_scaling(
+        self, dense: np.ndarray, sparse: list[SparseEmbedding]
+    ) -> tuple[np.ndarray, list[SparseEmbedding]]:
+        # TODO: better way to do this?
+        sparse_dicts = [sparse_vec.to_dict() for sparse_vec in sparse]
         # scale sparse and dense vecs
         scaled_dense = np.array(dense) * self.alpha
         scaled_sparse = []
-        for sparse_dict in sparse:
+        for sparse_dict in sparse_dicts:
             scaled_sparse.append(
-                {k: v * (1 - self.alpha) for k, v in sparse_dict.items()}
+                SparseEmbedding.from_dict(
+                    {k: v * (1 - self.alpha) for k, v in sparse_dict.items()}
+                )
             )
         return scaled_dense, scaled_sparse

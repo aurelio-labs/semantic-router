@@ -413,7 +413,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=text)
+            vector = self._encode(text=[text])
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
@@ -455,7 +455,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = await self._async_encode(text=text)
+            vector = await self._async_encode(text=[text])
 
         route, top_class_scores = await self._async_retrieve_top_route(
             vector, route_filter
@@ -494,7 +494,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector_arr = self._encode(text=text)
+            vector_arr = self._encode(text=[text])
         else:
             vector_arr = np.array(vector)
         print(f"{text=}")
@@ -967,26 +967,26 @@ class BaseRouter(BaseModel):
             return route_names, utterances, function_schemas, metadata
         return route_names, utterances, function_schemas
 
-    def _encode(self, text: str) -> Any:
+    def _encode(self, text: list[str]) -> Any:
         """Generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
-        :type text: str
+        :type text: list[str]
         :return: The embeddings of the text.
         :rtype: Any
         """
         # TODO: should encode "content" rather than text
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    async def _async_encode(self, text: str) -> Any:
+    async def _async_encode(self, text: list[str]) -> Any:
         """Asynchronously generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
-        :type text: str
+        :type text: list[str]
         :return: The embeddings of the text.
         :rtype: Any
         """
@@ -1029,6 +1029,9 @@ class BaseRouter(BaseModel):
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         scores_by_class = self.group_scores_by_class(query_results)
 
+        if self.aggregation_method is None:
+            raise ValueError("self.aggregation_method is not set.")
+
         # Calculate total score for each class
         total_scores = {
             route: self.aggregation_method(scores)
@@ -1047,6 +1050,9 @@ class BaseRouter(BaseModel):
         self, query_results: List[Dict]
     ) -> Tuple[str, List[float]]:
         scores_by_class = await self.async_group_scores_by_class(query_results)
+
+        if self.aggregation_method is None:
+            raise ValueError("self.aggregation_method is not set.")
 
         # Calculate total score for each class
         total_scores = {

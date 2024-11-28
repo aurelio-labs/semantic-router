@@ -35,16 +35,16 @@ class SemanticRouter(BaseRouter):
         if self.auto_sync:
             self._init_index_state()
 
-    def _encode(self, text: str) -> Any:
+    def _encode(self, text: list[str]) -> Any:
         """Given some text, encode it."""
         # create query vector
-        xq = np.array(self.encoder([text]))
+        xq = np.array(self.encoder(text))
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
-    async def _async_encode(self, text: str) -> Any:
+    async def _async_encode(self, text: list[str]) -> Any:
         """Given some text, encode it."""
         # create query vector
-        xq = np.array(await self.encoder.acall(docs=[text]))
+        xq = np.array(await self.encoder.acall(docs=text))
         xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
