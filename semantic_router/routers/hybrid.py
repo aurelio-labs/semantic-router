@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 import asyncio
 from pydantic.v1 import Field
 
@@ -12,7 +12,7 @@ from semantic_router.encoders import (
 )
 from semantic_router.route import Route
 from semantic_router.index import BaseIndex, HybridLocalIndex
-from semantic_router.schema import RouteChoice, SparseEmbedding
+from semantic_router.schema import RouteChoice, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
 from semantic_router.routers.base import BaseRouter
 from semantic_router.llms import BaseLLM
@@ -37,10 +37,13 @@ class HybridRouter(BaseRouter):
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
     ):
+        print("...2.1")
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
+        print("...2.2")
         encoder = self._get_encoder(encoder=encoder)
+        print("...2.3")
         super().__init__(
             encoder=encoder,
             llm=llm,
@@ -50,15 +53,22 @@ class HybridRouter(BaseRouter):
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
+        print("...0")
         # initialize sparse encoder
-        self._set_sparse_encoder(sparse_encoder=sparse_encoder)
+        self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
+        print("...5")
         # set alpha
         self.alpha = alpha
+        print("...6")
         # fit sparse encoder if needed
-        if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
-            self.sparse_encoder, "fit"
-        ) and self.routes:
+        if (
+            isinstance(self.sparse_encoder, TfidfEncoder)
+            and hasattr(self.sparse_encoder, "fit")
+            and self.routes
+        ):
+            print("...3")
             self.sparse_encoder.fit(self.routes)
+            print("...4")
         # run initialize index now if auto sync is active
         if self.auto_sync:
             self._init_index_state()
@@ -104,6 +114,39 @@ class HybridRouter(BaseRouter):
                 "to see details."
             )
 
+    def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
+        """Executes the provided sync strategy, either deleting or upserting
+        routes from the local and remote instances as defined in the strategy.
+
+        :param strategy: The sync strategy to execute.
+        :type strategy: Dict[str, Dict[str, List[Utterance]]]
+        """
+        if strategy["remote"]["delete"]:
+            data_to_delete = {}  # type: ignore
+            for utt_obj in strategy["remote"]["delete"]:
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
+            self.index._remove_and_sync(data_to_delete)
+        if strategy["remote"]["upsert"]:
+            utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
+            dense_emb, sparse_emb = self._encode(utterances_text)
+            self.index.add(
+                embeddings=dense_emb.tolist(),
+                routes=[utt.route for utt in strategy["remote"]["upsert"]],
+                utterances=utterances_text,
+                function_schemas=[
+                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                ],
+                metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
+                sparse_embeddings=sparse_emb,  # type: ignore
+            )
+        if strategy["local"]["delete"]:
+            self._local_delete(utterances=strategy["local"]["delete"])
+        if strategy["local"]["upsert"]:
+            self._local_upsert(utterances=strategy["local"]["upsert"])
+        # update hash
+        self._write_hash()
+
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
@@ -112,12 +155,15 @@ class HybridRouter(BaseRouter):
             index = index
         return index
 
-    def _set_sparse_encoder(self, sparse_encoder: Optional[SparseEncoder]):
+    def _get_sparse_encoder(
+        self, sparse_encoder: Optional[SparseEncoder]
+    ) -> SparseEncoder:
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
-            self.sparse_encoder = BM25Encoder()
+            sparse_encoder = BM25Encoder()
         else:
-            self.sparse_encoder = sparse_encoder
+            sparse_encoder = sparse_encoder
+        return sparse_encoder
 
     def _encode(self, text: list[str]) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them

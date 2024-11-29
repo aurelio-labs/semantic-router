@@ -54,30 +54,37 @@ def azure_encoder(mocker):
         model="test_model",
     )
 
+
 @pytest.fixture
 def bm25_encoder():
-    #mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
+    # mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
     return BM25Encoder(name="test-bm25-encoder")
 
 
 @pytest.fixture
 def tfidf_encoder():
-    #mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
+    # mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
     return TfidfEncoder(name="test-tfidf-encoder")
 
 
 @pytest.fixture
 def routes():
     return [
-        Route(name="Route 1", utterances=[
-            "Hello we need this text to be a little longer for our sparse encoders",
-            "In this case they need to learn from recurring tokens, ie words."
-        ]),
-        Route(name="Route 2", utterances=[
-            "We give ourselves several examples from our encoders to learn from.",
-            "But given this is only an example we don't need too many",
-            "Just enough to test that our sparse encoders work as expected"
-        ]),
+        Route(
+            name="Route 1",
+            utterances=[
+                "Hello we need this text to be a little longer for our sparse encoders",
+                "In this case they need to learn from recurring tokens, ie words.",
+            ],
+        ),
+        Route(
+            name="Route 2",
+            utterances=[
+                "We give ourselves several examples from our encoders to learn from.",
+                "But given this is only an example we don't need too many",
+                "Just enough to test that our sparse encoders work as expected",
+            ],
+        ),
     ]
 
 
@@ -88,7 +95,7 @@ sparse_encoder.fit(
             name="Route 1",
             utterances=[
                 "The quick brown fox jumps over the lazy dog",
-                "some other useful text containing words like fox and dog"
+                "some other useful text containing words like fox and dog",
             ],
         ),
         Route(name="Route 2", utterances=["Hello, world!"]),
@@ -143,9 +150,14 @@ class TestHybridRouter:
         assert len(route_layer.routes) == 2, "route_layer.routes is not 2"
 
     def test_query_and_classification(self, openai_encoder, routes):
+        print("...1")
         route_layer = HybridRouter(
-            encoder=openai_encoder, sparse_encoder=sparse_encoder, routes=routes
+            encoder=openai_encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+            auto_sync="local",
         )
+        print("...2")
         query_result = route_layer("Hello")
         assert query_result in ["Route 1", "Route 2"]
 
@@ -153,9 +165,7 @@ class TestHybridRouter:
         route_layer = HybridRouter(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
         )
-        assert isinstance(
-            route_layer.sparse_encoder, BM25Encoder
-        ) or isinstance(
+        assert isinstance(route_layer.sparse_encoder, BM25Encoder) or isinstance(
             route_layer.sparse_encoder, TfidfEncoder
         ), (
             f"route_layer.sparse_encoder is {route_layer.sparse_encoder.__class__.__name__} "
@@ -213,7 +223,9 @@ class TestHybridRouter:
             utterance for route in routes for utterance in route.utterances
         ]
         assert hybrid_route_layer.index.sparse_index is not None, "sparse_index is None"
-        assert len(hybrid_route_layer.index.sparse_index) == len(all_utterances), "sparse_index length mismatch"
+        assert len(hybrid_route_layer.index.sparse_index) == len(
+            all_utterances
+        ), "sparse_index length mismatch"
 
     def test_setting_aggregation_methods(self, openai_encoder, routes):
         for agg in ["sum", "mean", "max"]:

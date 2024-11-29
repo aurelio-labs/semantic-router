@@ -24,7 +24,7 @@ class HybridLocalIndex(LocalIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
-        sparse_embeddings: Optional[List[dict[int, float]]] = None,
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
     ):
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")
@@ -32,21 +32,27 @@ class HybridLocalIndex(LocalIndex):
             logger.warning("Function schemas are not supported for HybridLocalIndex.")
         if metadata_list:
             logger.warning("Metadata is not supported for HybridLocalIndex.")
-        embeds = np.array(embeddings)
+        embeds = np.array(
+            embeddings
+        )  # TODO: we previously had as a array, so switching back and forth seems inefficient
         routes_arr = np.array(routes)
         if isinstance(utterances[0], str):
             utterances_arr = np.array(utterances)
         else:
-            utterances_arr = np.array(utterances, dtype=object)
+            utterances_arr = np.array(
+                utterances, dtype=object
+            )  # TODO: could we speed up if this were already array?
         if self.index is None or self.sparse_index is None:
             self.index = embeds
-            self.sparse_index = sparse_embeddings
+            self.sparse_index = [
+                x.to_dict() for x in sparse_embeddings
+            ]  # TODO: switch back to using SparseEmbedding later
             self.routes = routes_arr
             self.utterances = utterances_arr
         else:
             # TODO: we should probably switch to an `upsert` method and standardize elsewhere
             self.index = np.concatenate([self.index, embeds])
-            self.sparse_index.extend(sparse_embeddings)
+            self.sparse_index.extend([x.to_dict() for x in sparse_embeddings])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 

@@ -335,9 +335,6 @@ class BaseRouter(BaseModel):
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
-        # run initialize index now if auto sync is active
-        if self.auto_sync:
-            self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         if index is None:
