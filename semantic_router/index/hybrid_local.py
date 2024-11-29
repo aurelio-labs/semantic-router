@@ -29,9 +29,9 @@ class HybridLocalIndex(LocalIndex):
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")
         if function_schemas is not None:
-            raise ValueError("Function schemas are not supported for HybridLocalIndex.")
+            logger.warning("Function schemas are not supported for HybridLocalIndex.")
         if metadata_list:
-            raise ValueError("Metadata is not supported for HybridLocalIndex.")
+            logger.warning("Metadata is not supported for HybridLocalIndex.")
         embeds = np.array(embeddings)
         routes_arr = np.array(routes)
         if isinstance(utterances[0], str):

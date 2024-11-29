@@ -57,11 +57,52 @@ class HybridRouter(BaseRouter):
         # fit sparse encoder if needed
         if isinstance(self.sparse_encoder, TfidfEncoder) and hasattr(
             self.sparse_encoder, "fit"
-        ):
+        ) and self.routes:
             self.sparse_encoder.fit(self.routes)
         # run initialize index now if auto sync is active
         if self.auto_sync:
             self._init_index_state()
+
+    def add(self, routes: List[Route] | Route):
+        """Add a route to the local HybridRouter and index.
+
+        :param route: The route to add.
+        :type route: Route
+        """
+        # TODO: merge into single method within BaseRouter
+        current_local_hash = self._get_hash()
+        current_remote_hash = self.index._read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+        if isinstance(routes, Route):
+            routes = [routes]
+        # create embeddings for all routes
+        route_names, all_utterances, all_function_schemas, all_metadata = (
+            self._extract_routes_details(routes, include_metadata=True)
+        )
+        # TODO: to merge, self._encode should probably output a special
+        # TODO Embedding type that can be either dense or hybrid
+        dense_emb, sparse_emb = self._encode(all_utterances)
+        print(f"{sparse_emb=}")
+        self.index.add(
+            embeddings=dense_emb.tolist(),
+            routes=route_names,
+            utterances=all_utterances,
+            function_schemas=all_function_schemas,
+            metadata_list=all_metadata,
+            sparse_embeddings=sparse_emb,  # type: ignore
+        )
+
+        self.routes.extend(routes)
+        if current_local_hash.value == current_remote_hash.value:
+            self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         if index is None:
@@ -93,6 +134,8 @@ class HybridRouter(BaseRouter):
         xq_s = self.sparse_encoder(text)
         # xq_s = np.squeeze(xq_s)
         # convex scaling
+        print(f"{self.sparse_encoder.__class__.__name__=}")
+        print(f"_encode: {xq_d.shape=}, {xq_s=}")
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
@@ -113,6 +156,7 @@ class HybridRouter(BaseRouter):
         # create dense query vector
         xq_d = np.array(dense_vec)
         # convex scaling
+        print(f"_async_encode: {xq_d.shape=}, {xq_s=}")
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
@@ -139,7 +183,7 @@ class HybridRouter(BaseRouter):
             )
         if sparse_vector is None:
             raise ValueError("Sparse vector is required for HybridLocalIndex.")
-        vector_arr = vector_arr if vector_arr else np.array(vector)
+        vector_arr = vector_arr if vector_arr is not None else np.array(vector)
         # TODO: add alpha as a parameter
         scores, route_names = self.index.query(
             vector=vector_arr,

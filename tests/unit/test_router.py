@@ -281,7 +281,7 @@ class TestSemanticRouter:
         assert route_layer.index.get_utterances() == []
 
         # Add route1 and check
-        route_layer.add(route=routes[0])
+        route_layer.add(routes=routes[0])
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0]]
@@ -289,7 +289,7 @@ class TestSemanticRouter:
         assert len(route_layer.index.get_utterances()) == 2
 
         # Add route2 and check
-        route_layer.add(route=routes[1])
+        route_layer.add(routes=routes[1])
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.routes == [routes[0], routes[1]]
@@ -354,7 +354,7 @@ class TestSemanticRouter:
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)
-        route_layer._add_routes(routes=routes)
+        route_layer.add(routes=routes)
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert route_layer.index is not None

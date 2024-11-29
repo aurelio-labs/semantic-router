@@ -3,8 +3,6 @@ from collections import Counter
 from typing import Dict, List
 
 import numpy as np
-from numpy import ndarray
-from numpy.linalg import norm
 
 from semantic_router.encoders import SparseEncoder
 from semantic_router.route import Route
@@ -12,7 +10,8 @@ from semantic_router.schema import SparseEmbedding
 
 
 class TfidfEncoder(SparseEncoder):
-    idf: ndarray = np.array([])
+    idf: np.ndarray = np.array([])
+    # TODO: add option to use default params like with BM25Encoder
     word_index: Dict = {}
 
     def __init__(self, name: str | None = None):
@@ -39,14 +38,18 @@ class TfidfEncoder(SparseEncoder):
             for doc in route.utterances:
                 docs.append(self._preprocess(doc))  # type: ignore
         self.word_index = self._build_word_index(docs)
+        if len(self.word_index) == 0:
+            raise ValueError(f"Too little data to fit {self.__class__.__name__}.")
         self.idf = self._compute_idf(docs)
 
     def _build_word_index(self, docs: List[str]) -> Dict:
+        print(docs)
         words = set()
         for doc in docs:
             for word in doc.split():
                 words.add(word)
         word_index = {word: i for i, word in enumerate(words)}
+        print(word_index)
         return word_index
 
     def _compute_tf(self, docs: List[str]) -> np.ndarray:
@@ -59,7 +62,7 @@ class TfidfEncoder(SparseEncoder):
                 if word in self.word_index:
                     tf[i, self.word_index[word]] = count
         # L2 normalization
-        tf = tf / norm(tf, axis=1, keepdims=True)
+        tf = tf / np.linalg.norm(tf, axis=1, keepdims=True)
         return tf
 
     def _compute_idf(self, docs: List[str]) -> np.ndarray:

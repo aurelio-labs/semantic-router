@@ -250,7 +250,6 @@ class PineconeIndex(BaseIndex):
             function_schemas = [{}] * len(embeddings)
         if sparse_embeddings is None:
             sparse_embeddings = [{}] * len(embeddings)
-
         vectors_to_upsert = [
             PineconeRecord(
                 values=vector,

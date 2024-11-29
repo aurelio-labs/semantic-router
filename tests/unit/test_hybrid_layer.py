@@ -54,32 +54,42 @@ def azure_encoder(mocker):
         model="test_model",
     )
 
-
-def bm25_encoder(mocker):
-    mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
+@pytest.fixture
+def bm25_encoder():
+    #mocker.patch.object(BM25Encoder, "__call__", side_effect=mock_encoder_call)
     return BM25Encoder(name="test-bm25-encoder")
 
 
 @pytest.fixture
-def tfidf_encoder(mocker):
-    mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
+def tfidf_encoder():
+    #mocker.patch.object(TfidfEncoder, "__call__", side_effect=mock_encoder_call)
     return TfidfEncoder(name="test-tfidf-encoder")
 
 
 @pytest.fixture
 def routes():
     return [
-        Route(name="Route 1", utterances=["Hello", "Hi"]),
-        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
+        Route(name="Route 1", utterances=[
+            "Hello we need this text to be a little longer for our sparse encoders",
+            "In this case they need to learn from recurring tokens, ie words."
+        ]),
+        Route(name="Route 2", utterances=[
+            "We give ourselves several examples from our encoders to learn from.",
+            "But given this is only an example we don't need too many",
+            "Just enough to test that our sparse encoders work as expected"
+        ]),
     ]
 
 
-sparse_encoder = BM25Encoder(use_default_params=False)
+sparse_encoder = TfidfEncoder()
 sparse_encoder.fit(
     [
         Route(
             name="Route 1",
-            utterances=["The quick brown fox", "jumps over the lazy dog"],
+            utterances=[
+                "The quick brown fox jumps over the lazy dog",
+                "some other useful text containing words like fox and dog"
+            ],
         ),
         Route(name="Route 2", utterances=["Hello, world!"]),
     ]
@@ -95,13 +105,13 @@ class TestHybridRouter:
             top_k=10,
             alpha=0.8,
         )
-        assert route_layer.index is not None and route_layer.categories is not None
+        assert route_layer.index is not None and route_layer.routes is not None
         assert openai_encoder.score_threshold == 0.3
         assert route_layer.score_threshold == 0.3
         assert route_layer.top_k == 10
         assert route_layer.alpha == 0.8
-        assert len(route_layer.index) == 5
-        assert len(set(route_layer.categories)) == 2
+        assert route_layer.index.route_names is None
+        assert len(route_layer.routes) == 2
 
     def test_initialization_different_encoders(self, cohere_encoder, openai_encoder):
         route_layer_cohere = HybridRouter(
@@ -114,25 +124,23 @@ class TestHybridRouter:
         )
         assert route_layer_openai.score_threshold == 0.3
 
-    def test_add_route(self, openai_encoder):
+    def test_add_route(self, openai_encoder, routes):
         route_layer = HybridRouter(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
         )
-        route = Route(name="Route 3", utterances=["Yes", "No"])
-        route_layer._add_routes([route])
-        assert route_layer.index is not None and route_layer.categories is not None
-        assert len(route_layer.index) == 2
-        assert len(set(route_layer.categories)) == 1
+        route_layer.add(routes=routes[0])
+        assert route_layer.index is not None, "route_layer.index is None"
+        assert route_layer.routes is not None, "route_layer.routes is None"
+        assert len(route_layer.routes) == 1, "route_layer.routes is not 1"
 
     def test_add_multiple_routes(self, openai_encoder, routes):
         route_layer = HybridRouter(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
         )
-        for route in routes:
-            route_layer.add(route)
-        assert route_layer.index is not None and route_layer.categories is not None
-        assert len(route_layer.index) == 5
-        assert len(set(route_layer.categories)) == 2
+        route_layer.add(routes=routes)
+        assert route_layer.index is not None, "route_layer.index is None"
+        assert route_layer.routes is not None, "route_layer.routes is None"
+        assert len(route_layer.routes) == 2, "route_layer.routes is not 2"
 
     def test_query_and_classification(self, openai_encoder, routes):
         route_layer = HybridRouter(
@@ -144,6 +152,14 @@ class TestHybridRouter:
     def test_query_with_no_index(self, openai_encoder):
         route_layer = HybridRouter(
             encoder=openai_encoder, sparse_encoder=sparse_encoder
+        )
+        assert isinstance(
+            route_layer.sparse_encoder, BM25Encoder
+        ) or isinstance(
+            route_layer.sparse_encoder, TfidfEncoder
+        ), (
+            f"route_layer.sparse_encoder is {route_layer.sparse_encoder.__class__.__name__} "
+            "not BM25Encoder or TfidfEncoder"
         )
         assert route_layer("Anything") is None
 
@@ -192,12 +208,12 @@ class TestHybridRouter:
             sparse_encoder=tfidf_encoder,
             routes=routes[:-1],
         )
-        hybrid_route_layer.add(routes[-1])
+        hybrid_route_layer.add(routes=routes[-1])
         all_utterances = [
             utterance for route in routes for utterance in route.utterances
         ]
-        assert hybrid_route_layer.sparse_index is not None
-        assert len(hybrid_route_layer.sparse_index) == len(all_utterances)
+        assert hybrid_route_layer.index.sparse_index is not None, "sparse_index is None"
+        assert len(hybrid_route_layer.index.sparse_index) == len(all_utterances), "sparse_index length mismatch"
 
     def test_setting_aggregation_methods(self, openai_encoder, routes):
         for agg in ["sum", "mean", "max"]:

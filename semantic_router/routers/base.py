@@ -718,40 +718,13 @@ class BaseRouter(BaseModel):
         else:
             raise ValueError(f"{type(encoder)} not supported for loading from config.")
 
-    def add(self, route: Route):
+    def add(self, routes: List[Route] | Route):
         """Add a route to the local SemanticRouter and index.
 
         :param route: The route to add.
         :type route: Route
         """
-        current_local_hash = self._get_hash()
-        current_remote_hash = self.index._read_hash()
-        if current_remote_hash.value == "":
-            # if remote hash is empty, the index is to be initialized
-            current_remote_hash = current_local_hash
-        embedded_utterances = self.encoder(route.utterances)
-        self.index.add(
-            embeddings=embedded_utterances,
-            routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,
-            function_schemas=(
-                route.function_schemas * len(route.utterances)
-                if route.function_schemas
-                else [{}] * len(route.utterances)
-            ),
-            metadata_list=[route.metadata if route.metadata else {}]
-            * len(route.utterances),
-        )
-
-        self.routes.append(route)
-        if current_local_hash.value == current_remote_hash.value:
-            self._write_hash()  # update current hash in index
-        else:
-            logger.warning(
-                "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `SemanticRouter.get_utterance_diff()` to see "
-                "details."
-            )
+        raise NotImplementedError("This method must be implemented by subclasses.")
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -853,43 +826,6 @@ class BaseRouter(BaseModel):
                 new_routes.append(Route(name=route_name, utterances=[utterance]))
             route = route_mapping[route_name]
             self.routes.append(route)
-
-    def _add_routes(self, routes: List[Route]):
-        current_local_hash = self._get_hash()
-        current_remote_hash = self.index._read_hash()
-        if current_remote_hash.value == "":
-            # if remote hash is empty, the index is to be initialized
-            current_remote_hash = current_local_hash
-
-        if not routes:
-            logger.warning("No routes provided to add.")
-            return
-        # create embeddings for all routes
-        route_names, all_utterances, all_function_schemas, all_metadata = (
-            self._extract_routes_details(routes, include_metadata=True)
-        )
-        embedded_utterances = self.encoder(all_utterances)
-        try:
-            # Batch insertion into the index
-            self.index.add(
-                embeddings=embedded_utterances,
-                routes=route_names,
-                utterances=all_utterances,
-                function_schemas=all_function_schemas,
-                metadata_list=all_metadata,
-            )
-        except Exception as e:
-            logger.error(f"Failed to add routes to the index: {e}")
-            raise Exception("Indexing error occurred") from e
-
-        if current_local_hash.value == current_remote_hash.value:
-            self._write_hash()  # update current hash in index
-        else:
-            logger.warning(
-                "Local and remote route layers were not aligned. Remote hash "
-                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
-                "to see details."
-            )
 
     def _get_hash(self) -> ConfigParameter:
         config = self.to_config()
