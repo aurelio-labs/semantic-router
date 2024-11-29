@@ -53,13 +53,11 @@ class TfidfEncoder(SparseEncoder):
             raise TypeError("`routes` parameter must be a list of Route objects.")
 
     def _build_word_index(self, docs: List[str]) -> Dict:
-        print(docs)
         words = set()
         for doc in docs:
             for word in doc.split():
                 words.add(word)
         word_index = {word: i for i, word in enumerate(words)}
-        print(word_index)
         return word_index
 
     def _compute_tf(self, docs: List[str]) -> np.ndarray:

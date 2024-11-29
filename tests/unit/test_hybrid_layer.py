@@ -146,14 +146,12 @@ class TestHybridRouter:
         assert len(route_layer.routes) == 2, "route_layer.routes is not 2"
 
     def test_query_and_classification(self, openai_encoder, routes):
-        print("...1")
         route_layer = HybridRouter(
             encoder=openai_encoder,
             sparse_encoder=sparse_encoder,
             routes=routes,
             auto_sync="local",
         )
-        print("...2")
         route_layer.set_threshold(0.0)
         query_result = route_layer(UTTERANCES[0])
         assert query_result.name in ["Route 1", "Route 2"]

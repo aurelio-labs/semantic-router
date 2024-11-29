@@ -37,13 +37,10 @@ class HybridRouter(BaseRouter):
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
     ):
-        print("...2.1")
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
-        print("...2.2")
         encoder = self._get_encoder(encoder=encoder)
-        print("...2.3")
         super().__init__(
             encoder=encoder,
             llm=llm,
@@ -53,22 +50,17 @@ class HybridRouter(BaseRouter):
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
-        print("...0")
         # initialize sparse encoder
         self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
-        print("...5")
         # set alpha
         self.alpha = alpha
-        print("...6")
         # fit sparse encoder if needed
         if (
             isinstance(self.sparse_encoder, TfidfEncoder)
             and hasattr(self.sparse_encoder, "fit")
             and self.routes
         ):
-            print("...3")
             self.sparse_encoder.fit(self.routes)
-            print("...4")
         # run initialize index now if auto sync is active
         if self.auto_sync:
             self._init_index_state()
@@ -94,7 +86,6 @@ class HybridRouter(BaseRouter):
         # TODO: to merge, self._encode should probably output a special
         # TODO Embedding type that can be either dense or hybrid
         dense_emb, sparse_emb = self._encode(all_utterances)
-        print(f"{sparse_emb=}")
         self.index.add(
             embeddings=dense_emb.tolist(),
             routes=route_names,
@@ -180,8 +171,6 @@ class HybridRouter(BaseRouter):
         xq_s = self.sparse_encoder(text)
         # xq_s = np.squeeze(xq_s)
         # convex scaling
-        print(f"{self.sparse_encoder.__class__.__name__=}")
-        print(f"_encode: {xq_d.shape=}, {xq_s=}")
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
@@ -202,7 +191,6 @@ class HybridRouter(BaseRouter):
         # create dense query vector
         xq_d = np.array(dense_vec)
         # convex scaling
-        print(f"_async_encode: {xq_d.shape=}, {xq_s=}")
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
