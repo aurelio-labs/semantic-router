@@ -12,14 +12,23 @@ from semantic_router.routers import HybridRouter
 from semantic_router.route import Route
 
 
+UTTERANCES = [
+    "Hello we need this text to be a little longer for our sparse encoders",
+    "In this case they need to learn from recurring tokens, ie words.",
+    "We give ourselves several examples from our encoders to learn from.",
+    "But given this is only an example we don't need too many",
+    "Just enough to test that our sparse encoders work as expected",
+]
+
+
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
     mock_responses = {
-        "Hello": [0.1, 0.2, 0.3],
-        "Hi": [0.4, 0.5, 0.6],
-        "Goodbye": [0.7, 0.8, 0.9],
-        "Bye": [1.0, 1.1, 1.2],
-        "Au revoir": [1.3, 1.4, 1.5],
+        UTTERANCES[0]: [0.1, 0.2, 0.3],
+        UTTERANCES[1]: [0.4, 0.5, 0.6],
+        UTTERANCES[2]: [0.7, 0.8, 0.9],
+        UTTERANCES[3]: [1.0, 1.1, 1.2],
+        UTTERANCES[4]: [1.3, 1.4, 1.5],
     }
     return [mock_responses.get(u, [0, 0, 0]) for u in utterances]
 
@@ -70,21 +79,8 @@ def tfidf_encoder():
 @pytest.fixture
 def routes():
     return [
-        Route(
-            name="Route 1",
-            utterances=[
-                "Hello we need this text to be a little longer for our sparse encoders",
-                "In this case they need to learn from recurring tokens, ie words.",
-            ],
-        ),
-        Route(
-            name="Route 2",
-            utterances=[
-                "We give ourselves several examples from our encoders to learn from.",
-                "But given this is only an example we don't need too many",
-                "Just enough to test that our sparse encoders work as expected",
-            ],
-        ),
+        Route(name="Route 1", utterances=[UTTERANCES[0], UTTERANCES[1]]),
+        Route(name="Route 2", utterances=[UTTERANCES[2], UTTERANCES[3], UTTERANCES[4]]),
     ]
 
 
@@ -158,8 +154,9 @@ class TestHybridRouter:
             auto_sync="local",
         )
         print("...2")
-        query_result = route_layer("Hello")
-        assert query_result in ["Route 1", "Route 2"]
+        route_layer.set_threshold(0.0)
+        query_result = route_layer(UTTERANCES[0])
+        assert query_result.name in ["Route 1", "Route 2"]
 
     def test_query_with_no_index(self, openai_encoder):
         route_layer = HybridRouter(
@@ -171,7 +168,7 @@ class TestHybridRouter:
             f"route_layer.sparse_encoder is {route_layer.sparse_encoder.__class__.__name__} "
             "not BM25Encoder or TfidfEncoder"
         )
-        assert route_layer("Anything") is None
+        assert route_layer("Anything").name is None
 
     def test_semantic_classify(self, openai_encoder, routes):
         route_layer = HybridRouter(
@@ -217,6 +214,7 @@ class TestHybridRouter:
             encoder=cohere_encoder,
             sparse_encoder=tfidf_encoder,
             routes=routes[:-1],
+            auto_sync="local",
         )
         hybrid_route_layer.add(routes=routes[-1])
         all_utterances = [

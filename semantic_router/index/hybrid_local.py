@@ -135,7 +135,8 @@ class HybridLocalIndex(LocalIndex):
             route_names = self.routes[idx] if self.routes is not None else []
             return scores, route_names
         else:
-            raise ValueError("Index or sparse index is not populated.")
+            logger.warning("Index or sparse index is not populated.")
+            return np.array([]), []
 
     async def aquery(
         self,

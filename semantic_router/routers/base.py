@@ -1104,11 +1104,15 @@ class BaseRouter(BaseModel):
                 )
 
     def set_threshold(self, threshold: float, route_name: str | None = None):
-        """Set the score threshold for a specific route or all routes.
+        """Set the score threshold for a specific route or all routes. A `threshold` of 0.0
+        will mean that the route will be returned no matter how low it scores whereas
+        a threshold of 1.0 will mean that a route must contain an exact utterance match
+        to be returned.
 
         :param threshold: The threshold to set.
         :type threshold: float
-        :param route_name: The name of the route to set the threshold for. If None, the threshold will be set for all routes.
+        :param route_name: The name of the route to set the threshold for. If None, the
+        threshold will be set for all routes.
         :type route_name: str | None
         """
         if route_name is None:
