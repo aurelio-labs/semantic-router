@@ -1,7 +1,7 @@
 """
 This module provides the HFEndpointEncoder class to embeddings models using Huggingface's endpoint.
 
-The HFEndpointEncoder class is a subclass of BaseEncoder and utilizes a specified Huggingface 
+The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified Huggingface 
 endpoint to generate embeddings for given documents. It requires the URL of the Huggingface 
 API endpoint and an API key for authentication. The class supports customization of the score 
 threshold for filtering or processing the embeddings.
@@ -27,11 +27,11 @@ from typing import Any, List, Optional, Dict
 
 from pydantic.v1 import PrivateAttr
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.logger import logger
 
 
-class HuggingFaceEncoder(BaseEncoder):
+class HuggingFaceEncoder(DenseEncoder):
     name: str = "sentence-transformers/all-MiniLM-L6-v2"
     type: str = "huggingface"
     score_threshold: float = 0.5
@@ -140,7 +140,7 @@ class HuggingFaceEncoder(BaseEncoder):
         return self._torch.max(token_embeddings, 1)[0]
 
 
-class HFEndpointEncoder(BaseEncoder):
+class HFEndpointEncoder(DenseEncoder):
     """
     A class to encode documents using a Hugging Face transformer model endpoint.
 

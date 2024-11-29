@@ -2,10 +2,10 @@ from typing import Any, List, Optional, Dict
 
 from pydantic.v1 import PrivateAttr
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 
 
-class VitEncoder(BaseEncoder):
+class VitEncoder(DenseEncoder):
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
     score_threshold: float = 0.5

@@ -11,7 +11,7 @@ import numpy as np
 from pydantic.v1 import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter
+from semantic_router.schema import ConfigParameter, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 
@@ -22,6 +22,7 @@ def clean_route_name(route_name: str) -> str:
 class PineconeRecord(BaseModel):
     id: str = ""
     values: List[float]
+    sparse_values: Optional[dict[int, float]] = None
     route: str
     utterance: str
     function_schema: str = "{}"
@@ -42,11 +43,17 @@ class PineconeRecord(BaseModel):
         )
 
     def to_dict(self):
-        return {
+        d = {
             "id": self.id,
             "values": self.values,
             "metadata": self.metadata,
         }
+        if self.sparse_values:
+            d["sparse_values"] = {
+                "indices": list(self.sparse_values.keys()),
+                "values": list(self.sparse_values.values()),
+            }
+        return d
 
 
 class PineconeIndex(BaseIndex):
@@ -54,7 +61,7 @@ class PineconeIndex(BaseIndex):
     api_key: Optional[str] = None
     index_name: str = "index"
     dimensions: Union[int, None] = None
-    metric: str = "cosine"
+    metric: str = "dotproduct"
     cloud: str = "aws"
     region: str = "us-west-2"
     host: str = ""
@@ -70,7 +77,7 @@ class PineconeIndex(BaseIndex):
         api_key: Optional[str] = None,
         index_name: str = "index",
         dimensions: Optional[int] = None,
-        metric: str = "cosine",
+        metric: str = "dotproduct",
         cloud: str = "aws",
         region: str = "us-west-2",
         host: str = "",
@@ -216,7 +223,7 @@ class PineconeIndex(BaseIndex):
             # if the index doesn't exist and we don't have the dimensions
             # we raise warning
             logger.warning("Index could not be initialized.")
-        self.host = index_stats["host"] if index_stats else None
+        self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records."""
@@ -230,27 +237,35 @@ class PineconeIndex(BaseIndex):
         embeddings: List[List[float]],
         routes: List[str],
         utterances: List[str],
-        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
+        sparse_embeddings: Optional[Optional[List[dict[int, float]]]] = None,
     ):
         """Add vectors to Pinecone in batches."""
-        temp = "\n".join([f"{x[0]}: {x[1]}" for x in zip(routes, utterances)])
-        logger.warning("TEMP | add:\n" + temp)
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
-
+        if function_schemas is None:
+            function_schemas = [{}] * len(embeddings)
+        if sparse_embeddings is None:
+            sparse_embeddings = [{}] * len(embeddings)
         vectors_to_upsert = [
             PineconeRecord(
                 values=vector,
+                sparse_values=sparse_dict,
                 route=route,
                 utterance=utterance,
                 function_schema=json.dumps(function_schema),
                 metadata=metadata,
             ).to_dict()
-            for vector, route, utterance, function_schema, metadata in zip(
-                embeddings, routes, utterances, function_schemas, metadata_list  # type: ignore
+            for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
+                embeddings,
+                routes,
+                utterances,
+                function_schemas,
+                metadata_list,
+                sparse_embeddings,
             )
         ]
 
@@ -259,10 +274,6 @@ class PineconeIndex(BaseIndex):
             self._batch_upsert(batch)
 
     def _remove_and_sync(self, routes_to_delete: dict):
-        temp = "\n".join(
-            [f"{route}: {utterances}" for route, utterances in routes_to_delete.items()]
-        )
-        logger.warning("TEMP | _remove_and_sync:\n" + temp)
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)
             ids_to_delete = [
@@ -351,7 +362,7 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        **kwargs: Any,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """Search the index for the query vector and return the top_k results.
 
@@ -361,10 +372,10 @@ class PineconeIndex(BaseIndex):
         :type top_k: int, optional
         :param route_filter: A list of route names to filter the search results, defaults to None.
         :type route_filter: Optional[List[str]], optional
+        :param sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: Optional[SparseEmbedding]
         :param kwargs: Additional keyword arguments for the query, including sparse_vector.
         :type kwargs: Any
-        :keyword sparse_vector: An optional sparse vector to include in the query.
-        :type sparse_vector: Optional[dict]
         :return: A tuple containing an array of scores and a list of route names.
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
@@ -376,9 +387,15 @@ class PineconeIndex(BaseIndex):
             filter_query = {"sr_route": {"$in": route_filter}}
         else:
             filter_query = None
+        if sparse_vector is not None:
+            if isinstance(sparse_vector, dict):
+                sparse_vector = SparseEmbedding.from_dict(sparse_vector)
+            if isinstance(sparse_vector, SparseEmbedding):
+                # unnecessary if-statement but mypy didn't like this otherwise
+                sparse_vector = sparse_vector.to_pinecone()
         results = self.index.query(
             vector=[query_vector_list],
-            sparse_vector=kwargs.get("sparse_vector", None),
+            sparse_vector=sparse_vector,
             top_k=top_k,
             filter=filter_query,
             include_metadata=True,
@@ -435,7 +452,7 @@ class PineconeIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
-        **kwargs: Any,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Asynchronously search the index for the query vector and return the top_k results.
@@ -454,16 +471,24 @@ class PineconeIndex(BaseIndex):
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
         """
-        if self.async_client is None or self.host is None:
+        if self.async_client is None or self.host == "":
             raise ValueError("Async client or host are not initialized.")
         query_vector_list = vector.tolist()
         if route_filter is not None:
             filter_query = {"sr_route": {"$in": route_filter}}
         else:
             filter_query = None
+        # set sparse_vector_obj
+        sparse_vector_obj: dict[str, Any] | None = None
+        if sparse_vector is not None:
+            if isinstance(sparse_vector, dict):
+                sparse_vector_obj = SparseEmbedding.from_dict(sparse_vector)
+            if isinstance(sparse_vector, SparseEmbedding):
+                # unnecessary if-statement but mypy didn't like this otherwise
+                sparse_vector_obj = sparse_vector.to_pinecone()
         results = await self._async_query(
             vector=query_vector_list,
-            sparse_vector=kwargs.get("sparse_vector", None),
+            sparse_vector=sparse_vector_obj,
             namespace=self.namespace or "",
             filter=filter_query,
             top_k=top_k,
@@ -480,7 +505,7 @@ class PineconeIndex(BaseIndex):
         :return: A list of (route_name, utterance) objects.
         :rtype: List[Tuple]
         """
-        if self.async_client is None or self.host is None:
+        if self.async_client is None or self.host == "":
             raise ValueError("Async client or host are not initialized.")
 
         return await self._async_get_routes()
@@ -493,7 +518,7 @@ class PineconeIndex(BaseIndex):
     async def _async_query(
         self,
         vector: list[float],
-        sparse_vector: Optional[dict] = None,
+        sparse_vector: dict[str, Any] | None = None,
         namespace: str = "",
         filter: Optional[dict] = None,
         top_k: int = 5,
@@ -507,6 +532,8 @@ class PineconeIndex(BaseIndex):
             "top_k": top_k,
             "include_metadata": include_metadata,
         }
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
         async with self.async_client.post(
             f"https://{self.host}/query",
             json=params,
@@ -523,7 +550,7 @@ class PineconeIndex(BaseIndex):
         dimension: int,
         cloud: str,
         region: str,
-        metric: str = "cosine",
+        metric: str = "dotproduct",
     ):
         params = {
             "name": name,
@@ -557,6 +584,8 @@ class PineconeIndex(BaseIndex):
         """
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
 
         all_vector_ids = []
         next_page_token = None
@@ -611,6 +640,8 @@ class PineconeIndex(BaseIndex):
         :return: A dictionary containing the metadata for the vector.
         :rtype: dict
         """
+        if self.host == "":
+            raise ValueError("self.host is not initialized.")
         url = f"https://{self.host}/vectors/fetch"
 
         params = {
@@ -640,6 +671,10 @@ class PineconeIndex(BaseIndex):
             )
 
     def __len__(self):
-        return self.index.describe_index_stats()["namespaces"][self.namespace][
-            "vector_count"
-        ]
+        namespace_stats = self.index.describe_index_stats()["namespaces"].get(
+            self.namespace
+        )
+        if namespace_stats:
+            return namespace_stats["vector_count"]
+        else:
+            return 0

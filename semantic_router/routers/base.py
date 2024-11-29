@@ -3,13 +3,14 @@ import json
 import os
 import random
 import hashlib
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from pydantic.v1 import BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import AutoEncoder, BaseEncoder, OpenAIEncoder
+from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
@@ -56,13 +57,16 @@ def is_valid(layer_config: str) -> bool:
         return False
 
 
-class LayerConfig:
+class RouterConfig:
     """
-    Generates a LayerConfig object that can be used for initializing a
-    RouteLayer.
+    Generates a RouterConfig object that can be used for initializing a
+    Routers.
     """
 
     routes: List[Route] = []
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(
         self,
@@ -76,7 +80,7 @@ class LayerConfig:
                 if encode_type.value == self.encoder_type:
                     if self.encoder_type == EncoderType.HUGGINGFACE.value:
                         raise NotImplementedError(
-                            "HuggingFace encoder not supported by LayerConfig yet."
+                            "HuggingFace encoder not supported by RouterConfig yet."
                         )
                     encoder_name = EncoderDefault[encode_type.name].value[
                         "embedding_model"
@@ -87,7 +91,7 @@ class LayerConfig:
         self.routes = routes
 
     @classmethod
-    def from_file(cls, path: str) -> "LayerConfig":
+    def from_file(cls, path: str) -> "RouterConfig":
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
@@ -139,7 +143,7 @@ class LayerConfig:
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
-        """Initialize a LayerConfig from a list of tuples of routes and
+        """Initialize a RouterConfig from a list of tuples of routes and
         utterances.
 
         :param route_tuples: A list of tuples, each containing a route name and an
@@ -178,9 +182,9 @@ class LayerConfig:
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
-        """Initialize a LayerConfig from a BaseIndex object.
+        """Initialize a RouterConfig from a BaseIndex object.
 
-        :param index: The index to initialize the LayerConfig from.
+        :param index: The index to initialize the RouterConfig from.
         :type index: BaseIndex
         :param encoder_type: The type of encoder to use, defaults to "openai".
         :type encoder_type: str, optional
@@ -246,6 +250,11 @@ class LayerConfig:
         return utterances
 
     def add(self, route: Route):
+        """Add a route to the RouterConfig.
+
+        :param route: The route to add.
+        :type route: Route
+        """
         self.routes.append(route)
         logger.info(f"Added route `{route.name}`")
 
@@ -271,38 +280,46 @@ class LayerConfig:
         )
 
 
-class RouteLayer:
-    score_threshold: float
-    encoder: BaseEncoder
-    index: BaseIndex
+class BaseRouter(BaseModel):
+    encoder: DenseEncoder = Field(default_factory=OpenAIEncoder)
+    index: BaseIndex = Field(default_factory=BaseIndex)
+    score_threshold: Optional[float] = Field(default=None)
+    routes: List[Route] = []
+    llm: Optional[BaseLLM] = None
+    top_k: int = 5
+    aggregation: str = "mean"
+    aggregation_method: Optional[Callable] = None
+    auto_sync: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(
         self,
-        encoder: Optional[BaseEncoder] = None,
+        encoder: Optional[DenseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: Optional[List[Route]] = None,
+        routes: List[Route] = [],
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
-        aggregation: str = "sum",
+        aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
-        self.index: BaseIndex = index if index is not None else LocalIndex()
-        if encoder is None:
-            logger.warning(
-                "No encoder provided. Using default OpenAIEncoder. Ensure "
-                "that you have set OPENAI_API_KEY in your environment."
-            )
-            self.encoder = OpenAIEncoder()
-        else:
-            self.encoder = encoder
+        super().__init__(
+            encoder=encoder,
+            llm=llm,
+            routes=routes,
+            index=index,
+            top_k=top_k,
+            aggregation=aggregation,
+            auto_sync=auto_sync,
+        )
+        self.encoder = self._get_encoder(encoder=encoder)
         self.llm = llm
-        self.routes = routes if routes else []
-        if self.encoder.score_threshold is None:
-            raise ValueError(
-                "No score threshold provided for encoder. Please set the score threshold "
-                "in the encoder config."
-            )
-        self.score_threshold = self.encoder.score_threshold
+        self.routes = routes.copy() if routes else []
+        # initialize index
+        self.index = self._get_index(index=index)
+        # set score threshold using default method
+        self._set_score_threshold()
         self.top_k = top_k
         if self.top_k < 1:
             raise ValueError(f"top_k needs to be >= 1, but was: {self.top_k}.")
@@ -318,15 +335,34 @@ class RouteLayer:
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
-        # if routes list has been passed, we initialize index now
+
+    def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
+        if index is None:
+            logger.warning("No index provided. Using default LocalIndex.")
+            index = LocalIndex()
+        else:
+            index = index
+        return index
+
+    def _get_encoder(self, encoder: Optional[DenseEncoder]) -> DenseEncoder:
+        if encoder is None:
+            logger.warning("No encoder provided. Using default OpenAIEncoder.")
+            encoder = OpenAIEncoder()
+        else:
+            encoder = encoder
+        return encoder
+
+    def _init_index_state(self):
+        """Initializes an index (where required) and runs auto_sync if active."""
+        # initialize index now, check if we need dimensions
+        if self.index.dimensions is None:
+            dims = len(self.encoder(["test"])[0])
+            self.index.dimensions = dims
+        # now init index
+        if isinstance(self.index, PineconeIndex):
+            self.index.index = self.index._init_index(force_create=True)
+        # run auto sync if active
         if self.auto_sync:
-            # initialize index now, check if we need dimensions
-            if self.index.dimensions is None:
-                dims = len(self.encoder(["test"])[0])
-                self.index.dimensions = dims
-            # now init index
-            if isinstance(self.index, PineconeIndex):
-                self.index.index = self.index._init_index(force_create=True)
             local_utterances = self.to_config().to_utterances()
             remote_utterances = self.index.get_utterances()
             diff = UtteranceDiff.from_utterances(
@@ -335,6 +371,21 @@ class RouteLayer:
             )
             sync_strategy = diff.get_sync_strategy(self.auto_sync)
             self._execute_sync_strategy(sync_strategy)
+
+    def _set_score_threshold(self):
+        """Set the score threshold for the layer based on the encoder
+        score threshold.
+
+        When no score threshold is used a default `None` value
+        is used, which means that a route will always be returned when
+        the layer is called."""
+        if self.encoder.score_threshold is not None:
+            self.score_threshold = self.encoder.score_threshold
+            if self.score_threshold is None:
+                logger.warning(
+                    "No score threshold value found in encoder. Using the default "
+                    "'None' value can lead to unexpected results."
+                )
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
         matching_route = next(
@@ -359,7 +410,7 @@ class RouteLayer:
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=text)
+            vector = self._encode(text=[text])
         route, top_class_scores = self._retrieve_top_route(vector, route_filter)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
@@ -401,7 +452,7 @@ class RouteLayer:
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = await self._async_encode(text=text)
+            vector = await self._async_encode(text=[text])
 
         route, top_class_scores = await self._async_retrieve_top_route(
             vector, route_filter
@@ -440,23 +491,57 @@ class RouteLayer:
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector_arr = self._encode(text=text)
+            vector_arr = self._encode(text=[text])
         else:
             vector_arr = np.array(vector)
         # get relevant utterances
         results = self._retrieve(xq=vector_arr)
-
         # decide most relevant routes
         categories_with_scores = self._semantic_classify_multiple_routes(results)
+        return [
+            RouteChoice(name=category, similarity_score=score)
+            for category, score in categories_with_scores
+        ]
 
-        route_choices = []
-        for category, score in categories_with_scores:
-            route = self.check_for_matching_routes(category)
-            if route:
-                route_choice = RouteChoice(name=route.name, similarity_score=score)
-                route_choices.append(route_choice)
+        # route_choices = []
+        # TODO JB: do we need this check? Maybe we should be returning directly
+        # for category, score in categories_with_scores:
+        #    route = self.check_for_matching_routes(category)
+        #    if route:
+        #        route_choice = RouteChoice(name=route.name, similarity_score=score)
+        #        route_choices.append(route_choice)
 
-        return route_choices
+        # return route_choices
+
+    def _retrieve_top_route(
+        self, vector: List[float], route_filter: Optional[List[str]] = None
+    ) -> Tuple[Optional[Route], List[float]]:
+        """
+        Retrieve the top matching route based on the given vector.
+        Returns a tuple of the route (if any) and the scores of the top class.
+        """
+        # get relevant results (scores and routes)
+        results = self._retrieve(
+            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+        )
+        # decide most relevant routes
+        top_class, top_class_scores = self._semantic_classify(results)
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
+        return route, top_class_scores
+
+    async def _async_retrieve_top_route(
+        self, vector: List[float], route_filter: Optional[List[str]] = None
+    ) -> Tuple[Optional[Route], List[float]]:
+        # get relevant results (scores and routes)
+        results = await self._async_retrieve(
+            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+        )
+        # decide most relevant routes
+        top_class, top_class_scores = await self._async_semantic_classify(results)
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
+        return route, top_class_scores
 
     def sync(self, sync_mode: str, force: bool = False) -> List[str]:
         """Runs a sync of the local routes with the remote index.
@@ -525,9 +610,9 @@ class RouteLayer:
         self._write_hash()
 
     def _local_upsert(self, utterances: List[Utterance]):
-        """Adds new routes to the RouteLayer.
+        """Adds new routes to the SemanticRouter.
 
-        :param utterances: The utterances to add to the local RouteLayer.
+        :param utterances: The utterances to add to the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         new_routes = {route.name: route for route in self.routes}
@@ -544,22 +629,18 @@ class RouteLayer:
                     new_routes[utt_obj.route].utterances.append(utt_obj.utterance)
                 new_routes[utt_obj.route].function_schemas = utt_obj.function_schemas
                 new_routes[utt_obj.route].metadata = utt_obj.metadata
-        temp = "\n".join([f"{name}: {r.utterances}" for name, r in new_routes.items()])
-        logger.warning("TEMP | _local_upsert:\n" + temp)
         self.routes = list(new_routes.values())
 
     def _local_delete(self, utterances: List[Utterance]):
-        """Deletes routes from the local RouteLayer.
+        """Deletes routes from the local SemanticRouter.
 
-        :param utterances: The utterances to delete from the local RouteLayer.
+        :param utterances: The utterances to delete from the local SemanticRouter.
         :type utterances: List[Utterance]
         """
         # create dictionary of route names to utterances
         route_dict: dict[str, List[str]] = {}
         for utt in utterances:
             route_dict.setdefault(utt.route, []).append(utt.utterance)
-        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n" + temp)
         # iterate over current routes and delete specific utterance if found
         new_routes = []
         for route in self.routes:
@@ -581,54 +662,17 @@ class RouteLayer:
                             metadata=route.metadata,
                         )
                     )
-                logger.warning(
-                    f"TEMP | _local_delete OLD | {route.name}: {route.utterances}"
-                )
-                logger.warning(
-                    f"TEMP | _local_delete NEW | {route.name}: {new_routes[-1].utterances}"
-                )
             else:
                 # the route is not in the route_dict, so we keep it as is
                 new_routes.append(route)
-        temp = "\n".join([f"{r}: {u}" for r, u in route_dict.items()])
-        logger.warning("TEMP | _local_delete:\n" + temp)
 
         self.routes = new_routes
-
-    def _retrieve_top_route(
-        self, vector: List[float], route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
-        """
-        Retrieve the top matching route based on the given vector.
-        Returns a tuple of the route (if any) and the scores of the top class.
-        """
-        # get relevant results (scores and routes)
-        results = self._retrieve(
-            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
-        )
-        # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
-
-    async def _async_retrieve_top_route(
-        self, vector: List[float], route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
-        # get relevant results (scores and routes)
-        results = await self._async_retrieve(
-            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
-        )
-        # decide most relevant routes
-        top_class, top_class_scores = await self._async_semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
 
     def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
         """
         Check if the route's score passes the specified threshold.
         """
+        # TODO JB: do we need this?
         if route is None:
             return False
         threshold = (
@@ -640,62 +684,44 @@ class RouteLayer:
 
     def __str__(self):
         return (
-            f"RouteLayer(encoder={self.encoder}, "
+            f"{self.__class__.__name__}(encoder={self.encoder}, "
             f"score_threshold={self.score_threshold}, "
             f"routes={self.routes})"
         )
 
     @classmethod
     def from_json(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from JSON.")
 
     @classmethod
     def from_yaml(cls, file_path: str):
-        config = LayerConfig.from_file(file_path)
+        config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from YAML.")
 
     @classmethod
-    def from_config(cls, config: LayerConfig, index: Optional[BaseIndex] = None):
+    def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
-        return cls(encoder=encoder, routes=config.routes, index=index)
+        if isinstance(encoder, DenseEncoder):
+            return cls(encoder=encoder, routes=config.routes, index=index)
+        else:
+            raise ValueError(f"{type(encoder)} not supported for loading from config.")
 
-    def add(self, route: Route):
-        """Add a route to the local RouteLayer and index.
+    def add(self, routes: List[Route] | Route):
+        """Add a route to the local SemanticRouter and index.
 
         :param route: The route to add.
         :type route: Route
         """
-        current_local_hash = self._get_hash()
-        current_remote_hash = self.index._read_hash()
-        if current_remote_hash.value == "":
-            # if remote hash is empty, the index is to be initialized
-            current_remote_hash = current_local_hash
-        embedded_utterances = self.encoder(route.utterances)
-        self.index.add(
-            embeddings=embedded_utterances,
-            routes=[route.name] * len(route.utterances),
-            utterances=route.utterances,
-            function_schemas=(
-                route.function_schemas * len(route.utterances)
-                if route.function_schemas
-                else [{}] * len(route.utterances)
-            ),
-            metadata_list=[route.metadata if route.metadata else {}]
-            * len(route.utterances),
-        )
-
-        self.routes.append(route)
-        if current_local_hash.value == current_remote_hash.value:
-            self._write_hash()  # update current hash in index
-        else:
-            logger.warning(
-                "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
-            )
+        raise NotImplementedError("This method must be implemented by subclasses.")
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -711,7 +737,7 @@ class RouteLayer:
         threshold or utterances parameters, those fields are not updated.
         If neither field is provided raises a ValueError.
 
-        The name must exist within the local RouteLayer, if not a
+        The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
         """
         current_local_hash = self._get_hash()
@@ -745,8 +771,8 @@ class RouteLayer:
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
             )
 
     def delete(self, route_name: str):
@@ -762,7 +788,7 @@ class RouteLayer:
             current_remote_hash = current_local_hash
 
         if route_name not in [route.name for route in self.routes]:
-            err_msg = f"Route `{route_name}` not found in RouteLayer"
+            err_msg = f"Route `{route_name}` not found in {self.__class__.__name__}"
             logger.warning(err_msg)
             try:
                 self.index.delete(route_name=route_name)
@@ -777,8 +803,8 @@ class RouteLayer:
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
             )
 
     def _refresh_routes(self):
@@ -797,43 +823,6 @@ class RouteLayer:
                 new_routes.append(Route(name=route_name, utterances=[utterance]))
             route = route_mapping[route_name]
             self.routes.append(route)
-
-    def _add_routes(self, routes: List[Route]):
-        current_local_hash = self._get_hash()
-        current_remote_hash = self.index._read_hash()
-        if current_remote_hash.value == "":
-            # if remote hash is empty, the index is to be initialized
-            current_remote_hash = current_local_hash
-
-        if not routes:
-            logger.warning("No routes provided to add.")
-            return
-        # create embeddings for all routes
-        route_names, all_utterances, all_function_schemas, all_metadata = (
-            self._extract_routes_details(routes, include_metadata=True)
-        )
-        embedded_utterances = self.encoder(all_utterances)
-        try:
-            # Batch insertion into the index
-            self.index.add(
-                embeddings=embedded_utterances,
-                routes=route_names,
-                utterances=all_utterances,
-                function_schemas=all_function_schemas,
-                metadata_list=all_metadata,
-            )
-        except Exception as e:
-            logger.error(f"Failed to add routes to the index: {e}")
-            raise Exception("Indexing error occurred") from e
-
-        if current_local_hash.value == current_remote_hash.value:
-            self._write_hash()  # update current hash in index
-        else:
-            logger.warning(
-                "Local and remote route layers were not aligned. Remote hash "
-                "not updated. Use `RouteLayer.get_utterance_diff()` to see "
-                "details."
-            )
 
     def _get_hash(self) -> ConfigParameter:
         config = self.to_config()
@@ -891,20 +880,6 @@ class RouteLayer:
         )
         return diff_obj.to_utterance_str(include_metadata=include_metadata)
 
-    def _add_and_sync_routes(self, routes: List[Route]):
-        self.routes.extend(routes)
-        # first we get remote and local utterances
-        remote_utterances = self.index.get_utterances()
-        local_utterances = self.to_config().to_utterances()
-
-        diff_obj = UtteranceDiff.from_utterances(
-            local_utterances=local_utterances, remote_utterances=remote_utterances
-        )
-        sync_strategy = diff_obj.get_sync_strategy(sync_mode=self.auto_sync)
-        self._execute_sync_strategy(strategy=sync_strategy)
-        # update remote hash
-        self._write_hash()
-
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
     ) -> Tuple:
@@ -921,19 +896,31 @@ class RouteLayer:
             return route_names, utterances, function_schemas, metadata
         return route_names, utterances, function_schemas
 
-    def _encode(self, text: str) -> Any:
-        """Given some text, encode it."""
-        # create query vector
-        xq = np.array(self.encoder([text]))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
-        return xq
+    def _encode(self, text: list[str]) -> Any:
+        """Generates embeddings for a given text.
 
-    async def _async_encode(self, text: str) -> Any:
-        """Given some text, encode it."""
-        # create query vector
-        xq = np.array(await self.encoder.acall(docs=[text]))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
-        return xq
+        Must be implemented by a subclass.
+
+        :param text: The text to encode.
+        :type text: list[str]
+        :return: The embeddings of the text.
+        :rtype: Any
+        """
+        # TODO: should encode "content" rather than text
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def _async_encode(self, text: list[str]) -> Any:
+        """Asynchronously generates embeddings for a given text.
+
+        Must be implemented by a subclass.
+
+        :param text: The text to encode.
+        :type text: list[str]
+        :return: The embeddings of the text.
+        :rtype: Any
+        """
+        # TODO: should encode "content" rather than text
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _retrieve(
         self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
@@ -956,6 +943,7 @@ class RouteLayer:
         return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
 
     def _set_aggregation_method(self, aggregation: str = "sum"):
+        # TODO is this really needed?
         if aggregation == "sum":
             return lambda x: sum(x)
         elif aggregation == "mean":
@@ -968,7 +956,19 @@ class RouteLayer:
             )
 
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
+        """Classify the query results into a single class based on the highest total score.
+        If no classification is found, return an empty string and an empty list.
+
+        :param query_results: The query results to classify. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A tuple containing the top class and its associated scores.
+        :rtype: Tuple[str, List[float]]
+        """
         scores_by_class = self.group_scores_by_class(query_results)
+
+        if self.aggregation_method is None:
+            raise ValueError("self.aggregation_method is not set.")
 
         # Calculate total score for each class
         total_scores = {
@@ -987,7 +987,19 @@ class RouteLayer:
     async def _async_semantic_classify(
         self, query_results: List[Dict]
     ) -> Tuple[str, List[float]]:
+        """Classify the query results into a single class based on the highest total score.
+        If no classification is found, return an empty string and an empty list.
+
+        :param query_results: The query results to classify. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A tuple containing the top class and its associated scores.
+        :rtype: Tuple[str, List[float]]
+        """
         scores_by_class = await self.async_group_scores_by_class(query_results)
+
+        if self.aggregation_method is None:
+            raise ValueError("self.aggregation_method is not set.")
 
         # Calculate total score for each class
         total_scores = {
@@ -1059,24 +1071,62 @@ class RouteLayer:
                 scores_by_class[route] = [score]
         return scores_by_class
 
-    def _pass_threshold(self, scores: List[float], threshold: float) -> bool:
+    def _pass_threshold(self, scores: List[float], threshold: float | None) -> bool:
+        """Test if the route score passes the minimum threshold. A threshold of None defaults
+        to 0.0, so the route will always pass no matter how low it scores.
+
+        :param scores: The scores to test.
+        :type scores: List[float]
+        :param threshold: The minimum threshold to pass.
+        :type threshold: float | None
+        :return: True if the route passes the threshold, False otherwise.
+        :rtype: bool
+        """
+        if threshold is None:
+            return True
         if scores:
             return max(scores) > threshold
         else:
             return False
 
-    def _update_thresholds(self, score_thresholds: Optional[Dict[str, float]] = None):
+    def _update_thresholds(self, route_thresholds: Optional[Dict[str, float]] = None):
+        """Update the score thresholds for each route using a dictionary of
+        route names and thresholds.
+
+        :param route_thresholds: A dictionary of route names and thresholds.
+        :type route_thresholds: Dict[str, float] | None
         """
-        Update the score thresholds for each route.
-        """
-        if score_thresholds:
-            for route in self.routes:
-                route.score_threshold = score_thresholds.get(
-                    route.name, self.score_threshold
+        if route_thresholds:
+            for route, threshold in route_thresholds.items():
+                self.set_threshold(
+                    threshold=threshold,
+                    route_name=route,
                 )
 
-    def to_config(self) -> LayerConfig:
-        return LayerConfig(
+    def set_threshold(self, threshold: float, route_name: str | None = None):
+        """Set the score threshold for a specific route or all routes. A `threshold` of 0.0
+        will mean that the route will be returned no matter how low it scores whereas
+        a threshold of 1.0 will mean that a route must contain an exact utterance match
+        to be returned.
+
+        :param threshold: The threshold to set.
+        :type threshold: float
+        :param route_name: The name of the route to set the threshold for. If None, the
+        threshold will be set for all routes.
+        :type route_name: str | None
+        """
+        if route_name is None:
+            for route in self.routes:
+                route.score_threshold = threshold
+        else:
+            route_get: Route | None = self.get(route_name)
+            if route_get is not None:
+                route_get.score_threshold = threshold
+            else:
+                logger.error(f"Route `{route_name}` not found")
+
+    def to_config(self) -> RouterConfig:
+        return RouterConfig(
             encoder_type=self.encoder.type,
             encoder_name=self.encoder.name,
             routes=self.routes,
@@ -1091,9 +1141,8 @@ class RouteLayer:
         config.to_file(file_path)
 
     def get_thresholds(self) -> Dict[str, float]:
-        # TODO: float() below is hacky fix for lint, fix this with new type?
         thresholds = {
-            route.name: float(route.score_threshold or self.score_threshold)
+            route.name: route.score_threshold or self.score_threshold or 0.0
             for route in self.routes
         }
         return thresholds
@@ -1142,7 +1191,7 @@ class RouteLayer:
                 search_range=0.8,
             )
             # update current route layer
-            self._update_thresholds(score_thresholds=thresholds)
+            self._update_thresholds(route_thresholds=thresholds)
             # evaluate
             acc = self._vec_evaluate(Xq=Xq, y=y)
             # update best
@@ -1150,7 +1199,7 @@ class RouteLayer:
                 best_acc = acc
                 best_thresholds = thresholds
         # update route layer to best thresholds
-        self._update_thresholds(score_thresholds=best_thresholds)
+        self._update_thresholds(route_thresholds=best_thresholds)
 
         if local_execution:
             # Switch back to the original index
@@ -1186,7 +1235,7 @@ class RouteLayer:
 
 
 def threshold_random_search(
-    route_layer: RouteLayer,
+    route_layer: BaseRouter,
     search_range: Union[int, float],
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range."""

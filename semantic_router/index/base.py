@@ -4,7 +4,7 @@ import json
 import numpy as np
 from pydantic.v1 import BaseModel
 
-from semantic_router.schema import ConfigParameter, Utterance
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.route import Route
 from semantic_router.utils.logger import logger
 
@@ -18,12 +18,12 @@ class BaseIndex(BaseModel):
 
     # You can define common attributes here if there are any.
     # For example, a placeholder for the index attribute:
-    index: Optional[Any] = None
     routes: Optional[np.ndarray] = None
     utterances: Optional[np.ndarray] = None
     dimensions: Union[int, None] = None
     type: str = "base"
     init_async_index: bool = False
+    index: Optional[Any] = None
 
     def add(
         self,
@@ -108,6 +108,7 @@ class BaseIndex(BaseModel):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query_vector and return top_k results.
@@ -120,6 +121,7 @@ class BaseIndex(BaseModel):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Search the index for the query_vector and return top_k results.

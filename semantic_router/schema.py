@@ -1,12 +1,15 @@
 from datetime import datetime
 from difflib import Differ
 from enum import Enum
+import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic.v1 import BaseModel, Field
 from semantic_router.utils.logger import logger
+from aurelio_sdk.schema import BM25Embedding
 
 
 class EncoderType(Enum):
+    AURELIO = "aurelio"
     AZURE = "azure"
     COHERE = "cohere"
     OPENAI = "openai"
@@ -403,3 +406,63 @@ class Metric(Enum):
     DOTPRODUCT = "dotproduct"
     EUCLIDEAN = "euclidean"
     MANHATTAN = "manhattan"
+
+
+class SparseEmbedding(BaseModel):
+    """Sparse embedding interface. Primarily uses numpy operations for faster
+    operations.
+    """
+
+    embedding: np.ndarray
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @classmethod
+    def from_compact_array(cls, array: np.ndarray):
+        if array.ndim != 2 or array.shape[1] != 2:
+            raise ValueError(
+                f"Expected a 2D array with 2 columns, got a {array.ndim}D array with {array.shape[1]} columns. "
+                "Column 0 should contain index positions, and column 1 should contain respective values."
+            )
+        return cls(embedding=array)
+
+    @classmethod
+    def from_vector(cls, vector: np.ndarray):
+        """Consumes an array of sparse vectors containing zero-values."""
+        if vector.ndim != 1:
+            raise ValueError(f"Expected a 1D array, got a {vector.ndim}D array.")
+        return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)
+
+    @classmethod
+    def from_aurelio(cls, embedding: BM25Embedding):
+        arr = np.array([embedding.indices, embedding.values]).T
+        return cls.from_compact_array(arr)
+
+    @classmethod
+    def from_dict(cls, sparse_dict: dict):
+        arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
+        return cls.from_compact_array(arr)
+
+    @classmethod
+    def from_pinecone_dict(cls, sparse_dict: dict):
+        arr = np.array([sparse_dict["indices"], sparse_dict["values"]]).T
+        return cls.from_compact_array(arr)
+
+    def to_dict(self):
+        return {
+            i: v for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])
+        }
+
+    def to_pinecone(self):
+        return {
+            "indices": self.embedding[:, 0].astype(int).tolist(),
+            "values": self.embedding[:, 1].tolist(),
+        }
+
+    # dictionary interface
+    def items(self):
+        return [
+            (i, v)
+            for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])
+        ]

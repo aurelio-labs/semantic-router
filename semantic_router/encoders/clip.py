@@ -3,10 +3,10 @@ from typing import Any, List, Optional
 import numpy as np
 from pydantic.v1 import PrivateAttr
 from typing import Dict
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 
 
-class CLIPEncoder(BaseEncoder):
+class CLIPEncoder(DenseEncoder):
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     score_threshold: float = 0.2

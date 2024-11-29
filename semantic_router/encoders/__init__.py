@@ -1,6 +1,7 @@
 from typing import List, Optional
 
-from semantic_router.encoders.base import BaseEncoder
+from semantic_router.encoders.aurelio import AurelioSparseEncoder
+from semantic_router.encoders.base import DenseEncoder, SparseEncoder
 from semantic_router.encoders.bedrock import BedrockEncoder
 from semantic_router.encoders.bm25 import BM25Encoder
 from semantic_router.encoders.clip import CLIPEncoder
@@ -14,10 +15,12 @@ from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
-from semantic_router.schema import EncoderType
+from semantic_router.schema import EncoderType, SparseEmbedding
 
 __all__ = [
-    "BaseEncoder",
+    "AurelioSparseEncoder",
+    "DenseEncoder",
+    "SparseEncoder",
     "AzureOpenAIEncoder",
     "CohereEncoder",
     "OpenAIEncoder",
@@ -37,7 +40,7 @@ __all__ = [
 class AutoEncoder:
     type: EncoderType
     name: Optional[str]
-    model: BaseEncoder
+    model: DenseEncoder | SparseEncoder
 
     def __init__(self, type: str, name: Optional[str]):
         self.type = EncoderType(type)
@@ -49,6 +52,8 @@ class AutoEncoder:
             self.model = CohereEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
             self.model = OpenAIEncoder(name=name)
+        elif self.type == EncoderType.AURELIO:
+            self.model = AurelioSparseEncoder(name=name)
         elif self.type == EncoderType.BM25:
             if name is None:
                 name = "bm25"
@@ -74,5 +79,5 @@ class AutoEncoder:
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
-    def __call__(self, texts: List[str]) -> List[List[float]]:
+    def __call__(self, texts: List[str]) -> List[List[float]] | List[SparseEmbedding]:
         return self.model(texts)

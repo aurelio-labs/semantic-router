@@ -1,12 +1,12 @@
 import pytest
 
-from semantic_router.encoders import BaseEncoder
+from semantic_router.encoders import DenseEncoder
 
 
-class TestBaseEncoder:
+class TestDenseEncoder:
     @pytest.fixture
     def base_encoder(self):
-        return BaseEncoder(name="TestEncoder", score_threshold=0.5)
+        return DenseEncoder(name="TestEncoder", score_threshold=0.5)
 
     def test_base_encoder_initialization(self, base_encoder):
         assert base_encoder.name == "TestEncoder", "Initialization of name failed"

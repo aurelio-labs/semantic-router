@@ -1,15 +1,17 @@
 import os
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 import numpy as np
-import psycopg2
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
-from semantic_router.schema import ConfigParameter, Metric
+from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
+
+if TYPE_CHECKING:
+    import psycopg2
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -104,8 +106,9 @@ class PostgresIndex(BaseIndex):
     dimensions: int = 1536
     metric: Metric = Metric.COSINE
     namespace: Optional[str] = ""
-    conn: Optional[psycopg2.extensions.connection] = None
+    conn: Optional["psycopg2.extensions.connection"] = None
     type: str = "postgres"
+    pg2: Any = Field(default=None, exclude=True)
 
     def __init__(
         self,
@@ -133,6 +136,14 @@ class PostgresIndex(BaseIndex):
         :type namespace: Optional[str]
         """
         super().__init__()
+        # try and import psycopg2
+        try:
+            import psycopg2
+        except ImportError:
+            raise ImportError(
+                "Please install psycopg2 to use PostgresIndex. "
+                "You can install it with: `pip install 'semantic-router[postgres]'`"
+            )
         if connection_string:
             self.connection_string = connection_string
         else:
@@ -340,6 +351,7 @@ class PostgresIndex(BaseIndex):
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
         """
         Searches the index for the query vector and returns the top_k results.
