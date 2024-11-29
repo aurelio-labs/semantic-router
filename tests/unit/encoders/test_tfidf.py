@@ -38,7 +38,7 @@ class TestTfidfEncoder:
         assert isinstance(result, list), "Result should be a list"
         assert all(
             isinstance(sparse_emb.embedding, np.ndarray) for sparse_emb in result
-        ), "Each item in result should be a list"
+        ), "Each item in result should be an array"
 
     def test_call_method_no_docs_tfidf_encoder(self, tfidf_encoder):
         with pytest.raises(ValueError):
@@ -56,7 +56,12 @@ class TestTfidfEncoder:
         assert isinstance(result, list), "Result should be a list"
         assert all(
             isinstance(sparse_emb.embedding, np.ndarray) for sparse_emb in result
-        ), "Each item in result should be a list"
+        ), "Each item in result should be an array"
+
+    def test_fit_with_strings(self, tfidf_encoder):
+        routes = ["test a", "test b", "test c"]
+        with pytest.raises(TypeError):
+            tfidf_encoder.fit(routes)
 
     def test_call_method_with_uninitialized_model(self, tfidf_encoder):
         with pytest.raises(ValueError):

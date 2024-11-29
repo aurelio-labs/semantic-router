@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.utils.logger import logger
 from semantic_router.schema import SparseEmbedding
+from semantic_router.route import Route
 
 
 class BM25Encoder(TfidfEncoder):
@@ -34,6 +35,7 @@ class BM25Encoder(TfidfEncoder):
             self._set_idx_mapping()
 
     def _set_idx_mapping(self):
+        # TODO JB: this is training the model somehow - not sure how...
         params = self.model.get_params()
         doc_freq = params["doc_freq"]
         if isinstance(doc_freq, dict):
@@ -42,8 +44,20 @@ class BM25Encoder(TfidfEncoder):
         else:
             raise TypeError("Expected a dictionary for 'doc_freq'")
 
+    def fit(self, routes: List[Route]):
+        """Trains the encoder weights on the provided routes.
+
+        :param routes: List of routes to train the encoder on.
+        :type routes: List[Route]
+        """
+        self._fit_validate(routes=routes)
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        utterances = [utterance for route in routes for utterance in route.utterances]
+        self.model.fit(corpus=utterances)
+
     def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
-        if self.model is None or self.idx_mapping is None:
+        if self.model is None:
             raise ValueError("Model or index mapping is not initialized.")
         if len(docs) == 1:
             sparse_dicts = self.model.encode_queries(docs)

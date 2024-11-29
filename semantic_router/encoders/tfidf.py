@@ -33,6 +33,12 @@ class TfidfEncoder(SparseEncoder):
         return self._array_to_sparse_embeddings(tfidf)
 
     def fit(self, routes: List[Route]):
+        """Trains the encoder weights on the provided routes.
+
+        :param routes: List of routes to train the encoder on.
+        :type routes: List[Route]
+        """
+        self._fit_validate(routes=routes)
         docs = []
         for route in routes:
             for doc in route.utterances:
@@ -41,6 +47,10 @@ class TfidfEncoder(SparseEncoder):
         if len(self.word_index) == 0:
             raise ValueError(f"Too little data to fit {self.__class__.__name__}.")
         self.idf = self._compute_idf(docs)
+
+    def _fit_validate(self, routes: List[Route]):
+        if not isinstance(routes, list) or not isinstance(routes[0], Route):
+            raise TypeError("`routes` parameter must be a list of Route objects.")
 
     def _build_word_index(self, docs: List[str]) -> Dict:
         print(docs)

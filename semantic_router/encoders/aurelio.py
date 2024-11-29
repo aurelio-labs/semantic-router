@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from pydantic.v1 import Field
 
 from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
@@ -10,7 +10,6 @@ from semantic_router.schema import SparseEmbedding
 
 class AurelioSparseEncoder(SparseEncoder):
     model: Optional[Any] = None
-    idx_mapping: Optional[Dict[int, int]] = None
     client: AurelioClient = Field(default_factory=AurelioClient, exclude=True)
     async_client: AsyncAurelioClient = Field(
         default_factory=AsyncAurelioClient, exclude=True
