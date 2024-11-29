@@ -19,6 +19,7 @@ from platform import python_version
 PINECONE_SLEEP = 6
 
 
+
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
     mock_responses = {
