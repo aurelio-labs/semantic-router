@@ -1,6 +1,6 @@
-from typing import Any, List, Optional, Dict
+from typing import Any, Dict, List, Optional
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 
@@ -8,7 +8,6 @@ from semantic_router.encoders import DenseEncoder
 class VitEncoder(DenseEncoder):
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
-    score_threshold: float = 0.5
     processor_kwargs: Dict = {}
     model_kwargs: Dict = {}
     device: Optional[str] = None
@@ -19,6 +18,8 @@ class VitEncoder(DenseEncoder):
     _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
+        if data.get("score_threshold") is None:
+            data["score_threshold"] = 0.5
         super().__init__(**data)
         self._processor, self._model = self._initialize_hf_model()
 

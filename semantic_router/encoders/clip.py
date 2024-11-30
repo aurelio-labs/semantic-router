@@ -9,7 +9,6 @@ from semantic_router.encoders import DenseEncoder
 class CLIPEncoder(DenseEncoder):
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
-    score_threshold: float = 0.2
     tokenizer_kwargs: Dict = {}
     processor_kwargs: Dict = {}
     model_kwargs: Dict = {}
@@ -21,6 +20,8 @@ class CLIPEncoder(DenseEncoder):
     _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
+        if data.get("score_threshold") is None:
+            data["score_threshold"] = 0.2
         super().__init__(**data)
         self._tokenizer, self._processor, self._model = self._initialize_hf_model()
 

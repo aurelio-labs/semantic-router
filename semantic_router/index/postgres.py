@@ -103,7 +103,6 @@ class PostgresIndex(BaseIndex):
     connection_string: Optional[str] = None
     index_prefix: str = "semantic_router_"
     index_name: str = "index"
-    dimensions: int = 1536
     metric: Metric = Metric.COSINE
     namespace: Optional[str] = ""
     conn: Optional["psycopg2.extensions.connection"] = None
@@ -115,9 +114,9 @@ class PostgresIndex(BaseIndex):
         connection_string: Optional[str] = None,
         index_prefix: str = "semantic_router_",
         index_name: str = "index",
-        dimensions: int = 1536,
         metric: Metric = Metric.COSINE,
         namespace: Optional[str] = "",
+        dimensions: int | None = None,
     ):
         """
         Initializes the Postgres index with the specified parameters.
@@ -135,6 +134,8 @@ class PostgresIndex(BaseIndex):
         :param namespace: An optional namespace for the index.
         :type namespace: Optional[str]
         """
+        if dimensions is None:
+            dimensions = 1536
         super().__init__()
         # try and import psycopg2
         try:

@@ -34,7 +34,6 @@ from semantic_router.utils.logger import logger
 class HuggingFaceEncoder(DenseEncoder):
     name: str = "sentence-transformers/all-MiniLM-L6-v2"
     type: str = "huggingface"
-    score_threshold: float = 0.5
     tokenizer_kwargs: Dict = {}
     model_kwargs: Dict = {}
     device: Optional[str] = None
@@ -43,6 +42,8 @@ class HuggingFaceEncoder(DenseEncoder):
     _torch: Any = PrivateAttr()
 
     def __init__(self, **data):
+        if data.get("score_threshold") is None:
+            data["score_threshold"] = 0.5
         super().__init__(**data)
         self._tokenizer, self._model = self._initialize_hf_model()
 
@@ -153,7 +154,6 @@ class HFEndpointEncoder(DenseEncoder):
     name: str = "hugging_face_custom_endpoint"
     huggingface_url: Optional[str] = None
     huggingface_api_key: Optional[str] = None
-    score_threshold: float = 0.8
 
     def __init__(
         self,
@@ -180,6 +180,8 @@ class HFEndpointEncoder(DenseEncoder):
         """
         huggingface_url = huggingface_url or os.getenv("HF_API_URL")
         huggingface_api_key = huggingface_api_key or os.getenv("HF_API_KEY")
+        if score_threshold is None:
+            score_threshold = 0.8
 
         super().__init__(name=name, score_threshold=score_threshold)  # type: ignore
 
