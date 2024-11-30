@@ -1,10 +1,13 @@
 from unittest.mock import patch
 
 import pytest
-from llama_cpp import Llama
 
-from semantic_router.llms.llamacpp import LlamaCppLLM
-from semantic_router.schema import Message
+_ = pytest.importorskip("llama_cpp")
+
+from llama_cpp import Llama  # noqa: E402
+
+from semantic_router.llms.llamacpp import LlamaCppLLM  # noqa: E402
+from semantic_router.schema import Message  # noqa: E402
 
 
 @pytest.fixture

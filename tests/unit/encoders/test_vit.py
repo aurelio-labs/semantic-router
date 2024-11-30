@@ -3,10 +3,13 @@ from unittest.mock import patch
 import os
 import numpy as np
 import pytest
-import torch
-from PIL import Image
 
-from semantic_router.encoders import VitEncoder
+_ = pytest.importorskip("torch")
+
+import torch  # noqa: E402
+from PIL import Image  # noqa: E402
+
+from semantic_router.encoders import VitEncoder  # noqa: E402
 
 test_model_name = "aurelio-ai/sr-test-vit"
 embed_dim = 32

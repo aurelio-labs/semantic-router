@@ -1,11 +1,14 @@
 import os
 import numpy as np
 import pytest
-import torch
-from PIL import Image
-from unittest.mock import patch
 
-from semantic_router.encoders import CLIPEncoder
+_ = pytest.importorskip("torch")
+
+import torch  # noqa: E402
+from PIL import Image  # noqa: E402
+from unittest.mock import patch  # noqa: E402
+
+from semantic_router.encoders import CLIPEncoder  # noqa: E402
 
 test_model_name = "aurelio-ai/sr-test-clip"
 embed_dim = 64
