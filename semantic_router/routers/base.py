@@ -4,7 +4,7 @@ import os
 import random
 import hashlib
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore

@@ -2,7 +2,7 @@ from asyncio import sleep as asleep
 import os
 from time import sleep
 from typing import Any, List, Optional, Union
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 import openai
 from openai import OpenAIError

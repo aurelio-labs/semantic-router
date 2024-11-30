@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 import asyncio
-from pydantic.v1 import Field
+from pydantic import Field
 
 import numpy as np
 

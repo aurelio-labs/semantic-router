@@ -2,7 +2,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice

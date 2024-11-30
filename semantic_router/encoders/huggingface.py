@@ -25,7 +25,7 @@ import time
 import os
 from typing import Any, List, Optional, Dict
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.logger import logger

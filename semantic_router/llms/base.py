@@ -1,7 +1,7 @@
 import json
 from typing import Any, List, Optional, Dict
 
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger

@@ -1,7 +1,7 @@
 from typing import Any, List, Optional
 
 import numpy as np
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 from typing import Dict
 from semantic_router.encoders import DenseEncoder
 

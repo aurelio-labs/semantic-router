@@ -2,7 +2,7 @@ from typing import Any, List, Optional, Tuple, Union, Dict
 import json
 
 import numpy as np
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.route import Route

@@ -3,7 +3,7 @@ from difflib import Differ
 from enum import Enum
 import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from semantic_router.utils.logger import logger
 from aurelio_sdk.schema import BM25Embedding
 

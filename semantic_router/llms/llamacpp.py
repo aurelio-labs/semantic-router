@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional, List, Dict
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message

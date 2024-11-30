@@ -4,7 +4,7 @@ import os
 from time import sleep
 from typing import Any, List, Optional
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
