@@ -9,11 +9,6 @@ from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 
-try:
-    from PIL.Image import Image
-except ImportError:
-    pass
-
 
 def is_valid(route_config: str) -> bool:
     try:
@@ -45,7 +40,7 @@ def is_valid(route_config: str) -> bool:
 
 class Route(BaseModel):
     name: str
-    utterances: Union[List[str], List[Union[Any, "Image"]]]
+    utterances: Union[List[str], List[Any]]
     description: Optional[str] = None
     function_schemas: Optional[List[Dict[str, Any]]] = None
     llm: Optional[BaseLLM] = None
