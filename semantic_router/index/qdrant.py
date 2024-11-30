@@ -40,7 +40,7 @@ class QdrantIndex(BaseIndex):
         default=6334,
         description="Port of the gRPC interface.",
     )
-    prefer_grpc: bool = Field(
+    prefer_grpc: Optional[bool] = Field(
         default=None,
         description="Whether to use gPRC interface whenever possible in methods",
     )
