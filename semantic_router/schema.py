@@ -134,6 +134,8 @@ class Utterance(BaseModel):
                     json.dumps(schema, sort_keys=True)
                     for schema in self.function_schemas
                 ]
+            else:
+                function_schemas_sorted = []
             # we must do the same for metadata
             metadata_sorted = json.dumps(self.metadata, sort_keys=True)
             return f"{self.route}: {self.utterance} | {function_schemas_sorted} | {metadata_sorted}"
