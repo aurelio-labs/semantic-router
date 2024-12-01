@@ -4,6 +4,7 @@ import pytest
 
 _ = pytest.importorskip("fastembed")
 
+
 class TestFastEmbedEncoder:
     def test_fastembed_encoder(self):
         encode = FastEmbedEncoder()
