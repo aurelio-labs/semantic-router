@@ -42,13 +42,13 @@ example_function_schema = {
 
 class TestOpenAILLM:
     def test_openai_llm_init_with_api_key(self, openai_llm):
-        assert openai_llm.client is not None, "Client should be initialized"
+        assert openai_llm._client is not None, "Client should be initialized"
         assert openai_llm.name == "gpt-4o", "Default name not set correctly"
 
     def test_openai_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
         llm = OpenAILLM()
-        assert llm.client is not None
+        assert llm._client is not None
 
     def test_openai_llm_init_without_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
@@ -57,7 +57,7 @@ class TestOpenAILLM:
 
     def test_openai_llm_call_uninitialized_client(self, openai_llm):
         # Set the client to None to simulate an uninitialized client
-        openai_llm.client = None
+        openai_llm._client = None
         with pytest.raises(ValueError) as e:
             llm_input = [Message(role="user", content="test")]
             openai_llm(llm_input)
@@ -79,7 +79,7 @@ class TestOpenAILLM:
 
         mocker.patch("os.getenv", return_value="fake-api-key")
         mocker.patch.object(
-            openai_llm.client.chat.completions, "create", return_value=mock_completion
+            openai_llm._client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
         output = openai_llm(llm_input)
@@ -127,7 +127,7 @@ class TestOpenAILLM:
     #         mocker.MagicMock(function=mocker.MagicMock(arguments="result"))
     #     ]
     #     mocker.patch.object(
-    #         openai_llm.client.chat.completions, "create", return_value=mock_completion
+    #         openai_llm._client.chat.completions, "create", return_value=mock_completion
     #     )
     #     llm_input = [Message(role="user", content="test")]
     #     function_schemas = [{"type": "function", "name": "sample_function"}]
@@ -145,7 +145,7 @@ class TestOpenAILLM:
         mock_completion.choices[0].message.tool_calls = [mock_tool_call]
 
         mocker.patch.object(
-            openai_llm.client.chat.completions, "create", return_value=mock_completion
+            openai_llm._client.chat.completions, "create", return_value=mock_completion
         )
 
         llm_input = [Message(role="user", content="test")]
@@ -160,7 +160,7 @@ class TestOpenAILLM:
         mock_completion = mocker.MagicMock()
         mock_completion.choices[0].message.tool_calls = None
         mocker.patch.object(
-            openai_llm.client.chat.completions, "create", return_value=mock_completion
+            openai_llm._client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
         function_schemas = [{"type": "function", "name": "sample_function"}]
@@ -180,7 +180,7 @@ class TestOpenAILLM:
             mocker.MagicMock(function=mocker.MagicMock(arguments=None))
         ]
         mocker.patch.object(
-            openai_llm.client.chat.completions, "create", return_value=mock_completion
+            openai_llm._client.chat.completions, "create", return_value=mock_completion
         )
         llm_input = [Message(role="user", content="test")]
         function_schemas = [{"type": "function", "name": "sample_function"}]
@@ -230,7 +230,7 @@ class TestOpenAILLM:
 
         # Patching the completions.create method to return the mocked completion
         mocker.patch.object(
-            openai_llm.client.chat.completions, "create", return_value=mock_completion
+            openai_llm._client.chat.completions, "create", return_value=mock_completion
         )
 
         # Input message list
