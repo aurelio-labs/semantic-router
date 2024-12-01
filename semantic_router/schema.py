@@ -130,12 +130,12 @@ class Utterance(BaseModel):
             # we sort the dicts to ensure consistent order as we need this to compare
             # stringified function schemas accurately
             if self.function_schemas is not None:
-                function_schemas_sorted = [
+                function_schemas_sorted: List[str] | None = [
                     json.dumps(schema, sort_keys=True)
                     for schema in self.function_schemas
                 ]
             else:
-                function_schemas_sorted = []
+                function_schemas_sorted = None
             # we must do the same for metadata
             metadata_sorted = json.dumps(self.metadata, sort_keys=True)
             return f"{self.route}: {self.utterance} | {function_schemas_sorted} | {metadata_sorted}"
