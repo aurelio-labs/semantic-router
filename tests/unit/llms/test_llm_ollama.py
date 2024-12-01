@@ -11,9 +11,8 @@ def ollama_llm():
 
 class TestOllamaLLM:
     def test_ollama_llm_init_success(self, ollama_llm):
-        assert ollama_llm.name == "ollama"
         assert ollama_llm.temperature == 0.2
-        assert ollama_llm.llm_name == "openhermes"
+        assert ollama_llm.name == "openhermes"
         assert ollama_llm.max_tokens == 200
         assert ollama_llm.stream is False
 

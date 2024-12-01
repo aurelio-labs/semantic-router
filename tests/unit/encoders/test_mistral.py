@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 from mistralai.exceptions import MistralException
 from mistralai.models.embeddings import EmbeddingObject, EmbeddingResponse, UsageInfo
 

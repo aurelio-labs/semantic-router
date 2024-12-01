@@ -11,8 +11,6 @@ from semantic_router.utils.logger import logger
 
 class MistralAILLM(BaseLLM):
     _client: Any = PrivateAttr()
-    temperature: Optional[float]
-    max_tokens: Optional[int]
     _mistralai: Any = PrivateAttr()
 
     def __init__(

@@ -11,8 +11,6 @@ from semantic_router.utils.logger import logger
 
 class LlamaCppLLM(BaseLLM):
     llm: Any
-    temperature: float
-    max_tokens: Optional[int] = 200
     grammar: Optional[Any] = None
     _llama_cpp: Any = PrivateAttr()
 

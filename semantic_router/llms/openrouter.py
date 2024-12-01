@@ -11,8 +11,6 @@ from semantic_router.utils.logger import logger
 class OpenRouterLLM(BaseLLM):
     client: Optional[openai.OpenAI]
     base_url: Optional[str]
-    temperature: Optional[float]
-    max_tokens: Optional[int]
 
     def __init__(
         self,

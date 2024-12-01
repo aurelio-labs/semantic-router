@@ -9,6 +9,8 @@ from semantic_router.utils.logger import logger
 
 class BaseLLM(BaseModel):
     name: str
+    temperature: Optional[float] = 0.0
+    max_tokens: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True

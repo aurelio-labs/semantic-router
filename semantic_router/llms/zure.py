@@ -1,5 +1,6 @@
 import os
 from typing import List, Optional
+from pydantic import PrivateAttr
 
 import openai
 
@@ -10,9 +11,7 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAILLM(BaseLLM):
-    client: Optional[openai.AzureOpenAI]
-    temperature: Optional[float]
-    max_tokens: Optional[int]
+    _client: Optional[openai.AzureOpenAI] = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -33,7 +32,7 @@ class AzureOpenAILLM(BaseLLM):
         if azure_endpoint is None:
             raise ValueError("Azure endpoint API key cannot be 'None'.")
         try:
-            self.client = openai.AzureOpenAI(
+            self._client = openai.AzureOpenAI(
                 api_key=api_key, azure_endpoint=azure_endpoint, api_version=api_version
             )
         except Exception as e:
@@ -42,10 +41,10 @@ class AzureOpenAILLM(BaseLLM):
         self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
-        if self.client is None:
+        if self._client is None:
             raise ValueError("AzureOpenAI client is not initialized.")
         try:
-            completion = self.client.chat.completions.create(
+            completion = self._client.chat.completions.create(
                 model=self.name,
                 messages=[m.to_openai() for m in messages],
                 temperature=self.temperature,

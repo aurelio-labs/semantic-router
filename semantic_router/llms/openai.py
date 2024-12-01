@@ -23,8 +23,6 @@ from openai.types.chat.chat_completion_message_tool_call import (
 class OpenAILLM(BaseLLM):
     client: Optional[openai.OpenAI]
     async_client: Optional[openai.AsyncOpenAI]
-    temperature: Optional[float]
-    max_tokens: Optional[int]
 
     def __init__(
         self,

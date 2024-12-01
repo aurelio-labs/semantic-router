@@ -1,4 +1,5 @@
 import pytest
+
 from semantic_router.encoders.huggingface import HFEndpointEncoder
 
 
