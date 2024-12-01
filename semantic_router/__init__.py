@@ -3,4 +3,4 @@ from semantic_router.route import Route
 
 __all__ = ["SemanticRouter", "HybridRouter", "Route", "RouterConfig"]
 
-__version__ = "0.1.0.dev2"
+__version__ = "0.1.0.dev3"
