@@ -283,8 +283,8 @@ class TestSemanticRouter:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         diff = route_layer_2.get_utterance_diff(include_metadata=True)
-        assert "+ Route 1: Hello | None | {'type': 'default'}" in diff
-        assert "+ Route 1: Hi | None | {'type': 'default'}" in diff
+        assert '+ Route 1: Hello | None | {"type": "default"}' in diff
+        assert '+ Route 1: Hi | None | {"type": "default"}' in diff
         assert "- Route 1: Hello | None | {}" in diff
         assert "+ Route 2: Au revoir | None | {}" in diff
         assert "- Route 2: Hi | None | {}" in diff
