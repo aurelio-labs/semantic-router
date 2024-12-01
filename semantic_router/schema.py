@@ -1,6 +1,7 @@
 from datetime import datetime
 from difflib import Differ
 from enum import Enum
+import json
 import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic import BaseModel, Field
@@ -126,7 +127,15 @@ class Utterance(BaseModel):
 
     def to_str(self, include_metadata: bool = False):
         if include_metadata:
-            return f"{self.route}: {self.utterance} | {self.function_schemas} | {self.metadata}"
+            # we sort the dicts to ensure consistent order as we need this to compare
+            # stringified function schemas accurately
+            function_schemas_sorted = [
+                json.dumps(schema, sort_keys=True)
+                for schema in self.function_schemas
+            ]
+            # we must do the same for metadata
+            metadata_sorted = json.dumps(self.metadata, sort_keys=True)
+            return f"{self.route}: {self.utterance} | {function_schemas_sorted} | {metadata_sorted}"
         return f"{self.route}: {self.utterance}"
 
     def to_diff_str(self, include_metadata: bool = False):
