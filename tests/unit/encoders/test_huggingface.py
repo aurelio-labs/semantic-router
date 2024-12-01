@@ -4,7 +4,9 @@ import os
 import numpy as np
 import pytest
 
-from semantic_router.encoders.huggingface import HuggingFaceEncoder
+_ = pytest.importorskip("transformers")
+
+from semantic_router.encoders.huggingface import HuggingFaceEncoder  # noqa: E402
 
 test_model_name = "aurelio-ai/sr-test-huggingface"
 

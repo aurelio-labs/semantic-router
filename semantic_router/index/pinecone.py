@@ -8,7 +8,7 @@ import json
 from typing import Any, Dict, List, Optional, Union, Tuple
 
 import numpy as np
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import ConfigParameter, SparseEmbedding

@@ -1,6 +1,6 @@
 from typing import Any, Coroutine, List, Optional
 
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import numpy as np
 
 from semantic_router.schema import SparseEmbedding
@@ -14,7 +14,7 @@ class DenseEncoder(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    @validator("score_threshold", pre=True, always=True)
+    @field_validator("score_threshold")
     def set_score_threshold(cls, v):
         return float(v) if v is not None else None
 

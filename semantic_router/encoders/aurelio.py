@@ -1,6 +1,6 @@
 import os
 from typing import Any, List, Optional
-from pydantic.v1 import Field
+from pydantic import Field
 
 from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
 

@@ -1,5 +1,9 @@
 from semantic_router.encoders import FastEmbedEncoder
 
+import pytest
+
+_ = pytest.importorskip("fastembed")
+
 
 class TestFastEmbedEncoder:
     def test_fastembed_encoder(self):

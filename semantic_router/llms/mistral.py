@@ -1,7 +1,7 @@
 import os
 from typing import Any, List, Optional
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
@@ -11,8 +11,6 @@ from semantic_router.utils.logger import logger
 
 class MistralAILLM(BaseLLM):
     _client: Any = PrivateAttr()
-    temperature: Optional[float]
-    max_tokens: Optional[int]
     _mistralai: Any = PrivateAttr()
 
     def __init__(

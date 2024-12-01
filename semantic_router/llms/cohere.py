@@ -1,7 +1,7 @@
 import os
 from typing import Any, List, Optional
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message

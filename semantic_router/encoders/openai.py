@@ -2,7 +2,7 @@ from asyncio import sleep as asleep
 import os
 from time import sleep
 from typing import Any, List, Optional, Union
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 import openai
 from openai import OpenAIError
@@ -36,8 +36,8 @@ model_configs = {
 
 
 class OpenAIEncoder(DenseEncoder):
-    client: Optional[openai.Client]
-    async_client: Optional[openai.AsyncClient]
+    _client: Optional[openai.Client] = PrivateAttr(default=None)
+    _async_client: Optional[openai.AsyncClient] = PrivateAttr(default=None)
     dimensions: Union[int, NotGiven] = NotGiven()
     token_limit: int = 8192  # default value, should be replaced by config
     _token_encoder: Any = PrivateAttr()
@@ -77,10 +77,10 @@ class OpenAIEncoder(DenseEncoder):
         if max_retries is not None:
             self.max_retries = max_retries
         try:
-            self.client = openai.Client(
+            self._client = openai.Client(
                 base_url=base_url, api_key=api_key, organization=openai_org_id
             )
-            self.async_client = openai.AsyncClient(
+            self._async_client = openai.AsyncClient(
                 base_url=base_url, api_key=api_key, organization=openai_org_id
             )
         except Exception as e:
@@ -103,7 +103,7 @@ class OpenAIEncoder(DenseEncoder):
             False and a document exceeds the token limit, an error will be
             raised.
         :return: List of embeddings for each document."""
-        if self.client is None:
+        if self._client is None:
             raise ValueError("OpenAI client is not initialized.")
         embeds = None
 
@@ -114,7 +114,7 @@ class OpenAIEncoder(DenseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                embeds = self.client.embeddings.create(
+                embeds = self._client.embeddings.create(
                     input=docs,
                     model=self.name,
                     dimensions=self.dimensions,
@@ -160,7 +160,7 @@ class OpenAIEncoder(DenseEncoder):
         return text
 
     async def acall(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
-        if self.async_client is None:
+        if self._async_client is None:
             raise ValueError("OpenAI async client is not initialized.")
         embeds = None
 
@@ -171,7 +171,7 @@ class OpenAIEncoder(DenseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
-                embeds = await self.async_client.embeddings.create(
+                embeds = await self._async_client.embeddings.create(
                     input=docs,
                     model=self.name,
                     dimensions=self.dimensions,

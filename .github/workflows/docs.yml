@@ -14,9 +14,9 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.11"
+          - "3.13"
     env:
-      POETRY_VERSION: "1.8.3"
+      POETRY_VERSION: "1.8.4"
     steps:
       - uses: actions/checkout@v4
       - name: Cache Poetry

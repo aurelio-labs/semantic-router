@@ -21,7 +21,7 @@ class TestOpenAIEncoder:
         os.environ.get("OPENAI_API_KEY") is None, reason="OpenAI API key required"
     )
     def test_openai_encoder_init_success(self, openai_encoder):
-        assert openai_encoder.client is not None
+        assert openai_encoder._client is not None
 
     @pytest.mark.skipif(
         os.environ.get("OPENAI_API_KEY") is None, reason="OpenAI API key required"
@@ -50,7 +50,7 @@ class TestOpenAIEncoder:
     )
     def test_openai_encoder_call_uninitialized_client(self, openai_encoder):
         # Set the client to None to simulate an uninitialized client
-        openai_encoder.client = None
+        openai_encoder._client = None
         with pytest.raises(ValueError) as e:
             openai_encoder(["test document"])
         assert "OpenAI client is not initialized." in str(e.value)

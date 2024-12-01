@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic.v1 import Field
+from pydantic import Field
 
 from semantic_router.index.base import BaseIndex
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding, Utterance
@@ -40,7 +40,7 @@ class QdrantIndex(BaseIndex):
         default=6334,
         description="Port of the gRPC interface.",
     )
-    prefer_grpc: bool = Field(
+    prefer_grpc: Optional[bool] = Field(
         default=None,
         description="Whether to use gPRC interface whenever possible in methods",
     )

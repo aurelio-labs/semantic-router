@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional, List, Dict
 
-from pydantic.v1 import PrivateAttr
+from pydantic import PrivateAttr
 
 from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
@@ -11,8 +11,6 @@ from semantic_router.utils.logger import logger
 
 class LlamaCppLLM(BaseLLM):
     llm: Any
-    temperature: float
-    max_tokens: Optional[int] = 200
     grammar: Optional[Any] = None
     _llama_cpp: Any = PrivateAttr()
 
