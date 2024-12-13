@@ -485,5 +485,64 @@ class TestSemanticRouter:
                 Utterance(route="Route 3", utterance="Boo"),
             ], "The routes in the index should match the local routes"
 
-            # clear index
-            route_layer.index.index.delete(namespace="", delete_all=True)
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_sync_lock_prevents_concurrent_sync(
+        self, openai_encoder, routes, index_cls
+    ):
+        """Test that sync lock prevents concurrent synchronization operations"""
+        index = init_index(index_cls)
+        route_layer = SemanticRouter(
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
+            auto_sync=None,
+        )
+
+        # Acquire sync lock
+        route_layer.index.lock(value=True)
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
+
+        # Attempt to sync while lock is held should raise exception
+        with pytest.raises(Exception):
+            route_layer.sync("local")
+
+        # Release lock
+        route_layer.index.lock(value=False)
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
+
+        # Should succeed after lock is released
+        route_layer.sync("local")
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
+        assert route_layer.is_synced()
+
+    @pytest.mark.skipif(
+        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
+    )
+    def test_sync_lock_auto_releases(self, openai_encoder, routes, index_cls):
+        """Test that sync lock is automatically released after sync operations"""
+        index = init_index(index_cls)
+        route_layer = SemanticRouter(
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
+            auto_sync=None,
+        )
+
+        # Initial sync should acquire and release lock
+        route_layer.sync("local")
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
+
+        # Lock should be released, allowing another sync
+        route_layer.sync("local")  # Should not raise exception
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)
+        assert route_layer.is_synced()
+
+        # clear index
+        route_layer.index.index.delete(namespace="", delete_all=True)
