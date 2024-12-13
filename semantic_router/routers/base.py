@@ -585,6 +585,49 @@ class BaseRouter(BaseModel):
         # unlock index after sync
         _ = self.index.lock(value=False)
         return diff.to_utterance_str()
+    
+    async def async_sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
+        """Runs a sync of the local routes with the remote index.
+
+        :param sync_mode: The mode to sync the routes with the remote index.
+        :type sync_mode: str
+        :param force: Whether to force the sync even if the local and remote
+            hashes already match. Defaults to False.
+        :type force: bool, optional
+        :param wait: The number of seconds to wait for the index to be unlocked
+        before proceeding with the sync. If set to 0, will raise an error if
+        index is already locked/unlocked.
+        :type wait: int
+        :return: A list of diffs describing the addressed differences between
+            the local and remote route layers.
+        :rtype: List[str]
+        """
+        if not force and await self.async_is_synced():
+            logger.warning("Local and remote route layers are already synchronized.")
+            # create utterance diff to return, but just using local instance
+            # for speed
+            local_utterances = self.to_config().to_utterances()
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=local_utterances,
+            )
+            return diff.to_utterance_str()
+        # otherwise we continue with the sync, first locking the index
+        _ = await self.index.alock(value=True, wait=wait)
+        # first creating a diff
+        local_utterances = self.to_config().to_utterances()
+        remote_utterances = await self.index.aget_utterances()
+        diff = UtteranceDiff.from_utterances(
+            local_utterances=local_utterances,
+            remote_utterances=remote_utterances,
+        )
+        # generate sync strategy
+        sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
+        # and execute
+        await self._async_execute_sync_strategy(sync_strategy)
+        # unlock index after sync
+        _ = await self.index.alock(value=False)
+        return diff.to_utterance_str()
 
     def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
         """Executes the provided sync strategy, either deleting or upserting
@@ -616,6 +659,39 @@ class BaseRouter(BaseModel):
             self._local_upsert(utterances=strategy["local"]["upsert"])
         # update hash
         self._write_hash()
+
+    async def _async_execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
+        """Executes the provided sync strategy, either deleting or upserting
+        routes from the local and remote instances as defined in the strategy.
+
+        :param strategy: The sync strategy to execute.
+        :type strategy: Dict[str, Dict[str, List[Utterance]]]
+        """
+        if strategy["remote"]["delete"]:
+            data_to_delete = {}  # type: ignore
+            for utt_obj in strategy["remote"]["delete"]:
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
+            await self.index._async_remove_and_sync(data_to_delete)
+        if strategy["remote"]["upsert"]:
+            utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
+            await self.index.aadd(
+                embeddings=await self.encoder.acall(docs=utterances_text),
+                routes=[utt.route for utt in strategy["remote"]["upsert"]],
+                utterances=utterances_text,
+                function_schemas=[
+                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                ],
+                metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
+            )
+        if strategy["local"]["delete"]:
+            # assumption is that with simple local delete we don't benefit from async
+            self._local_delete(utterances=strategy["local"]["delete"])
+        if strategy["local"]["upsert"]:
+            # same assumption as with local delete above
+            self._local_upsert(utterances=strategy["local"]["upsert"])
+        # update hash
+        await self._async_write_hash()
 
     def _local_upsert(self, utterances: List[Utterance]):
         """Adds new routes to the SemanticRouter.
@@ -730,6 +806,15 @@ class BaseRouter(BaseModel):
         :type route: Route
         """
         raise NotImplementedError("This method must be implemented by subclasses.")
+    
+    async def aadd(self, routes: List[Route] | Route):
+        """Add a route to the local SemanticRouter and index asynchronously.
+
+        :param route: The route to add.
+        :type route: Route
+        """
+        logger.warning("Async method not implemented.")
+        return self.add(routes)
 
     def list_route_names(self) -> List[str]:
         return [route.name for route in self.routes]
@@ -844,6 +929,12 @@ class BaseRouter(BaseModel):
         hash_config = config.get_hash()
         self.index._write_config(config=hash_config)
         return hash_config
+    
+    async def _async_write_hash(self) -> ConfigParameter:
+        config = self.to_config()
+        hash_config = config.get_hash()
+        await self.index._async_write_config(config=hash_config)
+        return hash_config
 
     def is_synced(self) -> bool:
         """Check if the local and remote route layer instances are
@@ -856,6 +947,22 @@ class BaseRouter(BaseModel):
         # first check hash
         local_hash = self._get_hash()
         remote_hash = self.index._read_hash()
+        if local_hash.value == remote_hash.value:
+            return True
+        else:
+            return False
+    
+    async def async_is_synced(self) -> bool:
+        """Check if the local and remote route layer instances are
+        synchronized asynchronously.
+
+        :return: True if the local and remote route layers are synchronized,
+            False otherwise.
+        :rtype: bool
+        """
+        # first check hash
+        local_hash = self._get_hash()
+        remote_hash = await self.index._async_read_hash()
         if local_hash.value == remote_hash.value:
             return True
         else:
@@ -884,6 +991,36 @@ class BaseRouter(BaseModel):
         """
         # first we get remote and local utterances
         remote_utterances = self.index.get_utterances()
+        local_utterances = self.to_config().to_utterances()
+
+        diff_obj = UtteranceDiff.from_utterances(
+            local_utterances=local_utterances, remote_utterances=remote_utterances
+        )
+        return diff_obj.to_utterance_str(include_metadata=include_metadata)
+    
+    async def aget_utterance_diff(self, include_metadata: bool = False) -> List[str]:
+        """Get the difference between the local and remote utterances asynchronously.
+        Returns a list of strings showing what is different in the remote when
+        compared to the local. For example:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "- route2: utterance3",
+         "- route2: utterance4"]
+
+        Tells us that the remote is missing "route2: utterance3" and "route2:
+        utterance4", which do exist locally. If we see:
+
+        ["  route1: utterance1",
+         "  route1: utterance2",
+         "+ route2: utterance3",
+         "+ route2: utterance4"]
+
+        This diff tells us that the remote has "route2: utterance3" and
+        "route2: utterance4", which do not exist locally.
+        """
+        # first we get remote and local utterances
+        remote_utterances = await self.index.aget_utterances()
         local_utterances = self.to_config().to_utterances()
 
         diff_obj = UtteranceDiff.from_utterances(
