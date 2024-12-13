@@ -196,10 +196,7 @@ class BaseIndex(BaseModel):
         return config
 
     def lock(
-        self,
-        value: bool,
-        wait: int = 0,
-        scope: str | None = None
+        self, value: bool, wait: int = 0, scope: str | None = None
     ) -> ConfigParameter:
         """Lock/unlock the index for a given scope (if applicable). If index
         already locked/unlocked, raises ValueError.
@@ -221,7 +218,9 @@ class BaseIndex(BaseModel):
                 # wait for 2.5 seconds before checking again
                 time.sleep(2.5)
             else:
-                raise ValueError(f"Index is already {'locked' if value else 'unlocked'}.")
+                raise ValueError(
+                    f"Index is already {'locked' if value else 'unlocked'}."
+                )
         lock_param = ConfigParameter(
             field="sr_lock",
             value=str(value),

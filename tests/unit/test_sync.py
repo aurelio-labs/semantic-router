@@ -491,7 +491,9 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_sync_lock_prevents_concurrent_sync(self, openai_encoder, routes, index_cls):
+    def test_sync_lock_prevents_concurrent_sync(
+        self, openai_encoder, routes, index_cls
+    ):
         """Test that sync lock prevents concurrent synchronization operations"""
         index = init_index(index_cls)
         route_layer = SemanticRouter(
@@ -500,17 +502,17 @@ class TestSemanticRouter:
             index=index,
             auto_sync=None,
         )
-        
+
         # Acquire sync lock
         route_layer.index.lock(value=True)
-        
+
         # Attempt to sync while lock is held should raise exception
         with pytest.raises(RuntimeError, match="Sync operation already in progress"):
             route_layer.sync("local")
-        
+
         # Release lock
         route_layer.index.lock(value=False)
-        
+
         # Should succeed after lock is released
         route_layer.sync("local")
         if index_cls is PineconeIndex:
@@ -529,12 +531,12 @@ class TestSemanticRouter:
             index=index,
             auto_sync=None,
         )
-        
+
         # Initial sync should acquire and release lock
         route_layer.sync("local")
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)
-        
+
         # Lock should be released, allowing another sync
         route_layer.sync("local")  # Should not raise exception
         if index_cls is PineconeIndex:
@@ -553,18 +555,20 @@ class TestSemanticRouter:
             index=index,
             auto_sync=None,
         )
-        
+
         # Force an error during sync by temporarily breaking the index
         original_sync = route_layer.index.sync
-        route_layer.index.sync = lambda *args, **kwargs: (_ for _ in ()).throw(Exception("Forced sync error"))
-        
+        route_layer.index.sync = lambda *args, **kwargs: (_ for _ in ()).throw(
+            Exception("Forced sync error")
+        )
+
         # Sync should fail but release the lock
         with pytest.raises(Exception, match="Forced sync error"):
             route_layer.sync("local")
-        
+
         # Restore original sync method
         route_layer.index.sync = original_sync
-        
+
         # Should be able to sync again since lock was released
         route_layer.sync("local")
         if index_cls is PineconeIndex:

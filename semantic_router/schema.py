@@ -63,7 +63,9 @@ class ConfigParameter(BaseModel):
     field: str
     value: str
     scope: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.now(datetime.UTC).isoformat())
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(datetime.UTC).isoformat()
+    )
 
     def to_pinecone(self, dimensions: int):
         namespace = self.scope or ""
