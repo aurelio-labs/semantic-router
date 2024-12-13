@@ -1,3 +1,5 @@
+from datetime import datetime
+import time
 from typing import Any, List, Optional, Tuple, Union, Dict
 import json
 
@@ -157,26 +159,91 @@ class BaseIndex(BaseModel):
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
 
-    def _read_hash(self) -> ConfigParameter:
-        """
-        Read the hash of the previously written index.
+    def _read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
+        """Read a config parameter from the index.
 
-        This method should be implemented by subclasses.
+        :param field: The field to read.
+        :type field: str
+        :param scope: The scope to read.
+        :type scope: str | None
+        :return: The config parameter that was read.
+        :rtype: ConfigParameter
         """
         logger.warning("This method should be implemented by subclasses.")
         return ConfigParameter(
-            field="sr_hash",
+            field=field,
             value="",
-            namespace="",
+            scope=scope,
         )
 
-    def _write_config(self, config: ConfigParameter):
-        """
-        Write a config parameter to the index.
+    def _read_hash(self) -> ConfigParameter:
+        """Read the hash of the previously written index.
 
-        This method should be implemented by subclasses.
+        :return: The config parameter that was read.
+        :rtype: ConfigParameter
+        """
+        return self._read_config(field="sr_hash")
+
+    def _write_config(self, config: ConfigParameter) -> ConfigParameter:
+        """Write a config parameter to the index.
+
+        :param config: The config parameter to write.
+        :type config: ConfigParameter
+        :return: The config parameter that was written.
+        :rtype: ConfigParameter
         """
         logger.warning("This method should be implemented by subclasses.")
+        return config
+
+    def lock(
+        self, value: bool, wait: int = 0, scope: str | None = None
+    ) -> ConfigParameter:
+        """Lock/unlock the index for a given scope (if applicable). If index
+        already locked/unlocked, raises ValueError.
+
+        :param scope: The scope to lock.
+        :type scope: str | None
+        :param wait: The number of seconds to wait for the index to be unlocked, if
+        set to 0, will raise an error if index is already locked/unlocked.
+        :type wait: int
+        :return: The config parameter that was locked.
+        :rtype: ConfigParameter
+        """
+        start_time = datetime.now()
+        while True:
+            if self._is_locked(scope=scope) != value:
+                # in this case, we can set the lock value
+                break
+            if (datetime.now() - start_time).total_seconds() < wait:
+                # wait for 2.5 seconds before checking again
+                time.sleep(2.5)
+            else:
+                raise ValueError(
+                    f"Index is already {'locked' if value else 'unlocked'}."
+                )
+        lock_param = ConfigParameter(
+            field="sr_lock",
+            value=str(value),
+            scope=scope,
+        )
+        self._write_config(lock_param)
+        return lock_param
+
+    def _is_locked(self, scope: str | None = None) -> bool:
+        """Check if the index is locked for a given scope (if applicable).
+
+        :param scope: The scope to check.
+        :type scope: str | None
+        :return: True if the index is locked, False otherwise.
+        :rtype: bool
+        """
+        lock_config = self._read_config(field="sr_lock", scope=scope)
+        if lock_config.value == "True":
+            return True
+        elif lock_config.value == "False" or not lock_config.value:
+            return False
+        else:
+            raise ValueError(f"Invalid lock value: {lock_config.value}")
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
