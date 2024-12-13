@@ -585,8 +585,10 @@ class BaseRouter(BaseModel):
         # unlock index after sync
         _ = self.index.lock(value=False)
         return diff.to_utterance_str()
-    
-    async def async_sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
+
+    async def async_sync(
+        self, sync_mode: str, force: bool = False, wait: int = 0
+    ) -> List[str]:
         """Runs a sync of the local routes with the remote index.
 
         :param sync_mode: The mode to sync the routes with the remote index.
@@ -660,7 +662,9 @@ class BaseRouter(BaseModel):
         # update hash
         self._write_hash()
 
-    async def _async_execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
+    async def _async_execute_sync_strategy(
+        self, strategy: Dict[str, Dict[str, List[Utterance]]]
+    ):
         """Executes the provided sync strategy, either deleting or upserting
         routes from the local and remote instances as defined in the strategy.
 
@@ -806,7 +810,7 @@ class BaseRouter(BaseModel):
         :type route: Route
         """
         raise NotImplementedError("This method must be implemented by subclasses.")
-    
+
     async def aadd(self, routes: List[Route] | Route):
         """Add a route to the local SemanticRouter and index asynchronously.
 
@@ -929,7 +933,7 @@ class BaseRouter(BaseModel):
         hash_config = config.get_hash()
         self.index._write_config(config=hash_config)
         return hash_config
-    
+
     async def _async_write_hash(self) -> ConfigParameter:
         config = self.to_config()
         hash_config = config.get_hash()
@@ -951,7 +955,7 @@ class BaseRouter(BaseModel):
             return True
         else:
             return False
-    
+
     async def async_is_synced(self) -> bool:
         """Check if the local and remote route layer instances are
         synchronized asynchronously.
@@ -997,7 +1001,7 @@ class BaseRouter(BaseModel):
             local_utterances=local_utterances, remote_utterances=remote_utterances
         )
         return diff_obj.to_utterance_str(include_metadata=include_metadata)
-    
+
     async def aget_utterance_diff(self, include_metadata: bool = False) -> List[str]:
         """Get the difference between the local and remote utterances asynchronously.
         Returns a list of strings showing what is different in the remote when

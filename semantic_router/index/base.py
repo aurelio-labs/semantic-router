@@ -14,6 +14,7 @@ from semantic_router.utils.logger import logger
 
 RETRY_WAIT_TIME = 2.5
 
+
 class BaseIndex(BaseModel):
     """
     Base class for indices using Pydantic's BaseModel.
@@ -38,11 +39,30 @@ class BaseIndex(BaseModel):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
     ):
-        """
-        Add embeddings to the index.
+        """Add embeddings to the index.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def aadd(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
+    ):
+        """Add vectors to the index asynchronously.
+        This method should be implemented by subclasses.
+        """
+        logger.warning("Async method not implemented.")
+        return self.add(
+            embeddings=embeddings,
+            routes=routes,
+            utterances=utterances,
+            function_schemas=function_schemas,
+            metadata_list=metadata_list,
+        )
 
     def get_utterances(self) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
@@ -58,7 +78,7 @@ class BaseIndex(BaseModel):
         _, metadata = self._get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
         return [Utterance.from_tuple(x) for x in route_tuples]
-    
+
     async def aget_utterances(self) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
@@ -107,6 +127,14 @@ class BaseIndex(BaseModel):
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def _async_remove_and_sync(self, routes_to_delete: dict):
+        """
+        Remove embeddings in a routes syncing process from the index asynchronously.
+        This method should be implemented by subclasses.
+        """
+        logger.warning("Async method not implemented.")
+        return self._remove_and_sync(routes_to_delete=routes_to_delete)
 
     def delete(self, route_name: str):
         """
@@ -197,8 +225,10 @@ class BaseIndex(BaseModel):
             value="",
             scope=scope,
         )
-    
-    async def _async_read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
+
+    async def _async_read_config(
+        self, field: str, scope: str | None = None
+    ) -> ConfigParameter:
         """Read a config parameter from the index asynchronously.
 
         :param field: The field to read.
@@ -221,7 +251,7 @@ class BaseIndex(BaseModel):
         """
         logger.warning("This method should be implemented by subclasses.")
         return config
-    
+
     async def _async_write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Write a config parameter to the index asynchronously.
 
@@ -232,9 +262,9 @@ class BaseIndex(BaseModel):
         """
         logger.warning("Async method not implemented.")
         return self._write_config(config=config)
-    
+
     # _________________________ END CONFIG _________________________
-    
+
     def _read_hash(self) -> ConfigParameter:
         """Read the hash of the previously written index.
 
@@ -242,7 +272,7 @@ class BaseIndex(BaseModel):
         :rtype: ConfigParameter
         """
         return self._read_config(field="sr_hash")
-    
+
     async def _async_read_hash(self) -> ConfigParameter:
         """Read the hash of the previously written index asynchronously.
 
@@ -266,7 +296,7 @@ class BaseIndex(BaseModel):
             return False
         else:
             raise ValueError(f"Invalid lock value: {lock_config.value}")
-        
+
     async def _ais_locked(self, scope: str | None = None) -> bool:
         """Check if the index is locked for a given scope (if applicable).
 
@@ -282,7 +312,7 @@ class BaseIndex(BaseModel):
             return False
         else:
             raise ValueError(f"Invalid lock value: {lock_config.value}")
-        
+
     def lock(
         self, value: bool, wait: int = 0, scope: str | None = None
     ) -> ConfigParameter:
@@ -316,8 +346,10 @@ class BaseIndex(BaseModel):
         )
         self._write_config(lock_param)
         return lock_param
-    
-    async def alock(self, value: bool, wait: int = 0, scope: str | None = None) -> ConfigParameter:
+
+    async def alock(
+        self, value: bool, wait: int = 0, scope: str | None = None
+    ) -> ConfigParameter:
         """Lock/unlock the index for a given scope (if applicable). If index
         already locked/unlocked, raises ValueError.
         """

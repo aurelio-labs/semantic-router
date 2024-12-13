@@ -227,7 +227,7 @@ class PineconeIndex(BaseIndex):
 
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records.
-        
+
         :param batch: The batch of records to upsert.
         :type batch: List[Dict]
         """
@@ -235,10 +235,10 @@ class PineconeIndex(BaseIndex):
             self.index.upsert(vectors=batch, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not upsert.")
-        
+
     async def _async_batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records asynchronously.
-        
+
         :param batch: The batch of records to upsert.
         :type batch: List[Dict]
         """
@@ -351,7 +351,9 @@ class PineconeIndex(BaseIndex):
                 in zip([route] * len(utterances), utterances)
             ]
             if ids_to_delete and self.index:
-                await self._async_delete(ids=ids_to_delete, namespace=self.namespace or "")
+                await self._async_delete(
+                    ids=ids_to_delete, namespace=self.namespace or ""
+                )
 
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
@@ -376,13 +378,17 @@ class PineconeIndex(BaseIndex):
                 }
             )
         return route_tuples
-    
+
     async def _async_get_routes_with_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
-        ids, metadata = await self._async_get_all(prefix=f"{clean_route}#", include_metadata=True)
+        ids, metadata = await self._async_get_all(
+            prefix=f"{clean_route}#", include_metadata=True
+        )
         route_tuples = []
         for id, data in zip(ids, metadata):
-            route_tuples.append({"id": id, "route": data["sr_route"], "utterance": data["sr_utterance"]})
+            route_tuples.append(
+                {"id": id, "route": data["sr_route"], "utterance": data["sr_utterance"]}
+            )
         return route_tuples
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
@@ -532,7 +538,7 @@ class PineconeIndex(BaseIndex):
             namespace="sr_config",
         )
         return config
-    
+
     async def _async_write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Method to write a config parameter to the remote Pinecone index.
 
@@ -646,7 +652,7 @@ class PineconeIndex(BaseIndex):
     async def _async_list_indexes(self):
         async with self.async_client.get(f"{self.base_url}/indexes") as response:
             return await response.json(content_type=None)
-        
+
     async def _async_upsert(
         self,
         vectors: list[dict],
@@ -682,13 +688,15 @@ class PineconeIndex(BaseIndex):
             json=params,
         ) as response:
             return await response.json(content_type=None)
-        
+
     async def _async_delete(self, ids: list[str], namespace: str = ""):
         params = {
             "ids": ids,
             "namespace": namespace,
         }
-        async with self.async_client.post(f"{self.base_url}/vectors/delete", json=params) as response:
+        async with self.async_client.post(
+            f"{self.base_url}/vectors/delete", json=params
+        ) as response:
             return await response.json(content_type=None)
 
     async def _async_describe_index(self, name: str):
