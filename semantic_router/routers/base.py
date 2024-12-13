@@ -840,13 +840,9 @@ class BaseRouter(BaseModel):
         return config.get_hash()
 
     def _write_hash(self) -> ConfigParameter:
-        # lock index before writing
-        _ = self.index.lock(value=True)
         config = self.to_config()
         hash_config = config.get_hash()
         self.index._write_config(config=hash_config)
-        # unlock index after writing
-        _ = self.index.lock(value=False)
         return hash_config
 
     def is_synced(self) -> bool:

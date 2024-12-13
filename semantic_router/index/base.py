@@ -214,7 +214,7 @@ class BaseIndex(BaseModel):
             if self._is_locked(scope=scope) != value:
                 # in this case, we can set the lock value
                 break
-            if (datetime.now() - start_time).total_seconds() > wait:
+            if (datetime.now() - start_time).total_seconds() < wait:
                 # wait for 2.5 seconds before checking again
                 time.sleep(2.5)
             else:
