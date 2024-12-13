@@ -405,39 +405,43 @@ class PineconeIndex(BaseIndex):
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
 
-    def _read_hash(self) -> ConfigParameter:
+    def _read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
+        scope = scope or self.namespace
         if self.index is None:
             return ConfigParameter(
-                field="sr_hash",
+                field=field,
                 value="",
-                namespace=self.namespace,
+                scope=scope,
             )
-        hash_id = f"sr_hash#{self.namespace}"
-        hash_record = self.index.fetch(
-            ids=[hash_id],
+        config_id = f"{field}#{scope}"
+        config_record = self.index.fetch(
+            ids=[config_id],
             namespace="sr_config",
         )
-        if hash_record["vectors"]:
+        if config_record["vectors"]:
             return ConfigParameter(
-                field="sr_hash",
-                value=hash_record["vectors"][hash_id]["metadata"]["value"],
-                created_at=hash_record["vectors"][hash_id]["metadata"]["created_at"],
-                namespace=self.namespace,
+                field=field,
+                value=config_record["vectors"][config_id]["metadata"]["value"],
+                created_at=config_record["vectors"][config_id]["metadata"][
+                    "created_at"
+                ],
+                scope=scope,
             )
         else:
-            logger.warning("Configuration for hash parameter not found in index.")
+            logger.warning(f"Configuration for {field} parameter not found in index.")
             return ConfigParameter(
-                field="sr_hash",
+                field=field,
                 value="",
-                namespace=self.namespace,
+                scope=scope,
             )
 
-    def _write_config(self, config: ConfigParameter) -> None:
+    def _write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Method to write a config parameter to the remote Pinecone index.
 
         :param config: The config parameter to write to the index.
         :type config: ConfigParameter
         """
+        config.scope = config.scope or self.namespace
         if self.index is None:
             raise ValueError("Index has not been initialized.")
         if self.dimensions is None:
@@ -446,6 +450,7 @@ class PineconeIndex(BaseIndex):
             vectors=[config.to_pinecone(dimensions=self.dimensions)],
             namespace="sr_config",
         )
+        return config
 
     async def aquery(
         self,
