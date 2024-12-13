@@ -62,12 +62,11 @@ class Message(BaseModel):
 class ConfigParameter(BaseModel):
     field: str
     value: str
-    namespace: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    scope: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(datetime.UTC).isoformat())
 
     def to_pinecone(self, dimensions: int):
-        if self.namespace is None:
-            namespace = ""
+        namespace = self.scope or ""
         return {
             "id": f"{self.field}#{namespace}",
             "values": [0.1] * dimensions,

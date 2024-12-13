@@ -543,7 +543,7 @@ class BaseRouter(BaseModel):
         route = self.check_for_matching_routes(top_class)
         return route, top_class_scores
 
-    def sync(self, sync_mode: str, force: bool = False) -> List[str]:
+    def sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
         """Runs a sync of the local routes with the remote index.
 
         :param sync_mode: The mode to sync the routes with the remote index.
@@ -551,6 +551,10 @@ class BaseRouter(BaseModel):
         :param force: Whether to force the sync even if the local and remote
             hashes already match. Defaults to False.
         :type force: bool, optional
+        :param wait: The number of seconds to wait for the index to be unlocked
+        before proceeding with the sync. If set to 0, will raise an error if
+        index is already locked/unlocked.
+        :type wait: int
         :return: A list of diffs describing the addressed differences between
             the local and remote route layers.
         :rtype: List[str]
@@ -565,7 +569,9 @@ class BaseRouter(BaseModel):
                 remote_utterances=local_utterances,
             )
             return diff.to_utterance_str()
-        # otherwise we continue with the sync, first creating a diff
+        # otherwise we continue with the sync, first locking the index
+        _ = self.index.lock(value=True, wait=wait)
+        # first creating a diff
         local_utterances = self.to_config().to_utterances()
         remote_utterances = self.index.get_utterances()
         diff = UtteranceDiff.from_utterances(
@@ -576,6 +582,8 @@ class BaseRouter(BaseModel):
         sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
         # and execute
         self._execute_sync_strategy(sync_strategy)
+        # unlock index after sync
+        _ = self.index.lock(value=False)
         return diff.to_utterance_str()
 
     def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
@@ -781,6 +789,9 @@ class BaseRouter(BaseModel):
         :param route_name: the name of the route to be deleted
         :type str:
         """
+        # ensure index is not locked
+        if self.index._is_locked():
+            raise ValueError("Index is locked. Cannot delete route.")
         current_local_hash = self._get_hash()
         current_remote_hash = self.index._read_hash()
         if current_remote_hash.value == "":
@@ -829,9 +840,13 @@ class BaseRouter(BaseModel):
         return config.get_hash()
 
     def _write_hash(self) -> ConfigParameter:
+        # lock index before writing
+        _ = self.index.lock(value=True)
         config = self.to_config()
         hash_config = config.get_hash()
         self.index._write_config(config=hash_config)
+        # unlock index after writing
+        _ = self.index.lock(value=False)
         return hash_config
 
     def is_synced(self) -> bool:
