@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from difflib import Differ
 from enum import Enum
 import json
@@ -64,7 +64,7 @@ class ConfigParameter(BaseModel):
     value: str
     scope: Optional[str] = None
     created_at: str = Field(
-        default_factory=lambda: datetime.now(datetime.UTC).isoformat()
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
 
     def to_pinecone(self, dimensions: int):
