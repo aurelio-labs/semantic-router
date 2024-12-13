@@ -238,7 +238,12 @@ class BaseIndex(BaseModel):
         :rtype: bool
         """
         lock_config = self._read_config(field="sr_lock", scope=scope)
-        return bool(lock_config.value)
+        if lock_config.value == "True":
+            return True
+        elif lock_config.value == "False" or not lock_config.value:
+            return False
+        else:
+            raise ValueError(f"Invalid lock value: {lock_config.value}")
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
         """
