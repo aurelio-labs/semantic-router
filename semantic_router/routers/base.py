@@ -522,7 +522,7 @@ class BaseRouter(BaseModel):
         """
         # get relevant results (scores and routes)
         results = self._retrieve(
-            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+            xq=vector[0], top_k=self.top_k, route_filter=route_filter
         )
         # decide most relevant routes
         top_class, top_class_scores = self._semantic_classify(results)
@@ -535,7 +535,7 @@ class BaseRouter(BaseModel):
     ) -> Tuple[Optional[Route], List[float]]:
         # get relevant results (scores and routes)
         results = await self._async_retrieve(
-            xq=np.array(vector), top_k=self.top_k, route_filter=route_filter
+            xq=vector[0], top_k=self.top_k, route_filter=route_filter
         )
         # decide most relevant routes
         top_class, top_class_scores = await self._async_semantic_classify(results)

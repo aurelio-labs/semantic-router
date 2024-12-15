@@ -40,14 +40,12 @@ class SemanticRouter(BaseRouter):
         """Given some text, encode it."""
         # create query vector
         xq = np.array(self.encoder(text))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
     async def _async_encode(self, text: list[str]) -> Any:
         """Given some text, encode it."""
         # create query vector
         xq = np.array(await self.encoder.acall(docs=text))
-        xq = np.squeeze(xq)  # Reduce to 1d array.
         return xq
 
     def add(self, routes: List[Route] | Route):
