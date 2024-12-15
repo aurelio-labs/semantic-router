@@ -152,7 +152,7 @@ def routes_4():
 @pytest.fixture
 def route_single_utterance():
     return [
-        Route(name="Route 1", utterances=["Hello"]),
+        Route(name="Route 3", utterances=["Hello"]),
     ]
 
 
@@ -259,11 +259,12 @@ class TestSemanticRouter:
         assert route_layer.score_threshold == openai_encoder.score_threshold
 
     def test_add_single_utterance(
-        self, route_single_utterance, openai_encoder, index_cls
+        self, routes, route_single_utterance, openai_encoder, index_cls
     ):
         index = init_index(index_cls)
         route_layer = SemanticRouter(
             encoder=openai_encoder,
+            routes=routes,
             index=index,
             auto_sync="local",
         )
