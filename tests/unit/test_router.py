@@ -258,16 +258,16 @@ class TestSemanticRouter:
         )
         assert route_layer.score_threshold == openai_encoder.score_threshold
 
-    def test_initialization_single_utterance(
+    def test_add_single_utterance(
         self, route_single_utterance, openai_encoder, index_cls
     ):
         index = init_index(index_cls)
         route_layer = SemanticRouter(
             encoder=openai_encoder,
-            routes=route_single_utterance,
             index=index,
             auto_sync="local",
         )
+        route_layer.add(routes=[route_single_utterance])
         assert route_layer.score_threshold == openai_encoder.score_threshold
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
