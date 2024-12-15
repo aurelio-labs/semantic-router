@@ -148,11 +148,13 @@ def routes_4():
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
 
+
 @pytest.fixture
 def route_single_utterance():
     return [
         Route(name="Route 1", utterances=["Hello"]),
     ]
+
 
 @pytest.fixture
 def dynamic_routes():
