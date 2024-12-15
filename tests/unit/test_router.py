@@ -150,6 +150,13 @@ def routes_4():
 
 
 @pytest.fixture
+def route_single_utterance():
+    return [
+        Route(name="Route 3", utterances=["Hello"]),
+    ]
+
+
+@pytest.fixture
 def dynamic_routes():
     return [
         Route(
@@ -250,6 +257,39 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         assert route_layer.score_threshold == openai_encoder.score_threshold
+
+    def test_add_single_utterance(
+        self, routes, route_single_utterance, openai_encoder, index_cls
+    ):
+        index = init_index(index_cls)
+        route_layer = SemanticRouter(
+            encoder=openai_encoder,
+            routes=routes,
+            index=index,
+            auto_sync="local",
+        )
+        route_layer.add(routes=[route_single_utterance])
+        assert route_layer.score_threshold == openai_encoder.score_threshold
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
+        _ = route_layer("Hello")
+        assert len(route_layer.index.get_utterances()) == 6
+
+    def test_init_and_add_single_utterance(
+        self, route_single_utterance, openai_encoder, index_cls
+    ):
+        index = init_index(index_cls)
+        route_layer = SemanticRouter(
+            encoder=openai_encoder,
+            index=index,
+            auto_sync="local",
+        )
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
+        route_layer.add(routes=[route_single_utterance])
+        assert route_layer.score_threshold == openai_encoder.score_threshold
+        _ = route_layer("Hello")
+        assert len(route_layer.index.get_utterances()) == 1
 
     def test_delete_index(self, openai_encoder, routes, index_cls):
         # TODO merge .delete_index() and .delete_all() and get working
