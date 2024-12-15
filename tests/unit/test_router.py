@@ -826,6 +826,8 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         vector = [0.1, 0.2, 0.3]
+        if index_cls is PineconeIndex:
+            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         results = route_layer.retrieve_multiple_routes(vector=vector)
         assert len(results) >= 1, "Expected at least one result"
         assert any(
