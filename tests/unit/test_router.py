@@ -268,7 +268,7 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        route_layer.add(routes=[route_single_utterance])
+        route_layer.add(routes=route_single_utterance)
         assert route_layer.score_threshold == openai_encoder.score_threshold
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
@@ -286,7 +286,7 @@ class TestSemanticRouter:
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
-        route_layer.add(routes=[route_single_utterance])
+        route_layer.add(routes=route_single_utterance)
         assert route_layer.score_threshold == openai_encoder.score_threshold
         _ = route_layer("Hello")
         assert len(route_layer.index.get_utterances()) == 1
