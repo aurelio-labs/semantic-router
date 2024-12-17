@@ -653,6 +653,9 @@ class PineconeIndex(BaseIndex):
             "ids": [vector_id],
         }
 
+        if self.namespace:
+            params["namespace"] = [self.namespace]
+
         headers = {
             "Api-Key": self.api_key,
         }
