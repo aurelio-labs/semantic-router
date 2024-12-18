@@ -226,9 +226,24 @@ class PineconeIndex(BaseIndex):
         self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):
-        """Helper method for upserting a single batch of records."""
+        """Helper method for upserting a single batch of records.
+
+        :param batch: The batch of records to upsert.
+        :type batch: List[Dict]
+        """
         if self.index is not None:
             self.index.upsert(vectors=batch, namespace=self.namespace)
+        else:
+            raise ValueError("Index is None, could not upsert.")
+
+    async def _async_batch_upsert(self, batch: List[Dict]):
+        """Helper method for upserting a single batch of records asynchronously.
+
+        :param batch: The batch of records to upsert.
+        :type batch: List[Dict]
+        """
+        if self.index is not None:
+            await self.index.upsert(vectors=batch, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not upsert.")
 
@@ -273,6 +288,47 @@ class PineconeIndex(BaseIndex):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
 
+    async def aadd(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
+        batch_size: int = 100,
+        sparse_embeddings: Optional[Optional[List[dict[int, float]]]] = None,
+    ):
+        """Add vectors to Pinecone in batches."""
+        if self.index is None:
+            self.dimensions = self.dimensions or len(embeddings[0])
+            self.index = await self._init_async_index(force_create=True)
+        if function_schemas is None:
+            function_schemas = [{}] * len(embeddings)
+        if sparse_embeddings is None:
+            sparse_embeddings = [{}] * len(embeddings)
+        vectors_to_upsert = [
+            PineconeRecord(
+                values=vector,
+                sparse_values=sparse_dict,
+                route=route,
+                utterance=utterance,
+                function_schema=json.dumps(function_schema),
+                metadata=metadata,
+            ).to_dict()
+            for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
+                embeddings,
+                routes,
+                utterances,
+                function_schemas,
+                metadata_list,
+                sparse_embeddings,
+            )
+        ]
+
+        for i in range(0, len(vectors_to_upsert), batch_size):
+            batch = vectors_to_upsert[i : i + batch_size]
+            await self._async_batch_upsert(batch)
+
     def _remove_and_sync(self, routes_to_delete: dict):
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)
@@ -285,9 +341,28 @@ class PineconeIndex(BaseIndex):
             if ids_to_delete and self.index:
                 self.index.delete(ids=ids_to_delete, namespace=self.namespace)
 
+    async def _async_remove_and_sync(self, routes_to_delete: dict):
+        for route, utterances in routes_to_delete.items():
+            remote_routes = await self._async_get_routes_with_ids(route_name=route)
+            ids_to_delete = [
+                r["id"]
+                for r in remote_routes
+                if (r["route"], r["utterance"])
+                in zip([route] * len(utterances), utterances)
+            ]
+            if ids_to_delete and self.index:
+                await self._async_delete(
+                    ids=ids_to_delete, namespace=self.namespace or ""
+                )
+
     def _get_route_ids(self, route_name: str):
         clean_route = clean_route_name(route_name)
         ids, _ = self._get_all(prefix=f"{clean_route}#")
+        return ids
+
+    async def _async_get_route_ids(self, route_name: str):
+        clean_route = clean_route_name(route_name)
+        ids, _ = await self._async_get_all(prefix=f"{clean_route}#")
         return ids
 
     def _get_routes_with_ids(self, route_name: str):
@@ -301,6 +376,18 @@ class PineconeIndex(BaseIndex):
                     "route": data["sr_route"],
                     "utterance": data["sr_utterance"],
                 }
+            )
+        return route_tuples
+
+    async def _async_get_routes_with_ids(self, route_name: str):
+        clean_route = clean_route_name(route_name)
+        ids, metadata = await self._async_get_all(
+            prefix=f"{clean_route}#", include_metadata=True
+        )
+        route_tuples = []
+        for id, data in zip(ids, metadata):
+            route_tuples.append(
+                {"id": id, "route": data["sr_route"], "utterance": data["sr_utterance"]}
             )
         return route_tuples
 
@@ -452,6 +539,23 @@ class PineconeIndex(BaseIndex):
         )
         return config
 
+    async def _async_write_config(self, config: ConfigParameter) -> ConfigParameter:
+        """Method to write a config parameter to the remote Pinecone index.
+
+        :param config: The config parameter to write to the index.
+        :type config: ConfigParameter
+        """
+        config.scope = config.scope or self.namespace
+        if self.index is None:
+            raise ValueError("Index has not been initialized.")
+        if self.dimensions is None:
+            raise ValueError("Must set PineconeIndex.dimensions before writing config.")
+        self.index.upsert(
+            vectors=[config.to_pinecone(dimensions=self.dimensions)],
+            namespace="sr_config",
+        )
+        return config
+
     async def aquery(
         self,
         vector: np.ndarray,
@@ -549,6 +653,21 @@ class PineconeIndex(BaseIndex):
         async with self.async_client.get(f"{self.base_url}/indexes") as response:
             return await response.json(content_type=None)
 
+    async def _async_upsert(
+        self,
+        vectors: list[dict],
+        namespace: str = "",
+    ):
+        params = {
+            "vectors": vectors,
+            "namespace": namespace,
+        }
+        async with self.async_client.post(
+            f"{self.base_url}/vectors/upsert",
+            json=params,
+        ) as response:
+            return await response.json(content_type=None)
+
     async def _async_create_index(
         self,
         name: str,
@@ -567,6 +686,16 @@ class PineconeIndex(BaseIndex):
             f"{self.base_url}/indexes",
             headers={"Api-Key": self.api_key},
             json=params,
+        ) as response:
+            return await response.json(content_type=None)
+
+    async def _async_delete(self, ids: list[str], namespace: str = ""):
+        params = {
+            "ids": ids,
+            "namespace": namespace,
+        }
+        async with self.async_client.post(
+            f"{self.base_url}/vectors/delete", json=params
         ) as response:
             return await response.json(content_type=None)
 
