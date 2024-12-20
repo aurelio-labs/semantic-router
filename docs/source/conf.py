@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath("../.."))  # Source code dir relative to this
 project = "Semantic Router"
 copyright = "2024, Aurelio AI"
 author = "Aurelio AI"
-release = "0.1.0.dev4"
+release = "0.1.0.dev5"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
