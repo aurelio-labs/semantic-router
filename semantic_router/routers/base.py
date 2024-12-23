@@ -590,20 +590,29 @@ class BaseRouter(BaseModel):
             )
             return diff.to_utterance_str()
         # otherwise we continue with the sync, first locking the index
-        _ = self.index.lock(value=True, wait=wait)
-        # first creating a diff
-        local_utterances = self.to_config().to_utterances()
-        remote_utterances = self.index.get_utterances()
-        diff = UtteranceDiff.from_utterances(
-            local_utterances=local_utterances,
-            remote_utterances=remote_utterances,
-        )
-        # generate sync strategy
-        sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
-        # and execute
-        self._execute_sync_strategy(sync_strategy)
-        # unlock index after sync
-        _ = self.index.lock(value=False)
+        try:
+            _ = self.index.lock(value=True, wait=wait)
+            try:
+                # first creating a diff
+                local_utterances = self.to_config().to_utterances()
+                remote_utterances = self.index.get_utterances()
+                diff = UtteranceDiff.from_utterances(
+                    local_utterances=local_utterances,
+                    remote_utterances=remote_utterances,
+                )
+                # generate sync strategy
+                sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
+                # and execute
+                self._execute_sync_strategy(sync_strategy)
+            except Exception as e:
+                logger.error(f"Failed to create diff: {e}")
+                raise e
+            finally:
+                # unlock index after sync
+                _ = self.index.lock(value=False)
+        except Exception as e:
+            logger.error(f"Failed to lock index for sync: {e}")
+            raise e
         return diff.to_utterance_str()
 
     async def async_sync(
@@ -635,20 +644,29 @@ class BaseRouter(BaseModel):
             )
             return diff.to_utterance_str()
         # otherwise we continue with the sync, first locking the index
-        _ = await self.index.alock(value=True, wait=wait)
-        # first creating a diff
-        local_utterances = self.to_config().to_utterances()
-        remote_utterances = await self.index.aget_utterances()
-        diff = UtteranceDiff.from_utterances(
-            local_utterances=local_utterances,
-            remote_utterances=remote_utterances,
-        )
-        # generate sync strategy
-        sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
-        # and execute
-        await self._async_execute_sync_strategy(sync_strategy)
-        # unlock index after sync
-        _ = await self.index.alock(value=False)
+        try:
+            _ = await self.index.alock(value=True, wait=wait)
+            try:
+                # first creating a diff
+                local_utterances = self.to_config().to_utterances()
+                remote_utterances = await self.index.aget_utterances()
+                diff = UtteranceDiff.from_utterances(
+                    local_utterances=local_utterances,
+                    remote_utterances=remote_utterances,
+                )
+                # generate sync strategy
+                sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
+                # and execute
+                await self._async_execute_sync_strategy(sync_strategy)
+            except Exception as e:
+                logger.error(f"Failed to create diff: {e}")
+                raise e
+            finally:
+                # unlock index after sync
+                _ = await self.index.alock(value=False)
+        except Exception as e:
+            logger.error(f"Failed to lock index for sync: {e}")
+            raise e
         return diff.to_utterance_str()
 
     def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
