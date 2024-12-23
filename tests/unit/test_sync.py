@@ -611,7 +611,7 @@ class TestAsyncSemanticRouter:
             encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
-            await asyncio.sleep(PINECONE_SLEEP*2)  # allow for index to be populated
+            await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
         diff = await route_layer_2.aget_utterance_diff(include_metadata=True)
         assert '+ Route 1: Hello | None | {"type": "default"}' in diff
         assert '+ Route 1: Hi | None | {"type": "default"}' in diff
