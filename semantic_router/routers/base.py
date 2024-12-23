@@ -591,6 +591,7 @@ class BaseRouter(BaseModel):
             return diff.to_utterance_str()
         # otherwise we continue with the sync, first locking the index
         try:
+            diff_utt_str: list[str] = []
             _ = self.index.lock(value=True, wait=wait)
             try:
                 # first creating a diff
@@ -604,6 +605,7 @@ class BaseRouter(BaseModel):
                 sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
                 # and execute
                 self._execute_sync_strategy(sync_strategy)
+                diff_utt_str = diff.to_utterance_str()
             except Exception as e:
                 logger.error(f"Failed to create diff: {e}")
                 raise e
@@ -613,7 +615,7 @@ class BaseRouter(BaseModel):
         except Exception as e:
             logger.error(f"Failed to lock index for sync: {e}")
             raise e
-        return diff.to_utterance_str()
+        return diff_utt_str
 
     async def async_sync(
         self, sync_mode: str, force: bool = False, wait: int = 0
@@ -645,6 +647,7 @@ class BaseRouter(BaseModel):
             return diff.to_utterance_str()
         # otherwise we continue with the sync, first locking the index
         try:
+            diff_utt_str: list[str] = []
             _ = await self.index.alock(value=True, wait=wait)
             try:
                 # first creating a diff
@@ -658,6 +661,7 @@ class BaseRouter(BaseModel):
                 sync_strategy = diff.get_sync_strategy(sync_mode=sync_mode)
                 # and execute
                 await self._async_execute_sync_strategy(sync_strategy)
+                diff_utt_str = diff.to_utterance_str()
             except Exception as e:
                 logger.error(f"Failed to create diff: {e}")
                 raise e
@@ -667,7 +671,7 @@ class BaseRouter(BaseModel):
         except Exception as e:
             logger.error(f"Failed to lock index for sync: {e}")
             raise e
-        return diff.to_utterance_str()
+        return diff_utt_str
 
     def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
         """Executes the provided sync strategy, either deleting or upserting
