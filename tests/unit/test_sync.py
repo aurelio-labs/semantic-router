@@ -14,7 +14,7 @@ from semantic_router.index import (
     PostgresIndex,
 )
 from semantic_router.schema import Utterance
-from semantic_router.routers import SemanticRouter
+from semantic_router.routers import SemanticRouter, HybridRouter
 from semantic_router.route import Route
 from platform import python_version
 
@@ -228,14 +228,28 @@ def get_test_indexes():
     return indexes
 
 
-@pytest.mark.parametrize("index_cls", get_test_indexes())
+def get_test_routers():
+    routers = [SemanticRouter]
+    if importlib.util.find_spec("pinecone_text") is not None:
+        routers.append(HybridRouter)
+    return routers
+
+
+@pytest.mark.parametrize(
+    "index_cls,router_cls",
+    [
+        (index, router)
+        for index in get_test_indexes()
+        for router in get_test_routers()
+    ],
+)
 class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_initialization(self, openai_encoder, routes, index_cls):
+    def test_initialization(self, openai_encoder, routes, index_cls, router_cls):
         index = init_index(index_cls)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder,
             routes=routes,
             top_k=10,
@@ -246,9 +260,9 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
+    def test_second_initialization_sync(self, openai_encoder, routes, index_cls, router_cls):
         index = init_index(index_cls)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
@@ -259,13 +273,13 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_second_initialization_not_synced(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         index = init_index(index_cls)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
@@ -275,12 +289,12 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
+    def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         index = init_index(index_cls)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer_2 = SemanticRouter(
+        route_layer_2 = router_cls(
             encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
@@ -298,17 +312,17 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_auto_sync_local(self, openai_encoder, routes, routes_2, index_cls):
+    def test_auto_sync_local(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST LOCAL
             pinecone_index = init_index(index_cls)
-            _ = SemanticRouter(
+            _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -323,18 +337,18 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_auto_sync_remote(self, openai_encoder, routes, routes_2, index_cls):
+    def test_auto_sync_remote(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST REMOTE
             pinecone_index = init_index(index_cls)
-            _ = SemanticRouter(
+            _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
@@ -350,19 +364,19 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_auto_sync_merge_force_local(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -389,19 +403,19 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_auto_sync_merge_force_remote(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -433,8 +447,8 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_sync(self, openai_encoder, index_cls):
-        route_layer = SemanticRouter(
+    def test_sync(self, openai_encoder, index_cls, router_cls):
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=[],
             index=init_index(index_cls),
@@ -448,18 +462,18 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls):
+    def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST MERGE
             pinecone_index = init_index(index_cls)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
@@ -492,11 +506,11 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_sync_lock_prevents_concurrent_sync(
-        self, openai_encoder, routes, index_cls
+        self, openai_encoder, routes, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
         index = init_index(index_cls)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -526,10 +540,10 @@ class TestSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
-    def test_sync_lock_auto_releases(self, openai_encoder, routes, index_cls):
+    def test_sync_lock_auto_releases(self, openai_encoder, routes, index_cls, router_cls):
         """Test that sync lock is automatically released after sync operations"""
         index = init_index(index_cls)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -557,9 +571,9 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_initialization(self, openai_encoder, routes, index_cls):
+    async def test_initialization(self, openai_encoder, routes, index_cls, router_cls):
         index = init_index(index_cls, init_async_index=True)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder,
             routes=routes,
             top_k=10,
@@ -571,9 +585,9 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_second_initialization_sync(self, openai_encoder, routes, index_cls):
+    async def test_second_initialization_sync(self, openai_encoder, routes, index_cls, router_cls):
         index = init_index(index_cls, init_async_index=True)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
@@ -585,13 +599,13 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_second_initialization_not_synced(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         index = init_index(index_cls, init_async_index=True)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
@@ -602,16 +616,16 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls):
+    async def test_utterance_diff(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         index = init_index(index_cls, init_async_index=True)
-        _ = SemanticRouter(
+        _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        route_layer_2 = SemanticRouter(
+        route_layer_2 = router_cls(
             encoder=openai_encoder, routes=routes_2, index=index
         )
         if index_cls is PineconeIndex:
-            await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
+            await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
         diff = await route_layer_2.aget_utterance_diff(include_metadata=True)
         assert '+ Route 1: Hello | None | {"type": "default"}' in diff
         assert '+ Route 1: Hi | None | {"type": "default"}' in diff
@@ -626,17 +640,17 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_auto_sync_local(self, openai_encoder, routes, routes_2, index_cls):
+    async def test_auto_sync_local(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST LOCAL
             pinecone_index = init_index(index_cls, init_async_index=True)
-            _ = SemanticRouter(
+            _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -652,18 +666,18 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_auto_sync_remote(self, openai_encoder, routes, routes_2, index_cls):
+    async def test_auto_sync_remote(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST REMOTE
             pinecone_index = init_index(index_cls, init_async_index=True)
-            _ = SemanticRouter(
+            _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
@@ -680,19 +694,19 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_auto_sync_merge_force_local(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls, init_async_index=True)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -720,19 +734,19 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_auto_sync_merge_force_remote(
-        self, openai_encoder, routes, routes_2, index_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls, init_async_index=True)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
                 auto_sync="local",
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
@@ -765,8 +779,8 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_sync(self, openai_encoder, index_cls):
-        route_layer = SemanticRouter(
+    async def test_sync(self, openai_encoder, index_cls, router_cls):
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=[],
             index=init_index(index_cls, init_async_index=True),
@@ -781,18 +795,18 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls):
+    async def test_auto_sync_merge(self, openai_encoder, routes, routes_2, index_cls, router_cls):
         if index_cls is PineconeIndex:
             # TEST MERGE
             pinecone_index = init_index(index_cls, init_async_index=True)
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="local",
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            route_layer = SemanticRouter(
+            route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
                 index=pinecone_index,
@@ -826,11 +840,11 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_sync_lock_prevents_concurrent_sync(
-        self, openai_encoder, routes, index_cls
+        self, openai_encoder, routes, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
         index = init_index(index_cls, init_async_index=True)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
@@ -861,10 +875,10 @@ class TestAsyncSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     @pytest.mark.asyncio
-    async def test_sync_lock_auto_releases(self, openai_encoder, routes, index_cls):
+    async def test_sync_lock_auto_releases(self, openai_encoder, routes, index_cls, router_cls):
         """Test that sync lock is automatically released after sync operations"""
         index = init_index(index_cls, init_async_index=True)
-        route_layer = SemanticRouter(
+        route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
