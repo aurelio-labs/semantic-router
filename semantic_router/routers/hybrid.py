@@ -92,7 +92,7 @@ class HybridRouter(BaseRouter):
             utterances=all_utterances,
             function_schemas=all_function_schemas,
             metadata_list=all_metadata,
-            sparse_embeddings=sparse_emb,  # type: ignore
+            sparse_embeddings=sparse_emb,
         )
 
         self.routes.extend(routes)
@@ -129,7 +129,7 @@ class HybridRouter(BaseRouter):
                     utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
-                sparse_embeddings=sparse_emb,  # type: ignore
+                sparse_embeddings=sparse_emb,
             )
         if strategy["local"]["delete"]:
             self._local_delete(utterances=strategy["local"]["delete"])
