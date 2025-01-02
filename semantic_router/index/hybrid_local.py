@@ -25,6 +25,7 @@ class HybridLocalIndex(LocalIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         sparse_embeddings: Optional[List[SparseEmbedding]] = None,
+        **kwargs,
     ):
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")

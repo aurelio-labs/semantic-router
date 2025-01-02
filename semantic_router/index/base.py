@@ -38,6 +38,7 @@ class BaseIndex(BaseModel):
         utterances: List[Any],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         """Add embeddings to the index.
         This method should be implemented by subclasses.
@@ -51,6 +52,7 @@ class BaseIndex(BaseModel):
         utterances: List[str],
         function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         """Add vectors to the index asynchronously.
         This method should be implemented by subclasses.
@@ -62,6 +64,7 @@ class BaseIndex(BaseModel):
             utterances=utterances,
             function_schemas=function_schemas,
             metadata_list=metadata_list,
+            **kwargs,
         )
 
     def get_utterances(self) -> List[Utterance]:

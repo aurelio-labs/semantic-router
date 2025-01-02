@@ -18,6 +18,7 @@ from semantic_router.utils.logger import logger
 def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
 
+
 def build_records(
     embeddings: List[List[float]],
     routes: List[str],
@@ -65,7 +66,7 @@ def build_records(
             )
         ]
     return vectors_to_upsert
-            
+
 
 class PineconeRecord(BaseModel):
     id: str = ""
@@ -301,6 +302,7 @@ class PineconeIndex(BaseIndex):
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
         sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
+        **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:
@@ -328,6 +330,7 @@ class PineconeIndex(BaseIndex):
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
         sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
+        **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:

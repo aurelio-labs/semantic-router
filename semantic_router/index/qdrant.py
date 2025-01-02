@@ -170,6 +170,7 @@ class QdrantIndex(BaseIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
+        **kwargs,
     ):
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()

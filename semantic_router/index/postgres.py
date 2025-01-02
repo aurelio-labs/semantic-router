@@ -273,6 +273,7 @@ class PostgresIndex(BaseIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ) -> None:
         """
         Adds vectors to the index.

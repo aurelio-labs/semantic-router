@@ -10,7 +10,7 @@ from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import RouterConfig, SemanticRouter
+from semantic_router.routers import RouterConfig, SemanticRouter, HybridRouter
 from semantic_router.llms.base import BaseLLM
 from semantic_router.route import Route
 from platform import python_version
@@ -201,12 +201,20 @@ def get_test_encoders():
     return encoders
 
 
+def get_test_routers():
+    routers = [SemanticRouter]
+    if importlib.util.find_spec("pinecone_text") is not None:
+        routers.append(HybridRouter)
+    return routers
+
+
 @pytest.mark.parametrize(
-    "index_cls,encoder_cls",
+    "index_cls,encoder_cls,router_cls",
     [
-        (index, encoder)
+        (index, encoder, router)
         for index in get_test_indexes()
         for encoder in get_test_encoders()
+        for router in get_test_routers()
     ],
 )
 class TestIndexEncoders:

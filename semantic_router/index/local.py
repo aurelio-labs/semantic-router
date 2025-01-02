@@ -26,6 +26,7 @@ class LocalIndex(BaseIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
