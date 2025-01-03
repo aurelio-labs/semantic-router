@@ -428,8 +428,19 @@ class BaseRouter(BaseModel):
             vector = self._encode(text=[text])
         # convert to numpy array if not already
         vector = xq_reshape(vector)
-        # calculate semantics
-        route, top_class_scores = self._retrieve_top_route(vector, route_filter)
+        # get scores and routes
+        scores, routes = self.index.query(
+            vector=vector[0], top_k=self.top_k, route_filter=route_filter
+        )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(routes, scores)
+        ]
+        # decide most relevant routes
+        top_class, top_class_scores = self._semantic_classify(
+            query_results=query_results
+        )
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
             if route.function_schemas and text is None:
@@ -473,10 +484,19 @@ class BaseRouter(BaseModel):
             vector = await self._async_encode(text=[text])
         # convert to numpy array if not already
         vector = xq_reshape(vector)
-        # calculate semantics
-        route, top_class_scores = await self._async_retrieve_top_route(
-            vector, route_filter
+        # get scores and routes
+        scores, routes = await self.index.aquery(
+            vector=vector[0], top_k=self.top_k, route_filter=route_filter
         )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(routes, scores)
+        ]
+        # decide most relevant routes
+        top_class, top_class_scores = await self._async_semantic_classify(
+            query_results=query_results
+        )
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
             if route.function_schemas and text is None:
@@ -502,66 +522,6 @@ class BaseRouter(BaseModel):
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
-
-    # TODO: add multiple routes return to __call__ and acall
-    @deprecated("This method is deprecated. Use `__call__` instead.")
-    def retrieve_multiple_routes(
-        self,
-        text: Optional[str] = None,
-        vector: Optional[List[float] | np.ndarray] = None,
-    ) -> List[RouteChoice]:
-        if vector is None:
-            if text is None:
-                raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=[text])
-        # convert to numpy array if not already
-        vector = xq_reshape(vector)
-        # get relevant utterances
-        results = self._retrieve(xq=vector)
-        # decide most relevant routes
-        categories_with_scores = self._semantic_classify_multiple_routes(results)
-        return [
-            RouteChoice(name=category, similarity_score=score)
-            for category, score in categories_with_scores
-        ]
-
-        # route_choices = []
-        # TODO JB: do we need this check? Maybe we should be returning directly
-        # for category, score in categories_with_scores:
-        #    route = self.check_for_matching_routes(category)
-        #    if route:
-        #        route_choice = RouteChoice(name=route.name, similarity_score=score)
-        #        route_choices.append(route_choice)
-
-        # return route_choices
-
-    def _retrieve_top_route(
-        self, vector: np.ndarray, route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
-        """
-        Retrieve the top matching route based on the given vector.
-        Returns a tuple of the route (if any) and the scores of the top class.
-        """
-        # get relevant results (scores and routes)
-        results = self._retrieve(xq=vector, top_k=self.top_k, route_filter=route_filter)
-        # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
-
-    async def _async_retrieve_top_route(
-        self, vector: np.ndarray, route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
-        # get relevant results (scores and routes)
-        results = await self._async_retrieve(
-            xq=vector, top_k=self.top_k, route_filter=route_filter
-        )
-        # decide most relevant routes
-        top_class, top_class_scores = await self._async_semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
 
     def sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
         """Runs a sync of the local routes with the remote index.
@@ -1116,26 +1076,6 @@ class BaseRouter(BaseModel):
         # TODO: should encode "content" rather than text
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def _retrieve(
-        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[Dict]:
-        """Given a query vector, retrieve the top_k most similar records."""
-        # get scores and routes
-        scores, routes = self.index.query(
-            vector=xq[0], top_k=top_k, route_filter=route_filter
-        )
-        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-
-    async def _async_retrieve(
-        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[Dict]:
-        """Given a query vector, retrieve the top_k most similar records."""
-        # get scores and routes
-        scores, routes = await self.index.aquery(
-            vector=xq[0], top_k=top_k, route_filter=route_filter
-        )
-        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-
     def _set_aggregation_method(self, aggregation: str = "sum"):
         # TODO is this really needed?
         if aggregation == "sum":
@@ -1149,6 +1089,7 @@ class BaseRouter(BaseModel):
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
+    # TODO JB allow return of multiple routes
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         """Classify the query results into a single class based on the highest total score.
         If no classification is found, return an empty string and an empty list.
@@ -1216,6 +1157,7 @@ class BaseRouter(BaseModel):
         logger.error(f"Route `{name}` not found")
         return None
 
+    @deprecated("This method is deprecated. Use `semantic_classify` instead.")
     def _semantic_classify_multiple_routes(
         self, query_results: List[Dict]
     ) -> List[Tuple[str, float]]:
@@ -1243,6 +1185,7 @@ class BaseRouter(BaseModel):
         self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
+        logger.warning(f"JBTEMP: {query_results=}")
         for result in query_results:
             score = result["score"]
             route = result["route"]

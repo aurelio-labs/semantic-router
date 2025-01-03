@@ -77,6 +77,7 @@ class HybridRouter(BaseRouter):
         if current_remote_hash.value == "":
             # if remote hash is empty, the index is to be initialized
             current_remote_hash = current_local_hash
+        logger.warning(f"JBTEMP: {routes}")
         if isinstance(routes, Route):
             routes = [routes]
         # create embeddings for all routes
@@ -220,16 +221,18 @@ class HybridRouter(BaseRouter):
             raise ValueError("Sparse vector is required for HybridLocalIndex.")
         # TODO: add alpha as a parameter
         scores, route_names = self.index.query(
-            vector=vector,
+            vector=vector[0],
             top_k=self.top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
         )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(route_names, scores)
+        ]
+        # TODO JB we should probably make _semantic_classify consume arrays rather than
+        # needing to convert to list here
         top_class, top_class_scores = self._semantic_classify(
-            [
-                {"score": score, "route": route}
-                for score, route in zip(scores, route_names)
-            ]
+            query_results=query_results
         )
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
