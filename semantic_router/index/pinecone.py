@@ -534,7 +534,9 @@ class PineconeIndex(BaseIndex):
                 scope=scope,
             )
 
-    async def _async_read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
+    async def _async_read_config(
+        self, field: str, scope: str | None = None
+    ) -> ConfigParameter:
         """Read a config parameter from the index asynchronously.
 
         :param field: The field to read.
@@ -566,7 +568,9 @@ class PineconeIndex(BaseIndex):
                     scope=scope,
                 )
             except KeyError:
-                raise ValueError(f"Found invalid config record during sync: {config_record}")
+                raise ValueError(
+                    f"Found invalid config record during sync: {config_record}"
+                )
         else:
             logger.warning(f"Configuration for {field} parameter not found in index.")
             return ConfigParameter(
@@ -752,7 +756,8 @@ class PineconeIndex(BaseIndex):
             "namespace": namespace,
         }
         async with self.async_client.post(
-            f"https://{self.host}/vectors/delete", json=params,
+            f"https://{self.host}/vectors/delete",
+            json=params,
         ) as response:
             return await response.json(content_type=None)
 

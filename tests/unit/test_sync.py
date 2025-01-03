@@ -154,7 +154,7 @@ def cohere_encoder(mocker):
         # Handle either docs or utterances parameter
         texts = docs if docs is not None else utterances
         return mock_encoder_call(texts)
-    
+
     mocker.patch.object(CohereEncoder, "acall", side_effect=async_mock_encoder_call)
     return CohereEncoder(name="test-cohere-encoder", cohere_api_key="test_api_key")
 
@@ -168,7 +168,7 @@ def openai_encoder(mocker):
         # Handle either docs or utterances parameter
         texts = docs if docs is not None else utterances
         return mock_encoder_call(texts)
-    
+
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
 
