@@ -109,7 +109,7 @@ class PineconeIndex(BaseIndex):
     dimensions: Union[int, None] = None
     metric: str = "dotproduct"
     cloud: str = "aws"
-    region: str = "us-west-2"
+    region: str = "us-east-1"
     host: str = ""
     client: Any = Field(default=None, exclude=True)
     async_client: Any = Field(default=None, exclude=True)
@@ -125,7 +125,7 @@ class PineconeIndex(BaseIndex):
         dimensions: Optional[int] = None,
         metric: str = "dotproduct",
         cloud: str = "aws",
-        region: str = "us-west-2",
+        region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
@@ -144,6 +144,8 @@ class PineconeIndex(BaseIndex):
         self.type = "pinecone"
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
+
+        logger.warning("Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6")
 
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
