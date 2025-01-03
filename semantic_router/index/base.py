@@ -241,7 +241,7 @@ class BaseIndex(BaseModel):
         :return: The config parameter that was read.
         :rtype: ConfigParameter
         """
-        logger.warning("Async method not implemented.")
+        logger.warning("_async_read_config method not implemented.")
         return self._read_config(field=field, scope=scope)
 
     def _write_config(self, config: ConfigParameter) -> ConfigParameter:
@@ -356,6 +356,7 @@ class BaseIndex(BaseModel):
         """Lock/unlock the index for a given scope (if applicable). If index
         already locked/unlocked, raises ValueError.
         """
+        logger.warning(f"JBTEMP alock method called with {value=} {wait=} {scope=}")
         start_time = datetime.now()
         while True:
             if await self._ais_locked(scope=scope) != value:
