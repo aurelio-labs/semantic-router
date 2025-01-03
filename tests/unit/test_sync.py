@@ -148,12 +148,28 @@ def base_encoder():
 @pytest.fixture
 def cohere_encoder(mocker):
     mocker.patch.object(CohereEncoder, "__call__", side_effect=mock_encoder_call)
+
+    # Mock async call
+    async def async_mock_encoder_call(docs=None, utterances=None):
+        # Handle either docs or utterances parameter
+        texts = docs if docs is not None else utterances
+        return mock_encoder_call(texts)
+    
+    mocker.patch.object(CohereEncoder, "acall", side_effect=async_mock_encoder_call)
     return CohereEncoder(name="test-cohere-encoder", cohere_api_key="test_api_key")
 
 
 @pytest.fixture
 def openai_encoder(mocker):
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+
+    # Mock async call
+    async def async_mock_encoder_call(docs=None, utterances=None):
+        # Handle either docs or utterances parameter
+        texts = docs if docs is not None else utterances
+        return mock_encoder_call(texts)
+    
+    mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
 
 
@@ -508,17 +524,23 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_sync_lock_prevents_concurrent_sync(
-        self, openai_encoder, routes, index_cls, router_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
         index = init_index(index_cls)
+        route_layer = router_cls(
+            encoder=openai_encoder,
+            routes=routes_2,
+            index=index,
+            auto_sync="local",
+        )
+        # initialize an out of sync router
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
             auto_sync=None,
         )
-
         # Acquire sync lock
         route_layer.index.lock(value=True)
         if index_cls is PineconeIndex:
@@ -565,11 +587,15 @@ class TestSemanticRouter:
             time.sleep(PINECONE_SLEEP)
         assert route_layer.is_synced()
 
-        # clear index
-        route_layer.index.index.delete(namespace="", delete_all=True)
+        # clear index if pinecone
+        if index_cls is PineconeIndex:
+            route_layer.index.client.delete_index(route_layer.index.index_name)
 
 
-@pytest.mark.parametrize("index_cls", get_test_indexes())
+@pytest.mark.parametrize(
+    "index_cls,router_cls",
+    [(index, router) for index in get_test_indexes() for router in get_test_routers()],
+)
 class TestAsyncSemanticRouter:
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -762,7 +788,7 @@ class TestAsyncSemanticRouter:
             )
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
             # confirm local and remote are synced
-            assert route_layer.async_is_synced()
+            assert await route_layer.async_is_synced()
             # now confirm utterances are correct
             local_utterances = await route_layer.index.aget_utterances()
             # we sort to ensure order is the same
@@ -850,10 +876,17 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_sync_lock_prevents_concurrent_sync(
-        self, openai_encoder, routes, index_cls, router_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
         index = init_index(index_cls, init_async_index=True)
+        route_layer = router_cls(
+            encoder=openai_encoder,
+            routes=routes_2,
+            index=index,
+            auto_sync="local",
+        )
+        # initialize an out of sync router
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
@@ -886,27 +919,39 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_sync_lock_auto_releases(
-        self, openai_encoder, routes, index_cls, router_cls
+        self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock is automatically released after sync operations"""
         index = init_index(index_cls, init_async_index=True)
+        print(f"1. {index.namespace=}")
+        route_layer = router_cls(
+            encoder=openai_encoder,
+            routes=routes_2,
+            index=index,
+            auto_sync="local",
+        )
+        print(f"2. {route_layer.index.namespace=}")
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
             index=index,
             auto_sync=None,
         )
-
+        if index_cls is PineconeIndex:
+            await asyncio.sleep(PINECONE_SLEEP)
         # Initial sync should acquire and release lock
         await route_layer.async_sync("local")
         if index_cls is PineconeIndex:
             await asyncio.sleep(PINECONE_SLEEP)
+        print(f"3. {route_layer.index.namespace=}")
 
         # Lock should be released, allowing another sync
         await route_layer.async_sync("local")  # Should not raise exception
         if index_cls is PineconeIndex:
             await asyncio.sleep(PINECONE_SLEEP)
         assert await route_layer.async_is_synced()
+        print(f"4. {route_layer.index.namespace=}")
 
-        # clear index
-        route_layer.index.index.delete(namespace="", delete_all=True)
+        # clear index if pinecone
+        if index_cls is PineconeIndex:
+            route_layer.index.client.delete_index(route_layer.index.index_name)

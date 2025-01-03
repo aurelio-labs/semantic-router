@@ -282,17 +282,6 @@ class PineconeIndex(BaseIndex):
         else:
             raise ValueError("Index is None, could not upsert.")
 
-    async def _async_batch_upsert(self, batch: List[Dict]):
-        """Helper method for upserting a single batch of records asynchronously.
-
-        :param batch: The batch of records to upsert.
-        :type batch: List[Dict]
-        """
-        if self.index is not None:
-            await self.index.upsert(vectors=batch, namespace=self.namespace)
-        else:
-            raise ValueError("Index is None, could not upsert.")
-
     def add(
         self,
         embeddings: List[List[float]],
@@ -347,7 +336,10 @@ class PineconeIndex(BaseIndex):
 
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
-            await self._async_batch_upsert(batch)
+            await self._async_upsert(
+                vectors=batch,
+                namespace=self.namespace or "",
+            )
 
     def _remove_and_sync(self, routes_to_delete: dict):
         for route, utterances in routes_to_delete.items():
