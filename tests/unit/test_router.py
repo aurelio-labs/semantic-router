@@ -218,7 +218,9 @@ def get_test_routers():
     ],
 )
 class TestIndexEncoders:
-    def test_initialization(self, routes, openai_encoder, index_cls, encoder_cls, router_cls):
+    def test_initialization(
+        self, routes, openai_encoder, index_cls, encoder_cls, router_cls
+    ):
         index = init_index(index_cls)
         route_layer = router_cls(
             encoder=encoder_cls(),
@@ -240,7 +242,9 @@ class TestIndexEncoders:
             else 0 == 2
         )
 
-    def test_initialization_different_encoders(self, encoder_cls, index_cls, router_cls):
+    def test_initialization_different_encoders(
+        self, encoder_cls, index_cls, router_cls
+    ):
         index = init_index(index_cls)
         encoder = encoder_cls()
         route_layer = router_cls(encoder=encoder, index=index)
