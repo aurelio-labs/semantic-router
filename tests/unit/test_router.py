@@ -11,12 +11,12 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.routers import RouterConfig, SemanticRouter, HybridRouter
-from semantic_router.llms.base import BaseLLM
+from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 6
+PINECONE_SLEEP = 8
 
 
 def mock_encoder_call(utterances):
@@ -124,16 +124,35 @@ def cohere_encoder(mocker):
 
 @pytest.fixture
 def openai_encoder(mocker):
+    # Mock the OpenAI client creation and API calls
+    mocker.patch('openai.OpenAI')
+    mocker.patch('semantic_router.encoders.openai.OpenAI')
+    # Mock the __call__ method
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-
     # Mock async call
     async def async_mock_encoder_call(docs=None, utterances=None):
         # Handle either docs or utterances parameter
         texts = docs if docs is not None else utterances
         return mock_encoder_call(texts)
-
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
-    return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
+    # Create and return the mocked encoder
+    encoder = OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
+    # Mock the initialization/validation step
+    mocker.patch.object(encoder, '_validate_api_key')
+    return encoder
+
+@pytest.fixture
+def mock_openai_llm(mocker):
+    # Mock the OpenAI LLM
+    mocker.patch.object(OpenAILLM, "__call__", return_value="mocked response")
+
+    # also async
+    async def async_mock_llm_call(messages=None, **kwargs):
+        return "mocked response"
+
+    mocker.patch.object(OpenAILLM, "acall", side_effect=async_mock_llm_call)
+
+    return OpenAILLM(name="fake-model-v1", openai_api_key="test_llm_api_key")
 
 
 @pytest.fixture
