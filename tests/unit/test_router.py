@@ -137,9 +137,7 @@ def openai_encoder(mocker):
 
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     # Create and return the mocked encoder
-    encoder = OpenAIEncoder(
-        name="text-embedding-3-small"
-    )
+    encoder = OpenAIEncoder(name="text-embedding-3-small")
     return encoder
 
 
@@ -269,7 +267,7 @@ class TestIndexEncoders:
             top_k=10,
         )
         if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP*2)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
 
         if isinstance(route_layer, HybridRouter):
             assert (
