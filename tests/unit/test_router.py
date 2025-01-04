@@ -269,7 +269,10 @@ class TestIndexEncoders:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
-        assert route_layer.score_threshold == encoder.score_threshold
+        if isinstance(route_layer, HybridRouter):
+            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+        else:
+            assert route_layer.score_threshold == encoder.score_threshold
         assert route_layer.top_k == 10
         assert len(route_layer.index) == 5
         assert (
@@ -289,7 +292,10 @@ class TestIndexEncoders:
     def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
         route_layer_none = router_cls(encoder=None)
-        assert route_layer_none.score_threshold == 0.3
+        if isinstance(route_layer_none, HybridRouter):
+            assert route_layer_none.score_threshold == 0.3 * route_layer_none.alpha
+        else:
+            assert route_layer_none.score_threshold == 0.3
 
 
 class TestRouterConfig:
@@ -525,7 +531,10 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        assert route_layer.score_threshold == encoder.score_threshold
+        if isinstance(route_layer, HybridRouter):
+            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+        else:
+            assert route_layer.score_threshold == encoder.score_threshold
 
     def test_add_single_utterance(
         self, routes, route_single_utterance, index_cls, encoder_cls, router_cls
@@ -539,7 +548,10 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         route_layer.add(routes=route_single_utterance)
-        assert route_layer.score_threshold == encoder.score_threshold
+        if isinstance(route_layer, HybridRouter):
+            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+        else:
+            assert route_layer.score_threshold == encoder.score_threshold
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
         _ = route_layer("Hello")
@@ -558,7 +570,10 @@ class TestSemanticRouter:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
         route_layer.add(routes=route_single_utterance)
-        assert route_layer.score_threshold == encoder.score_threshold
+        if isinstance(route_layer, HybridRouter):
+            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+        else:
+            assert route_layer.score_threshold == encoder.score_threshold
         _ = route_layer("Hello")
         assert len(route_layer.index.get_utterances()) == 1
 

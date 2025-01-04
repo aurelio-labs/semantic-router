@@ -65,6 +65,21 @@ class HybridRouter(BaseRouter):
         if self.auto_sync:
             self._init_index_state()
 
+    def _set_score_threshold(self):
+        """Set the score threshold for the HybridRouter. Unlike the base router the
+        encoder score threshold is not used directly. Instead, the dense encoder
+        score threshold is multiplied by the alpha value, resulting in a lower
+        score threshold. This is done to account for the difference in returned
+        scores from the hybrid router.
+        """
+        if self.encoder.score_threshold is not None:
+            self.score_threshold = self.encoder.score_threshold * self.alpha
+            if self.score_threshold is None:
+                logger.warning(
+                    "No score threshold value found in encoder. Using the default "
+                    "'None' value can lead to unexpected results."
+                )
+
     def add(self, routes: List[Route] | Route):
         """Add a route to the local HybridRouter and index.
 
@@ -226,6 +241,8 @@ class HybridRouter(BaseRouter):
             route_filter=route_filter,
             sparse_vector=sparse_vector,
         )
+        logger.warning(f"JBTEMP: {scores}")
+        logger.warning(f"JBTEMP: {route_names}")
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(route_names, scores)
         ]
@@ -234,6 +251,8 @@ class HybridRouter(BaseRouter):
         top_class, top_class_scores = self._semantic_classify(
             query_results=query_results
         )
+        logger.warning(f"JBTEMP: {top_class}")
+        logger.warning(f"JBTEMP: {top_class_scores}")
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
             return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
