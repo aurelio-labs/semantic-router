@@ -16,7 +16,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 8
+PINECONE_SLEEP = 12
 
 
 def mock_encoder_call(utterances):
