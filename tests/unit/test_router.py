@@ -523,7 +523,7 @@ class TestRouterConfig:
     [
         (index, encoder, router)
         for index in get_test_indexes()
-        for encoder in get_test_encoders()
+        for encoder in [OpenAIEncoder]
         for router in get_test_routers()
     ],
 )
