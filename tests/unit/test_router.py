@@ -719,7 +719,7 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP*2)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
         query_result = route_layer(text="Hello").name
         assert query_result in ["Route 1", "Route 2"]
 
