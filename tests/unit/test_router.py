@@ -16,7 +16,7 @@ from semantic_router.route import Route
 from platform import python_version
 
 
-PINECONE_SLEEP = 10
+PINECONE_SLEEP = 12
 
 
 def mock_encoder_call(utterances):
@@ -781,7 +781,7 @@ class TestSemanticRouter:
                 index=pineconeindex,
                 auto_sync="local",
             )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
             query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
 
             try:
