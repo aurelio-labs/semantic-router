@@ -145,7 +145,9 @@ class PineconeIndex(BaseIndex):
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
 
-        logger.warning("Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6")
+        logger.warning(
+            "Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6"
+        )
 
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")

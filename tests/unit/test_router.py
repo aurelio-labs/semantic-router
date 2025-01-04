@@ -125,21 +125,26 @@ def cohere_encoder(mocker):
 @pytest.fixture
 def openai_encoder(mocker):
     # Mock the OpenAI client creation and API calls
-    mocker.patch('openai.OpenAI')
-    mocker.patch('semantic_router.encoders.openai.OpenAI')
+    mocker.patch("openai.OpenAI")
+    mocker.patch("semantic_router.encoders.openai.OpenAI")
     # Mock the __call__ method
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+
     # Mock async call
     async def async_mock_encoder_call(docs=None, utterances=None):
         # Handle either docs or utterances parameter
         texts = docs if docs is not None else utterances
         return mock_encoder_call(texts)
+
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     # Create and return the mocked encoder
-    encoder = OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
+    encoder = OpenAIEncoder(
+        name="text-embedding-3-small", openai_api_key="test_api_key"
+    )
     # Mock the initialization/validation step
-    mocker.patch.object(encoder, '_validate_api_key')
+    mocker.patch.object(encoder, "_validate_api_key")
     return encoder
+
 
 @pytest.fixture
 def mock_openai_llm(mocker):
@@ -270,7 +275,10 @@ class TestIndexEncoders:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
         if isinstance(route_layer, HybridRouter):
-            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
         else:
             assert route_layer.score_threshold == encoder.score_threshold
         assert route_layer.top_k == 10
@@ -532,7 +540,10 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         if isinstance(route_layer, HybridRouter):
-            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
         else:
             assert route_layer.score_threshold == encoder.score_threshold
 
@@ -549,7 +560,10 @@ class TestSemanticRouter:
         )
         route_layer.add(routes=route_single_utterance)
         if isinstance(route_layer, HybridRouter):
-            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
         else:
             assert route_layer.score_threshold == encoder.score_threshold
         if index_cls is PineconeIndex:
@@ -571,7 +585,10 @@ class TestSemanticRouter:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
         route_layer.add(routes=route_single_utterance)
         if isinstance(route_layer, HybridRouter):
-            assert route_layer.score_threshold == encoder.score_threshold * route_layer.alpha
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
         else:
             assert route_layer.score_threshold == encoder.score_threshold
         _ = route_layer("Hello")
