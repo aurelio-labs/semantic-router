@@ -12,11 +12,11 @@ lint lint_diff:
 	poetry run mypy $(PYTHON_FILES)
 
 test:
-	poetry run pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml
+	poetry run pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 
 
 test_functional:
-	poetry run pytest -vv --exitfirst --maxfail=1 --max-parallel=20 tests/functional
+	poetry run pytest -vv --exitfirst --maxfail=1 tests/functional
 test_unit:
-	poetry run pytest -vv --exitfirst --maxfail=1 --max-parallel=20 tests/unit
+	poetry run pytest -vv --exitfirst --maxfail=1 tests/unit
 test_integration:
-	poetry run pytest -vv --exitfirst --maxfail=1 --max-parallel=20 tests/integration
+	poetry run pytest -vv --exitfirst --maxfail=1 tests/integration
