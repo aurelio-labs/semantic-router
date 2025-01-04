@@ -126,7 +126,6 @@ def cohere_encoder(mocker):
 def openai_encoder(mocker):
     # Mock the OpenAI client creation and API calls
     mocker.patch("openai.OpenAI")
-    mocker.patch("semantic_router.encoders.openai.OpenAI")
     # Mock the __call__ method
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
 
@@ -141,8 +140,6 @@ def openai_encoder(mocker):
     encoder = OpenAIEncoder(
         name="text-embedding-3-small", openai_api_key="test_api_key"
     )
-    # Mock the initialization/validation step
-    mocker.patch.object(encoder, "_validate_api_key")
     return encoder
 
 
