@@ -295,7 +295,13 @@ class TestIndexEncoders:
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, index=index)
-        assert route_layer.score_threshold == encoder.score_threshold
+        if isinstance(route_layer, HybridRouter):
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
+        else:
+            assert route_layer.score_threshold == encoder.score_threshold
 
     def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
         os.environ["OPENAI_API_KEY"] = "test_api_key"
