@@ -137,9 +137,7 @@ def openai_encoder(mocker):
 
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     # Create and return the mocked encoder
-    encoder = OpenAIEncoder(
-        name="text-embedding-3-small"
-    )
+    encoder = OpenAIEncoder(name="text-embedding-3-small")
     return encoder
 
 
