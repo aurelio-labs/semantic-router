@@ -299,7 +299,6 @@ class TestIndexEncoders:
             assert route_layer.score_threshold == encoder.score_threshold
 
     def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
         route_layer_none = router_cls(encoder=None)
         if isinstance(route_layer_none, HybridRouter):
             assert route_layer_none.score_threshold == 0.3 * route_layer_none.alpha
@@ -903,7 +902,6 @@ class TestSemanticRouter:
         try:
             temp_path = temp.name  # Save the temporary file's path
             temp.close()  # Close the file to ensure it can be opened again on Windows
-            os.environ["OPENAI_API_KEY"] = "test_api_key"
             encoder = encoder_cls()
             index = init_index(index_cls, index_name=encoder.__class__.__name__)
             route_layer = router_cls(
@@ -929,7 +927,6 @@ class TestSemanticRouter:
         try:
             temp_path = temp.name  # Save the temporary file's path
             temp.close()  # Close the file to ensure it can be opened again on Windows
-            os.environ["OPENAI_API_KEY"] = "test_api_key"
             encoder = encoder_cls()
             index = init_index(index_cls, index_name=encoder.__class__.__name__)
             route_layer = router_cls(
@@ -951,7 +948,6 @@ class TestSemanticRouter:
             os.remove(temp_path)  # Ensure the file is deleted even if the test fails
 
     def test_config(self, routes, index_cls, encoder_cls, router_cls):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
