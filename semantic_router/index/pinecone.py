@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 import numpy as np
 from pydantic import BaseModel, Field
 
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, SparseEmbedding
 from semantic_router.utils.logger import logger
 
@@ -449,16 +449,20 @@ class PineconeIndex(BaseIndex):
     def delete_all(self):
         self.index.delete(delete_all=True, namespace=self.namespace)
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         if self.index is not None:
             stats = self.index.describe_index_stats()
-            return {
-                "type": self.type,
-                "dimensions": stats["dimension"],
-                "vectors": stats["namespaces"][self.namespace]["vector_count"],
-            }
+            return IndexConfig(
+                type=self.type,
+                dimensions=stats["dimension"],
+                vectors=stats["namespaces"][self.namespace]["vector_count"],
+            )
         else:
-            raise ValueError("Index is None, cannot describe index stats.")
+            return IndexConfig(
+                type=self.type,
+                dimensions=self.dimensions or 0,
+                vectors=0,
+            )
 
     def query(
         self,

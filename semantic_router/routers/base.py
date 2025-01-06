@@ -15,6 +15,7 @@ from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import (
@@ -421,7 +422,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        if self.index.index is None or self.routes is None:
+        ready = self._index_ready()
+        if not ready:
             raise ValueError("Index or routes are not populated.")
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -479,7 +481,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        if self.index.index is None or self.routes is None:
+        ready = self._index_ready()  # TODO: need async version for qdrant
+        if not ready:
             raise ValueError("Index or routes are not populated.")
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -526,6 +529,20 @@ class BaseRouter(BaseModel):
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
+
+    def _index_ready(self) -> bool:
+        """Method to check if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        if self.index.index is None or self.routes is None:
+            return False
+        if isinstance(self.index, QdrantIndex):
+            info = self.index.describe()
+            if info.vectors == 0:
+                return False
+        return True
 
     def sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
         """Runs a sync of the local routes with the remote index.

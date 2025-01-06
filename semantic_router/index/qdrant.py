@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from pydantic import Field
 
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
 
@@ -246,14 +246,14 @@ class QdrantIndex(BaseIndex):
             ),
         )
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         collection_info = self.client.get_collection(self.index_name)
 
-        return {
-            "type": self.type,
-            "dimensions": collection_info.config.params.vectors.size,
-            "vectors": collection_info.points_count,
-        }
+        return IndexConfig(
+            type=self.type,
+            dimensions=collection_info.config.params.vectors.size,
+            vectors=collection_info.points_count,
+        )
 
     def query(
         self,

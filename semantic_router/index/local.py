@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Dict
 import numpy as np
 
 from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
 from typing import Any
@@ -75,12 +75,12 @@ class LocalIndex(BaseIndex):
             return []
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
-    def describe(self) -> Dict:
-        return {
-            "type": self.type,
-            "dimensions": self.index.shape[1] if self.index is not None else 0,
-            "vectors": self.index.shape[0] if self.index is not None else 0,
-        }
+    def describe(self) -> IndexConfig:
+        return IndexConfig(
+            type=self.type,
+            dimensions=self.index.shape[1] if self.index is not None else 0,
+            vectors=self.index.shape[0] if self.index is not None else 0,
+        )
 
     def query(
         self,

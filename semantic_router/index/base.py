@@ -15,6 +15,12 @@ from semantic_router.utils.logger import logger
 RETRY_WAIT_TIME = 2.5
 
 
+class IndexConfig(BaseModel):
+    type: str
+    dimensions: int
+    vectors: int
+
+
 class BaseIndex(BaseModel):
     """
     Base class for indices using Pydantic's BaseModel.
@@ -146,10 +152,10 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         """
-        Returns a dictionary with index details such as type, dimensions, and total
-        vector count.
+        Returns an IndexConfig object with index details such as type, dimensions, and
+        total vector count.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")

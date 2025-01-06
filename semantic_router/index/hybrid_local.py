@@ -67,13 +67,6 @@ class HybridLocalIndex(LocalIndex):
             return []
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
-    def describe(self) -> Dict:
-        return {
-            "type": self.type,
-            "dimensions": self.index.shape[1] if self.index is not None else 0,
-            "vectors": self.index.shape[0] if self.index is not None else 0,
-        }
-
     def _sparse_dot_product(
         self, vec_a: dict[int, float], vec_b: dict[int, float]
     ) -> float:
