@@ -829,7 +829,7 @@ class TestSemanticRouter:
         )
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        vector = [0.1, 0.2, 0.3]
+        vector = encoder(["hello"])
         query_result = route_layer(vector=vector).name
         assert query_result in ["Route 1", "Route 2"]
 
