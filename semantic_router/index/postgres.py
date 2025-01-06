@@ -352,6 +352,12 @@ class PostgresIndex(BaseIndex):
                 vectors=count,
             )
 
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return isinstance(self.conn, psycopg2.extensions.connection)
+
     def query(
         self,
         vector: np.ndarray,

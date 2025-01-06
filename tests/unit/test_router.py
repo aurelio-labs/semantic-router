@@ -282,7 +282,7 @@ class TestIndexEncoders:
             try:
                 assert len(route_layer.index) == 5
                 break
-            except AssertionError:
+            except Exception:
                 logger.warning(f"Index not populated, waiting for retry (try {count})")
                 time.sleep(PINECONE_SLEEP)
                 count += 1
@@ -733,7 +733,7 @@ class TestSemanticRouter:
             try:
                 assert query_result in ["Route 1", "Route 2"]
                 break
-            except AssertionError:
+            except Exception:
                 logger.warning(
                     f"Query result not in expected routes, waiting for retry (try {count})"
                 )
@@ -770,7 +770,7 @@ class TestSemanticRouter:
             try:
                 assert query_result in ["Route 1"]
                 break
-            except AssertionError:
+            except Exception:
                 logger.warning(
                     f"Query result not in expected routes, waiting for retry (try {count})"
                 )
@@ -800,7 +800,7 @@ class TestSemanticRouter:
                     ).name
                     assert query_result in ["Route 1"]
                     break
-                except AssertionError:
+                except Exception:
                     logger.warning(
                         f"Query result not in expected routes, waiting for retry (try {count})"
                     )
@@ -830,7 +830,11 @@ class TestSemanticRouter:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         vector = encoder(["hello"])
-        query_result = route_layer(vector=vector).name
+        if router_cls is HybridRouter:
+            sparse_vector = route_layer.sparse_encoder(["hello"])[0]
+            query_result = route_layer(vector=vector, sparse_vector=sparse_vector).name
+        else:
+            query_result = route_layer(vector=vector).name
         assert query_result in ["Route 1", "Route 2"]
 
     def test_query_with_no_text_or_vector(

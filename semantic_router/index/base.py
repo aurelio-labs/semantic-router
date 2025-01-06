@@ -160,6 +160,13 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def query(
         self,
         vector: np.ndarray,

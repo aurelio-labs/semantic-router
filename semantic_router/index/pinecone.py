@@ -464,6 +464,12 @@ class PineconeIndex(BaseIndex):
                 vectors=0,
             )
 
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.index is not None
+
     def query(
         self,
         vector: np.ndarray,

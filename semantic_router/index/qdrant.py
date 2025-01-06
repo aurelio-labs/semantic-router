@@ -196,6 +196,10 @@ class QdrantIndex(BaseIndex):
             List[Tuple]: A list of (route_name, utterance, function_schema, metadata) objects.
         """
 
+        # Check if collection exists first
+        if not self.client.collection_exists(self.index_name):
+            return []
+
         from qdrant_client import grpc
 
         results = []
@@ -254,6 +258,12 @@ class QdrantIndex(BaseIndex):
             dimensions=collection_info.config.params.vectors.size,
             vectors=collection_info.points_count,
         )
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.client.collection_exists(self.index_name)
 
     def query(
         self,

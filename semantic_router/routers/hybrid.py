@@ -218,8 +218,8 @@ class HybridRouter(BaseRouter):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> RouteChoice:
-        if self.index.index is None or self.routes is None:
-            raise ValueError("Index or routes are not populated.")
+        if not self.index or not self.index.is_ready():
+            raise ValueError("Index is not ready.")
         potential_sparse_vector: List[SparseEmbedding] | None = None
         # if no vector provided, encode text to get vector
         if vector is None:

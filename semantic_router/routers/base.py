@@ -422,9 +422,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        ready = self._index_ready()
-        if not ready:
-            raise ValueError("Index or routes are not populated.")
+        if not self.index or not self.index.is_ready():
+            raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
@@ -481,9 +480,9 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        ready = self._index_ready()  # TODO: need async version for qdrant
-        if not ready:
-            raise ValueError("Index or routes are not populated.")
+        if not self.index or not self.index.is_ready():
+            # TODO: need async version for qdrant
+            raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:

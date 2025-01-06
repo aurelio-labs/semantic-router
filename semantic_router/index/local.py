@@ -82,6 +82,12 @@ class LocalIndex(BaseIndex):
             vectors=self.index.shape[0] if self.index is not None else 0,
         )
 
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.index is not None and self.routes is not None
+
     def query(
         self,
         vector: np.ndarray,
