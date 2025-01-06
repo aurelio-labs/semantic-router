@@ -815,8 +815,7 @@ class TestSemanticRouter:
         encoder = encoder_cls()
         route_layer = router_cls(encoder=encoder)
         # TODO: probably should avoid running this with multiple encoders or find a way to set dims
-        with pytest.raises(ValueError):
-            assert route_layer(text="Anything").name is None
+        assert route_layer(text="Anything").name is None
 
     def test_query_with_vector(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
