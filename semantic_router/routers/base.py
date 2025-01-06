@@ -421,6 +421,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        if self.index.index is None or self.routes is None:
+            raise ValueError("Index or routes are not populated.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
@@ -477,6 +479,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        if self.index.index is None or self.routes is None:
+            raise ValueError("Index or routes are not populated.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
