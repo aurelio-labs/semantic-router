@@ -750,8 +750,8 @@ class TestSemanticRouter:
         count = 0
         # we allow for 5 retries to allow for index to be populated
         while count < RETRY_COUNT:
-            query_result = route_layer(text="Hello").name
             try:
+                query_result = route_layer(text="Hello").name
                 assert query_result in ["Route 1", "Route 2"]
                 break
             except Exception:
@@ -787,8 +787,8 @@ class TestSemanticRouter:
         count = 0
         # we allow for 5 retries to allow for index to be populated
         while count < RETRY_COUNT:
-            query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
             try:
+                query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
                 assert query_result in ["Route 1"]
                 break
             except Exception:
