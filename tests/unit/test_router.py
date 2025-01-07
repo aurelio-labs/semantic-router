@@ -949,9 +949,19 @@ class TestSemanticRouter:
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=dynamic_routes, index=index)
-        vector = [0.1, 0.2, 0.3]
+        # create vectors
+        vector = encoder(["hello"])
+        if router_cls is HybridRouter:
+            sparse_vector = route_layer.sparse_encoder(["hello"])[0]
+        if index_cls is PineconeIndex:
+            route_layer.index.dimensions = len(vector)
+            route_layer.index.index = route_layer.index._init_index(force_create=True)
+            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
         with pytest.raises(ValueError):
-            route_layer(vector=vector)
+            if router_cls is HybridRouter:
+                route_layer(vector=vector, sparse_vector=sparse_vector)
+            else:
+                route_layer(vector=vector)
 
     def test_pass_threshold(self, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
@@ -1197,15 +1207,14 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         count = 0
-        while count < RETRY_COUNT:
-            try:
-                assert route_layer.is_ready()
+        while count < RETRY_COUNT + 1:
+            if route_layer.index.is_ready():
                 break
-            except Exception:
-                logger.warning("Route layer not ready, waiting for retry (try {count})")
-                count += 1
-                if index_cls is PineconeIndex:
-                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            logger.warning("Route layer not ready, waiting for retry (try {count})")
+            count += 1
+            if index_cls is PineconeIndex:
+                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        assert count <= RETRY_COUNT, "Route layer not ready after {RETRY_COUNT} retries"
 
 
 @pytest.mark.parametrize(
