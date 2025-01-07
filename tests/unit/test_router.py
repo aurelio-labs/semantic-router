@@ -904,8 +904,8 @@ class TestSemanticRouter:
     "index_cls,encoder_cls,router_cls",
     [
         (index, encoder, router)
-        for index in [LocalIndex]
-        for encoder in [OpenAIEncoder]
+        for index in [LocalIndex]  # no need to test with multiple indexes
+        for encoder in [OpenAIEncoder]  # no need to test with multiple encoders
         for router in get_test_routers()
     ],
 )
@@ -984,7 +984,10 @@ class TestRouterOnly:
             index=index,
             auto_sync="local",
         )
-        assert route_layer.score_threshold == 0.3
+        if router_cls is HybridRouter:
+            assert route_layer.score_threshold == 0.3 * route_layer.alpha
+        else:
+            assert route_layer.score_threshold == 0.3
 
     def test_json(self, routes, index_cls, encoder_cls, router_cls):
         temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)

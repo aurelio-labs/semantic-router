@@ -1242,6 +1242,7 @@ class BaseRouter(BaseModel):
         if threshold is None:
             return True
         if scores:
+            # TODO JB is this correct?
             return max(scores) > threshold
         else:
             return False
