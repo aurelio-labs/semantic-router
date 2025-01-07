@@ -956,7 +956,7 @@ class TestSemanticRouter:
         if index_cls is PineconeIndex:
             route_layer.index.dimensions = len(vector)
             route_layer.index.index = route_layer.index._init_index(force_create=True)
-            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP * 3)  # allow for index to be populated
         with pytest.raises(ValueError):
             if router_cls is HybridRouter:
                 route_layer(vector=vector, sparse_vector=sparse_vector)
