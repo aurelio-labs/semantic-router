@@ -57,6 +57,7 @@ class BM25Encoder(TfidfEncoder):
         self.model.fit(corpus=utterances)
 
     def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
+        print(f"JBTEMP: {docs}")
         if self.model is None:
             raise ValueError("Model or index mapping is not initialized.")
         if len(docs) == 1:

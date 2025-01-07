@@ -422,7 +422,7 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        if not self.index or not self.index.is_ready():
+        if not self.index.is_ready():
             raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -480,7 +480,7 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
-        if not self.index or not self.index.is_ready():
+        if not self.index.is_ready():
             # TODO: need async version for qdrant
             raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
@@ -1338,7 +1338,7 @@ class BaseRouter(BaseModel):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
         # initial eval (we will iterate from here)
-        best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
+        best_acc = self._vec_evaluate(Xq_d=np.array(Xq), y=y)
         best_thresholds = self.get_thresholds()
         # begin fit
         for _ in (pbar := tqdm(range(max_iter), desc="Training")):
@@ -1351,7 +1351,7 @@ class BaseRouter(BaseModel):
             # update current route layer
             self._update_thresholds(route_thresholds=thresholds)
             # evaluate
-            acc = self._vec_evaluate(Xq=Xq, y=y)
+            acc = self._vec_evaluate(Xq_d=Xq, y=y)
             # update best
             if acc > best_acc:
                 best_acc = acc
@@ -1372,20 +1372,22 @@ class BaseRouter(BaseModel):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
 
-        accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
+        accuracy = self._vec_evaluate(Xq_d=np.array(Xq), y=y)
         return accuracy
 
-    def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:
+    def _vec_evaluate(
+        self, Xq_d: Union[List[float], Any], y: List[str], **kwargs
+    ) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
         correct = 0
-        for xq, target_route in zip(Xq, y):
+        for xq, target_route in zip(Xq_d, y):
             # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
             route_choice = self(vector=xq, simulate_static=True)
             if route_choice.name == target_route:
                 correct += 1
-        accuracy = correct / len(Xq)
+        accuracy = correct / len(Xq_d)
         return accuracy
 
     def _get_route_names(self) -> List[str]:

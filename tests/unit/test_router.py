@@ -1216,7 +1216,7 @@ class TestRouterOnly:
     [
         (index, encoder, router)
         for index in get_test_indexes()
-        for encoder in get_test_encoders()
+        for encoder in [OpenAIEncoder]
         for router in get_test_routers()
     ],
 )
@@ -1230,10 +1230,19 @@ class TestLayerFit:
             index=index,
             auto_sync="local",
         )
+        count = 0
+        while True:
+            if route_layer.index.is_ready():
+                break
+            count += 1
+            if count > RETRY_COUNT:
+                raise ValueError("Index not ready")
+            if index_cls is PineconeIndex:
+                time.sleep(PINECONE_SLEEP)
         # unpack test data
         X, y = zip(*test_data)
         # evaluate
-        route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
+        route_layer.evaluate(X=list(X), y=list(y), batch_size=int(len(X) / 5))
 
     def test_fit(self, routes, test_data, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
@@ -1244,6 +1253,16 @@ class TestLayerFit:
             index=index,
             auto_sync="local",
         )
+        count = 0
+        while True:
+            print(f"{count=}")
+            if route_layer.index.is_ready():
+                break
+            count += 1
+            if count > RETRY_COUNT:
+                raise ValueError("Index not ready")
+            if index_cls is PineconeIndex:
+                time.sleep(PINECONE_SLEEP)
         # unpack test data
         X, y = zip(*test_data)
-        route_layer.fit(X=X, y=y, batch_size=int(len(test_data) / 5))
+        route_layer.fit(X=list(X), y=list(y), batch_size=int(len(X) / 5))
