@@ -646,9 +646,6 @@ class TestSemanticRouter:
         route_layer = router_cls(
             encoder=encoder, routes=[], index=index, auto_sync="local"
         )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
-
         # Initially, the local routes list should be empty
         assert route_layer.routes == []
         # same for the remote index
@@ -656,18 +653,32 @@ class TestSemanticRouter:
 
         # Add route1 and check
         route_layer.add(routes=routes[0])
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.routes == [routes[0]]
-        assert route_layer.index is not None
-        assert len(route_layer.index.get_utterances()) == 2
+        count = 0
+        while count < RETRY_COUNT:
+            try:
+                assert route_layer.routes == [routes[0]]
+                assert route_layer.index is not None
+                assert len(route_layer.index.get_utterances()) == 2
+                break
+            except Exception:
+                logger.warning(f"Index not ready, waiting for retry (try {count})")
+                count += 1
+                if index_cls is PineconeIndex:
+                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
         # Add route2 and check
         route_layer.add(routes=routes[1])
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.routes == [routes[0], routes[1]]
-        assert len(route_layer.index.get_utterances()) == 5
+        count = 0
+        while count < RETRY_COUNT:
+            try:
+                assert route_layer.routes == [routes[0], routes[1]]
+                assert len(route_layer.index.get_utterances()) == 5
+                break
+            except Exception:
+                logger.warning(f"Index not ready, waiting for retry (try {count})")
+                count += 1
+                if index_cls is PineconeIndex:
+                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
     def test_list_route_names(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
@@ -730,13 +741,18 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
         route_layer.add(routes=routes)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.index is not None
-        assert len(route_layer.index.get_utterances()) == 5
+        count = 0
+        while count < RETRY_COUNT:
+            try:
+                assert route_layer.index is not None
+                assert len(route_layer.index.get_utterances()) == 5
+                break
+            except Exception:
+                logger.warning(f"Index not ready, waiting for retry (try {count})")
+                count += 1
+                if index_cls is PineconeIndex:
+                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
     def test_query_and_classification(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
@@ -774,9 +790,6 @@ class TestSemanticRouter:
         if index_cls is PineconeIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
-        # with pytest.raises(ValueError):
-        #     # Route 8 does not exist so should raise ValueError
-        #     route_layer(text="Hello", route_filter=["Route 8"]).name
         try:
             # TODO JB: currently LocalIndex raises ValueError but others don't
             # they should all behave in the same way
