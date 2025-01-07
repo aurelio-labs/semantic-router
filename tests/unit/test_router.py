@@ -880,7 +880,7 @@ class TestSemanticRouter:
         with pytest.raises(ValueError):
             route_layer()
 
-    def test_semantic_classify(self, routes, index_cls, encoder_cls, router_cls):
+    def test_is_ready(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
@@ -890,25 +890,43 @@ class TestSemanticRouter:
             auto_sync="local",
         )
         count = 0
-        while count < RETRY_COUNT:
-            try:
-                classification, score = route_layer._semantic_classify(
-                    [
-                        {"route": "Route 1", "score": 0.9},
-                        {"route": "Route 2", "score": 0.1},
-                    ]
-                )
-                assert classification == "Route 1"
-                assert score == [0.9]
+        while count < RETRY_COUNT + 1:
+            if route_layer.index.is_ready():
                 break
-            except Exception:
-                logger.warning(
-                    "Query result not in expected routes, waiting for retry "
-                    f"(try {count})"
-                )
-                count += 1
-                if index_cls is PineconeIndex:
-                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            logger.warning("Route layer not ready, waiting for retry (try {count})")
+            count += 1
+            if index_cls is PineconeIndex:
+                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        assert count <= RETRY_COUNT, "Route layer not ready after {RETRY_COUNT} retries"
+
+
+@pytest.mark.parametrize(
+    "index_cls,encoder_cls,router_cls",
+    [
+        (index, encoder, router)
+        for index in [LocalIndex]
+        for encoder in [OpenAIEncoder]
+        for router in get_test_routers()
+    ],
+)
+class TestRouterOnly:
+    def test_semantic_classify(self, routes, index_cls, encoder_cls, router_cls):
+        encoder = encoder_cls()
+        index = init_index(index_cls, index_name=encoder.__class__.__name__)
+        route_layer = router_cls(
+            encoder=encoder,
+            routes=routes,
+            index=index,
+            auto_sync="local",
+        )
+        classification, score = route_layer._semantic_classify(
+            [
+                {"route": "Route 1", "score": 0.9},
+                {"route": "Route 2", "score": 0.1},
+            ]
+        )
+        assert classification == "Route 1"
+        assert score == [0.9]
 
     def test_semantic_classify_multiple_routes(
         self, routes, index_cls, encoder_cls, router_cls
@@ -921,27 +939,15 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        count = 0
-        while count < RETRY_COUNT:
-            try:
-                classification, score = route_layer._semantic_classify(
-                    [
-                        {"route": "Route 1", "score": 0.9},
-                        {"route": "Route 2", "score": 0.1},
-                        {"route": "Route 1", "score": 0.8},
-                    ]
-                )
-                assert classification == "Route 1"
-                assert score == [0.9, 0.8]
-                break
-            except Exception:
-                logger.warning(
-                    "Query result not in expected routes, waiting for retry "
-                    f"(try {count})"
-                )
-                count += 1
-                if index_cls is PineconeIndex:
-                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+        classification, score = route_layer._semantic_classify(
+            [
+                {"route": "Route 1", "score": 0.9},
+                {"route": "Route 2", "score": 0.1},
+                {"route": "Route 1", "score": 0.8},
+            ]
+        )
+        assert classification == "Route 1"
+        assert score == [0.9, 0.8]
 
     def test_query_no_text_dynamic_route(
         self, dynamic_routes, index_cls, encoder_cls, router_cls
@@ -953,10 +959,6 @@ class TestSemanticRouter:
         vector = encoder(["hello"])
         if router_cls is HybridRouter:
             sparse_vector = route_layer.sparse_encoder(["hello"])[0]
-        if index_cls is PineconeIndex:
-            route_layer.index.dimensions = len(vector)
-            route_layer.index.index = route_layer.index._init_index(force_create=True)
-            time.sleep(PINECONE_SLEEP * 3)  # allow for index to be populated
         with pytest.raises(ValueError):
             if router_cls is HybridRouter:
                 route_layer(vector=vector, sparse_vector=sparse_vector)
@@ -1000,8 +1002,6 @@ class TestSemanticRouter:
             route_layer.to_json(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = SemanticRouter.from_json(temp_path)
-            if index_cls is PineconeIndex:
-                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -1025,8 +1025,6 @@ class TestSemanticRouter:
             route_layer.to_yaml(temp_path)
             assert os.path.exists(temp_path)
             route_layer_from_file = SemanticRouter.from_yaml(temp_path)
-            if index_cls is PineconeIndex:
-                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
             assert (
                 route_layer_from_file.index is not None
                 and route_layer_from_file._get_route_names() is not None
@@ -1043,8 +1041,6 @@ class TestSemanticRouter:
         assert layer_config.routes == route_layer.routes
         # now load from config and confirm it's the same
         route_layer_from_config = SemanticRouter.from_config(layer_config, index)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert (
             route_layer_from_config._get_route_names() == route_layer._get_route_names()
         )
@@ -1196,25 +1192,6 @@ class TestSemanticRouter:
             match="The update method cannot be used for updating utterances yet.",
         ):
             route_layer.update(name="Route 1", utterances=["New utterance"])
-
-    def test_is_ready(self, routes, index_cls, encoder_cls, router_cls):
-        encoder = encoder_cls()
-        index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(
-            encoder=encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        count = 0
-        while count < RETRY_COUNT + 1:
-            if route_layer.index.is_ready():
-                break
-            logger.warning("Route layer not ready, waiting for retry (try {count})")
-            count += 1
-            if index_cls is PineconeIndex:
-                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert count <= RETRY_COUNT, "Route layer not ready after {RETRY_COUNT} retries"
 
 
 @pytest.mark.parametrize(
