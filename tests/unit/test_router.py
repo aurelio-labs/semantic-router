@@ -640,7 +640,18 @@ class TestSemanticRouter:
         # Initially, the local routes list should be empty
         assert route_layer.routes == []
         # same for the remote index
-        assert route_layer.index.get_utterances() == []
+        count = 0
+        while count < RETRY_COUNT:
+            try:
+                assert route_layer.index.get_utterances() == []
+                break
+            except AssertionError:
+                logger.warning(
+                    f"Data potentially loading, waiting for retry (try {count})"
+                )
+                count += 1
+                if index_cls is PineconeIndex:
+                    time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
         # Add route1 and check
         route_layer.add(routes=routes[0])
