@@ -64,13 +64,17 @@ class LocalIndex(BaseIndex):
         # return what was removed
         return route_utterances[~mask]
 
-    def get_utterances(self) -> List[Utterance]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
+        """Gets a list of route and utterance objects currently stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects - HybridLocalIndex only supports False.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
+        if include_metadata:
+            raise ValueError("include_metadata is not supported for HybridLocalIndex.")
         if self.routes is None or self.utterances is None:
             return []
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]

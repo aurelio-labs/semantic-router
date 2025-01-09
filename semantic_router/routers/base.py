@@ -193,7 +193,7 @@ class RouterConfig:
         :param encoder_name: The name of the encoder to use, defaults to None.
         :type encoder_name: Optional[str], optional
         """
-        remote_routes = index.get_utterances()
+        remote_routes = index.get_utterances(include_metadata=True)
         return cls.from_tuples(
             route_tuples=[utt.to_tuple() for utt in remote_routes],
             encoder_type=encoder_type,
@@ -380,7 +380,7 @@ class BaseRouter(BaseModel):
         # run auto sync if active
         if self.auto_sync:
             local_utterances = self.to_config().to_utterances()
-            remote_utterances = self.index.get_utterances()
+            remote_utterances = self.index.get_utterances(include_metadata=True)
             diff = UtteranceDiff.from_utterances(
                 local_utterances=local_utterances,
                 remote_utterances=remote_utterances,
@@ -576,7 +576,7 @@ class BaseRouter(BaseModel):
             try:
                 # first creating a diff
                 local_utterances = self.to_config().to_utterances()
-                remote_utterances = self.index.get_utterances()
+                remote_utterances = self.index.get_utterances(include_metadata=True)
                 diff = UtteranceDiff.from_utterances(
                     local_utterances=local_utterances,
                     remote_utterances=remote_utterances,
@@ -632,7 +632,9 @@ class BaseRouter(BaseModel):
             try:
                 # first creating a diff
                 local_utterances = self.to_config().to_utterances()
-                remote_utterances = await self.index.aget_utterances()
+                remote_utterances = await self.index.aget_utterances(
+                    include_metadata=True
+                )
                 diff = UtteranceDiff.from_utterances(
                     local_utterances=local_utterances,
                     remote_utterances=remote_utterances,
@@ -1016,7 +1018,7 @@ class BaseRouter(BaseModel):
         "route2: utterance4", which do not exist locally.
         """
         # first we get remote and local utterances
-        remote_utterances = self.index.get_utterances()
+        remote_utterances = self.index.get_utterances(include_metadata=include_metadata)
         local_utterances = self.to_config().to_utterances()
 
         diff_obj = UtteranceDiff.from_utterances(
@@ -1046,7 +1048,9 @@ class BaseRouter(BaseModel):
         "route2: utterance4", which do not exist locally.
         """
         # first we get remote and local utterances
-        remote_utterances = await self.index.aget_utterances()
+        remote_utterances = await self.index.aget_utterances(
+            include_metadata=include_metadata
+        )
         local_utterances = self.to_config().to_utterances()
 
         diff_obj = UtteranceDiff.from_utterances(
@@ -1318,7 +1322,7 @@ class BaseRouter(BaseModel):
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_utterances()
+            remote_routes = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
             routes, utterances, function_schemas, metadata = map(
                 list, zip(*remote_routes)

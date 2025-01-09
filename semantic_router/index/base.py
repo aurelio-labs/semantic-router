@@ -73,34 +73,44 @@ class BaseIndex(BaseModel):
             **kwargs,
         )
 
-    def get_utterances(self) -> List[Utterance]:
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.index is None:
             logger.warning("Index is None, could not retrieve utterances.")
             return []
         _, metadata = self._get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
+        if not include_metadata:
+            # we remove the metadata from the tuples (ie only keep 0, 1 items)
+            route_tuples = [x[:2] for x in route_tuples]
         return [Utterance.from_tuple(x) for x in route_tuples]
 
-    async def aget_utterances(self) -> List[Utterance]:
+    async def aget_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.index is None:
             logger.warning("Index is None, could not retrieve utterances.")
             return []
         _, metadata = await self._async_get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
+        if not include_metadata:
+            # we remove the metadata from the tuples (ie only keep 0, 1 items)
+            route_tuples = [x[:2] for x in route_tuples]
         return [Utterance.from_tuple(x) for x in route_tuples]
 
     def get_routes(self) -> List[Route]:
@@ -109,7 +119,7 @@ class BaseIndex(BaseModel):
         :return: A list of Route objects.
         :rtype: List[Route]
         """
-        utterances = self.get_utterances()
+        utterances = self.get_utterances(include_metadata=True)
         routes_dict: Dict[str, Route] = {}
         # first create a dictionary of route names to Route objects
         for utt in utterances:

@@ -188,13 +188,20 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_utterances(self) -> List[Utterance]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
+        """Gets a list of route and utterance objects currently stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance, function_schema, metadata) objects.
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects - QdrantIndex only supports False.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
+        if include_metadata:
+            raise NotImplementedError(
+                "include_metadata is not supported for QdrantIndex. If required please "
+                "reach out to maintainers on GitHub via an issue or PR."
+            )
 
         # Check if collection exists first
         if not self.client.collection_exists(self.index_name):
