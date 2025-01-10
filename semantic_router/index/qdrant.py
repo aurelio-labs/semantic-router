@@ -192,17 +192,13 @@ class QdrantIndex(BaseIndex):
         """Gets a list of route and utterance objects currently stored in the index.
 
         :param include_metadata: Whether to include function schemas and metadata in
-        the returned Utterance objects - QdrantIndex only supports False.
+        the returned Utterance objects - QdrantIndex does not currently support this
+        parameter so it is ignored. If required for your use-case please reach out to
+        semantic-router maintainers on GitHub via an issue or PR.
         :type include_metadata: bool
         :return: A list of Utterance objects.
         :rtype: List[Utterance]
         """
-        if include_metadata:
-            raise NotImplementedError(
-                "include_metadata is not supported for QdrantIndex. If required please "
-                "reach out to maintainers on GitHub via an issue or PR."
-            )
-
         # Check if collection exists first
         if not self.client.collection_exists(self.index_name):
             return []

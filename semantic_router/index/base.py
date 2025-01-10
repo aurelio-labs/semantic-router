@@ -86,7 +86,7 @@ class BaseIndex(BaseModel):
         if self.index is None:
             logger.warning("Index is None, could not retrieve utterances.")
             return []
-        _, metadata = self._get_all(include_metadata=True)
+        _, metadata = self._get_all(include_metadata=True)  # include_metadata required
         route_tuples = parse_route_info(metadata=metadata)
         if not include_metadata:
             # we remove the metadata from the tuples (ie only keep 0, 1 items)
