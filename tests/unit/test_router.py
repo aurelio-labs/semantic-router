@@ -772,6 +772,7 @@ class TestSemanticRouter:
             routes=routes,
             index=index,
             auto_sync="local",
+            aggregation="max",
         )
 
         @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
@@ -789,6 +790,7 @@ class TestSemanticRouter:
             routes=routes,
             index=index,
             auto_sync="local",
+            aggregation="max",
         )
 
         @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
@@ -851,6 +853,7 @@ class TestSemanticRouter:
             routes=routes,
             index=index,
             auto_sync="local",
+            aggregation="max",
         )
         # create vectors
         vector = encoder(["hello"])
