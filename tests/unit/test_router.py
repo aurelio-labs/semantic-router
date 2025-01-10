@@ -19,7 +19,7 @@ from platform import python_version
 
 
 PINECONE_SLEEP = 8
-RETRY_COUNT = 5
+RETRY_COUNT = 10
 
 
 # retry decorator for PineconeIndex cases (which need delay)
