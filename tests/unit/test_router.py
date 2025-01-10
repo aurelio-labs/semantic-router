@@ -764,13 +764,13 @@ class TestSemanticRouter:
 
         check_index_populated()
 
-        # clear index
-        @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
-        def clear_index():
-            route_layer.index.index.delete(delete_all=True)
-            assert route_layer.index.get_utterances() == []
-
-        clear_index()
+        # clear index if pinecone
+        if index_cls is PineconeIndex:
+            @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
+            def clear_index():
+                route_layer.index.index.delete(delete_all=True)
+                assert route_layer.index.get_utterances() == []
+            clear_index()
 
     def test_query_and_classification(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
