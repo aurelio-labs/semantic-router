@@ -65,7 +65,7 @@ class RouterConfig:
     Routers.
     """
 
-    routes: List[Route] = []
+    routes: List[Route] = Field(default_factory=list)
 
     class Config:
         arbitrary_types_allowed = True
@@ -300,7 +300,7 @@ class BaseRouter(BaseModel):
     encoder: DenseEncoder = Field(default_factory=OpenAIEncoder)
     index: BaseIndex = Field(default_factory=BaseIndex)
     score_threshold: Optional[float] = Field(default=None)
-    routes: List[Route] = []
+    routes: List[Route] = Field(default_factory=list)
     llm: Optional[BaseLLM] = None
     top_k: int = 5
     aggregation: str = "mean"
