@@ -865,6 +865,7 @@ class TestSemanticRouter:
             auto_sync="local",
             aggregation="max",
         )
+        route_layer.score_threshold = 0.1
         # create vectors
         vector = encoder(["hello"])
         if router_cls is HybridRouter:
