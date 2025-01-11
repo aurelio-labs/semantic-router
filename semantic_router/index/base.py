@@ -358,6 +358,11 @@ class BaseIndex(BaseModel):
             if self._is_locked(scope=scope) != value:
                 # in this case, we can set the lock value
                 break
+            elif not value:
+                # if unlocking, we can break immediately — often with Pinecone the
+                # lock/unlocked state takes a few seconds to update, so locking then
+                # unlocking quickly will fail without this check
+                break
             if (datetime.now() - start_time).total_seconds() < wait:
                 # wait for a few seconds before checking again
                 time.sleep(RETRY_WAIT_TIME)

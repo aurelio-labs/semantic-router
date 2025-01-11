@@ -662,6 +662,7 @@ class BaseRouter(BaseModel):
         :param strategy: The sync strategy to execute.
         :type strategy: Dict[str, Dict[str, List[Utterance]]]
         """
+        print(f"strategy: {strategy}")
         if strategy["remote"]["delete"]:
             data_to_delete = {}  # type: ignore
             for utt_obj in strategy["remote"]["delete"]:
