@@ -485,7 +485,9 @@ class TestSemanticRouter:
                 # confirm local and remote are synced
                 assert route_layer.is_synced()
                 # now confirm utterances are correct
-                local_utterances = route_layer.index.get_utterances(include_metadata=True)
+                local_utterances = route_layer.index.get_utterances(
+                    include_metadata=True
+                )
                 # we sort to ensure order is the same
                 # TODO JB: there is a bug here where if we include_metadata=True it fails
                 local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
@@ -534,11 +536,11 @@ class TestSemanticRouter:
                     Utterance(name="Route 2", utterances="Goodbye"),
                     Utterance(name="Route 3", utterances="Boo"),
                 ]
-                local_utterances = route_layer.index.get_utterances(include_metadata=True)
-                # we sort to ensure order is the same
-                local_utterances.sort(
-                    key=lambda x: x.to_str(include_metadata=True)
+                local_utterances = route_layer.index.get_utterances(
+                    include_metadata=True
                 )
+                # we sort to ensure order is the same
+                local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
                 assert local_utterances == r1_utterances
 
             check_r1_utterances()
@@ -554,7 +556,9 @@ class TestSemanticRouter:
             def check_r2_utterances():
                 # confirm local and remote are synced
                 assert route_layer.is_synced()
-                local_utterances = route_layer.index.get_utterances(include_metadata=True)
+                local_utterances = route_layer.index.get_utterances(
+                    include_metadata=True
+                )
                 # we sort to ensure order is the same
                 local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
                 assert local_utterances == [
@@ -619,7 +623,9 @@ class TestSemanticRouter:
                 # confirm local and remote are synced
                 assert route_layer.is_synced()
                 # now confirm utterances are correct
-                local_utterances = route_layer.index.get_utterances(include_metadata=True)
+                local_utterances = route_layer.index.get_utterances(
+                    include_metadata=True
+                )
                 # we sort to ensure order is the same
                 local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
                 assert local_utterances == [
@@ -809,7 +815,9 @@ class TestAsyncSemanticRouter:
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
-                assert await route_layer.index.aget_utterances(include_metadata=True) == [
+                assert await route_layer.index.aget_utterances(
+                    include_metadata=True
+                ) == [
                     Utterance(route="Route 1", utterance="Hello"),
                     Utterance(route="Route 2", utterance="Hi"),
                 ], "The routes in the index should match the local routes"
@@ -842,7 +850,9 @@ class TestAsyncSemanticRouter:
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
-                assert await route_layer.index.aget_utterances(include_metadata=True) == [
+                assert await route_layer.index.aget_utterances(
+                    include_metadata=True
+                ) == [
                     Utterance(route="Route 1", utterance="Hello"),
                     Utterance(route="Route 2", utterance="Hi"),
                 ], "The routes in the index should match the local routes"
