@@ -516,25 +516,45 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+
+            @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
+            def check_r1_utterances():
+                # confirm local and remote are synced
+                assert route_layer.is_synced()
+                # now confirm utterances are correct
+                r1_utterances = [
+                    Utterance(
+                        name="Route 1", utterances="Hello", metadata={"type": "default"}
+                    ),
+                    Utterance(
+                        name="Route 1", utterances="Hi", metadata={"type": "default"}
+                    ),
+                    Utterance(name="Route 2", utterances="Au revoir"),
+                    Utterance(name="Route 2", utterances="Bye"),
+                    Utterance(name="Route 2", utterances="Goodbye"),
+                    Utterance(name="Route 3", utterances="Boo"),
+                ]
+                local_utterances = route_layer.index.get_utterances()
+                # we sort to ensure order is the same
+                local_utterances.sort(
+                    key=lambda x: x.to_str(include_metadata=include_metadata(index_cls))
+                )
+                assert local_utterances == r1_utterances
+
+            check_r1_utterances()
+
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="merge-force-remote",
             )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
-            def check_sync():
+            def check_r2_utterances():
                 # confirm local and remote are synced
                 assert route_layer.is_synced()
-                # now confirm utterances are correct
                 local_utterances = route_layer.index.get_utterances()
-                # we sort to ensure order is the same
-                local_utterances.sort(
-                    key=lambda x: x.to_str(include_metadata=include_metadata(index_cls))
-                )
                 assert local_utterances == [
                     Utterance(
                         route="Route 1", utterance="Hello", metadata={"type": "default"}
@@ -549,7 +569,7 @@ class TestSemanticRouter:
                     Utterance(route="Route 3", utterance="Boo"),
                 ], "The routes in the index should match the local routes"
 
-            check_sync()
+            check_r2_utterances()
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -889,6 +909,32 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
+
+            @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
+            async def populate_index():
+                # confirm local and remote are synced
+                assert await route_layer.async_is_synced()
+                # now confirm utterances are correct
+                local_utterances = await route_layer.index.aget_utterances(
+                    include_metadata=True
+                )
+                # we sort to ensure order is the same
+                local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+                assert local_utterances == [
+                    Utterance(
+                        route="Route 1", utterance="Hello", metadata={"type": "default"}
+                    ),
+                    Utterance(
+                        route="Route 1", utterance="Hi", metadata={"type": "default"}
+                    ),
+                    Utterance(route="Route 2", utterance="Au revoir"),
+                    Utterance(route="Route 2", utterance="Bye"),
+                    Utterance(route="Route 2", utterance="Goodbye"),
+                    Utterance(route="Route 3", utterance="Boo"),
+                ], "The routes in the index should match the local routes"
+
+            await populate_index()
+
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
             route_layer = router_cls(
                 encoder=openai_encoder,

@@ -282,6 +282,7 @@ class PineconeIndex(BaseIndex):
         :type batch: List[Dict]
         """
         if self.index is not None:
+            print(f"JBTEMP upserting batch: {batch} to '{self.namespace}'")
             self.index.upsert(vectors=batch, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not upsert.")
@@ -298,6 +299,10 @@ class PineconeIndex(BaseIndex):
         **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
+        print(f"{routes=}")
+        print(f"{utterances=}")
+        print(f"{function_schemas=}")
+        print(f"{metadata_list=}")
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
@@ -309,7 +314,7 @@ class PineconeIndex(BaseIndex):
             metadata_list=metadata_list,
             sparse_embeddings=sparse_embeddings,
         )
-
+        print(f"{vectors_to_upsert=}")
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
