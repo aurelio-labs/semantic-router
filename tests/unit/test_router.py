@@ -857,6 +857,7 @@ class TestSemanticRouter:
 
     def test_query_with_vector(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
+        encoder.score_threshold = 0.1
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
             encoder=encoder,
@@ -865,7 +866,6 @@ class TestSemanticRouter:
             auto_sync="local",
             aggregation="max",
         )
-        route_layer.score_threshold = 0.1
         # create vectors
         vector = encoder(["hello"])
         if router_cls is HybridRouter:
