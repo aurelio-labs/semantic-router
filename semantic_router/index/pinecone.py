@@ -236,7 +236,12 @@ class PineconeIndex(BaseIndex):
         else:
             # if the index doesn't exist and we don't have the dimensions
             # we return None
-            logger.warning("Index could not be initialized.")
+            logger.warning(
+                "Index could not be initialized. Init parameters: "
+                f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
+                f"{force_create=}"
+            )
             index = None
         if index is not None:
             self.host = self.client.describe_index(self.index_name)["host"]
@@ -272,7 +277,12 @@ class PineconeIndex(BaseIndex):
         else:
             # if the index doesn't exist and we don't have the dimensions
             # we raise warning
-            logger.warning("Index could not be initialized.")
+            logger.warning(
+                "Index could not be initialized. Init parameters: "
+                f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
+                f"{force_create=}"
+            )
         self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):

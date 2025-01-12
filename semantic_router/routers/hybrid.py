@@ -62,9 +62,6 @@ class HybridRouter(BaseRouter):
             and self.routes
         ):
             self.sparse_encoder.fit(self.routes)
-        # run initialize index now if auto sync is active
-        if self.auto_sync:
-            self._init_index_state()
 
     def _set_score_threshold(self):
         """Set the score threshold for the HybridRouter. Unlike the base router the

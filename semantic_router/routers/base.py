@@ -351,6 +351,8 @@ class BaseRouter(BaseModel):
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
+        # initialize index
+        self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         if index is None:
@@ -370,6 +372,7 @@ class BaseRouter(BaseModel):
 
     def _init_index_state(self):
         """Initializes an index (where required) and runs auto_sync if active."""
+        print("JBTEMP _init_index_state")
         # initialize index now, check if we need dimensions
         if self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])
@@ -862,6 +865,7 @@ class BaseRouter(BaseModel):
         The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
         """
+        # TODO JB: should modify update to take a Route object
         current_local_hash = self._get_hash()
         current_remote_hash = self.index._read_hash()
         if current_remote_hash.value == "":
