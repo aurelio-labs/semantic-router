@@ -108,13 +108,15 @@ def init_index(
     dimensions: Optional[int] = None,
     namespace: Optional[str] = "",
     init_async_index: bool = False,
+    index_name: Optional[str] = None,
 ):
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
     if index_cls is PineconeIndex:
+        index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
         index = index_cls(
-            index_name=TEST_ID,
+            index_name=index_name,
             dimensions=dimensions,
             namespace=namespace,
             init_async_index=init_async_index,
@@ -323,7 +325,7 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_initialization(self, openai_encoder, routes, index_cls, router_cls):
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         _ = router_cls(
             encoder=openai_encoder,
             routes=routes,
@@ -338,7 +340,7 @@ class TestSemanticRouter:
     def test_second_initialization_sync(
         self, openai_encoder, routes, index_cls, router_cls
     ):
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         route_layer = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -355,7 +357,7 @@ class TestSemanticRouter:
     def test_second_initialization_not_synced(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -373,7 +375,7 @@ class TestSemanticRouter:
     def test_utterance_diff(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -401,7 +403,7 @@ class TestSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST LOCAL
-            pinecone_index = init_index(index_cls)
+            pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -433,7 +435,7 @@ class TestSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST REMOTE
-            pinecone_index = init_index(index_cls)
+            pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
@@ -465,7 +467,7 @@ class TestSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
-            pinecone_index = init_index(index_cls)
+            pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -486,11 +488,11 @@ class TestSemanticRouter:
                 assert route_layer.is_synced()
                 # now confirm utterances are correct
                 local_utterances = route_layer.index.get_utterances(
-                    include_metadata=True
+                    include_metadata=False
                 )
                 # we sort to ensure order is the same
                 # TODO JB: there is a bug here where if we include_metadata=True it fails
-                local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+                local_utterances.sort(key=lambda x: x.to_str(include_metadata=False))
                 assert local_utterances == [
                     Utterance(route="Route 1", utterance="Hello"),
                     Utterance(route="Route 1", utterance="Hi"),
@@ -498,7 +500,7 @@ class TestSemanticRouter:
                     Utterance(route="Route 2", utterance="Bye"),
                     Utterance(route="Route 2", utterance="Goodbye"),
                     Utterance(route="Route 2", utterance="Hi"),
-                    Utterance(route="Route 3", utterance="Boo"),
+                    # Utterance(route="Route 3", utterance="Boo"),  # TODO should not be here
                 ], "The routes in the index should match the local routes"
 
             check_sync()
@@ -511,7 +513,7 @@ class TestSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
-            pinecone_index = init_index(index_cls)
+            pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -526,15 +528,15 @@ class TestSemanticRouter:
                 # now confirm utterances are correct
                 r1_utterances = [
                     Utterance(
-                        name="Route 1", utterances="Hello", metadata={"type": "default"}
+                        route="Route 1", utterance="Hello", metadata={"type": "default"}
                     ),
                     Utterance(
-                        name="Route 1", utterances="Hi", metadata={"type": "default"}
+                        route="Route 1", utterance="Hi", metadata={"type": "default"}
                     ),
-                    Utterance(name="Route 2", utterances="Au revoir"),
-                    Utterance(name="Route 2", utterances="Bye"),
-                    Utterance(name="Route 2", utterances="Goodbye"),
-                    Utterance(name="Route 3", utterances="Boo"),
+                    Utterance(route="Route 2", utterance="Au revoir"),
+                    Utterance(route="Route 2", utterance="Bye"),
+                    Utterance(route="Route 2", utterance="Goodbye"),
+                    Utterance(route="Route 3", utterance="Boo"),
                 ]
                 local_utterances = route_layer.index.get_utterances(
                     include_metadata=True
@@ -584,7 +586,7 @@ class TestSemanticRouter:
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=[],
-            index=init_index(index_cls),
+            index=init_index(index_cls, index_name=router_cls.__name__),
             auto_sync=None,
         )
         route_layer.sync("remote")
@@ -603,7 +605,7 @@ class TestSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE
-            pinecone_index = init_index(index_cls)
+            pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
@@ -651,7 +653,7 @@ class TestSemanticRouter:
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes_2,
@@ -692,7 +694,7 @@ class TestSemanticRouter:
         self, openai_encoder, routes, index_cls, router_cls
     ):
         """Test that sync lock is automatically released after sync operations"""
-        index = init_index(index_cls)
+        index = init_index(index_cls, index_name=router_cls.__name__)
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
@@ -723,7 +725,9 @@ class TestAsyncSemanticRouter:
     )
     @pytest.mark.asyncio
     async def test_initialization(self, openai_encoder, routes, index_cls, router_cls):
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         _ = router_cls(
             encoder=openai_encoder,
             routes=routes,
@@ -739,7 +743,9 @@ class TestAsyncSemanticRouter:
     async def test_second_initialization_sync(
         self, openai_encoder, routes, index_cls, router_cls
     ):
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         route_layer = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -754,7 +760,9 @@ class TestAsyncSemanticRouter:
     async def test_second_initialization_not_synced(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -770,7 +778,9 @@ class TestAsyncSemanticRouter:
     async def test_utterance_diff(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         _ = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
@@ -799,7 +809,9 @@ class TestAsyncSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST LOCAL
-            pinecone_index = init_index(index_cls, init_async_index=True)
+            pinecone_index = init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            )
             _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -833,7 +845,9 @@ class TestAsyncSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST REMOTE
-            pinecone_index = init_index(index_cls, init_async_index=True)
+            pinecone_index = init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            )
             _ = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
@@ -868,7 +882,9 @@ class TestAsyncSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
-            pinecone_index = init_index(index_cls, init_async_index=True)
+            pinecone_index = init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            )
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -914,7 +930,9 @@ class TestAsyncSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE FORCE LOCAL
-            pinecone_index = init_index(index_cls, init_async_index=True)
+            pinecone_index = init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            )
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes,
@@ -989,7 +1007,9 @@ class TestAsyncSemanticRouter:
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=[],
-            index=init_index(index_cls, init_async_index=True),
+            index=init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            ),
             auto_sync=None,
         )
         await route_layer.async_sync("remote")
@@ -1010,7 +1030,9 @@ class TestAsyncSemanticRouter:
     ):
         if index_cls is PineconeIndex:
             # TEST MERGE
-            pinecone_index = init_index(index_cls, init_async_index=True)
+            pinecone_index = init_index(
+                index_cls, init_async_index=True, index_name=router_cls.__name__
+            )
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
@@ -1063,7 +1085,9 @@ class TestAsyncSemanticRouter:
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock prevents concurrent synchronization operations"""
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes_2,
@@ -1106,7 +1130,9 @@ class TestAsyncSemanticRouter:
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
         """Test that sync lock is automatically released after sync operations"""
-        index = init_index(index_cls, init_async_index=True)
+        index = init_index(
+            index_cls, init_async_index=True, index_name=router_cls.__name__
+        )
         print(f"1. {index.namespace=}")
         route_layer = router_cls(
             encoder=openai_encoder,

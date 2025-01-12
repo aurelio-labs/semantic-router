@@ -321,7 +321,7 @@ class BaseRouter(BaseModel):
         encoder: Optional[DenseEncoder] = None,
         sparse_encoder: Optional[SparseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: List[Route] = [],
+        routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
         aggregation: str = "mean",

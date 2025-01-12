@@ -31,7 +31,7 @@ class HybridRouter(BaseRouter):
         encoder: DenseEncoder,
         sparse_encoder: Optional[SparseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: List[Route] = [],
+        routes: Optional[List[Route]] = None,
         index: Optional[HybridLocalIndex] = None,
         top_k: int = 5,
         aggregation: str = "mean",
