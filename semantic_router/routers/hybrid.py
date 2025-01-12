@@ -42,8 +42,11 @@ class HybridRouter(BaseRouter):
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
         encoder = self._get_encoder(encoder=encoder)
+        # initialize sparse encoder
+        sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         super().__init__(
             encoder=encoder,
+            sparse_encoder=sparse_encoder,
             llm=llm,
             routes=routes,
             index=index,
@@ -51,8 +54,6 @@ class HybridRouter(BaseRouter):
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
-        # initialize sparse encoder
-        self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         # set alpha
         self.alpha = alpha
         # fit sparse encoder if needed
@@ -162,7 +163,7 @@ class HybridRouter(BaseRouter):
 
     def _get_sparse_encoder(
         self, sparse_encoder: Optional[SparseEncoder]
-    ) -> SparseEncoder:
+    ) -> Optional[SparseEncoder]:
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             sparse_encoder = BM25Encoder()
