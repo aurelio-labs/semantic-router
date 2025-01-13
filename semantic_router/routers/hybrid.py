@@ -307,7 +307,7 @@ class HybridRouter(BaseRouter):
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
             emb_d = np.array(self.encoder(X[i : i + batch_size]))
-            # TODO JB: for some reason the sparse encoder is receiving a tuple 
+            # TODO JB: for some reason the sparse encoder is receiving a tuple
             # like `("Hello",)`
             emb_s = self.sparse_encoder(X[i : i + batch_size])
             Xq_d.extend(emb_d)
