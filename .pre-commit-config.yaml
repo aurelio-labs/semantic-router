@@ -1,77 +1,71 @@
 default_language_version:
   python: python3.13
 repos:
-  - repo: meta
-    hooks:
-      - id: check-hooks-apply
-      - id: check-useless-excludes
+- repo: meta
+  hooks:
+  - id: check-hooks-apply
+  - id: check-useless-excludes
 
-  - repo: https://github.com/psf/black
-    rev: 23.9.1
-    hooks:
-      - id: black
+- repo: https://github.com/psf/black
+  rev: 23.9.1
+  hooks:
+  - id: black
 
-  - repo: https://github.com/asottile/blacken-docs
-    rev: 1.16.0
-    hooks:
-      - id: blacken-docs
-        additional_dependencies: [black==22.10.0]
+- repo: https://github.com/asottile/blacken-docs
+  rev: 1.16.0
+  hooks:
+  - id: blacken-docs
+    additional_dependencies: [ black==22.10.0 ]
 
-  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-    rev: v9.11.0
-    hooks:
-      - id: commitlint
-        stages: [commit-msg]
-        additional_dependencies: ['@commitlint/config-conventional']
+- repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+  rev: v9.11.0
+  hooks:
+  - id: commitlint
+    stages: [ commit-msg ]
+    additional_dependencies: [ '@commitlint/config-conventional' ]
 
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.4
-    hooks:
-      - id: codespell
-        name: Run codespell to check for common misspellings in files
-        language: python
-        types: [ text ]
-        args: [ "--write-changes", "--ignore-words-list", "asend" ]
-        exclude: "poetry.lock"
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.4
+  hooks:
+  - id: codespell
+    name: Run codespell to check for common misspellings in files
+    language: python
+    types: [ text ]
+    args: [ "--write-changes", "--ignore-words-list", "asend" ]
+    exclude: "poetry.lock"
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
-    hooks:
-      - id: check-vcs-permalinks
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-        args: [ --markdown-linebreak-ext=md ]
-      - id: debug-statements
-      - id: no-commit-to-branch
-      - id: check-merge-conflict
-      - id: check-toml
-      - id: check-yaml
-        args: [ '--unsafe' ] # for mkdocs.yml
-      - id: detect-private-key
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+  - id: check-vcs-permalinks
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+    args: [ --markdown-linebreak-ext=md ]
+  - id: debug-statements
+  - id: no-commit-to-branch
+  - id: check-merge-conflict
+  - id: check-toml
+  - id: check-yaml
+    args: [ '--unsafe' ] # for mkdocs.yml
+  - id: detect-private-key
 
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: v3.13.0
-    hooks:
-      - id: commitizen
-      - id: commitizen-branch
-        stages:
-          - post-commit
-          - push
+- repo: https://github.com/commitizen-tools/commitizen
+  rev: v3.13.0
+  hooks:
+  - id: commitizen
+  - id: commitizen-branch
+    stages:
+    - post-commit
+    - push
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.290
-    hooks:
-      - id: ruff
-        types_or: [python, pyi, jupyter]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.0.290
+  hooks:
+  - id: ruff
+    types_or: [ python, pyi, jupyter ]
 
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       args: [--ignore-missing-imports]
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.6
-    hooks:
-      - id: bandit
-        args: ['-lll']
+- repo: https://github.com/PyCQA/bandit
+  rev: 1.7.6
+  hooks:
+  - id: bandit
+    args: [ '-lll' ]

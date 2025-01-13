@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '*'
+    - '*'
 
 jobs:
   build:
@@ -33,7 +33,7 @@ jobs:
         python-version: '3.13'
     - name: Install Poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python - -y --version 1.8.4
+        curl -sSL https://install.python-poetry.org | python - -y --version 2.0.1
     - name: Publish to PyPI
       run: |
         poetry config repositories.remote https://upload.pypi.org/legacy/

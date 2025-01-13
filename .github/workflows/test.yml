@@ -3,8 +3,9 @@ name: Test
 on:
   pull_request:
 
+
 env:
-  POETRY_VERSION: "1.8.4"
+  POETRY_VERSION: "2.0.1"
 
 jobs:
   build:
@@ -12,47 +13,47 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
     steps:
-      - uses: actions/checkout@v4
-      - name: Cache Poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.poetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-      - name: Install poetry
-        run: |
-          pipx install poetry==$POETRY_VERSION
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry install --all-extras
-      - name: Install nltk
-        run: |
-          pip install nltk
-      - name: Download nltk data
-        run: |
-          python -m nltk.downloader punkt stopwords wordnet punkt_tab
-      - name: Pytest All
-        env:
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-        run: |
-          make test
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
+    - uses: actions/checkout@v4
+    - name: Cache Poetry
+      uses: actions/cache@v4
+      with:
+        path: ~/.poetry
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+    - name: Install poetry
+      run: |
+        pipx install poetry==$POETRY_VERSION
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: poetry
+    - name: Install dependencies
+      run: |
+        poetry install --all-extras
+    - name: Install nltk
+      run: |
+        pip install nltk
+    - name: Download nltk data
+      run: |
+        python -m nltk.downloader punkt stopwords wordnet punkt_tab
+    - name: Pytest All
+      env:
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      run: |
+        make test
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
