@@ -327,6 +327,7 @@ class BaseRouter(BaseModel):
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
+        routes = routes.copy() if routes else []
         super().__init__(
             encoder=encoder,
             sparse_encoder=sparse_encoder,
@@ -340,7 +341,7 @@ class BaseRouter(BaseModel):
         self.encoder = self._get_encoder(encoder=encoder)
         self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         self.llm = llm
-        self.routes = routes.copy() if routes else []
+        self.routes = routes
         # initialize index
         self.index = self._get_index(index=index)
         # set score threshold using default method
