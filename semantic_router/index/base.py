@@ -384,7 +384,6 @@ class BaseIndex(BaseModel):
         """Lock/unlock the index for a given scope (if applicable). If index
         already locked/unlocked, raises ValueError.
         """
-        logger.warning(f"JBTEMP alock method called with {value=} {wait=} {scope=}")
         start_time = datetime.now()
         while True:
             if await self._ais_locked(scope=scope) != value:

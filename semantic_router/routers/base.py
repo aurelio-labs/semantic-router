@@ -391,7 +391,6 @@ class BaseRouter(BaseModel):
 
     def _init_index_state(self):
         """Initializes an index (where required) and runs auto_sync if active."""
-        print("JBTEMP _init_index_state")
         # initialize index now, check if we need dimensions
         if self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])
@@ -684,7 +683,6 @@ class BaseRouter(BaseModel):
         :param strategy: The sync strategy to execute.
         :type strategy: Dict[str, Dict[str, List[Utterance]]]
         """
-        print(f"strategy: {strategy}")
         if strategy["remote"]["delete"]:
             data_to_delete = {}  # type: ignore
             for utt_obj in strategy["remote"]["delete"]:
@@ -1233,7 +1231,6 @@ class BaseRouter(BaseModel):
         self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
         scores_by_class: Dict[str, List[float]] = {}
-        logger.warning(f"JBTEMP: {query_results=}")
         for result in query_results:
             score = result["score"]
             route = result["route"]

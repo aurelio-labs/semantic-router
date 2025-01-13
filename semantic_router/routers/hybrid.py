@@ -91,7 +91,6 @@ class HybridRouter(BaseRouter):
         if current_remote_hash.value == "":
             # if remote hash is empty, the index is to be initialized
             current_remote_hash = current_local_hash
-        logger.warning(f"JBTEMP: {routes}")
         if isinstance(routes, Route):
             routes = [routes]
         # create embeddings for all routes
@@ -242,8 +241,6 @@ class HybridRouter(BaseRouter):
             route_filter=route_filter,
             sparse_vector=sparse_vector,
         )
-        logger.warning(f"JBTEMP: {scores}")
-        logger.warning(f"JBTEMP: {route_names}")
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(route_names, scores)
         ]
@@ -252,8 +249,6 @@ class HybridRouter(BaseRouter):
         top_class, top_class_scores = self._semantic_classify(
             query_results=query_results
         )
-        logger.warning(f"JBTEMP: {top_class}")
-        logger.warning(f"JBTEMP: {top_class_scores}")
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
             return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
@@ -312,8 +307,8 @@ class HybridRouter(BaseRouter):
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
             emb_d = np.array(self.encoder(X[i : i + batch_size]))
-            # TODO JB: for some reason the sparse encoder is receiving a tuple like `("Hello",)`
-            print(f"JBTEMP: {X[i : i + batch_size]}")
+            # TODO JB: for some reason the sparse encoder is receiving a tuple 
+            # like `("Hello",)`
             emb_s = self.sparse_encoder(X[i : i + batch_size])
             Xq_d.extend(emb_d)
             Xq_s.extend(emb_s)

@@ -292,7 +292,6 @@ class PineconeIndex(BaseIndex):
         :type batch: List[Dict]
         """
         if self.index is not None:
-            print(f"JBTEMP upserting batch: {batch} to '{self.namespace}'")
             self.index.upsert(vectors=batch, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not upsert.")
@@ -309,10 +308,6 @@ class PineconeIndex(BaseIndex):
         **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
-        print(f"{routes=}")
-        print(f"{utterances=}")
-        print(f"{function_schemas=}")
-        print(f"{metadata_list=}")
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
@@ -324,7 +319,6 @@ class PineconeIndex(BaseIndex):
             metadata_list=metadata_list,
             sparse_embeddings=sparse_embeddings,
         )
-        print(f"{vectors_to_upsert=}")
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
@@ -583,11 +577,9 @@ class PineconeIndex(BaseIndex):
                 scope=scope,
             )
         config_id = f"{field}#{scope}"
-        logger.warning(f"JBTEMP Pinecone config id: {config_id}")
         config_record = await self._async_fetch_metadata(
             vector_id=config_id, namespace="sr_config"
         )
-        logger.warning(f"JBTEMP Pinecone config record: {config_record}")
         if config_record:
             try:
                 return ConfigParameter(
@@ -637,7 +629,6 @@ class PineconeIndex(BaseIndex):
         if self.dimensions is None:
             raise ValueError("Must set PineconeIndex.dimensions before writing config.")
         pinecone_config = config.to_pinecone(dimensions=self.dimensions)
-        logger.warning(f"JBTEMP Pinecone config to upsert: {pinecone_config}")
         await self._async_upsert(
             vectors=[pinecone_config],
             namespace="sr_config",
@@ -750,13 +741,11 @@ class PineconeIndex(BaseIndex):
             "vectors": vectors,
             "namespace": namespace,
         }
-        logger.warning(f"JBTEMP Pinecone upsert params: {params}")
         async with self.async_client.post(
             f"https://{self.host}/vectors/upsert",
             json=params,
         ) as response:
             res = await response.json(content_type=None)
-            logger.warning(f"JBTEMP Pinecone upsert response: {res}")
             return res
 
     async def _async_create_index(
@@ -878,7 +867,6 @@ class PineconeIndex(BaseIndex):
         params = {
             "ids": [vector_id],
         }
-        logger.warning(f"JBTEMP Pinecone fetch params: {params}")
 
         if namespace:
             params["namespace"] = [namespace]

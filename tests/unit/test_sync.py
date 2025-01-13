@@ -1133,14 +1133,12 @@ class TestAsyncSemanticRouter:
         index = init_index(
             index_cls, init_async_index=True, index_name=router_cls.__name__
         )
-        print(f"1. {index.namespace=}")
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes_2,
             index=index,
             auto_sync="local",
         )
-        print(f"2. {route_layer.index.namespace=}")
         route_layer = router_cls(
             encoder=openai_encoder,
             routes=routes,
@@ -1153,14 +1151,12 @@ class TestAsyncSemanticRouter:
         await route_layer.async_sync("local")
         if index_cls is PineconeIndex:
             await asyncio.sleep(PINECONE_SLEEP)
-        print(f"3. {route_layer.index.namespace=}")
 
         # Lock should be released, allowing another sync
         await route_layer.async_sync("local")  # Should not raise exception
         if index_cls is PineconeIndex:
             await asyncio.sleep(PINECONE_SLEEP)
         assert await route_layer.async_is_synced()
-        print(f"4. {route_layer.index.namespace=}")
 
         # clear index if pinecone
         if index_cls is PineconeIndex:
