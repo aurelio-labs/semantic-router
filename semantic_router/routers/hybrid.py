@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from tqdm.auto import tqdm
 import asyncio
 from pydantic import Field
 
@@ -14,7 +15,7 @@ from semantic_router.route import Route
 from semantic_router.index import BaseIndex, HybridLocalIndex
 from semantic_router.schema import RouteChoice, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-from semantic_router.routers.base import BaseRouter, xq_reshape
+from semantic_router.routers.base import BaseRouter, xq_reshape, threshold_random_search
 from semantic_router.llms import BaseLLM
 
 
@@ -30,7 +31,7 @@ class HybridRouter(BaseRouter):
         encoder: DenseEncoder,
         sparse_encoder: Optional[SparseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: List[Route] = [],
+        routes: Optional[List[Route]] = None,
         index: Optional[HybridLocalIndex] = None,
         top_k: int = 5,
         aggregation: str = "mean",
@@ -41,8 +42,11 @@ class HybridRouter(BaseRouter):
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
         encoder = self._get_encoder(encoder=encoder)
+        # initialize sparse encoder
+        sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         super().__init__(
             encoder=encoder,
+            sparse_encoder=sparse_encoder,
             llm=llm,
             routes=routes,
             index=index,
@@ -50,8 +54,6 @@ class HybridRouter(BaseRouter):
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
-        # initialize sparse encoder
-        self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         # set alpha
         self.alpha = alpha
         # fit sparse encoder if needed
@@ -61,9 +63,21 @@ class HybridRouter(BaseRouter):
             and self.routes
         ):
             self.sparse_encoder.fit(self.routes)
-        # run initialize index now if auto sync is active
-        if self.auto_sync:
-            self._init_index_state()
+
+    def _set_score_threshold(self):
+        """Set the score threshold for the HybridRouter. Unlike the base router the
+        encoder score threshold is not used directly. Instead, the dense encoder
+        score threshold is multiplied by the alpha value, resulting in a lower
+        score threshold. This is done to account for the difference in returned
+        scores from the hybrid router.
+        """
+        if self.encoder.score_threshold is not None:
+            self.score_threshold = self.encoder.score_threshold * self.alpha
+            if self.score_threshold is None:
+                logger.warning(
+                    "No score threshold value found in encoder. Using the default "
+                    "'None' value can lead to unexpected results."
+                )
 
     def add(self, routes: List[Route] | Route):
         """Add a route to the local HybridRouter and index.
@@ -92,7 +106,7 @@ class HybridRouter(BaseRouter):
             utterances=all_utterances,
             function_schemas=all_function_schemas,
             metadata_list=all_metadata,
-            sparse_embeddings=sparse_emb,  # type: ignore
+            sparse_embeddings=sparse_emb,
         )
 
         self.routes.extend(routes)
@@ -129,7 +143,7 @@ class HybridRouter(BaseRouter):
                     utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
-                sparse_embeddings=sparse_emb,  # type: ignore
+                sparse_embeddings=sparse_emb,
             )
         if strategy["local"]["delete"]:
             self._local_delete(utterances=strategy["local"]["delete"])
@@ -148,7 +162,7 @@ class HybridRouter(BaseRouter):
 
     def _get_sparse_encoder(
         self, sparse_encoder: Optional[SparseEncoder]
-    ) -> SparseEncoder:
+    ) -> Optional[SparseEncoder]:
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             sparse_encoder = BM25Encoder()
@@ -202,6 +216,8 @@ class HybridRouter(BaseRouter):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> RouteChoice:
+        if not self.index.is_ready():
+            raise ValueError("Index is not ready.")
         potential_sparse_vector: List[SparseEmbedding] | None = None
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -220,16 +236,18 @@ class HybridRouter(BaseRouter):
             raise ValueError("Sparse vector is required for HybridLocalIndex.")
         # TODO: add alpha as a parameter
         scores, route_names = self.index.query(
-            vector=vector,
+            vector=vector[0],
             top_k=self.top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
         )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(route_names, scores)
+        ]
+        # TODO JB we should probably make _semantic_classify consume arrays rather than
+        # needing to convert to list here
         top_class, top_class_scores = self._semantic_classify(
-            [
-                {"score": score, "route": route}
-                for score, route in zip(scores, route_names)
-            ]
+            query_results=query_results
         )
         passed = self._pass_threshold(top_class_scores, self.score_threshold)
         if passed:
@@ -252,3 +270,105 @@ class HybridRouter(BaseRouter):
                 )
             )
         return scaled_dense, scaled_sparse
+
+    def fit(
+        self,
+        X: List[str],
+        y: List[str],
+        batch_size: int = 500,
+        max_iter: int = 500,
+        local_execution: bool = False,
+    ):
+        original_index = self.index
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse encoder is not set.")
+        if local_execution:
+            # Switch to a local index for fitting
+            from semantic_router.index.hybrid_local import HybridLocalIndex
+
+            remote_routes = self.index.get_utterances(include_metadata=True)
+            # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
+            routes, utterances, function_schemas, metadata = map(
+                list, zip(*remote_routes)
+            )
+            embeddings = self.encoder(utterances)
+            sparse_embeddings = self.sparse_encoder(utterances)
+            self.index = HybridLocalIndex()
+            self.index.add(
+                embeddings=embeddings,
+                sparse_embeddings=sparse_embeddings,
+                routes=routes,
+                utterances=utterances,
+                metadata_list=metadata,
+            )
+
+        # convert inputs into array
+        Xq_d: List[List[float]] = []
+        Xq_s: List[SparseEmbedding] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb_d = np.array(self.encoder(X[i : i + batch_size]))
+            # TODO JB: for some reason the sparse encoder is receiving a tuple
+            # like `("Hello",)`
+            emb_s = self.sparse_encoder(X[i : i + batch_size])
+            Xq_d.extend(emb_d)
+            Xq_s.extend(emb_s)
+        # initial eval (we will iterate from here)
+        best_acc = self._vec_evaluate(Xq_d=np.array(Xq_d), Xq_s=Xq_s, y=y)
+        best_thresholds = self.get_thresholds()
+        # begin fit
+        for _ in (pbar := tqdm(range(max_iter), desc="Training")):
+            pbar.set_postfix({"acc": round(best_acc, 2)})
+            # Find the best score threshold for each route
+            thresholds = threshold_random_search(
+                route_layer=self,
+                search_range=0.8,
+            )
+            # update current route layer
+            self._update_thresholds(route_thresholds=thresholds)
+            # evaluate
+            acc = self._vec_evaluate(Xq_d=np.array(Xq_d), Xq_s=Xq_s, y=y)
+            # update best
+            if acc > best_acc:
+                best_acc = acc
+                best_thresholds = thresholds
+        # update route layer to best thresholds
+        self._update_thresholds(route_thresholds=best_thresholds)
+
+        if local_execution:
+            # Switch back to the original index
+            self.index = original_index
+
+    def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
+        """
+        Evaluate the accuracy of the route selection.
+        """
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse encoder is not set.")
+        Xq_d: List[List[float]] = []
+        Xq_s: List[SparseEmbedding] = []
+        for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
+            emb_d = np.array(self.encoder(X[i : i + batch_size]))
+            emb_s = self.sparse_encoder(X[i : i + batch_size])
+            Xq_d.extend(emb_d)
+            Xq_s.extend(emb_s)
+
+        accuracy = self._vec_evaluate(Xq_d=np.array(Xq_d), Xq_s=Xq_s, y=y)
+        return accuracy
+
+    def _vec_evaluate(  # type: ignore
+        self,
+        Xq_d: Union[List[float], Any],
+        Xq_s: list[SparseEmbedding],
+        y: List[str],
+    ) -> float:
+        """
+        Evaluate the accuracy of the route selection.
+        """
+        correct = 0
+        for xq_d, xq_s, target_route in zip(Xq_d, Xq_s, y):
+            # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
+            route_choice = self(vector=xq_d, sparse_vector=xq_s, simulate_static=True)
+            if route_choice.name == target_route:
+                correct += 1
+        accuracy = correct / len(Xq_d)
+        return accuracy

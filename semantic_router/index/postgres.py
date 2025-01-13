@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 import numpy as np
 from pydantic import BaseModel, Field
 
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
@@ -273,6 +273,7 @@ class PostgresIndex(BaseIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ) -> None:
         """
         Adds vectors to the index.
@@ -323,17 +324,21 @@ class PostgresIndex(BaseIndex):
             cur.execute(f"DELETE FROM {table_name} WHERE route = '{route_name}'")
             self.conn.commit()
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         """
         Describes the index by returning its type, dimensions, and total vector count.
 
-        :return: A dictionary containing the index's type, dimensions, and total vector count.
-        :rtype: Dict
-        :raises TypeError: If the database connection is not established.
+        :return: An IndexConfig object containing the index's type, dimensions, and total vector count.
+        :rtype: IndexConfig
         """
         table_name = self._get_table_name()
         if not isinstance(self.conn, psycopg2.extensions.connection):
-            raise TypeError("Index has not established a connection to Postgres")
+            logger.warning("Index has not established a connection to Postgres")
+            return IndexConfig(
+                type=self.type,
+                dimensions=self.dimensions or 0,
+                vectors=0,
+            )
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
             count = cur.fetchone()
@@ -341,11 +346,17 @@ class PostgresIndex(BaseIndex):
                 count = 0
             else:
                 count = count[0]  # Extract the actual count from the tuple
-            return {
-                "type": self.type,
-                "dimensions": self.dimensions,
-                "total_vector_count": count,
-            }
+            return IndexConfig(
+                type=self.type,
+                dimensions=self.dimensions or 0,
+                vectors=count,
+            )
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return isinstance(self.conn, psycopg2.extensions.connection)
 
     def query(
         self,

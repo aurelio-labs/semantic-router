@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from pydantic import Field
 
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
 
@@ -170,6 +170,7 @@ class QdrantIndex(BaseIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
+        **kwargs,
     ):
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
@@ -187,13 +188,20 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_utterances(self) -> List[Utterance]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
+        """Gets a list of route and utterance objects currently stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance, function_schema, metadata) objects.
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects - QdrantIndex does not currently support this
+        parameter so it is ignored. If required for your use-case please reach out to
+        semantic-router maintainers on GitHub via an issue or PR.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
+        # Check if collection exists first
+        if not self.client.collection_exists(self.index_name):
+            return []
 
         from qdrant_client import grpc
 
@@ -245,14 +253,20 @@ class QdrantIndex(BaseIndex):
             ),
         )
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         collection_info = self.client.get_collection(self.index_name)
 
-        return {
-            "type": self.type,
-            "dimensions": collection_info.config.params.vectors.size,
-            "vectors": collection_info.points_count,
-        }
+        return IndexConfig(
+            type=self.type,
+            dimensions=collection_info.config.params.vectors.size,
+            vectors=collection_info.points_count,
+        )
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.client.collection_exists(self.index_name)
 
     def query(
         self,

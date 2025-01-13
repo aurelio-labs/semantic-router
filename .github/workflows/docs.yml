@@ -2,7 +2,7 @@ name: Release Docs
 
 on:
   release:
-    types: [released]
+    types: [ released ]
 
 jobs:
   build-docs:
@@ -14,44 +14,44 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.13"
+        - "3.13"
     env:
-      POETRY_VERSION: "1.8.4"
+      POETRY_VERSION: "2.0.1"
     steps:
-      - uses: actions/checkout@v4
-      - name: Cache Poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.poetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-      - name: Install poetry
-        run: |
-          pipx install poetry==$POETRY_VERSION
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry install --all-extras
-      - name: Build docs
-        run: |
-          poetry run sphinx-build -M html docs/source docs/build
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
-      - name: Upload Docs
-        run: |
-          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination-objects
-      # - name: Upload Docs
-      #   id: upload-directory
-      #   uses: google-github-actions/upload-cloud-storage@v2
-      #   with:
-      #     path: docs/build/html
-      #     destination: docs-bucket-production/semantic-router
-      #     parent: false
+    - uses: actions/checkout@v4
+    - name: Cache Poetry
+      uses: actions/cache@v4
+      with:
+        path: ~/.poetry
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+    - name: Install poetry
+      run: |
+        pipx install poetry==$POETRY_VERSION
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: poetry
+    - name: Install dependencies
+      run: |
+        poetry install --all-extras
+    - name: Build docs
+      run: |
+        poetry run sphinx-build -M html docs/source docs/build
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+    - name: Upload Docs
+      run: |
+        gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination-objects
+    # - name: Upload Docs
+    #   id: upload-directory
+    #   uses: google-github-actions/upload-cloud-storage@v2
+    #   with:
+    #     path: docs/build/html
+    #     destination: docs-bucket-production/semantic-router
+    #     parent: false

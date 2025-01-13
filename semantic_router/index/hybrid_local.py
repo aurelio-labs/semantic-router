@@ -25,6 +25,7 @@ class HybridLocalIndex(LocalIndex):
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         sparse_embeddings: Optional[List[SparseEmbedding]] = None,
+        **kwargs,
     ):
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")
@@ -56,22 +57,19 @@ class HybridLocalIndex(LocalIndex):
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
-    def get_utterances(self) -> List[Utterance]:
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects - HybridLocalIndex doesn't include metadata so
+        this parameter is ignored.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.routes is None or self.utterances is None:
             return []
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
-
-    def describe(self) -> Dict:
-        return {
-            "type": self.type,
-            "dimensions": self.index.shape[1] if self.index is not None else 0,
-            "vectors": self.index.shape[0] if self.index is not None else 0,
-        }
 
     def _sparse_dot_product(
         self, vec_a: dict[int, float], vec_b: dict[int, float]

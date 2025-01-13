@@ -32,9 +32,6 @@ class SemanticRouter(BaseRouter):
             aggregation=aggregation,
             auto_sync=auto_sync,
         )
-        # run initialize index now if auto sync is active
-        if self.auto_sync:
-            self._init_index_state()
 
     def _encode(self, text: list[str]) -> Any:
         """Given some text, encode it."""
