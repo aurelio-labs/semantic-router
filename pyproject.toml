@@ -41,8 +41,9 @@ sphinxawesome-theme = {version = "^5.2.0", optional = true}
 tornado = {version = "^6.4.2", optional = true}
 
 [tool.poetry.extras]
-hybrid = ["pinecone-text"]
+hybrid = ["pinecone-text"]  # we need to drop this dependency
 local = ["torch", "transformers", "tokenizers", "huggingface-hub", "llama-cpp-python"]
+# local-cpu = ["torch"] https://download.pytorch.org/whl/cpu https://stackoverflow.com/questions/77205123/how-do-i-slim-down-sberts-sentencer-transformer-library
 pinecone = ["pinecone"]
 vision = ["torch", "torchvision", "transformers", "pillow"]
 mistralai = ["mistralai"]

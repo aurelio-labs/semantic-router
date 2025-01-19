@@ -2,18 +2,16 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import PrivateAttr
 
-from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.torch import TorchAbstractDenseEncoder
 
 
-class VitEncoder(DenseEncoder):
+class VitEncoder(TorchAbstractDenseEncoder):
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
     processor_kwargs: Dict = {}
     model_kwargs: Dict = {}
-    device: Optional[str] = None
     _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()
-    _torch: Any = PrivateAttr()
     _T: Any = PrivateAttr()
     _Image: Any = PrivateAttr()
 
@@ -32,13 +30,15 @@ class VitEncoder(DenseEncoder):
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
+        
+        # use abstract torch init
+        torch = self._initialize_torch()
 
         try:
-            import torch
             import torchvision.transforms as T
         except ImportError:
             raise ImportError(
-                "Please install Pytorch to use VitEncoder. "
+                "Please install torchvision to use VitEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
@@ -66,17 +66,6 @@ class VitEncoder(DenseEncoder):
         model.to(self.device)
 
         return processor, model
-
-    def _get_device(self) -> str:
-        if self.device:
-            device = self.device
-        elif self._torch.cuda.is_available():
-            device = "cuda"
-        elif self._torch.backends.mps.is_available():
-            device = "mps"
-        else:
-            device = "cpu"
-        return device
 
     def _process_images(self, images: List[Any]):
         rgb_images = [self._ensure_rgb(img) for img in images]

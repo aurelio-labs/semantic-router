@@ -3,20 +3,18 @@ from typing import Any, List, Optional
 import numpy as np
 from pydantic import PrivateAttr
 from typing import Dict
-from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.torch import TorchAbstractDenseEncoder
 
 
-class CLIPEncoder(DenseEncoder):
+class CLIPEncoder(TorchAbstractDenseEncoder):
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     tokenizer_kwargs: Dict = {}
     processor_kwargs: Dict = {}
     model_kwargs: Dict = {}
-    device: Optional[str] = None
     _tokenizer: Any = PrivateAttr()
     _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()
-    _torch: Any = PrivateAttr()
     _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
@@ -59,14 +57,8 @@ class CLIPEncoder(DenseEncoder):
                 "`pip install semantic-router[vision]`"
             )
 
-        try:
-            import torch
-        except ImportError:
-            raise ImportError(
-                "Please install Pytorch to use CLIPEncoder. "
-                "You can install it with: "
-                "`pip install semantic-router[vision]`"
-            )
+        # use abstract torch init
+        torch = self._initialize_torch()
 
         try:
             from PIL import Image
@@ -90,17 +82,6 @@ class CLIPEncoder(DenseEncoder):
         self.device = self._get_device()
         model.to(self.device)
         return tokenizer, processor, model
-
-    def _get_device(self) -> str:
-        if self.device:
-            device = self.device
-        elif self._torch.cuda.is_available():
-            device = "cuda"
-        elif self._torch.backends.mps.is_available():
-            device = "mps"
-        else:
-            device = "cpu"
-        return device
 
     def _encode_text(self, docs: List[str]) -> Any:
         inputs = self._tokenizer(

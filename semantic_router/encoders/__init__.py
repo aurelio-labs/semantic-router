@@ -10,8 +10,10 @@ from semantic_router.encoders.fastembed import FastEmbedEncoder
 from semantic_router.encoders.google import GoogleEncoder
 from semantic_router.encoders.huggingface import HuggingFaceEncoder
 from semantic_router.encoders.huggingface import HFEndpointEncoder
+from semantic_router.encoders.local import LocalEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
+from semantic_router.encoders.sentence_transformers import STEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.zure import AzureOpenAIEncoder
@@ -23,8 +25,10 @@ __all__ = [
     "SparseEncoder",
     "AzureOpenAIEncoder",
     "CohereEncoder",
+    "LocalEncoder",
     "OpenAIEncoder",
     "BM25Encoder",
+    "STEncoder",
     "TfidfEncoder",
     "FastEmbedEncoder",
     "HuggingFaceEncoder",
@@ -50,6 +54,10 @@ class AutoEncoder:
             self.model = AzureOpenAIEncoder(model=name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name=name)
+        elif self.type == EncoderType.SENTENCE_TRANSFORMERS:
+            self.model = STEncoder(name=name)
+        elif self.type == EncoderType.LOCAL:
+            self.model = LocalEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
             self.model = OpenAIEncoder(name=name)
         elif self.type == EncoderType.AURELIO:
