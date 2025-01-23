@@ -916,7 +916,7 @@ class TestAsyncSemanticRouter:
                     Utterance(route="Route 2", utterance="Au revoir"),
                     Utterance(route="Route 2", utterance="Bye"),
                     Utterance(route="Route 2", utterance="Goodbye"),
-                    Utterance(route="Route 2", utterance="Hi"),
+                    Utterance(route="Route 3", utterance="Boo"),
                 ], "The routes in the index should match the local routes"
 
             await check_sync()
