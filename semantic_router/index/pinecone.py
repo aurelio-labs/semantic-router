@@ -838,7 +838,7 @@ class PineconeIndex(BaseIndex):
                         logger.error(f"Error fetching vectors: {error_text}")
                         break
 
-                response_data = await response.json(content_type=None)
+                    response_data = await response.json(content_type=None)
 
                 vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
                 if not vector_ids:

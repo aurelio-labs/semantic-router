@@ -750,7 +750,7 @@ class TestAsyncSemanticRouter:
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
-            await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
         assert await route_layer.async_is_synced()
 
     @pytest.mark.skipif(
