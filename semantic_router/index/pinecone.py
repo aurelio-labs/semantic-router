@@ -132,7 +132,9 @@ class PineconeIndex(BaseIndex):
         init_async_index: bool = False,
     ):
         super().__init__()
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("PINECONE_API_KEY")
+        if not self.api_key:
+            raise ValueError("Pinecone API key is required.")
         self.headers = {
             "Api-Key": self.api_key,
             "Content-Type": "application/json",
@@ -161,7 +163,6 @@ class PineconeIndex(BaseIndex):
 
         self.client = self._initialize_client(api_key=self.api_key)
 
-
         # try initializing index
         self.index = self._init_index()
 
@@ -185,7 +186,6 @@ class PineconeIndex(BaseIndex):
             pinecone_args["namespace"] = self.namespace
 
         return Pinecone(**pinecone_args)
-
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -884,12 +884,10 @@ class PineconeIndex(BaseIndex):
         elif self.namespace:
             params["namespace"] = [self.namespace]
 
-        headers = {
-            "Api-Key": self.api_key,
-        }
-
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, headers=headers) as response:
+            async with session.get(
+                url, params=params, headers=self.headers
+            ) as response:
                 if response.status != 200:
                     error_text = await response.text()
                     logger.error(f"Error fetching metadata: {error_text}")
