@@ -112,11 +112,11 @@ class PineconeIndex(BaseIndex):
     region: str = "us-east-1"
     host: str = ""
     client: Any = Field(default=None, exclude=True)
-    async_client: Any = Field(default=None, exclude=True)
     index: Optional[Any] = Field(default=None, exclude=True)
     ServerlessSpec: Any = Field(default=None, exclude=True)
     namespace: Optional[str] = ""
     base_url: Optional[str] = "https://api.pinecone.io"
+    headers: dict[str, str] = {}
 
     def __init__(
         self,
@@ -132,6 +132,13 @@ class PineconeIndex(BaseIndex):
         init_async_index: bool = False,
     ):
         super().__init__()
+        self.api_key = api_key
+        self.headers = {
+            "Api-Key": self.api_key,
+            "Content-Type": "application/json",
+            "X-Pinecone-API-Version": "2024-07",
+            "User-Agent": "source_tag=semanticrouter",
+        }
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
@@ -154,13 +161,7 @@ class PineconeIndex(BaseIndex):
 
         self.client = self._initialize_client(api_key=self.api_key)
 
-        self.api_key = api_key
-        self.headers = {
-            "Api-Key": self.api_key,
-            "Content-Type": "application/json",
-            "X-Pinecone-API-Version": "2024-07",
-            "User-Agent": "source_tag=semanticrouter",
-        }
+
         # try initializing index
         self.index = self._init_index()
 
@@ -185,19 +186,6 @@ class PineconeIndex(BaseIndex):
 
         return Pinecone(**pinecone_args)
 
-    def _initialize_async_client(self, api_key: Optional[str] = None):
-        api_key = api_key or self.api_key
-        if api_key is None:
-            raise ValueError("Pinecone API key is required.")
-        async_client = aiohttp.ClientSession(
-            headers={
-                "Api-Key": api_key,
-                "Content-Type": "application/json",
-                "X-Pinecone-API-Version": "2024-07",
-                "User-Agent": "source_tag=semanticrouter",
-            }
-        )
-        return async_client
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -874,7 +862,7 @@ class PineconeIndex(BaseIndex):
         namespace: str | None = None,
     ) -> dict:
         """Fetch metadata for a single vector ID asynchronously using the
-        async_client.
+        ClientSession.
 
         :param vector_id: The ID of the vector to fetch metadata for.
         :type vector_id: str
