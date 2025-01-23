@@ -416,6 +416,7 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
+            time.sleep(PINECONE_SLEEP)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -449,6 +450,7 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="remote",
             )
+            time.sleep(PINECONE_SLEEP)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -481,6 +483,7 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge-force-local",
             )
+            time.sleep(PINECONE_SLEEP)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -891,13 +894,14 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
-            await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
+            await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="merge-force-local",
             )
+            await asyncio.sleep(PINECONE_SLEEP)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
@@ -972,6 +976,7 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge-force-remote",
             )
+            await asyncio.sleep(PINECONE_SLEEP)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
@@ -1046,6 +1051,7 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge",
             )
+            await asyncio.sleep(PINECONE_SLEEP)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
