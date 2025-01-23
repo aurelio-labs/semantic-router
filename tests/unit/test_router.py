@@ -834,6 +834,7 @@ class TestSemanticRouter:
                 index=pineconeindex,
                 auto_sync="local",
             )
+            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_query_result():
