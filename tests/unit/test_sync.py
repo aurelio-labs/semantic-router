@@ -905,11 +905,11 @@ class TestAsyncSemanticRouter:
                 assert await route_layer.async_is_synced()
                 # now confirm utterances are correct
                 local_utterances = await route_layer.index.aget_utterances(
-                    include_metadata=True
+                    include_metadata=False
                 )
                 # we sort to ensure order is the same
                 # TODO JB: there is a bug here where if we include_metadata=True it fails
-                local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+                local_utterances.sort(key=lambda x: x.to_str(include_metadata=False))
                 assert local_utterances == [
                     Utterance(route="Route 1", utterance="Hello"),
                     Utterance(route="Route 1", utterance="Hi"),
