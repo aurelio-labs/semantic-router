@@ -846,7 +846,9 @@ class PineconeIndex(BaseIndex):
                 all_vector_ids.extend(vector_ids)
 
                 if include_metadata:
-                    metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
+                    metadata_tasks = [
+                        self._async_fetch_metadata(id) for id in vector_ids
+                    ]
                     metadata_results = await asyncio.gather(*metadata_tasks)
                     metadata.extend(metadata_results)
 
