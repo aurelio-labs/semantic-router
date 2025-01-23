@@ -751,7 +751,7 @@ class TestAsyncSemanticRouter:
         )
         if index_cls is PineconeIndex:
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.async_is_synced()
+        assert await route_layer.async_is_synced()
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"

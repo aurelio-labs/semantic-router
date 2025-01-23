@@ -823,11 +823,11 @@ class PineconeIndex(BaseIndex):
             params["namespace"] = self.namespace
         metadata = []
 
-        while True:
-            if next_page_token:
-                params["paginationToken"] = next_page_token
+        async with aiohttp.ClientSession() as session:
+            while True:
+                if next_page_token:
+                    params["paginationToken"] = next_page_token
 
-            async with aiohttp.ClientSession() as session:
                 async with session.get(
                     list_url,
                     params=params,
@@ -840,19 +840,19 @@ class PineconeIndex(BaseIndex):
 
                 response_data = await response.json(content_type=None)
 
-            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
-            if not vector_ids:
-                break
-            all_vector_ids.extend(vector_ids)
+                vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+                if not vector_ids:
+                    break
+                all_vector_ids.extend(vector_ids)
 
-            if include_metadata:
-                metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
-                metadata_results = await asyncio.gather(*metadata_tasks)
-                metadata.extend(metadata_results)
+                if include_metadata:
+                    metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
+                    metadata_results = await asyncio.gather(*metadata_tasks)
+                    metadata.extend(metadata_results)
 
-            next_page_token = response_data.get("pagination", {}).get("next")
-            if not next_page_token:
-                break
+                next_page_token = response_data.get("pagination", {}).get("next")
+                if not next_page_token:
+                    break
 
         return all_vector_ids, metadata
 
