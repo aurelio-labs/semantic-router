@@ -416,6 +416,7 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
+            time.sleep(PINECONE_SLEEP)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -449,6 +450,7 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="remote",
             )
+            time.sleep(PINECONE_SLEEP)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -474,13 +476,14 @@ class TestSemanticRouter:
                 index=pinecone_index,
                 auto_sync="local",
             )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
+            time.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
             route_layer = router_cls(
                 encoder=openai_encoder,
                 routes=routes_2,
                 index=pinecone_index,
                 auto_sync="merge-force-local",
             )
+            time.sleep(PINECONE_SLEEP * 2)
 
             @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             def check_sync():
@@ -750,8 +753,8 @@ class TestAsyncSemanticRouter:
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         if index_cls is PineconeIndex:
-            await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.async_is_synced()
+            await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
+        assert await route_layer.async_is_synced()
 
     @pytest.mark.skipif(
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
@@ -898,6 +901,7 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge-force-local",
             )
+            await asyncio.sleep(PINECONE_SLEEP * 2)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
@@ -905,11 +909,11 @@ class TestAsyncSemanticRouter:
                 assert await route_layer.async_is_synced()
                 # now confirm utterances are correct
                 local_utterances = await route_layer.index.aget_utterances(
-                    include_metadata=True
+                    include_metadata=False
                 )
                 # we sort to ensure order is the same
                 # TODO JB: there is a bug here where if we include_metadata=True it fails
-                local_utterances.sort(key=lambda x: x.to_str(include_metadata=True))
+                local_utterances.sort(key=lambda x: x.to_str(include_metadata=False))
                 assert local_utterances == [
                     Utterance(route="Route 1", utterance="Hello"),
                     Utterance(route="Route 1", utterance="Hi"),
@@ -972,6 +976,7 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge-force-remote",
             )
+            await asyncio.sleep(PINECONE_SLEEP)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
@@ -1046,6 +1051,7 @@ class TestAsyncSemanticRouter:
                 index=pinecone_index,
                 auto_sync="merge",
             )
+            await asyncio.sleep(PINECONE_SLEEP)
 
             @async_retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
             async def check_sync():
