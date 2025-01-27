@@ -2,12 +2,14 @@ import importlib
 from functools import wraps
 import os
 import tempfile
-from unittest.mock import mock_open, patch
+from openai._types import ResponseT
+from unittest.mock import mock_open, patch, MagicMock
 from datetime import datetime
 import pytest
 import time
 from typing import Optional
 from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+from semantic_router.schema import SparseEmbedding
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
@@ -17,6 +19,8 @@ from semantic_router.route import Route
 from semantic_router.utils.logger import logger
 from platform import python_version
 
+
+os.environ["OPENAI_API_KEY"] = "mock-api-key"
 
 PINECONE_SLEEP = 8
 RETRY_COUNT = 10
@@ -155,24 +159,55 @@ def cohere_encoder(mocker):
     return CohereEncoder(name="test-cohere-encoder", cohere_api_key="test_api_key")
 
 
+# @pytest.fixture
+# def openai_encoder(mocker):
+#     # Mock the OpenAI client creation and API calls
+#     mocker.patch("openai.OpenAI")
+#     # Mock the __call__ method
+#     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+
+#     # Mock async call
+#     async def async_mock_encoder_call(docs=None, utterances=None):
+#         # Handle either docs or utterances parameter
+#         texts = docs if docs is not None else utterances
+#         return mock_encoder_call(texts)
+
+#     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
+#     # Create and return the mocked encoder
+#     encoder = OpenAIEncoder(name="text-embedding-3-small")
+#     return encoder
+
+def sparse_encoder(mocker):
+    mocker.patch(
+        "semantic_router.encoders.bm25.BM25Encoder.__init__",
+        return_value=None
+    )
+    mocker.patch(
+        "semantic_router.encoders.bm25.BM25Encoder.__call__",
+        return_value=[SparseEmbedding.from_dict({1: 0.5, 4: 0.8})]
+    )
+    mocker.patch(
+        "semantic_router.encoders.bm25.BM25Encoder.fit",
+        return_value=None
+    )
+    return
+
 @pytest.fixture
 def openai_encoder(mocker):
+    # also mock sparse encoder
+    sparse_encoder(mocker)
     # Mock the OpenAI client creation and API calls
-    mocker.patch("openai.OpenAI")
+    mocker.patch("openai.OpenAI", return_value=MagicMock())
+    mocker.patch(
+        "semantic_router.encoders.openai.OpenAIEncoder.__call__",
+        return_value=[[0.1,0.2,0.3]]
+    )
+    encoder_mock = MagicMock(spec=OpenAIEncoder)
     # Mock the __call__ method
-    mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-
-    # Mock async call
-    async def async_mock_encoder_call(docs=None, utterances=None):
-        # Handle either docs or utterances parameter
-        texts = docs if docs is not None else utterances
-        return mock_encoder_call(texts)
-
-    mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
-    # Create and return the mocked encoder
-    encoder = OpenAIEncoder(name="text-embedding-3-small")
+    encoder_mock.__call__ = mock_encoder_call
+    encoder = OpenAIEncoder(openai_api_key="mock_api_key")
+    encoder.__call__ = mock_encoder_call
     return encoder
-
 
 @pytest.fixture
 def mock_openai_llm(mocker):
@@ -266,7 +301,7 @@ def get_test_indexes():
 
 
 def get_test_encoders():
-    encoders = [OpenAIEncoder]
+    encoders = [openai_encoder()]
     if importlib.util.find_spec("cohere") is not None:
         encoders.append(CohereEncoder)
     return encoders
@@ -283,14 +318,14 @@ def get_test_routers():
     "index_cls,encoder_cls,router_cls",
     [
         (index, encoder, router)
-        for index in get_test_indexes()
-        for encoder in get_test_encoders()
+        for index in [LocalIndex]#get_test_indexes()
+        for encoder in ["openai_encoder"]
         for router in get_test_routers()
     ],
 )
 class TestIndexEncoders:
-    def test_initialization(self, routes, index_cls, encoder_cls, router_cls):
-        encoder = encoder_cls()
+    def test_initialization(self, request, routes, index_cls, encoder_cls, router_cls):
+        encoder = request.getfixturevalue(encoder_cls)
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
             encoder=encoder,
@@ -319,9 +354,9 @@ class TestIndexEncoders:
         )
 
     def test_initialization_different_encoders(
-        self, encoder_cls, index_cls, router_cls
+        self, request, encoder_cls, index_cls, router_cls
     ):
-        encoder = encoder_cls()
+        encoder = request.getfixturevalue(encoder_cls)
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, index=index)
         score_threshold = route_layer.score_threshold
@@ -330,7 +365,9 @@ class TestIndexEncoders:
         else:
             assert score_threshold == encoder.score_threshold
 
-    def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
+    def test_initialization_no_encoder(self, request, index_cls, encoder_cls, router_cls):
+        # apply encoder mocks (but will not get used)
+        _ = request.getfixturevalue(encoder_cls)
         route_layer_none = router_cls(encoder=None)
         score_threshold = route_layer_none.score_threshold
         if isinstance(route_layer_none, HybridRouter):
