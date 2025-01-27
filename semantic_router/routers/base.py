@@ -11,10 +11,16 @@ import numpy as np
 import yaml  # type: ignore
 from tqdm.auto import tqdm
 
-from semantic_router.encoders import AutoEncoder, DenseEncoder, OpenAIEncoder
+from semantic_router.encoders import (
+    AutoEncoder,
+    DenseEncoder,
+    OpenAIEncoder,
+    SparseEncoder,
+)
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.schema import (
@@ -64,7 +70,7 @@ class RouterConfig:
     Routers.
     """
 
-    routes: List[Route] = []
+    routes: List[Route] = Field(default_factory=list)
 
     class Config:
         arbitrary_types_allowed = True
@@ -192,7 +198,7 @@ class RouterConfig:
         :param encoder_name: The name of the encoder to use, defaults to None.
         :type encoder_name: Optional[str], optional
         """
-        remote_routes = index.get_utterances()
+        remote_routes = index.get_utterances(include_metadata=True)
         return cls.from_tuples(
             route_tuples=[utt.to_tuple() for utt in remote_routes],
             encoder_type=encoder_type,
@@ -297,9 +303,10 @@ def xq_reshape(xq: List[float] | np.ndarray) -> np.ndarray:
 
 class BaseRouter(BaseModel):
     encoder: DenseEncoder = Field(default_factory=OpenAIEncoder)
+    sparse_encoder: Optional[SparseEncoder] = Field(default=None)
     index: BaseIndex = Field(default_factory=BaseIndex)
     score_threshold: Optional[float] = Field(default=None)
-    routes: List[Route] = []
+    routes: List[Route] = Field(default_factory=list)
     llm: Optional[BaseLLM] = None
     top_k: int = 5
     aggregation: str = "mean"
@@ -312,15 +319,18 @@ class BaseRouter(BaseModel):
     def __init__(
         self,
         encoder: Optional[DenseEncoder] = None,
+        sparse_encoder: Optional[SparseEncoder] = None,
         llm: Optional[BaseLLM] = None,
-        routes: List[Route] = [],
+        routes: Optional[List[Route]] = None,
         index: Optional[BaseIndex] = None,  # type: ignore
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
+        routes = routes.copy() if routes else []
         super().__init__(
             encoder=encoder,
+            sparse_encoder=sparse_encoder,
             llm=llm,
             routes=routes,
             index=index,
@@ -329,8 +339,9 @@ class BaseRouter(BaseModel):
             auto_sync=auto_sync,
         )
         self.encoder = self._get_encoder(encoder=encoder)
+        self.sparse_encoder = self._get_sparse_encoder(sparse_encoder=sparse_encoder)
         self.llm = llm
-        self.routes = routes.copy() if routes else []
+        self.routes = routes
         # initialize index
         self.index = self._get_index(index=index)
         # set score threshold using default method
@@ -350,6 +361,8 @@ class BaseRouter(BaseModel):
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
+        # initialize index
+        self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         if index is None:
@@ -367,6 +380,15 @@ class BaseRouter(BaseModel):
             encoder = encoder
         return encoder
 
+    def _get_sparse_encoder(
+        self, sparse_encoder: Optional[SparseEncoder]
+    ) -> Optional[SparseEncoder]:
+        if sparse_encoder is None:
+            return None
+        raise NotImplementedError(
+            f"Sparse encoder not implemented for {self.__class__.__name__}"
+        )
+
     def _init_index_state(self):
         """Initializes an index (where required) and runs auto_sync if active."""
         # initialize index now, check if we need dimensions
@@ -379,7 +401,7 @@ class BaseRouter(BaseModel):
         # run auto sync if active
         if self.auto_sync:
             local_utterances = self.to_config().to_utterances()
-            remote_utterances = self.index.get_utterances()
+            remote_utterances = self.index.get_utterances(include_metadata=True)
             diff = UtteranceDiff.from_utterances(
                 local_utterances=local_utterances,
                 remote_utterances=remote_utterances,
@@ -421,6 +443,8 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        if not self.index.is_ready():
+            raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
@@ -428,8 +452,19 @@ class BaseRouter(BaseModel):
             vector = self._encode(text=[text])
         # convert to numpy array if not already
         vector = xq_reshape(vector)
-        # calculate semantics
-        route, top_class_scores = self._retrieve_top_route(vector, route_filter)
+        # get scores and routes
+        scores, routes = self.index.query(
+            vector=vector[0], top_k=self.top_k, route_filter=route_filter
+        )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(routes, scores)
+        ]
+        # decide most relevant routes
+        top_class, top_class_scores = self._semantic_classify(
+            query_results=query_results
+        )
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
             if route.function_schemas and text is None:
@@ -466,6 +501,9 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        if not self.index.is_ready():
+            # TODO: need async version for qdrant
+            raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
@@ -473,10 +511,19 @@ class BaseRouter(BaseModel):
             vector = await self._async_encode(text=[text])
         # convert to numpy array if not already
         vector = xq_reshape(vector)
-        # calculate semantics
-        route, top_class_scores = await self._async_retrieve_top_route(
-            vector, route_filter
+        # get scores and routes
+        scores, routes = await self.index.aquery(
+            vector=vector[0], top_k=self.top_k, route_filter=route_filter
         )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(routes, scores)
+        ]
+        # decide most relevant routes
+        top_class, top_class_scores = await self._async_semantic_classify(
+            query_results=query_results
+        )
+        # TODO do we need this check?
+        route = self.check_for_matching_routes(top_class)
         passed = self._check_threshold(top_class_scores, route)
         if passed and route is not None and not simulate_static:
             if route.function_schemas and text is None:
@@ -503,65 +550,19 @@ class BaseRouter(BaseModel):
             # if no route passes threshold, return empty route choice
             return RouteChoice()
 
-    # TODO: add multiple routes return to __call__ and acall
-    @deprecated("This method is deprecated. Use `__call__` instead.")
-    def retrieve_multiple_routes(
-        self,
-        text: Optional[str] = None,
-        vector: Optional[List[float] | np.ndarray] = None,
-    ) -> List[RouteChoice]:
-        if vector is None:
-            if text is None:
-                raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=[text])
-        # convert to numpy array if not already
-        vector = xq_reshape(vector)
-        # get relevant utterances
-        results = self._retrieve(xq=vector)
-        # decide most relevant routes
-        categories_with_scores = self._semantic_classify_multiple_routes(results)
-        return [
-            RouteChoice(name=category, similarity_score=score)
-            for category, score in categories_with_scores
-        ]
+    def _index_ready(self) -> bool:
+        """Method to check if the index is ready to be used.
 
-        # route_choices = []
-        # TODO JB: do we need this check? Maybe we should be returning directly
-        # for category, score in categories_with_scores:
-        #    route = self.check_for_matching_routes(category)
-        #    if route:
-        #        route_choice = RouteChoice(name=route.name, similarity_score=score)
-        #        route_choices.append(route_choice)
-
-        # return route_choices
-
-    def _retrieve_top_route(
-        self, vector: np.ndarray, route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
-        Retrieve the top matching route based on the given vector.
-        Returns a tuple of the route (if any) and the scores of the top class.
-        """
-        # get relevant results (scores and routes)
-        results = self._retrieve(xq=vector, top_k=self.top_k, route_filter=route_filter)
-        # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
-
-    async def _async_retrieve_top_route(
-        self, vector: np.ndarray, route_filter: Optional[List[str]] = None
-    ) -> Tuple[Optional[Route], List[float]]:
-        # get relevant results (scores and routes)
-        results = await self._async_retrieve(
-            xq=vector, top_k=self.top_k, route_filter=route_filter
-        )
-        # decide most relevant routes
-        top_class, top_class_scores = await self._async_semantic_classify(results)
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        return route, top_class_scores
+        if self.index.index is None or self.routes is None:
+            return False
+        if isinstance(self.index, QdrantIndex):
+            info = self.index.describe()
+            if info.vectors == 0:
+                return False
+        return True
 
     def sync(self, sync_mode: str, force: bool = False, wait: int = 0) -> List[str]:
         """Runs a sync of the local routes with the remote index.
@@ -596,7 +597,7 @@ class BaseRouter(BaseModel):
             try:
                 # first creating a diff
                 local_utterances = self.to_config().to_utterances()
-                remote_utterances = self.index.get_utterances()
+                remote_utterances = self.index.get_utterances(include_metadata=True)
                 diff = UtteranceDiff.from_utterances(
                     local_utterances=local_utterances,
                     remote_utterances=remote_utterances,
@@ -652,7 +653,9 @@ class BaseRouter(BaseModel):
             try:
                 # first creating a diff
                 local_utterances = self.to_config().to_utterances()
-                remote_utterances = await self.index.aget_utterances()
+                remote_utterances = await self.index.aget_utterances(
+                    include_metadata=True
+                )
                 diff = UtteranceDiff.from_utterances(
                     local_utterances=local_utterances,
                     remote_utterances=remote_utterances,
@@ -879,6 +882,7 @@ class BaseRouter(BaseModel):
         The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
         """
+        # TODO JB: should modify update to take a Route object
         current_local_hash = self._get_hash()
         current_remote_hash = self.index._read_hash()
         if current_remote_hash.value == "":
@@ -1036,7 +1040,7 @@ class BaseRouter(BaseModel):
         "route2: utterance4", which do not exist locally.
         """
         # first we get remote and local utterances
-        remote_utterances = self.index.get_utterances()
+        remote_utterances = self.index.get_utterances(include_metadata=include_metadata)
         local_utterances = self.to_config().to_utterances()
 
         diff_obj = UtteranceDiff.from_utterances(
@@ -1066,7 +1070,9 @@ class BaseRouter(BaseModel):
         "route2: utterance4", which do not exist locally.
         """
         # first we get remote and local utterances
-        remote_utterances = await self.index.aget_utterances()
+        remote_utterances = await self.index.aget_utterances(
+            include_metadata=include_metadata
+        )
         local_utterances = self.to_config().to_utterances()
 
         diff_obj = UtteranceDiff.from_utterances(
@@ -1116,26 +1122,6 @@ class BaseRouter(BaseModel):
         # TODO: should encode "content" rather than text
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def _retrieve(
-        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[Dict]:
-        """Given a query vector, retrieve the top_k most similar records."""
-        # get scores and routes
-        scores, routes = self.index.query(
-            vector=xq[0], top_k=top_k, route_filter=route_filter
-        )
-        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-
-    async def _async_retrieve(
-        self, xq: Any, top_k: int = 5, route_filter: Optional[List[str]] = None
-    ) -> List[Dict]:
-        """Given a query vector, retrieve the top_k most similar records."""
-        # get scores and routes
-        scores, routes = await self.index.aquery(
-            vector=xq[0], top_k=top_k, route_filter=route_filter
-        )
-        return [{"route": d, "score": s.item()} for d, s in zip(routes, scores)]
-
     def _set_aggregation_method(self, aggregation: str = "sum"):
         # TODO is this really needed?
         if aggregation == "sum":
@@ -1149,6 +1135,7 @@ class BaseRouter(BaseModel):
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
+    # TODO JB allow return of multiple routes
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         """Classify the query results into a single class based on the highest total score.
         If no classification is found, return an empty string and an empty list.
@@ -1216,6 +1203,7 @@ class BaseRouter(BaseModel):
         logger.error(f"Route `{name}` not found")
         return None
 
+    @deprecated("This method is deprecated. Use `semantic_classify` instead.")
     def _semantic_classify_multiple_routes(
         self, query_results: List[Dict]
     ) -> List[Tuple[str, float]]:
@@ -1279,6 +1267,7 @@ class BaseRouter(BaseModel):
         if threshold is None:
             return True
         if scores:
+            # TODO JB is this correct?
             return max(scores) > threshold
         else:
             return False
@@ -1354,7 +1343,7 @@ class BaseRouter(BaseModel):
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_utterances()
+            remote_routes = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
             routes, utterances, function_schemas, metadata = map(
                 list, zip(*remote_routes)
@@ -1374,7 +1363,7 @@ class BaseRouter(BaseModel):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
         # initial eval (we will iterate from here)
-        best_acc = self._vec_evaluate(Xq=np.array(Xq), y=y)
+        best_acc = self._vec_evaluate(Xq_d=np.array(Xq), y=y)
         best_thresholds = self.get_thresholds()
         # begin fit
         for _ in (pbar := tqdm(range(max_iter), desc="Training")):
@@ -1387,7 +1376,7 @@ class BaseRouter(BaseModel):
             # update current route layer
             self._update_thresholds(route_thresholds=thresholds)
             # evaluate
-            acc = self._vec_evaluate(Xq=Xq, y=y)
+            acc = self._vec_evaluate(Xq_d=Xq, y=y)
             # update best
             if acc > best_acc:
                 best_acc = acc
@@ -1408,20 +1397,22 @@ class BaseRouter(BaseModel):
             emb = np.array(self.encoder(X[i : i + batch_size]))
             Xq.extend(emb)
 
-        accuracy = self._vec_evaluate(Xq=np.array(Xq), y=y)
+        accuracy = self._vec_evaluate(Xq_d=np.array(Xq), y=y)
         return accuracy
 
-    def _vec_evaluate(self, Xq: Union[List[float], Any], y: List[str]) -> float:
+    def _vec_evaluate(
+        self, Xq_d: Union[List[float], Any], y: List[str], **kwargs
+    ) -> float:
         """
         Evaluate the accuracy of the route selection.
         """
         correct = 0
-        for xq, target_route in zip(Xq, y):
+        for xq, target_route in zip(Xq_d, y):
             # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
             route_choice = self(vector=xq, simulate_static=True)
             if route_choice.name == target_route:
                 correct += 1
-        accuracy = correct / len(Xq)
+        accuracy = correct / len(Xq_d)
         return accuracy
 
     def _get_route_names(self) -> List[str]:

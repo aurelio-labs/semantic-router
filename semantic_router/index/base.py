@@ -15,6 +15,12 @@ from semantic_router.utils.logger import logger
 RETRY_WAIT_TIME = 2.5
 
 
+class IndexConfig(BaseModel):
+    type: str
+    dimensions: int
+    vectors: int
+
+
 class BaseIndex(BaseModel):
     """
     Base class for indices using Pydantic's BaseModel.
@@ -38,6 +44,7 @@ class BaseIndex(BaseModel):
         utterances: List[Any],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         """Add embeddings to the index.
         This method should be implemented by subclasses.
@@ -51,6 +58,7 @@ class BaseIndex(BaseModel):
         utterances: List[str],
         function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         """Add vectors to the index asynchronously.
         This method should be implemented by subclasses.
@@ -62,36 +70,47 @@ class BaseIndex(BaseModel):
             utterances=utterances,
             function_schemas=function_schemas,
             metadata_list=metadata_list,
+            **kwargs,
         )
 
-    def get_utterances(self) -> List[Utterance]:
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.index is None:
             logger.warning("Index is None, could not retrieve utterances.")
             return []
-        _, metadata = self._get_all(include_metadata=True)
+        _, metadata = self._get_all(include_metadata=True)  # include_metadata required
         route_tuples = parse_route_info(metadata=metadata)
+        if not include_metadata:
+            # we remove the metadata from the tuples (ie only keep 0, 1 items)
+            route_tuples = [x[:2] for x in route_tuples]
         return [Utterance.from_tuple(x) for x in route_tuples]
 
-    async def aget_utterances(self) -> List[Utterance]:
+    async def aget_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the
         index, including additional metadata.
 
-        :return: A list of tuples, each containing route, utterance, function
-        schema and additional metadata.
-        :rtype: List[Tuple]
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.index is None:
             logger.warning("Index is None, could not retrieve utterances.")
             return []
         _, metadata = await self._async_get_all(include_metadata=True)
         route_tuples = parse_route_info(metadata=metadata)
+        if not include_metadata:
+            # we remove the metadata from the tuples (ie only keep 0, 1 items)
+            route_tuples = [x[:2] for x in route_tuples]
         return [Utterance.from_tuple(x) for x in route_tuples]
 
     def get_routes(self) -> List[Route]:
@@ -100,7 +119,7 @@ class BaseIndex(BaseModel):
         :return: A list of Route objects.
         :rtype: List[Route]
         """
-        utterances = self.get_utterances()
+        utterances = self.get_utterances(include_metadata=True)
         routes_dict: Dict[str, Route] = {}
         # first create a dictionary of route names to Route objects
         for utt in utterances:
@@ -143,10 +162,17 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         """
-        Returns a dictionary with index details such as type, dimensions, and total
-        vector count.
+        Returns an IndexConfig object with index details such as type, dimensions, and
+        total vector count.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
@@ -238,7 +264,7 @@ class BaseIndex(BaseModel):
         :return: The config parameter that was read.
         :rtype: ConfigParameter
         """
-        logger.warning("Async method not implemented.")
+        logger.warning("_async_read_config method not implemented.")
         return self._read_config(field=field, scope=scope)
 
     def _write_config(self, config: ConfigParameter) -> ConfigParameter:
@@ -331,6 +357,11 @@ class BaseIndex(BaseModel):
         while True:
             if self._is_locked(scope=scope) != value:
                 # in this case, we can set the lock value
+                break
+            elif not value:
+                # if unlocking, we can break immediately — often with Pinecone the
+                # lock/unlocked state takes a few seconds to update, so locking then
+                # unlocking quickly will fail without this check
                 break
             if (datetime.now() - start_time).total_seconds() < wait:
                 # wait for a few seconds before checking again

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 import numpy as np
 from pydantic import BaseModel, Field
 
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, SparseEmbedding
 from semantic_router.utils.logger import logger
 
@@ -19,10 +19,59 @@ def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
 
 
+def build_records(
+    embeddings: List[List[float]],
+    routes: List[str],
+    utterances: List[str],
+    function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
+    metadata_list: List[Dict[str, Any]] = [],
+    sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
+) -> List[Dict]:
+    if function_schemas is None:
+        function_schemas = [{}] * len(embeddings)
+    if sparse_embeddings is None:
+        vectors_to_upsert = [
+            PineconeRecord(
+                values=vector,
+                route=route,
+                utterance=utterance,
+                function_schema=json.dumps(function_schema),
+                metadata=metadata,
+            ).to_dict()
+            for vector, route, utterance, function_schema, metadata in zip(
+                embeddings,
+                routes,
+                utterances,
+                function_schemas,
+                metadata_list,
+            )
+        ]
+    else:
+        vectors_to_upsert = [
+            PineconeRecord(
+                values=vector,
+                sparse_values=sparse_emb.to_pinecone(),
+                route=route,
+                utterance=utterance,
+                function_schema=json.dumps(function_schema),
+                metadata=metadata,
+            ).to_dict()
+            for vector, route, utterance, function_schema, metadata, sparse_emb in zip(
+                embeddings,
+                routes,
+                utterances,
+                function_schemas,
+                metadata_list,
+                sparse_embeddings,
+            )
+        ]
+    return vectors_to_upsert
+
+
 class PineconeRecord(BaseModel):
     id: str = ""
     values: List[float]
-    sparse_values: Optional[dict[int, float]] = None
+    sparse_values: Optional[dict[str, list]] = None
     route: str
     utterance: str
     function_schema: str = "{}"
@@ -49,10 +98,7 @@ class PineconeRecord(BaseModel):
             "metadata": self.metadata,
         }
         if self.sparse_values:
-            d["sparse_values"] = {
-                "indices": list(self.sparse_values.keys()),
-                "values": list(self.sparse_values.values()),
-            }
+            d["sparse_values"] = self.sparse_values
         return d
 
 
@@ -63,14 +109,14 @@ class PineconeIndex(BaseIndex):
     dimensions: Union[int, None] = None
     metric: str = "dotproduct"
     cloud: str = "aws"
-    region: str = "us-west-2"
+    region: str = "us-east-1"
     host: str = ""
     client: Any = Field(default=None, exclude=True)
-    async_client: Any = Field(default=None, exclude=True)
     index: Optional[Any] = Field(default=None, exclude=True)
     ServerlessSpec: Any = Field(default=None, exclude=True)
     namespace: Optional[str] = ""
     base_url: Optional[str] = "https://api.pinecone.io"
+    headers: dict[str, str] = {}
 
     def __init__(
         self,
@@ -79,13 +125,22 @@ class PineconeIndex(BaseIndex):
         dimensions: Optional[int] = None,
         metric: str = "dotproduct",
         cloud: str = "aws",
-        region: str = "us-west-2",
+        region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
         init_async_index: bool = False,
     ):
         super().__init__()
+        self.api_key = api_key or os.getenv("PINECONE_API_KEY")
+        if not self.api_key:
+            raise ValueError("Pinecone API key is required.")
+        self.headers = {
+            "Api-Key": self.api_key,
+            "Content-Type": "application/json",
+            "X-Pinecone-API-Version": "2024-07",
+            "User-Agent": "source_tag=semanticrouter",
+        }
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
@@ -99,14 +154,15 @@ class PineconeIndex(BaseIndex):
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         self.base_url = base_url
 
+        logger.warning(
+            "Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6"
+        )
+
         if self.api_key is None:
             raise ValueError("Pinecone API key is required.")
 
         self.client = self._initialize_client(api_key=self.api_key)
-        if init_async_index:
-            self.async_client = self._initialize_async_client(api_key=self.api_key)
-        else:
-            self.async_client = None
+
         # try initializing index
         self.index = self._init_index()
 
@@ -130,20 +186,6 @@ class PineconeIndex(BaseIndex):
             pinecone_args["namespace"] = self.namespace
 
         return Pinecone(**pinecone_args)
-
-    def _initialize_async_client(self, api_key: Optional[str] = None):
-        api_key = api_key or self.api_key
-        if api_key is None:
-            raise ValueError("Pinecone API key is required.")
-        async_client = aiohttp.ClientSession(
-            headers={
-                "Api-Key": api_key,
-                "Content-Type": "application/json",
-                "X-Pinecone-API-Version": "2024-07",
-                "User-Agent": "source_tag=semanticrouter",
-            }
-        )
-        return async_client
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -186,7 +228,12 @@ class PineconeIndex(BaseIndex):
         else:
             # if the index doesn't exist and we don't have the dimensions
             # we return None
-            logger.warning("Index could not be initialized.")
+            logger.warning(
+                "Index could not be initialized. Init parameters: "
+                f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
+                f"{force_create=}"
+            )
             index = None
         if index is not None:
             self.host = self.client.describe_index(self.index_name)["host"]
@@ -222,7 +269,12 @@ class PineconeIndex(BaseIndex):
         else:
             # if the index doesn't exist and we don't have the dimensions
             # we raise warning
-            logger.warning("Index could not be initialized.")
+            logger.warning(
+                "Index could not be initialized. Init parameters: "
+                f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
+                f"{force_create=}"
+            )
         self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):
@@ -236,17 +288,6 @@ class PineconeIndex(BaseIndex):
         else:
             raise ValueError("Index is None, could not upsert.")
 
-    async def _async_batch_upsert(self, batch: List[Dict]):
-        """Helper method for upserting a single batch of records asynchronously.
-
-        :param batch: The batch of records to upsert.
-        :type batch: List[Dict]
-        """
-        if self.index is not None:
-            await self.index.upsert(vectors=batch, namespace=self.namespace)
-        else:
-            raise ValueError("Index is None, could not upsert.")
-
     def add(
         self,
         embeddings: List[List[float]],
@@ -255,35 +296,21 @@ class PineconeIndex(BaseIndex):
         function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
-        sparse_embeddings: Optional[Optional[List[dict[int, float]]]] = None,
+        sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
+        **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
-        if function_schemas is None:
-            function_schemas = [{}] * len(embeddings)
-        if sparse_embeddings is None:
-            sparse_embeddings = [{}] * len(embeddings)
-        vectors_to_upsert = [
-            PineconeRecord(
-                values=vector,
-                sparse_values=sparse_dict,
-                route=route,
-                utterance=utterance,
-                function_schema=json.dumps(function_schema),
-                metadata=metadata,
-            ).to_dict()
-            for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
-                embeddings,
-                routes,
-                utterances,
-                function_schemas,
-                metadata_list,
-                sparse_embeddings,
-            )
-        ]
-
+        vectors_to_upsert = build_records(
+            embeddings=embeddings,
+            routes=routes,
+            utterances=utterances,
+            function_schemas=function_schemas,
+            metadata_list=metadata_list,
+            sparse_embeddings=sparse_embeddings,
+        )
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
             self._batch_upsert(batch)
@@ -296,38 +323,28 @@ class PineconeIndex(BaseIndex):
         function_schemas: Optional[Optional[List[Dict[str, Any]]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
         batch_size: int = 100,
-        sparse_embeddings: Optional[Optional[List[dict[int, float]]]] = None,
+        sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
+        **kwargs,
     ):
         """Add vectors to Pinecone in batches."""
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = await self._init_async_index(force_create=True)
-        if function_schemas is None:
-            function_schemas = [{}] * len(embeddings)
-        if sparse_embeddings is None:
-            sparse_embeddings = [{}] * len(embeddings)
-        vectors_to_upsert = [
-            PineconeRecord(
-                values=vector,
-                sparse_values=sparse_dict,
-                route=route,
-                utterance=utterance,
-                function_schema=json.dumps(function_schema),
-                metadata=metadata,
-            ).to_dict()
-            for vector, route, utterance, function_schema, metadata, sparse_dict in zip(
-                embeddings,
-                routes,
-                utterances,
-                function_schemas,
-                metadata_list,
-                sparse_embeddings,
-            )
-        ]
+        vectors_to_upsert = build_records(
+            embeddings=embeddings,
+            routes=routes,
+            utterances=utterances,
+            function_schemas=function_schemas,
+            metadata_list=metadata_list,
+            sparse_embeddings=sparse_embeddings,
+        )
 
         for i in range(0, len(vectors_to_upsert), batch_size):
             batch = vectors_to_upsert[i : i + batch_size]
-            await self._async_batch_upsert(batch)
+            await self._async_upsert(
+                vectors=batch,
+                namespace=self.namespace or "",
+            )
 
     def _remove_and_sync(self, routes_to_delete: dict):
         for route, utterances in routes_to_delete.items():
@@ -433,16 +450,26 @@ class PineconeIndex(BaseIndex):
     def delete_all(self):
         self.index.delete(delete_all=True, namespace=self.namespace)
 
-    def describe(self) -> Dict:
+    def describe(self) -> IndexConfig:
         if self.index is not None:
             stats = self.index.describe_index_stats()
-            return {
-                "type": self.type,
-                "dimensions": stats["dimension"],
-                "vectors": stats["namespaces"][self.namespace]["vector_count"],
-            }
+            return IndexConfig(
+                type=self.type,
+                dimensions=stats["dimension"],
+                vectors=stats["namespaces"][self.namespace]["vector_count"],
+            )
         else:
-            raise ValueError("Index is None, cannot describe index stats.")
+            return IndexConfig(
+                type=self.type,
+                dimensions=self.dimensions or 0,
+                vectors=0,
+            )
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.index is not None
 
     def query(
         self,
@@ -505,7 +532,7 @@ class PineconeIndex(BaseIndex):
             ids=[config_id],
             namespace="sr_config",
         )
-        if config_record["vectors"]:
+        if config_record.get("vectors"):
             return ConfigParameter(
                 field=field,
                 value=config_record["vectors"][config_id]["metadata"]["value"],
@@ -514,6 +541,49 @@ class PineconeIndex(BaseIndex):
                 ],
                 scope=scope,
             )
+        else:
+            logger.warning(f"Configuration for {field} parameter not found in index.")
+            return ConfigParameter(
+                field=field,
+                value="",
+                scope=scope,
+            )
+
+    async def _async_read_config(
+        self, field: str, scope: str | None = None
+    ) -> ConfigParameter:
+        """Read a config parameter from the index asynchronously.
+
+        :param field: The field to read.
+        :type field: str
+        :param scope: The scope to read.
+        :type scope: str | None
+        :return: The config parameter that was read.
+        :rtype: ConfigParameter
+        """
+        scope = scope or self.namespace
+        if self.index is None:
+            return ConfigParameter(
+                field=field,
+                value="",
+                scope=scope,
+            )
+        config_id = f"{field}#{scope}"
+        config_record = await self._async_fetch_metadata(
+            vector_id=config_id, namespace="sr_config"
+        )
+        if config_record:
+            try:
+                return ConfigParameter(
+                    field=field,
+                    value=config_record["value"],
+                    created_at=config_record["created_at"],
+                    scope=scope,
+                )
+            except KeyError:
+                raise ValueError(
+                    f"Found invalid config record during sync: {config_record}"
+                )
         else:
             logger.warning(f"Configuration for {field} parameter not found in index.")
             return ConfigParameter(
@@ -550,8 +620,9 @@ class PineconeIndex(BaseIndex):
             raise ValueError("Index has not been initialized.")
         if self.dimensions is None:
             raise ValueError("Must set PineconeIndex.dimensions before writing config.")
-        self.index.upsert(
-            vectors=[config.to_pinecone(dimensions=self.dimensions)],
+        pinecone_config = config.to_pinecone(dimensions=self.dimensions)
+        await self._async_upsert(
+            vectors=[pinecone_config],
             namespace="sr_config",
         )
         return config
@@ -580,8 +651,8 @@ class PineconeIndex(BaseIndex):
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
         """
-        if self.async_client is None or self.host == "":
-            raise ValueError("Async client or host are not initialized.")
+        if self.host == "":
+            raise ValueError("Host is not initialized.")
         query_vector_list = vector.tolist()
         if route_filter is not None:
             filter_query = {"sr_route": {"$in": route_filter}}
@@ -614,8 +685,8 @@ class PineconeIndex(BaseIndex):
         :return: A list of (route_name, utterance) objects.
         :rtype: List[Tuple]
         """
-        if self.async_client is None or self.host == "":
-            raise ValueError("Async client or host are not initialized.")
+        if self.host == "":
+            raise ValueError("Host is not initialized.")
 
         return await self._async_get_routes()
 
@@ -643,15 +714,21 @@ class PineconeIndex(BaseIndex):
         }
         if self.host == "":
             raise ValueError("self.host is not initialized.")
-        async with self.async_client.post(
-            f"https://{self.host}/query",
-            json=params,
-        ) as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://{self.host}/query",
+                json=params,
+                headers=self.headers,
+            ) as response:
+                return await response.json(content_type=None)
 
     async def _async_list_indexes(self):
-        async with self.async_client.get(f"{self.base_url}/indexes") as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{self.base_url}/indexes",
+                headers=self.headers,
+            ) as response:
+                return await response.json(content_type=None)
 
     async def _async_upsert(
         self,
@@ -662,11 +739,14 @@ class PineconeIndex(BaseIndex):
             "vectors": vectors,
             "namespace": namespace,
         }
-        async with self.async_client.post(
-            f"{self.base_url}/vectors/upsert",
-            json=params,
-        ) as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://{self.host}/vectors/upsert",
+                json=params,
+                headers=self.headers,
+            ) as response:
+                res = await response.json(content_type=None)
+                return res
 
     async def _async_create_index(
         self,
@@ -682,26 +762,34 @@ class PineconeIndex(BaseIndex):
             "metric": metric,
             "spec": {"serverless": {"cloud": cloud, "region": region}},
         }
-        async with self.async_client.post(
-            f"{self.base_url}/indexes",
-            headers={"Api-Key": self.api_key},
-            json=params,
-        ) as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/indexes",
+                json=params,
+                headers=self.headers,
+            ) as response:
+                return await response.json(content_type=None)
 
     async def _async_delete(self, ids: list[str], namespace: str = ""):
         params = {
             "ids": ids,
             "namespace": namespace,
         }
-        async with self.async_client.post(
-            f"{self.base_url}/vectors/delete", json=params
-        ) as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://{self.host}/vectors/delete",
+                json=params,
+                headers=self.headers,
+            ) as response:
+                return await response.json(content_type=None)
 
     async def _async_describe_index(self, name: str):
-        async with self.async_client.get(f"{self.base_url}/indexes/{name}") as response:
-            return await response.json(content_type=None)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{self.base_url}/indexes/{name}",
+                headers=self.headers,
+            ) as response:
+                return await response.json(content_type=None)
 
     async def _async_get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
@@ -735,42 +823,53 @@ class PineconeIndex(BaseIndex):
             params["namespace"] = self.namespace
         metadata = []
 
-        while True:
-            if next_page_token:
-                params["paginationToken"] = next_page_token
+        async with aiohttp.ClientSession() as session:
+            while True:
+                if next_page_token:
+                    params["paginationToken"] = next_page_token
 
-            async with self.async_client.get(
-                list_url, params=params, headers={"Api-Key": self.api_key}
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Error fetching vectors: {error_text}")
+                async with session.get(
+                    list_url,
+                    params=params,
+                    headers=self.headers,
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"Error fetching vectors: {error_text}")
+                        break
+
+                    response_data = await response.json(content_type=None)
+
+                vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
+                if not vector_ids:
                     break
+                all_vector_ids.extend(vector_ids)
 
-                response_data = await response.json(content_type=None)
+                if include_metadata:
+                    metadata_tasks = [
+                        self._async_fetch_metadata(id) for id in vector_ids
+                    ]
+                    metadata_results = await asyncio.gather(*metadata_tasks)
+                    metadata.extend(metadata_results)
 
-            vector_ids = [vec["id"] for vec in response_data.get("vectors", [])]
-            if not vector_ids:
-                break
-            all_vector_ids.extend(vector_ids)
-
-            if include_metadata:
-                metadata_tasks = [self._async_fetch_metadata(id) for id in vector_ids]
-                metadata_results = await asyncio.gather(*metadata_tasks)
-                metadata.extend(metadata_results)
-
-            next_page_token = response_data.get("pagination", {}).get("next")
-            if not next_page_token:
-                break
+                next_page_token = response_data.get("pagination", {}).get("next")
+                if not next_page_token:
+                    break
 
         return all_vector_ids, metadata
 
-    async def _async_fetch_metadata(self, vector_id: str) -> dict:
+    async def _async_fetch_metadata(
+        self,
+        vector_id: str,
+        namespace: str | None = None,
+    ) -> dict:
         """Fetch metadata for a single vector ID asynchronously using the
-        async_client.
+        ClientSession.
 
         :param vector_id: The ID of the vector to fetch metadata for.
         :type vector_id: str
+        :param namespace: The namespace to fetch metadata for.
+        :type namespace: str | None
         :return: A dictionary containing the metadata for the vector.
         :rtype: dict
         """
@@ -782,30 +881,31 @@ class PineconeIndex(BaseIndex):
             "ids": [vector_id],
         }
 
-        if self.namespace:
+        if namespace:
+            params["namespace"] = [namespace]
+        elif self.namespace:
             params["namespace"] = [self.namespace]
 
-        headers = {
-            "Api-Key": self.api_key,
-        }
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url, params=params, headers=self.headers
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Error fetching metadata: {error_text}")
+                    return {}
 
-        async with self.async_client.get(
-            url, params=params, headers=headers
-        ) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                logger.error(f"Error fetching metadata: {error_text}")
-                return {}
+                try:
+                    response_data = await response.json(content_type=None)
+                except Exception as e:
+                    logger.warning(f"No metadata found for vector {vector_id}: {e}")
+                    return {}
 
-            try:
-                response_data = await response.json(content_type=None)
-            except Exception as e:
-                logger.warning(f"No metadata found for vector {vector_id}: {e}")
-                return {}
-
-            return (
-                response_data.get("vectors", {}).get(vector_id, {}).get("metadata", {})
-            )
+                return (
+                    response_data.get("vectors", {})
+                    .get(vector_id, {})
+                    .get("metadata", {})
+                )
 
     def __len__(self):
         namespace_stats = self.index.describe_index_stats()["namespaces"].get(

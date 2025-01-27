@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Dict
 import numpy as np
 
 from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
-from semantic_router.index.base import BaseIndex
+from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
 from semantic_router.utils.logger import logger
 from typing import Any
@@ -26,6 +26,7 @@ class LocalIndex(BaseIndex):
         utterances: List[str],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
         metadata_list: List[Dict[str, Any]] = [],
+        **kwargs,
     ):
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
@@ -63,23 +64,31 @@ class LocalIndex(BaseIndex):
         # return what was removed
         return route_utterances[~mask]
 
-    def get_utterances(self) -> List[Utterance]:
-        """
-        Gets a list of route and utterance objects currently stored in the index.
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
+        """Gets a list of route and utterance objects currently stored in the index.
 
-        Returns:
-            List[Tuple]: A list of (route_name, utterance) objects.
+        :param include_metadata: Whether to include function schemas and metadata in
+        the returned Utterance objects - LocalIndex doesn't include metadata so this
+        parameter is ignored.
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
         """
         if self.routes is None or self.utterances is None:
             return []
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
-    def describe(self) -> Dict:
-        return {
-            "type": self.type,
-            "dimensions": self.index.shape[1] if self.index is not None else 0,
-            "vectors": self.index.shape[0] if self.index is not None else 0,
-        }
+    def describe(self) -> IndexConfig:
+        return IndexConfig(
+            type=self.type,
+            dimensions=self.index.shape[1] if self.index is not None else 0,
+            vectors=self.index.shape[0] if self.index is not None else 0,
+        )
+
+    def is_ready(self) -> bool:
+        """
+        Checks if the index is ready to be used.
+        """
+        return self.index is not None and self.routes is not None
 
     def query(
         self,
