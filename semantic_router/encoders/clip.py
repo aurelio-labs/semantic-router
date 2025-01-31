@@ -1,8 +1,8 @@
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from pydantic import PrivateAttr
-from typing import Dict
+
 from semantic_router.encoders import DenseEncoder
 
 

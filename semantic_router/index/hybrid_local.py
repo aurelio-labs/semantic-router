@@ -1,12 +1,11 @@
-from typing import List, Optional, Tuple, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.linalg import norm
 
-from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.index.local import LocalIndex
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-from typing import Any
 
 
 class HybridLocalIndex(LocalIndex):

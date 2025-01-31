@@ -1,22 +1,23 @@
 import importlib
-from functools import wraps
 import os
 import tempfile
-from unittest.mock import mock_open, patch
-from datetime import datetime
-import pytest
 import time
+from datetime import datetime
+from functools import wraps
+from platform import python_version
 from typing import Optional
-from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+from unittest.mock import mock_open, patch
+
+import pytest
+
+from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import RouterConfig, SemanticRouter, HybridRouter
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
+from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.utils.logger import logger
-from platform import python_version
-
 
 PINECONE_SLEEP = 8
 RETRY_COUNT = 10
@@ -1268,3 +1269,25 @@ class TestLayerFit:
         # unpack test data
         X, y = zip(*test_data)
         route_layer.fit(X=list(X), y=list(y), batch_size=int(len(X) / 5))
+
+    def test_fit_local(self, routes, test_data, index_cls, encoder_cls, router_cls):
+        # TODO: this is super slow for PineconeIndex, need to fix
+        encoder = encoder_cls()
+        index = init_index(index_cls, index_name=encoder.__class__.__name__)
+        route_layer = router_cls(
+            encoder=encoder,
+            routes=routes,
+            index=index,
+            auto_sync="local",
+        )
+
+        @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
+        def check_is_ready():
+            assert route_layer.index.is_ready()
+
+        check_is_ready()
+        # unpack test data
+        X, y = zip(*test_data)
+        route_layer.fit(
+            X=list(X), y=list(y), batch_size=int(len(X) / 5), local_execution=True
+        )

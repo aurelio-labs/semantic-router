@@ -1,8 +1,8 @@
 import os
 from typing import Any, List, Optional
-from pydantic import Field
 
-from aurelio_sdk import AurelioClient, AsyncAurelioClient, EmbeddingResponse
+from aurelio_sdk import AsyncAurelioClient, AurelioClient, EmbeddingResponse
+from pydantic import Field
 
 from semantic_router.encoders.base import SparseEncoder
 from semantic_router.schema import SparseEmbedding

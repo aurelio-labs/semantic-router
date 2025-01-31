@@ -1,12 +1,11 @@
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
-from pydantic import Field
 
 
 class Parameter(BaseModel):

@@ -1,20 +1,19 @@
-from asyncio import sleep as asleep
 import os
+from asyncio import sleep as asleep
 from time import sleep
 from typing import Any, List, Optional, Union
-from pydantic import PrivateAttr
 
 import openai
+import tiktoken
 from openai import OpenAIError
 from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
-import tiktoken
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.schema import EncoderInfo
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
-
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
