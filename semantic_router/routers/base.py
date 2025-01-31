@@ -1343,15 +1343,15 @@ class BaseRouter(BaseModel):
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_utterances(include_metadata=True)
+            remote_utterances = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
             routes = []
             utterances = []
             metadata = []
-            for route in remote_routes:
-                routes.append(route.route)
-                utterances.append(route.utterance)
-                metadata.append(route.metadata)
+            for utterance in remote_utterances:
+                routes.append(utterance.route)
+                utterances.append(utterance.utterance)
+                metadata.append(utterance.metadata)
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
             self.index.add(
