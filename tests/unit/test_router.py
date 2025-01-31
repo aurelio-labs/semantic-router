@@ -1272,8 +1272,6 @@ class TestLayerFit:
 
     def test_fit_local(self, routes, test_data, index_cls, encoder_cls, router_cls):
         # TODO: this is super slow for PineconeIndex, need to fix
-        if index_cls is PineconeIndex:
-            return
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
