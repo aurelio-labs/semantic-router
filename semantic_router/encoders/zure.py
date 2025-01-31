@@ -1,11 +1,11 @@
-from asyncio import sleep as asleep
 import os
+from asyncio import sleep as asleep
 from time import sleep
 from typing import List, Optional, Union
 
 import openai
-from openai._types import NotGiven
 from openai import OpenAIError
+from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import DenseEncoder

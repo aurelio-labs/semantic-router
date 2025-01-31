@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional
 
 from semantic_router.encoders.tfidf import TfidfEncoder
-from semantic_router.utils.logger import logger
-from semantic_router.schema import SparseEmbedding
 from semantic_router.route import Route
+from semantic_router.schema import SparseEmbedding
+from semantic_router.utils.logger import logger
 
 
 class BM25Encoder(TfidfEncoder):

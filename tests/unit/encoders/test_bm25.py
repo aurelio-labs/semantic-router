@@ -1,9 +1,9 @@
-import pytest
+import nltk
 import numpy as np
+import pytest
 
 from semantic_router.encoders import BM25Encoder
 from semantic_router.route import Route
-import nltk
 
 nltk.download("punkt_tab")
 

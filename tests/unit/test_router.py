@@ -1,22 +1,23 @@
 import importlib
-from functools import wraps
 import os
 import tempfile
-from unittest.mock import mock_open, patch
-from datetime import datetime
-import pytest
 import time
+from datetime import datetime
+from functools import wraps
+from platform import python_version
 from typing import Optional
-from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+from unittest.mock import mock_open, patch
+
+import pytest
+
+from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import RouterConfig, SemanticRouter, HybridRouter
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
+from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.utils.logger import logger
-from platform import python_version
-
 
 PINECONE_SLEEP = 8
 RETRY_COUNT = 10

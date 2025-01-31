@@ -1,12 +1,14 @@
+import json
 from datetime import datetime, timezone
 from difflib import Differ
 from enum import Enum
-import json
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
-from typing import List, Optional, Union, Any, Dict, Tuple
-from pydantic import BaseModel, Field
-from semantic_router.utils.logger import logger
 from aurelio_sdk.schema import BM25Embedding
+from pydantic import BaseModel, Field
+
+from semantic_router.utils.logger import logger
 
 
 class EncoderType(Enum):

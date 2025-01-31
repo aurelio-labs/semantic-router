@@ -1,6 +1,6 @@
-from typing import List
 import os
 import sys
+from typing import List
 
 sys.path.insert(0, os.path.abspath("../.."))  # Source code dir relative to this file
 

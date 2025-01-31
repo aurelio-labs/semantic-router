@@ -1,22 +1,22 @@
-from typing import Any, Dict, List, Optional, Union
-from tqdm.auto import tqdm
 import asyncio
-from pydantic import Field
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+from pydantic import Field
+from tqdm.auto import tqdm
 
 from semantic_router.encoders import (
+    BM25Encoder,
     DenseEncoder,
     SparseEncoder,
-    BM25Encoder,
     TfidfEncoder,
 )
-from semantic_router.route import Route
 from semantic_router.index import BaseIndex, HybridLocalIndex
+from semantic_router.llms import BaseLLM
+from semantic_router.route import Route
+from semantic_router.routers.base import BaseRouter, threshold_random_search, xq_reshape
 from semantic_router.schema import RouteChoice, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-from semantic_router.routers.base import BaseRouter, xq_reshape, threshold_random_search
-from semantic_router.llms import BaseLLM
 
 
 class HybridRouter(BaseRouter):
@@ -288,9 +288,13 @@ class HybridRouter(BaseRouter):
 
             remote_routes = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes, utterances, function_schemas, metadata = map(
-                list, zip(*remote_routes)
-            )
+            routes = []
+            utterances = []
+            metadata = []
+            for route in remote_routes:
+                routes.append(route.route)
+                utterances.append(route.utterance)
+                metadata.append(route.metadata)
             embeddings = self.encoder(utterances)
             sparse_embeddings = self.sparse_encoder(utterances)
             self.index = HybridLocalIndex()

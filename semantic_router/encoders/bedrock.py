@@ -17,10 +17,12 @@ Classes:
 """
 
 import json
-from typing import Dict, List, Optional, Any, Union
 import os
 from time import sleep
+from typing import Any, Dict, List, Optional, Union
+
 import tiktoken
+
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger

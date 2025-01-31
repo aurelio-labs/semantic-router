@@ -1,7 +1,7 @@
 from typing import Any, Coroutine, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
 import numpy as np
+from pydantic import BaseModel, Field, field_validator
 
 from semantic_router.schema import SparseEmbedding
 

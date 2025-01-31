@@ -1,16 +1,15 @@
 import asyncio
-from datetime import datetime
-import time
-from typing import Any, List, Optional, Tuple, Union, Dict
 import json
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel
 
-from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.route import Route
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-
 
 RETRY_WAIT_TIME = 2.5
 

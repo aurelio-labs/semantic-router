@@ -1,4 +1,5 @@
 import inspect
+
 from semantic_router.utils.function_call import FunctionSchema
 
 

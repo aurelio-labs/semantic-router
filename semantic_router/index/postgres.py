@@ -1,7 +1,7 @@
 import os
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel, Field

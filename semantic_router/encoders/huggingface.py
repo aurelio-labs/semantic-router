@@ -20,11 +20,11 @@ Classes:
     HFEndpointEncoder: A class for generating embeddings using a Huggingface endpoint.
 """
 
-import requests
-import time
 import os
-from typing import Any, List, Optional, Dict
+import time
+from typing import Any, Dict, List, Optional
 
+import requests
 from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder

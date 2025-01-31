@@ -1,25 +1,26 @@
 import asyncio
-from functools import wraps
 import importlib
 import os
-from datetime import datetime
-import pytest
 import time
+from datetime import datetime
+from functools import wraps
+from platform import python_version
 from typing import Optional
-from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+
+import pytest
+
+from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index import (
-    PineconeIndex,
     HybridLocalIndex,
     LocalIndex,
-    QdrantIndex,
+    PineconeIndex,
     PostgresIndex,
+    QdrantIndex,
 )
-from semantic_router.schema import Utterance
-from semantic_router.routers import SemanticRouter, HybridRouter
 from semantic_router.route import Route
+from semantic_router.routers import HybridRouter, SemanticRouter
+from semantic_router.schema import Utterance
 from semantic_router.utils.logger import logger
-from platform import python_version
-
 
 PINECONE_SLEEP = 6
 RETRY_COUNT = 5
