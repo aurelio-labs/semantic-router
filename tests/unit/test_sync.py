@@ -105,7 +105,7 @@ TEST_ID = (
 
 def init_index(
     index_cls,
-    dimensions: Optional[int] = 1536,
+    dimensions: Optional[int] = 3,
     namespace: Optional[str] = "",
     init_async_index: bool = False,
     index_name: Optional[str] = None,
