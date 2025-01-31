@@ -8,7 +8,7 @@ import time
 from typing import Optional
 from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index import (
-    PineconeIndex,
+    PineconeLocalIndex,
     HybridLocalIndex,
     LocalIndex,
     QdrantIndex,
@@ -25,9 +25,9 @@ PINECONE_SLEEP = 6
 RETRY_COUNT = 5
 
 
-# retry decorator for PineconeIndex cases (which need delay)
+# retry decorator for PineconeLocalIndex cases (which need delay)
 def retry(max_retries: int = 5, delay: int = 8):
-    """Retry decorator, currently used for PineconeIndex which often needs some time
+    """Retry decorator, currently used for PineconeLocalIndex which often needs some time
     to be populated and have all correct data. Once full Pinecone mock is built we
     should remove this decorator.
 
@@ -55,9 +55,9 @@ def retry(max_retries: int = 5, delay: int = 8):
     return decorator
 
 
-# retry decorator for PineconeIndex cases (which need delay)
+# retry decorator for PineconeLocalIndex cases (which need delay)
 def async_retry(max_retries: int = 5, delay: int = 8):
-    """Retry decorator, currently used for PineconeIndex which often needs some time
+    """Retry decorator, currently used for PineconeLocalIndex which often needs some time
     to be populated and have all correct data. Once full Pinecone mock is built we
     should remove this decorator.
 
@@ -113,7 +113,15 @@ def init_index(
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
-    if index_cls is PineconeIndex:
+    if index_cls is PineconeLocalIndex:
+
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
         index = index_cls(
             index_name=index_name,
@@ -174,7 +182,7 @@ routes:
 
 # not all indexes support metadata, so we map the feature here
 INCLUDE_METADATA_MAP = {
-    PineconeIndex: True,
+    PineconeLocalIndex: True,
     HybridLocalIndex: False,
     LocalIndex: False,
     QdrantIndex: False,
@@ -304,7 +312,7 @@ def get_test_indexes():
     # if importlib.util.find_spec("qdrant_client") is not None:
     #    indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
-        indexes.append(PineconeIndex)
+        indexes.append(PineconeLocalIndex)
 
     return indexes
 
@@ -401,7 +409,7 @@ class TestSemanticRouter:
     def test_auto_sync_local(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST LOCAL
             pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             _ = router_cls(
@@ -434,7 +442,7 @@ class TestSemanticRouter:
     def test_auto_sync_remote(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST REMOTE
             pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             _ = router_cls(
@@ -467,7 +475,7 @@ class TestSemanticRouter:
     def test_auto_sync_merge_force_local(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
@@ -514,7 +522,7 @@ class TestSemanticRouter:
     def test_auto_sync_merge_force_remote(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
@@ -606,7 +614,7 @@ class TestSemanticRouter:
     def test_auto_sync_merge(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE
             pinecone_index = init_index(index_cls, index_name=router_cls.__name__)
             route_layer = router_cls(
@@ -672,7 +680,7 @@ class TestSemanticRouter:
         )
         # Acquire sync lock
         route_layer.index.lock(value=True)
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)
 
         # Attempt to sync while lock is held should raise exception
@@ -681,12 +689,12 @@ class TestSemanticRouter:
 
         # Release lock
         route_layer.index.lock(value=False)
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)
 
         # Should succeed after lock is released
         route_layer.sync("local")
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)
         assert route_layer.is_synced()
 
@@ -704,17 +712,17 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)
 
         # Lock should be released, allowing another sync
         route_layer.sync("local")  # Should not raise exception
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)
         assert route_layer.is_synced()
 
         # clear index if pinecone
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             route_layer.index.client.delete_index(route_layer.index.index_name)
 
 
@@ -752,7 +760,7 @@ class TestAsyncSemanticRouter:
         route_layer = router_cls(
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP * 2)  # allow for index to be populated
         assert await route_layer.async_is_synced()
 
@@ -770,7 +778,7 @@ class TestAsyncSemanticRouter:
             encoder=openai_encoder, routes=routes, index=index, auto_sync="local"
         )
         route_layer = router_cls(encoder=openai_encoder, routes=routes_2, index=index)
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)  # allow for index to be populated
         assert await route_layer.async_is_synced() is False
 
@@ -810,7 +818,7 @@ class TestAsyncSemanticRouter:
     async def test_auto_sync_local(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST LOCAL
             pinecone_index = init_index(
                 index_cls, init_async_index=True, index_name=router_cls.__name__
@@ -846,7 +854,7 @@ class TestAsyncSemanticRouter:
     async def test_auto_sync_remote(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST REMOTE
             pinecone_index = init_index(
                 index_cls, init_async_index=True, index_name=router_cls.__name__
@@ -883,7 +891,7 @@ class TestAsyncSemanticRouter:
     async def test_auto_sync_merge_force_local(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(
                 index_cls, init_async_index=True, index_name=router_cls.__name__
@@ -932,7 +940,7 @@ class TestAsyncSemanticRouter:
     async def test_auto_sync_merge_force_remote(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE FORCE LOCAL
             pinecone_index = init_index(
                 index_cls, init_async_index=True, index_name=router_cls.__name__
@@ -1033,7 +1041,7 @@ class TestAsyncSemanticRouter:
     async def test_auto_sync_merge(
         self, openai_encoder, routes, routes_2, index_cls, router_cls
     ):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             # TEST MERGE
             pinecone_index = init_index(
                 index_cls, init_async_index=True, index_name=router_cls.__name__
@@ -1110,7 +1118,7 @@ class TestAsyncSemanticRouter:
 
         # Acquire sync lock
         await route_layer.index.alock(value=True)
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
 
         # Attempt to sync while lock is held should raise exception
@@ -1119,12 +1127,12 @@ class TestAsyncSemanticRouter:
 
         # Release lock
         await route_layer.index.alock(value=False)
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
 
         # Should succeed after lock is released
         await route_layer.async_sync("local")
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
         assert await route_layer.async_is_synced()
 
@@ -1151,19 +1159,19 @@ class TestAsyncSemanticRouter:
             index=index,
             auto_sync=None,
         )
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
         # Initial sync should acquire and release lock
         await route_layer.async_sync("local")
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
 
         # Lock should be released, allowing another sync
         await route_layer.async_sync("local")  # Should not raise exception
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             await asyncio.sleep(PINECONE_SLEEP)
         assert await route_layer.async_is_synced()
 
         # clear index if pinecone
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             route_layer.index.client.delete_index(route_layer.index.index_name)
