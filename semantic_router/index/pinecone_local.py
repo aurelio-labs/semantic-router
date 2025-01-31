@@ -258,12 +258,12 @@ class PineconeLocalIndex(BaseIndex):
 
             if self.index_host and self.base_url:
                 if "http" not in self.index_host:
-                    self.index_host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.index_host.split(':')[-1]}"
+                    self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
                 elif not self.index_host.startswith("http://"):
 
                     # TODO: Need to pass the an argument for service name
                     if "localhost" in self.index_host:
-                        self.index_host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.index_host.split(':')[-1]}"
+                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
                         logger.error(f"index exists:{self.index_host}")
                     else:
                         self.index_host = f"http://{self.index_host}"
@@ -820,7 +820,7 @@ class PineconeLocalIndex(BaseIndex):
         if self.host == "":
             raise ValueError("self.host is not initialized.")
         elif self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.host.split(':')[-1]}"
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -848,7 +848,7 @@ class PineconeLocalIndex(BaseIndex):
             "namespace": namespace,
         }
         if self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.host.split(':')[-1]}"
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -887,7 +887,7 @@ class PineconeLocalIndex(BaseIndex):
             "namespace": namespace,
         }
         if self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.host.split(':')[-1]}"
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -931,7 +931,7 @@ class PineconeLocalIndex(BaseIndex):
         else:
             prefix_str = ""
         if self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.host.split(':')[-1]}"
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
 
         list_url = f"{self.host}/vectors/list{prefix_str}"
         params: dict = {}
@@ -992,7 +992,7 @@ class PineconeLocalIndex(BaseIndex):
         if self.host == "":
             raise ValueError("self.host is not initialized.")
         if self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip("/")}:{self.host.split(':')[-1]}"
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
         url = f"{self.host}/vectors/fetch"
 
         params = {
