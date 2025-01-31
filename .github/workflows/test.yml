@@ -10,6 +10,15 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      pinecone:
+        image: ghcr.io/pinecone-io/pinecone-local:latest
+        env:
+          PORT: 5080
+          PINECONE_HOST: localhost
+        ports:
+          - "5080-6000:5080-6000"
+
     strategy:
       matrix:
         python-version:
@@ -19,13 +28,12 @@ jobs:
         - "3.13"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
-      uses: actions/cache@v4
-      with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
+
+    - name: Wait for Pinecone service to start
+      run: |
+        echo "Waiting for Pinecone service to start..."
+        sleep 10  # Wait for 10 seconds to ensure the container is up
+
     - name: Install poetry
       run: |
         pipx install poetry==$POETRY_VERSION
@@ -34,18 +42,25 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: poetry
+
+    # - name: Add Poetry to PATH
+    #   run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+      
     - name: Install dependencies
       run: |
         poetry install --all-extras
     - name: Install nltk
       run: |
         pip install nltk
+
     - name: Download nltk data
       run: |
         python -m nltk.downloader punkt stopwords wordnet punkt_tab
+    
     - name: Pytest All
       env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        PINECONE_API_KEY: pclocal
+        PINECONE_API_BASE_URL: http://localhost:5080
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
       run: |

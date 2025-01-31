@@ -6,7 +6,8 @@ import numpy as np
 from typing import List, Optional, Union, Any, Dict, Tuple
 from pydantic import BaseModel, Field
 from semantic_router.utils.logger import logger
-from aurelio_sdk.schema import BM25Embedding
+
+from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 
 
 class EncoderType(Enum):
@@ -448,7 +449,7 @@ class SparseEmbedding(BaseModel):
         return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)
 
     @classmethod
-    def from_aurelio(cls, embedding: BM25Embedding):
+    def from_aurelio(cls, embedding: BM25SparseEmbedding):
         arr = np.array([embedding.indices, embedding.values]).T
         return cls.from_compact_array(arr)
 

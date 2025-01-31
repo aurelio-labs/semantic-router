@@ -9,7 +9,7 @@ import time
 from typing import Optional
 from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
 from semantic_router.index.local import LocalIndex
-from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.pinecone_local import PineconeLocalIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.routers import RouterConfig, SemanticRouter, HybridRouter
 from semantic_router.llms import BaseLLM, OpenAILLM
@@ -22,9 +22,9 @@ PINECONE_SLEEP = 8
 RETRY_COUNT = 10
 
 
-# retry decorator for PineconeIndex cases (which need delay)
+# retry decorator for PineconeLocalIndex cases (which need delay)
 def retry(max_retries: int = 5, delay: int = 8):
-    """Retry decorator, currently used for PineconeIndex which often needs some time
+    """Retry decorator, currently used for PineconeLocalIndex which often needs some time
     to be populated and have all correct data. Once full Pinecone mock is built we
     should remove this decorator.
 
@@ -79,11 +79,22 @@ def init_index(
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
-    if index_cls is PineconeIndex:
+    if index_cls is PineconeLocalIndex:
+
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
         # we specify different index names to avoid dimensionality issues between different encoders
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
+            index_name=index_name,
+            dimensions=dimensions,
+            # namespace=namespace
         )
     else:
         index = index_cls()
@@ -260,7 +271,7 @@ def get_test_indexes():
     if importlib.util.find_spec("qdrant_client") is not None:
         indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
-        indexes.append(PineconeIndex)
+        indexes.append(PineconeLocalIndex)
 
     return indexes
 
@@ -613,7 +624,7 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
         route_layer.add(routes=route_single_utterance)
         score_threshold = route_layer.score_threshold
@@ -631,8 +642,8 @@ class TestSemanticRouter:
 
     def test_delete_index(self, routes, index_cls, encoder_cls, router_cls):
         # TODO merge .delete_index() and .delete_all() and get working
-        index = init_index(index_cls)
         encoder = encoder_cls()
+        index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
             encoder=encoder,
             routes=routes,
@@ -764,8 +775,8 @@ class TestSemanticRouter:
 
         check_index_populated()
 
-        # # clear index if pinecone
-        # if index_cls is PineconeIndex:
+        # clear index if pinecone
+        # if index_cls is PineconeLocalIndex:
         #     @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
         #     def clear_index():
         #         route_layer.index.index.delete(delete_all=True)
@@ -823,15 +834,16 @@ class TestSemanticRouter:
         os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
     )
     def test_namespace_pinecone_index(self, routes, index_cls, encoder_cls, router_cls):
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeLocalIndex:
             encoder = encoder_cls()
-            pineconeindex = init_index(
+            encoder.score_threshold = 0.2
+            index = init_index(
                 index_cls, namespace="test", index_name=encoder.__class__.__name__
             )
             route_layer = router_cls(
                 encoder=encoder,
                 routes=routes,
-                index=pineconeindex,
+                index=index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
@@ -1248,8 +1260,8 @@ class TestLayerFit:
         route_layer.evaluate(X=list(X), y=list(y), batch_size=int(len(X) / 5))
 
     def test_fit(self, routes, test_data, index_cls, encoder_cls, router_cls):
-        # TODO: this is super slow for PineconeIndex, need to fix
-        if index_cls is PineconeIndex:
+        # TODO: this is super slow for PineconeLocalIndex, need to fix
+        if index_cls is PineconeLocalIndex:
             return
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
