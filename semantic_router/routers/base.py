@@ -1086,7 +1086,11 @@ class BaseRouter(BaseModel):
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
-            route.function_schemas[0] if route.function_schemas is not None else {}
+            (
+                route.function_schemas[0]
+                if route.function_schemas and len(route.function_schemas) > 0
+                else {}
+            )
             for route in routes
             for _ in route.utterances
         ]
