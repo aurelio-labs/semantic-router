@@ -32,13 +32,29 @@ class AurelioSparseEncoder(SparseEncoder):
         self.async_client = AsyncAurelioClient(api_key=api_key)
 
     def __call__(self, docs: list[str]) -> list[SparseEmbedding]:
-        res: EmbeddingResponse = self.client.embedding(input=docs, model=self.name)
+        res: EmbeddingResponse = self.client.embedding(
+            input=docs, model=self.name, input_type="queries"
+        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
+
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        res: EmbeddingResponse = self.client.embedding(
+            input=docs, model=self.name, input_type="queries"
+        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
+
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        res: EmbeddingResponse = self.client.embedding(
+            input=docs, model=self.name, input_type="documents"
+        )
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
     async def acall(self, docs: list[str]) -> list[SparseEmbedding]:
         res: EmbeddingResponse = await self.async_client.embedding(
-            input=docs, model=self.name
+            input=docs, model=self.name, input_type="queries"
         )
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds

@@ -32,6 +32,22 @@ class TfidfEncoder(SparseEncoder):
         tfidf = tf * self.idf
         return self._array_to_sparse_embeddings(tfidf)
 
+    def encode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Encode documents using TF-IDF"""
+        return self.__call__(docs)  # TF-IDF uses same method for docs and queries
+
+    def encode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Encode documents using TF-IDF"""
+        return self.__call__(docs)  # TF-IDF uses same method for docs and queries
+
+    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Async version of encode_queries"""
+        return self.__call__(docs)
+
+    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Async version of encode_documents"""
+        return self.__call__(docs)
+
     def fit(self, routes: List[Route]):
         """Trains the encoder weights on the provided routes.
 

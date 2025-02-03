@@ -32,10 +32,20 @@ class SparseEncoder(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        """Convert query texts to sparse embeddings optimized for querying"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def acall(self, docs: List[str]) -> list[SparseEmbedding]:
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        """Convert document texts to sparse embeddings optimized for storage"""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Async version of encode_queries"""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Async version of encode_documents"""
         raise NotImplementedError("Subclasses must implement this method")
 
     def _array_to_sparse_embeddings(
