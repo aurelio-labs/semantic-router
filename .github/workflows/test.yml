@@ -22,19 +22,19 @@ jobs:
     strategy:
       matrix:
         python-version:
-        - "3.10"
-        - "3.11"
-        - "3.12"
+        # - "3.10"
+        # - "3.11"
+        # - "3.12"
         - "3.13"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
-      uses: actions/cache@v4
-      with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
+    # - name: Cache Poetry
+    #   uses: actions/cache@v4
+    #   with:
+    #     path: ~/.poetry
+    #     key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-poetry-
 
     - name: Wait for Pinecone service to start
       run: |
@@ -48,10 +48,10 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        cache: poetry
+        # cache: poetry
 
-    # - name: Add Poetry to PATH
-    #   run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
+    - name: Add Poetry to PATH
+      run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
       
     - name: Install dependencies
       run: |

@@ -4,6 +4,8 @@ import hashlib
 import os
 import time
 import json
+import requests
+from json.decoder import JSONDecodeError
 
 from typing import Any, Dict, List, Optional, Union, Tuple
 
@@ -17,6 +19,13 @@ from semantic_router.utils.logger import logger
 
 def clean_route_name(route_name: str) -> str:
     return route_name.strip().replace(" ", "-")
+
+
+class DeleteRequest(BaseModel):
+    ids: list[str] | None = None
+    delete_all: bool = False
+    namespace: str | None = None
+    filter: dict[str, Any] | None = None
 
 
 def build_records(
@@ -115,8 +124,9 @@ class PineconeIndex(BaseIndex):
     index: Optional[Any] = Field(default=None, exclude=True)
     ServerlessSpec: Any = Field(default=None, exclude=True)
     namespace: Optional[str] = ""
-    base_url: Optional[str] = "https://api.pinecone.io"
+    base_url: Optional[str] = None
     headers: dict[str, str] = {}
+    index_host: Optional[str] = "http://localhost:5080"
 
     def __init__(
         self,
@@ -128,19 +138,25 @@ class PineconeIndex(BaseIndex):
         region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
-        base_url: Optional[str] = "https://api.pinecone.io",
+        base_url: Optional[str] = "",
         init_async_index: bool = False,
     ):
         super().__init__()
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         if not self.api_key:
             raise ValueError("Pinecone API key is required.")
+
         self.headers = {
             "Api-Key": self.api_key,
             "Content-Type": "application/json",
-            "X-Pinecone-API-Version": "2024-07",
             "User-Agent": "source_tag=semanticrouter",
         }
+
+        self.base_url = base_url or os.getenv("PINECONE_API_BASE_URL")
+
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            self.headers["X-Pinecone-API-Version"] = "2024-07"
+
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
@@ -151,15 +167,10 @@ class PineconeIndex(BaseIndex):
             raise ValueError("Namespace 'sr_config' is reserved for internal use.")
         self.namespace = namespace
         self.type = "pinecone"
-        self.api_key = api_key or os.getenv("PINECONE_API_KEY")
-        self.base_url = base_url
 
         logger.warning(
             "Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6"
         )
-
-        if self.api_key is None:
-            raise ValueError("Pinecone API key is required.")
 
         self.client = self._initialize_client(api_key=self.api_key)
 
@@ -218,7 +229,22 @@ class PineconeIndex(BaseIndex):
             time.sleep(0.5)
         elif index_exists:
             # if the index exists we just return it
-            index = self.client.Index(self.index_name)
+            self.index_host = self.client.describe_index(self.index_name).host
+
+            if self.index_host and self.base_url:
+                if "api.pinecone.io" in self.base_url:
+                    if not self.index_host.startswith("http"):
+                        self.index_host = f"https://{self.index_host}"
+                else:
+                    if "http" not in self.index_host:
+                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                    elif not self.index_host.startswith("http://"):
+                        if "localhost" in self.index_host:
+                            self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                        else:
+                            self.index_host = f"http://{self.index_host}"
+                index = self.client.Index(self.index_name, host=self.index_host)
+                self.host = self.index_host
             # grab the dimensions from the index
             self.dimensions = index.describe_index_stats()["dimension"]
         elif force_create and not dimensions_given:
@@ -443,12 +469,37 @@ class PineconeIndex(BaseIndex):
     def delete(self, route_name: str):
         route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
-            self.index.delete(ids=route_vec_ids, namespace=self.namespace)
+            logger.info("index is not None, deleting...")
+            if self.base_url and "api.pinecone.io" in self.base_url:
+                self.index.delete(ids=route_vec_ids, namespace=self.namespace)
+            else:
+
+                response = requests.post(
+                    f"{self.index_host}/vectors/delete",
+                    json=DeleteRequest(
+                        ids=route_vec_ids,
+                        delete_all=True,
+                        namespace=self.namespace,
+                    ).model_dump(exclude_none=True),
+                    timeout=10,
+                )
+                if response.status_code == 200:
+                    logger.info(
+                        f"Deleted {len(route_vec_ids)} vectors from index {self.index_name}."
+                    )
+                else:
+                    error_message = response.text
+                    raise Exception(
+                        f"Failed to delete vectors: {response.status_code} : {error_message}"
+                    )
         else:
             raise ValueError("Index is None, could not delete.")
 
     def delete_all(self):
-        self.index.delete(delete_all=True, namespace=self.namespace)
+        if self.index is not None:
+            self.index.delete(delete_all=True, namespace=self.namespace)
+        else:
+            raise ValueError("Index is None, could not delete.")
 
     def describe(self) -> IndexConfig:
         if self.index is not None:
@@ -502,19 +553,31 @@ class PineconeIndex(BaseIndex):
         else:
             filter_query = None
         if sparse_vector is not None:
+            logger.error(f"sparse_vector exists:{sparse_vector}")
             if isinstance(sparse_vector, dict):
                 sparse_vector = SparseEmbedding.from_dict(sparse_vector)
             if isinstance(sparse_vector, SparseEmbedding):
                 # unnecessary if-statement but mypy didn't like this otherwise
                 sparse_vector = sparse_vector.to_pinecone()
-        results = self.index.query(
-            vector=[query_vector_list],
-            sparse_vector=sparse_vector,
-            top_k=top_k,
-            filter=filter_query,
-            include_metadata=True,
-            namespace=self.namespace,
-        )
+        try:
+            results = self.index.query(
+                vector=[query_vector_list],
+                sparse_vector=sparse_vector,
+                top_k=top_k,
+                filter=filter_query,
+                include_metadata=True,
+                namespace=self.namespace,
+            )
+        except Exception:
+            logger.error("retrying query with vector as str")
+            results = self.index.query(
+                vector=query_vector_list,
+                sparse_vector=sparse_vector,
+                top_k=top_k,
+                filter=filter_query,
+                include_metadata=True,
+                namespace=self.namespace,
+            )
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
@@ -711,16 +774,35 @@ class PineconeIndex(BaseIndex):
             "filter": filter,
             "top_k": top_k,
             "include_metadata": include_metadata,
+            "topK": top_k,
+            "includeMetadata": include_metadata,
         }
         if self.host == "":
             raise ValueError("self.host is not initialized.")
+        elif self.base_url and "api.pinecone.io" in self.base_url:
+            if not self.host.startswith("http"):
+                logger.error(f"host exists:{self.host}")
+
+                self.host = f"https://{self.host}"
+        elif self.host.startswith("localhost") and self.base_url:
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
+
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://{self.host}/query",
+                f"{self.host}/query",
                 json=params,
                 headers=self.headers,
             ) as response:
-                return await response.json(content_type=None)
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Error in query response: {error_text}")
+                    return {}  # or handle the error as needed
+
+                try:
+                    return await response.json(content_type=None)
+                except JSONDecodeError as e:
+                    logger.error(f"JSON decode error: {e}")
+                    return {}
 
     async def _async_list_indexes(self):
         async with aiohttp.ClientSession() as session:
@@ -739,9 +821,17 @@ class PineconeIndex(BaseIndex):
             "vectors": vectors,
             "namespace": namespace,
         }
+
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            if not self.host.startswith("http"):
+                logger.error(f"host exists:{self.host}")
+                self.host = f"https://{self.host}"
+
+        elif self.host.startswith("localhost") and self.base_url:
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://{self.host}/vectors/upsert",
+                f"{self.host}/vectors/upsert",
                 json=params,
                 headers=self.headers,
             ) as response:
@@ -775,9 +865,16 @@ class PineconeIndex(BaseIndex):
             "ids": ids,
             "namespace": namespace,
         }
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            if not self.host.startswith("http"):
+                logger.error(f"host exists:{self.host}")
+                self.host = f"https://{self.host}"
+        elif self.host.startswith("localhost") and self.base_url:
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
+
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://{self.host}/vectors/delete",
+                f"{self.host}/vectors/delete",
                 json=params,
                 headers=self.headers,
             ) as response:
@@ -817,7 +914,15 @@ class PineconeIndex(BaseIndex):
         else:
             prefix_str = ""
 
-        list_url = f"https://{self.host}/vectors/list{prefix_str}"
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            if not self.host.startswith("http"):
+                logger.error(f"host exists:{self.host}")
+                self.host = f"https://{self.host}"
+
+        elif self.host.startswith("localhost") and self.base_url:
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
+
+        list_url = f"{self.host}/vectors/list{prefix_str}"
         params: dict = {}
         if self.namespace:
             params["namespace"] = self.namespace
@@ -875,7 +980,14 @@ class PineconeIndex(BaseIndex):
         """
         if self.host == "":
             raise ValueError("self.host is not initialized.")
-        url = f"https://{self.host}/vectors/fetch"
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            if not self.host.startswith("http"):
+                logger.error(f"host exists:{self.host}")
+                self.host = f"https://{self.host}"
+        elif self.host.startswith("localhost") and self.base_url:
+            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
+
+        url = f"{self.host}/vectors/fetch"
 
         params = {
             "ids": [vector_id],
