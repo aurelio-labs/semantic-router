@@ -1,12 +1,14 @@
 import os
+
 import numpy as np
 import pytest
 
 _ = pytest.importorskip("torch")
 
+from unittest.mock import patch  # noqa: E402
+
 import torch  # noqa: E402
 from PIL import Image  # noqa: E402
-from unittest.mock import patch  # noqa: E402
 
 from semantic_router.encoders import CLIPEncoder  # noqa: E402
 

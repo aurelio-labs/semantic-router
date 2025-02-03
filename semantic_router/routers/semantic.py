@@ -5,9 +5,9 @@ import numpy as np
 from semantic_router.encoders import DenseEncoder
 from semantic_router.index.base import BaseIndex
 from semantic_router.llms import BaseLLM
-from semantic_router.utils.logger import logger
 from semantic_router.route import Route
 from semantic_router.routers.base import BaseRouter
+from semantic_router.utils.logger import logger
 
 
 class SemanticRouter(BaseRouter):

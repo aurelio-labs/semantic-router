@@ -1,24 +1,24 @@
+import inspect
+import json
 import os
-from typing import List, Optional, Any, Callable, Dict, Union
-from pydantic import PrivateAttr
+import re
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import openai
-from openai._types import NotGiven, NOT_GIVEN
+from openai._types import NOT_GIVEN, NotGiven
+from openai.types.chat.chat_completion_message_tool_call import (
+    ChatCompletionMessageToolCall,
+)
+from pydantic import PrivateAttr
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.defaults import EncoderDefault
-from semantic_router.utils.logger import logger
-import json
 from semantic_router.utils.function_call import (
-    get_schema,
     convert_python_type_to_json_type,
+    get_schema,
 )
-import inspect
-import re
-from openai.types.chat.chat_completion_message_tool_call import (
-    ChatCompletionMessageToolCall,
-)
+from semantic_router.utils.logger import logger
 
 
 class OpenAILLM(BaseLLM):

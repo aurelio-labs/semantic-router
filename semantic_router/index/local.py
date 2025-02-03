@@ -1,12 +1,11 @@
-from typing import List, Optional, Tuple, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-from typing import Any
 
 
 class LocalIndex(BaseIndex):

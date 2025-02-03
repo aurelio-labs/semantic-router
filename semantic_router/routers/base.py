@@ -1,15 +1,15 @@
+import hashlib
 import importlib
 import json
 import os
 import random
-import hashlib
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from typing_extensions import deprecated
-from pydantic import BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore
+from pydantic import BaseModel, Field
 from tqdm.auto import tqdm
+from typing_extensions import deprecated
 
 from semantic_router.encoders import (
     AutoEncoder,
@@ -1090,7 +1090,11 @@ class BaseRouter(BaseModel):
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
-            route.function_schemas[0] if route.function_schemas is not None else {}
+            (
+                route.function_schemas[0]
+                if route.function_schemas and len(route.function_schemas) > 0
+                else {}
+            )
             for route in routes
             for _ in route.utterances
         ]
@@ -1347,11 +1351,15 @@ class BaseRouter(BaseModel):
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_utterances(include_metadata=True)
+            remote_utterances = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes, utterances, function_schemas, metadata = map(
-                list, zip(*remote_routes)
-            )
+            routes = []
+            utterances = []
+            metadata = []
+            for utterance in remote_utterances:
+                routes.append(utterance.route)
+                utterances.append(utterance.utterance)
+                metadata.append(utterance.metadata)
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
             self.index.add(

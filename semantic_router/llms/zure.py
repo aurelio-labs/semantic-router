@@ -1,8 +1,8 @@
 import os
 from typing import List, Optional
-from pydantic import PrivateAttr
 
 import openai
+from pydantic import PrivateAttr
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message
