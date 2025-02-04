@@ -20,7 +20,6 @@ from semantic_router.encoders import (
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
-from semantic_router.index.pinecone_local import PineconeLocalIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
@@ -397,9 +396,7 @@ class BaseRouter(BaseModel):
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex) or isinstance(
-            self.index, PineconeLocalIndex
-        ):
+        if isinstance(self.index, PineconeIndex):
             self.index.index = self.index._init_index(force_create=True)
 
         # run auto sync if active
