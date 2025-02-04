@@ -5,7 +5,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from aurelio_sdk.schema import BM25Embedding
 from pydantic import BaseModel, Field
 
 from semantic_router.utils.logger import logger
