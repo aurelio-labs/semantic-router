@@ -153,7 +153,11 @@ class PineconeIndex(BaseIndex):
 
         if base_url is not None or os.getenv("PINECONE_API_BASE_URL"):
             logger.info("Using pinecone remote API.")
-            self.base_url = base_url or os.getenv("PINECONE_API_BASE_URL")
+            if os.getenv("PINECONE_API_BASE_URL"):
+                self.base_url = os.getenv("PINECONE_API_BASE_URL")
+            else:
+                self.base_url = base_url
+
 
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
