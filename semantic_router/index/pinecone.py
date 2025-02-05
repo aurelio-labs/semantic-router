@@ -158,7 +158,6 @@ class PineconeIndex(BaseIndex):
             else:
                 self.base_url = base_url
 
-
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
 
