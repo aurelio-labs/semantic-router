@@ -137,7 +137,7 @@ class PineconeIndex(BaseIndex):
         region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
-        base_url: Optional[str] = "",
+        base_url: Optional[str] = "https://api.pinecone.io",
         init_async_index: bool = False,
     ):
         super().__init__()
@@ -151,7 +151,9 @@ class PineconeIndex(BaseIndex):
             "User-Agent": "source_tag=semanticrouter",
         }
 
-        self.base_url = base_url or os.getenv("PINECONE_API_BASE_URL")
+        if base_url is not None or os.getenv("PINECONE_API_BASE_URL"):
+            logger.info("Using pinecone remote API.")
+            self.base_url = base_url or os.getenv("PINECONE_API_BASE_URL")
 
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
