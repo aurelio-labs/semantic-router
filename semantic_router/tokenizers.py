@@ -1,10 +1,8 @@
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-from tokenizers import Tokenizer
-from tokenizers.normalizers import Sequence
-
 
 class BaseTokenizer:
     """Abstract Tokenizer class"""
@@ -86,7 +84,7 @@ class PretrainedTokenizer(BaseTokenizer):
     :type remove_stopwords: bool
     """
 
-    tokenizer: Tokenizer
+    tokenizer: Any  # type: ignore # actually tokenizers.Tokenizer but avoiding import
     add_special_tokens: bool
     pad: bool
     remove_stopwords: bool
@@ -95,7 +93,7 @@ class PretrainedTokenizer(BaseTokenizer):
     def __init__(
         self,
         model_ident: str,
-        custom_normalizer: Sequence | None = None,
+        custom_normalizer: Any = None,  # type: ignore # actually tokenizers.normalizers.Sequence but avoiding import
         add_special_tokens: bool = False,
         pad: bool = True,
         remove_stopwords: bool = True,
@@ -105,16 +103,17 @@ class PretrainedTokenizer(BaseTokenizer):
         self.add_special_tokens = add_special_tokens
         self.model_ident = model_ident
         self.remove_stopwords = remove_stopwords
-        self.tokenizer = Tokenizer.from_pretrained(identifier=model_ident)
+        self.tokenizer = self._initialize_hf_tokenizers()
         self.pad = pad
         if custom_normalizer:
             self.tokenizer.normalizer = custom_normalizer  # type: ignore
         if pad:
             self.tokenizer.enable_padding(direction="right", pad_id=0)
 
-    def _initialize_hf_tokenizers(self) -> Tokenizer:
+    def _initialize_hf_tokenizers(self) -> Any:  # type: ignore # actually returns tokenizers.Tokenizer
         try:
             from tokenizers import Tokenizer
+            from tokenizers.normalizers import Sequence
         except ImportError:
             raise ImportError(
                 "Please install tokenizers to use PretrainedTokenizer. "
