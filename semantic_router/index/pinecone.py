@@ -238,7 +238,10 @@ class PineconeIndex(BaseIndex):
                 )
                 index = None
         if self.index is not None and self.host == "":
+            index = self.index
             self.host = self.client.describe_index(self.index_name)["host"]
+        elif self.index is not None:
+            index = self.index
         return index
 
     async def _init_async_index(self, force_create: bool = False):
