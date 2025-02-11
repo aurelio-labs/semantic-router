@@ -45,13 +45,34 @@ class AurelioSparseEncoder(SparseEncoder):
     def __call__(self, docs: list[str]) -> list[SparseEmbedding]:
         """Encode a list of documents using the Aurelio Platform embedding API. Documents
         must be strings, sparse encoders do not support other types.
-
-        :param docs: The documents to encode.
-        :type docs: list[str]
-        :return: The encoded documents.
-        :rtype: list[SparseEmbedding]
         """
-        res: EmbeddingResponse = self.client.embedding(input=docs, model=self.name)
+        return self.encode_queries(docs)
+
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        res: EmbeddingResponse = self.client.embedding(
+            input=docs, model=self.name, input_type="queries"
+        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
+
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        res: EmbeddingResponse = self.client.embedding(
+            input=docs, model=self.name, input_type="documents"
+        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
+
+    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+        res: EmbeddingResponse = await self.async_client.embedding(
+            input=docs, model=self.name, input_type="queries"
+        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
+        return embeds
+
+    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+        res: EmbeddingResponse = await self.async_client.embedding(
+            input=docs, model=self.name, input_type="documents"
+        )
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
@@ -65,11 +86,7 @@ class AurelioSparseEncoder(SparseEncoder):
         :return: The encoded documents.
         :rtype: list[SparseEmbedding]
         """
-        res: EmbeddingResponse = await self.async_client.embedding(
-            input=docs, model=self.name
-        )
-        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
-        return embeds
+        return await self.aencode_queries(docs)
 
     def fit(self, docs: List[str]):
         """Fit the encoder to a list of documents. AurelioSparseEncoder does not support

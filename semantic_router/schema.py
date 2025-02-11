@@ -5,10 +5,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 from pydantic import BaseModel, Field
 
 from semantic_router.utils.logger import logger
-from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 
 
 class EncoderType(Enum):

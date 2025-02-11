@@ -1557,15 +1557,6 @@ wheels = [
 ]
 
 [[package]]
-name = "joblib"
-version = "1.4.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/64/33/60135848598c076ce4b231e1b1895170f45fbcaeaa2c9d5e38b04db70c35/joblib-1.4.2.tar.gz", hash = "sha256:2382c5816b2636fbd20a09e0f4e9dad4736765fdfb7dca582943b9c1366b3f0e", size = 2116621 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/29/df4b9b42f2be0b623cbd5e2140cafcaa2bef0759a00b7b70104dcfe2fb51/joblib-1.4.2-py3-none-any.whl", hash = "sha256:06d478d5674cbc267e7496a410ee875abd68e4340feff4490bcb7afb88060ae6", size = 301817 },
-]
-
-[[package]]
 name = "jupyter-client"
 version = "8.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1955,6 +1946,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "nltk"
 version = "3.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2001,6 +1993,24 @@ wheels = [
 ]
 
 [[package]]
+||||||| parent of bb324f0 (feat: implements vectorised sparse BM25 encoder)
+name = "nltk"
+version = "3.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "joblib" },
+    { name = "regex" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/87/db8be88ad32c2d042420b6fd9ffd4a149f9a0d7f0e86b3f543be2eeeedd2/nltk-3.9.1.tar.gz", hash = "sha256:87d127bd3de4bd89a4f81265e5fa59cb1b199b27440175370f7417d2bc7ae868", size = 2904691 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/66/7d9e26593edda06e8cb531874633f7c2372279c3b0f46235539fe546df8b/nltk-3.9.1-py3-none-any.whl", hash = "sha256:4fa26829c5b00715afe3061398a8989dc643b92ce7dd93fb4585a70930d168a1", size = 1505442 },
+]
+
+[[package]]
+=======
+>>>>>>> bb324f0 (feat: implements vectorised sparse BM25 encoder)
 name = "numpy"
 version = "1.26.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2356,24 +2366,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f4/fb/e8a4063264953ead9e2b24d9b390152c60f042c951c47f4592e9996e57ff/pinecone_plugin_interface-0.0.7.tar.gz", hash = "sha256:b8e6675e41847333aa13923cc44daa3f85676d7157324682dc1640588a982846", size = 3370 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/1d/a21fdfcd6d022cb64cef5c2a29ee6691c6c103c4566b41646b080b7536a5/pinecone_plugin_interface-0.0.7-py3-none-any.whl", hash = "sha256:875857ad9c9fc8bbc074dbe780d187a2afd21f5bfe0f3b08601924a61ef1bba8", size = 6249 },
-]
-
-[[package]]
-name = "pinecone-text"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mmh3" },
-    { name = "nltk" },
-    { name = "numpy" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-    { name = "types-requests" },
-    { name = "wget" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/97/cc/06edd3aefaf566894fb4f6a8c55c5d3990660a7b822706ba1c86c1faa093/pinecone_text-0.9.0.tar.gz", hash = "sha256:f8244a9bc090ee2fc904053a2415cfc114fd8bbfbc9a6ba8b0581c84990d0239", size = 20635 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/7d/c3596a064f11ca1c26c57d1a7022f8b6e724cbf50e8c365ddfb869d47ca7/pinecone_text-0.9.0-py3-none-any.whl", hash = "sha256:7a1ad2e282d10b59f0288a2a4f4b8c583a77378172232fae573cf398a3c44240", size = 23440 },
 ]
 
 [[package]]
@@ -3400,7 +3392,6 @@ all = [
     { name = "mistralai" },
     { name = "pillow", marker = "python_full_version < '3.13'" },
     { name = "pinecone" },
-    { name = "pinecone-text" },
     { name = "qdrant-client", version = "1.12.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "qdrant-client", version = "1.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "tokenizers", marker = "python_full_version < '3.13'" },
@@ -3423,9 +3414,6 @@ fastembed = [
 ]
 google = [
     { name = "google-cloud-aiplatform" },
-]
-hybrid = [
-    { name = "pinecone-text" },
 ]
 local = [
     { name = "llama-cpp-python", marker = "python_full_version < '3.13'" },
@@ -3482,7 +3470,6 @@ requires-dist = [
     { name = "openai", specifier = ">=1.10.0,<2.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=5.0.0,<6.0.0" },
-    { name = "pinecone-text", marker = "extra == 'hybrid'", specifier = ">=0.7.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.9,<3" },
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pydoc-markdown", marker = "python_full_version < '3.12' and extra == 'docs'", specifier = ">=4.8.2" },
@@ -3494,7 +3481,6 @@ requires-dist = [
     { name = "semantic-router", extras = ["cohere"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["fastembed"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["google"], marker = "extra == 'all'" },
-    { name = "semantic-router", extras = ["hybrid"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["local"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["mistralai"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["pinecone"], marker = "extra == 'all'" },
@@ -3964,12 +3950,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/6c/63/53559446a878410fc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/84/fd2ba7aafacbad3c4201d395674fc6348826569da3c0937e75505ead3528/wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859", size = 34166 },
 ]
-
-[[package]]
-name = "wget"
-version = "3.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/6a/62e288da7bcda82b935ff0c6cfe542970f04e29c756b0e147251b2fb251f/wget-3.2.zip", hash = "sha256:35e630eca2aa50ce998b9b1a127bb26b30dfee573702782aa982f875e3f16061", size = 10857 }
 
 [[package]]
 name = "win32-setctime"

@@ -282,9 +282,7 @@ def get_test_encoders():
 
 
 def get_test_routers():
-    routers = [SemanticRouter]
-    if importlib.util.find_spec("pinecone_text") is not None:
-        routers.append(HybridRouter)
+    routers = [SemanticRouter, HybridRouter]
     return routers
 
 
