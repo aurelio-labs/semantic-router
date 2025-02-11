@@ -13,7 +13,7 @@ Please follow these guidelines when making a contribution:
         - Navigating to /semantic-router.
         - Running `make lint` to fix linting issues.
         - Running `black .` to fix `black` linting issues.
-        - Running `ruff . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
+        - Running `ruff check . --fix` to fix `ruff` linting issues (where possible, others may need manual changes).
         - Running `mypy .` and then fixing any of the issues that are raised.
         - Confirming the linters pass using `make lint` again.
     - Ensure that, for any new code, new [PyTests are written](https://github.com/aurelio-labs/semantic-router/tree/main/tests/unit). If any code is removed, then ensure that corresponding PyTests are also removed. Finally, ensure that all remaining PyTests pass using `pytest ./tests` (to avoid integration tests you can run `pytest ./tests/unit`.

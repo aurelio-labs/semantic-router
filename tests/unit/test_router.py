@@ -81,10 +81,21 @@ def init_index(
     issues during testing.
     """
     if index_cls is PineconeIndex:
+
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
         # we specify different index names to avoid dimensionality issues between different encoders
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
+            index_name=index_name,
+            dimensions=dimensions,
+            # namespace=namespace
         )
     else:
         index = index_cls()
@@ -632,8 +643,8 @@ class TestSemanticRouter:
 
     def test_delete_index(self, routes, index_cls, encoder_cls, router_cls):
         # TODO merge .delete_index() and .delete_all() and get working
-        index = init_index(index_cls)
         encoder = encoder_cls()
+        index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
             encoder=encoder,
             routes=routes,
@@ -765,7 +776,7 @@ class TestSemanticRouter:
 
         check_index_populated()
 
-        # # clear index if pinecone
+        # clear index if pinecone
         # if index_cls is PineconeIndex:
         #     @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
         #     def clear_index():
@@ -826,13 +837,14 @@ class TestSemanticRouter:
     def test_namespace_pinecone_index(self, routes, index_cls, encoder_cls, router_cls):
         if index_cls is PineconeIndex:
             encoder = encoder_cls()
-            pineconeindex = init_index(
+            encoder.score_threshold = 0.2
+            index = init_index(
                 index_cls, namespace="test", index_name=encoder.__class__.__name__
             )
             route_layer = router_cls(
                 encoder=encoder,
                 routes=routes,
-                index=pineconeindex,
+                index=index,
                 auto_sync="local",
             )
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
