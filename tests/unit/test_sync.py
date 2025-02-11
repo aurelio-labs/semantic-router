@@ -106,7 +106,7 @@ TEST_ID = (
 
 def init_index(
     index_cls,
-    dimensions: Optional[int] = None,
+    dimensions: Optional[int] = 3,
     namespace: Optional[str] = "",
     init_async_index: bool = False,
     index_name: Optional[str] = None,
@@ -115,6 +115,14 @@ def init_index(
     issues during testing.
     """
     if index_cls is PineconeIndex:
+
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
         index = index_cls(
             index_name=index_name,
