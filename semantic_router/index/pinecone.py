@@ -235,7 +235,7 @@ class PineconeIndex(BaseIndex):
                     f"{force_create=}"
                 )
                 index = None
-        if self.index is not None and self.host == "":
+        if self.host == "":
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
 
