@@ -215,10 +215,12 @@ class PineconeIndex(BaseIndex):
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
                 index = self.client.Index(self.index_name)
+                self.index = index
                 time.sleep(0.2)
             elif index_exists:
                 # if the index exists we just return it
                 index = self.client.Index(self.index_name)
+                self.index = index
                 # grab the dimensions from the index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
@@ -235,7 +237,7 @@ class PineconeIndex(BaseIndex):
                     f"{force_create=}"
                 )
                 index = None
-        if self.host == "":
+        if self.index is not None and self.host == "":
             self.host = self.client.describe_index(self.index_name)["host"]
         return index
 
