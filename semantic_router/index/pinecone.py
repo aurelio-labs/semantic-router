@@ -273,7 +273,7 @@ class PineconeIndex(BaseIndex):
                             self.index_host = f"http://{self.index_host}"
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
-        return index 
+        return index
 
     async def _init_async_index(self, force_create: bool = False):
         index_stats = None
