@@ -397,7 +397,9 @@ class BaseRouter(BaseModel):
             self.index.dimensions = dims
         # now init index
         if isinstance(self.index, PineconeIndex):
-            self.index.index = self.index._init_index(force_create=True)
+            # no need to init index if already initialized
+            if self.index.index is None:
+                self.index.index = self.index._init_index(force_create=True)
         # run auto sync if active
         if self.auto_sync:
             local_utterances = self.to_config().to_utterances()
