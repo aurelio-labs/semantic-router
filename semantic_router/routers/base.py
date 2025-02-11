@@ -398,6 +398,7 @@ class BaseRouter(BaseModel):
         # now init index
         if isinstance(self.index, PineconeIndex):
             self.index.index = self.index._init_index(force_create=True)
+
         # run auto sync if active
         if self.auto_sync:
             local_utterances = self.to_config().to_utterances()
