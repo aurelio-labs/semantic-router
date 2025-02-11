@@ -202,6 +202,20 @@ class PineconeIndex(BaseIndex):
 
         return Pinecone(**pinecone_args)
 
+    def _calculate_index_host(self):
+        if self.index_host and self.base_url:
+            if "api.pinecone.io" in self.base_url:
+                if not self.index_host.startswith("http"):
+                    self.index_host = f"https://{self.index_host}"
+            else:
+                if "http" not in self.index_host:
+                    self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                elif not self.index_host.startswith("http://"):
+                    if "localhost" in self.index_host:
+                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                    else:
+                        self.index_host = f"http://{self.index_host}"
+
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
         to allow for the user to set the dimensions and other parameters.
@@ -235,8 +249,14 @@ class PineconeIndex(BaseIndex):
                 time.sleep(0.2)
             elif index_exists:
                 # if the index exists we just return it
-                index = self.client.Index(self.index_name)
+                # index = self.client.Index(self.index_name)
+
+                self.index_host = self.client.describe_index(self.index_name).host
+                self._calculate_index_host()
+                index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
+
+                print("index exists- pinecone index initialized:", self.index_host)
                 # grab the dimensions from the index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
@@ -258,21 +278,21 @@ class PineconeIndex(BaseIndex):
         if self.index is not None and self.host == "":
             # if the index exists we just return it
             self.index_host = self.client.describe_index(self.index_name).host
-
-            if self.index_host and self.base_url:
-                if "api.pinecone.io" in self.base_url:
-                    if not self.index_host.startswith("http"):
-                        self.index_host = f"https://{self.index_host}"
-                else:
-                    if "http" not in self.index_host:
-                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-                    elif not self.index_host.startswith("http://"):
-                        if "localhost" in self.index_host:
-                            self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-                        else:
-                            self.index_host = f"http://{self.index_host}"
-                index = self.client.Index(self.index_name, host=self.index_host)
-                self.host = self.index_host
+            self._calculate_index_host()
+            # if self.index_host and self.base_url:
+            #     if "api.pinecone.io" in self.base_url:
+            #         if not self.index_host.startswith("http"):
+            #             self.index_host = f"https://{self.index_host}"
+            #     else:
+            #         if "http" not in self.index_host:
+            #             self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+            #         elif not self.index_host.startswith("http://"):
+            #             if "localhost" in self.index_host:
+            #                 self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+            #             else:
+            #                 self.index_host = f"http://{self.index_host}"
+            #     index = self.client.Index(self.index_name, host=self.index_host)
+            #     self.host = self.index_host
         return index
 
     async def _init_async_index(self, force_create: bool = False):
