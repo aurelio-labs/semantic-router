@@ -27,6 +27,19 @@ class LocalIndex(BaseIndex):
         metadata_list: List[Dict[str, Any]] = [],
         **kwargs,
     ):
+        """Add embeddings to the index.
+
+        :param embeddings: List of embeddings to add to the index.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to add to the index.
+        :type routes: List[str]
+        :param utterances: List of utterances to add to the index.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to add to the index.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to add to the index.
+        :type metadata_list: List[Dict[str, Any]]
+        """
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
         if isinstance(utterances[0], str):
@@ -43,6 +56,13 @@ class LocalIndex(BaseIndex):
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
     def _remove_and_sync(self, routes_to_delete: dict) -> np.ndarray:
+        """Remove and sync the index.
+
+        :param routes_to_delete: Dictionary of routes to delete.
+        :type routes_to_delete: dict
+        :return: A numpy array of the removed route utterances.
+        :rtype: np.ndarray
+        """
         if self.index is None or self.routes is None or self.utterances is None:
             raise ValueError("Index, routes, or utterances are not populated.")
         # TODO JB: implement routes and utterances as a numpy array
@@ -77,6 +97,11 @@ class LocalIndex(BaseIndex):
         return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
     def describe(self) -> IndexConfig:
+        """Describe the index.
+
+        :return: An IndexConfig object.
+        :rtype: IndexConfig
+        """
         return IndexConfig(
             type=self.type,
             dimensions=self.index.shape[1] if self.index is not None else 0,
@@ -84,8 +109,10 @@ class LocalIndex(BaseIndex):
         )
 
     def is_ready(self) -> bool:
-        """
-        Checks if the index is ready to be used.
+        """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
         return self.index is not None and self.routes is not None
 
@@ -96,8 +123,18 @@ class LocalIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Search the index for the query and return top_k results.
+        """Search the index for the query and return top_k results.
+
+        :param vector: The vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The routes to filter the search by.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to search for.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple containing the query vector and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
         """
         if self.index is None or self.routes is None:
             raise ValueError("Index or routes are not populated.")
@@ -126,8 +163,18 @@ class LocalIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Search the index for the query and return top_k results.
+        """Search the index for the query and return top_k results.
+
+        :param vector: The vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The routes to filter the search by.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to search for.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple containing the query vector and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
         """
         if self.index is None or self.routes is None:
             raise ValueError("Index or routes are not populated.")
@@ -150,14 +197,26 @@ class LocalIndex(BaseIndex):
         return scores, route_names
 
     def aget_routes(self):
+        """Get all routes from the index.
+
+        :return: A list of routes.
+        :rtype: List[str]
+        """
         logger.error("Sync remove is not implemented for LocalIndex.")
 
     def _write_config(self, config: ConfigParameter):
+        """Write the config to the index.
+
+        :param config: The config to write to the index.
+        :type config: ConfigParameter
+        """
         logger.warning("No config is written for LocalIndex.")
 
     def delete(self, route_name: str):
-        """
-        Delete all records of a specific route from the index.
+        """Delete all records of a specific route from the index.
+
+        :param route_name: The name of the route to delete.
+        :type route_name: str
         """
         if (
             self.index is not None
@@ -175,15 +234,23 @@ class LocalIndex(BaseIndex):
             )
 
     def delete_index(self):
-        """
-        Deletes the index, effectively clearing it and setting it to None.
+        """Deletes the index, effectively clearing it and setting it to None.
+
+        :return: None
+        :rtype: None
         """
         self.index = None
         self.routes = None
         self.utterances = None
 
     def _get_indices_for_route(self, route_name: str):
-        """Gets an array of indices for a specific route."""
+        """Gets an array of indices for a specific route.
+
+        :param route_name: The name of the route to get indices for.
+        :type route_name: str
+        :return: An array of indices for the route.
+        :rtype: np.ndarray
+        """
         if self.routes is None:
             raise ValueError("Routes are not populated.")
         idx = [i for i, route in enumerate(self.routes) if route == route_name]

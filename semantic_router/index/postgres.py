@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 
 
 class MetricPgVecOperatorMap(Enum):
-    """
-    Enum to map the metric to PostgreSQL vector operators.
+    """Enum to map the metric to PostgreSQL vector operators.
     """
 
     cosine = "<=>"
@@ -26,8 +25,7 @@ class MetricPgVecOperatorMap(Enum):
 
 
 def parse_vector(vector_str: Union[str, Any]) -> List[float]:
-    """
-    Parses a vector from a string or other representation.
+    """Parses a vector from a string or other representation.
 
     :param vector_str: The string or object representation of a vector.
     :type vector_str: Union[str, Any]
@@ -42,8 +40,7 @@ def parse_vector(vector_str: Union[str, Any]) -> List[float]:
 
 
 def clean_route_name(route_name: str) -> str:
-    """
-    Cleans and formats the route name by stripping spaces and replacing them with hyphens.
+    """Cleans and formats the route name by stripping spaces and replacing them with hyphens.
 
     :param route_name: The original route name.
     :type route_name: str
@@ -54,8 +51,7 @@ def clean_route_name(route_name: str) -> str:
 
 
 class PostgresIndexRecord(BaseModel):
-    """
-    Model to represent a record in the Postgres index.
+    """Model to represent a record in the Postgres index.
     """
 
     id: str = ""
@@ -64,8 +60,7 @@ class PostgresIndexRecord(BaseModel):
     vector: List[float]
 
     def __init__(self, **data) -> None:
-        """
-        Initializes a new Postgres index record with given data.
+        """Initializes a new Postgres index record with given data.
 
         :param data: Field values for the record.
         :type data: dict
@@ -81,8 +76,7 @@ class PostgresIndexRecord(BaseModel):
         self.id = clean_route + "#" + str(hashed_uuid)
 
     def to_dict(self) -> Dict:
-        """
-        Converts the record to a dictionary.
+        """Converts the record to a dictionary.
 
         :return: A dictionary representation of the record.
         :rtype: Dict
@@ -96,8 +90,7 @@ class PostgresIndexRecord(BaseModel):
 
 
 class PostgresIndex(BaseIndex):
-    """
-    Postgres implementation of Index.
+    """Postgres implementation of Index.
     """
 
     connection_string: Optional[str] = None
@@ -118,8 +111,7 @@ class PostgresIndex(BaseIndex):
         namespace: Optional[str] = "",
         dimensions: int | None = None,
     ):
-        """
-        Initializes the Postgres index with the specified parameters.
+        """Initializes the Postgres index with the specified parameters.
 
         :param connection_string: The connection string for the PostgreSQL database.
         :type connection_string: Optional[str]
@@ -170,8 +162,7 @@ class PostgresIndex(BaseIndex):
         return f"{self.index_prefix}{self.index_name}"
 
     def _get_metric_operator(self) -> str:
-        """
-        Returns the PostgreSQL operator for the specified metric.
+        """Returns the PostgreSQL operator for the specified metric.
 
         :return: The PostgreSQL operator.
         :rtype: str
@@ -179,8 +170,7 @@ class PostgresIndex(BaseIndex):
         return MetricPgVecOperatorMap[self.metric.value].value
 
     def _get_score_query(self, embeddings_str: str) -> str:
-        """
-        Creates the select statement required to return the embeddings distance.
+        """Creates the select statement required to return the embeddings distance.
 
         :param embeddings_str: The string representation of the embeddings.
         :type embeddings_str: str
@@ -200,8 +190,7 @@ class PostgresIndex(BaseIndex):
             raise ValueError(f"Unsupported metric: {self.metric}")
 
     def setup_index(self) -> None:
-        """
-        Sets up the index by creating the table and vector extension if they do not exist.
+        """Sets up the index by creating the table and vector extension if they do not exist.
 
         :raises ValueError: If the existing table's vector dimensions do not match the expected dimensions.
         :raises TypeError: If the database connection is not established.
@@ -229,8 +218,8 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def _check_embeddings_dimensions(self) -> bool:
-        """
-        Checks if the length of the vector embeddings in the table matches the expected dimensions, or if no table exists.
+        """Checks if the length of the vector embeddings in the table matches the expected
+        dimensions, or if no table exists.
 
         :return: True if the dimensions match or the table does not exist, False otherwise.
         :rtype: bool
@@ -275,8 +264,7 @@ class PostgresIndex(BaseIndex):
         metadata_list: List[Dict[str, Any]] = [],
         **kwargs,
     ) -> None:
-        """
-        Adds vectors to the index.
+        """Adds records to the index.
 
         :param embeddings: A list of vector embeddings to add.
         :type embeddings: List[List[float]]
@@ -284,6 +272,10 @@ class PostgresIndex(BaseIndex):
         :type routes: List[str]
         :param utterances: A list of utterances corresponding to the embeddings.
         :type utterances: List[Any]
+        :param function_schemas: A list of function schemas corresponding to the embeddings.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: A list of metadata corresponding to the embeddings.
+        :type metadata_list: List[Dict[str, Any]]
         :raises ValueError: If the vector embeddings being added do not match the expected dimensions.
         :raises TypeError: If the database connection is not established.
         """
@@ -310,8 +302,7 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def delete(self, route_name: str) -> None:
-        """
-        Deletes records with the specified route name.
+        """Deletes records with the specified route name.
 
         :param route_name: The name of the route to delete records for.
         :type route_name: str
@@ -325,8 +316,7 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def describe(self) -> IndexConfig:
-        """
-        Describes the index by returning its type, dimensions, and total vector count.
+        """Describes the index by returning its type, dimensions, and total vector count.
 
         :return: An IndexConfig object containing the index's type, dimensions, and total vector count.
         :rtype: IndexConfig
@@ -353,8 +343,10 @@ class PostgresIndex(BaseIndex):
             )
 
     def is_ready(self) -> bool:
-        """
-        Checks if the index is ready to be used.
+        """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
         return isinstance(self.conn, psycopg2.extensions.connection)
 
@@ -365,8 +357,7 @@ class PostgresIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Searches the index for the query vector and returns the top_k results.
+        """Searches the index for the query vector and returns the top_k results.
 
         :param vector: The query vector.
         :type vector: np.ndarray
@@ -374,6 +365,8 @@ class PostgresIndex(BaseIndex):
         :type top_k: int
         :param route_filter: Optional list of routes to filter the results by.
         :type route_filter: Optional[List[str]]
+        :param sparse_vector: Optional sparse vector to filter the results by.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
         :return: A tuple containing the scores and routes of the top_k results.
         :rtype: Tuple[np.ndarray, List[str]]
         :raises TypeError: If the database connection is not established.
@@ -396,8 +389,7 @@ class PostgresIndex(BaseIndex):
             ]
 
     def _get_route_ids(self, route_name: str):
-        """
-        Retrieves all vector IDs for a specific route.
+        """Retrieves all vector IDs for a specific route.
 
         :param route_name: The name of the route to retrieve IDs for.
         :type route_name: str
@@ -411,8 +403,7 @@ class PostgresIndex(BaseIndex):
     def _get_all(
         self, route_name: Optional[str] = None, include_metadata: bool = False
     ):
-        """
-        Retrieves all vector IDs and optionally metadata from the Postgres index.
+        """Retrieves all vector IDs and optionally metadata from the Postgres index.
 
         :param route_name: Optional route name to filter the results by.
         :type route_name: Optional[str]
@@ -448,8 +439,7 @@ class PostgresIndex(BaseIndex):
         return all_vector_ids, metadata
 
     def delete_all(self):
-        """
-        Deletes all records from the Postgres index.
+        """Deletes all records from the Postgres index.
 
         :raises TypeError: If the database connection is not established.
         """
@@ -461,8 +451,7 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def delete_index(self) -> None:
-        """
-        Deletes the entire table for the index.
+        """Deletes the entire table for the index.
 
         :raises TypeError: If the database connection is not established.
         """
@@ -474,14 +463,25 @@ class PostgresIndex(BaseIndex):
             self.conn.commit()
 
     def aget_routes(self):
+        """Asynchronously get all routes from the index.
+
+        Not yet implemented for PostgresIndex.
+
+        :return: A list of routes.
+        :rtype: List[str]
+        """
         raise NotImplementedError("Async get is not implemented for PostgresIndex.")
 
     def _write_config(self, config: ConfigParameter):
+        """Write the config to the index.
+
+        :param config: The config to write to the index.
+        :type config: ConfigParameter
+        """
         logger.warning("No config is written for PostgresIndex.")
 
     def __len__(self):
-        """
-        Returns the total number of vectors in the index.
+        """Returns the total number of vectors in the index.
 
         :return: The total number of vectors.
         :rtype: int
@@ -498,8 +498,7 @@ class PostgresIndex(BaseIndex):
             return count[0]
 
     class Config:
-        """
-        Configuration for the Pydantic BaseModel.
+        """Configuration for the Pydantic BaseModel.
         """
 
         arbitrary_types_allowed = True

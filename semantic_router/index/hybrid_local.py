@@ -26,6 +26,21 @@ class HybridLocalIndex(LocalIndex):
         sparse_embeddings: Optional[List[SparseEmbedding]] = None,
         **kwargs,
     ):
+        """Add embeddings to the index.
+
+        :param embeddings: List of embeddings to add to the index.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to add to the index.
+        :type routes: List[str]
+        :param utterances: List of utterances to add to the index.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to add to the index.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to add to the index.
+        :type metadata_list: List[Dict[str, Any]]
+        :param sparse_embeddings: List of sparse embeddings to add to the index.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
+        """
         if sparse_embeddings is None:
             raise ValueError("Sparse embeddings are required for HybridLocalIndex.")
         if function_schemas is not None:
@@ -73,12 +88,28 @@ class HybridLocalIndex(LocalIndex):
     def _sparse_dot_product(
         self, vec_a: dict[int, float], vec_b: dict[int, float]
     ) -> float:
+        """Calculate the dot product of two sparse vectors.
+
+        :param vec_a: The first sparse vector.
+        :type vec_a: dict[int, float]
+        :param vec_b: The second sparse vector.
+        :type vec_b: dict[int, float]
+        :return: The dot product of the two sparse vectors.
+        :rtype: float
+        """
         # switch vecs to ensure first is smallest for more efficiency
         if len(vec_a) > len(vec_b):
             vec_a, vec_b = vec_b, vec_a
         return sum(vec_a[i] * vec_b.get(i, 0) for i in vec_a)
 
     def _sparse_index_dot_product(self, vec_a: dict[int, float]) -> list[float]:
+        """Calculate the dot product of a sparse vector and a list of sparse vectors.
+
+        :param vec_a: The sparse vector.
+        :type vec_a: dict[int, float]
+        :return: A list of dot products.
+        :rtype: list[float]
+        """
         if self.sparse_index is None:
             raise ValueError("self.sparse_index is not populated.")
         dot_products = [
@@ -163,14 +194,26 @@ class HybridLocalIndex(LocalIndex):
         )
 
     def aget_routes(self):
+        """Get all routes from the index.
+
+        :return: A list of routes.
+        :rtype: List[str]
+        """
         logger.error(f"Sync remove is not implemented for {self.__class__.__name__}.")
 
     def _write_config(self, config: ConfigParameter):
+        """Write the config to the index.
+
+        :param config: The config to write to the index.
+        :type config: ConfigParameter
+        """
         logger.warning(f"No config is written for {self.__class__.__name__}.")
 
     def delete(self, route_name: str):
-        """
-        Delete all records of a specific route from the index.
+        """Delete all records of a specific route from the index.
+
+        :param route_name: The name of the route to delete.
+        :type route_name: str
         """
         if (
             self.index is not None
@@ -188,15 +231,23 @@ class HybridLocalIndex(LocalIndex):
             )
 
     def delete_index(self):
-        """
-        Deletes the index, effectively clearing it and setting it to None.
+        """Deletes the index, effectively clearing it and setting it to None.
+
+        :return: None
+        :rtype: None
         """
         self.index = None
         self.routes = None
         self.utterances = None
 
     def _get_indices_for_route(self, route_name: str):
-        """Gets an array of indices for a specific route."""
+        """Gets an array of indices for a specific route.
+
+        :param route_name: The name of the route to get indices for.
+        :type route_name: str
+        :return: An array of indices for the route.
+        :rtype: np.ndarray
+        """
         if self.routes is None:
             raise ValueError("Routes are not populated.")
         idx = [i for i, route in enumerate(self.routes) if route == route_name]
