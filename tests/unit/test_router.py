@@ -93,9 +93,7 @@ def init_index(
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
 
         index = index_cls(
-            index_name=index_name,
-            dimensions=dimensions,
-            # namespace=namespace
+            index_name=index_name, dimensions=dimensions, namespace=namespace
         )
     else:
         index = index_cls()

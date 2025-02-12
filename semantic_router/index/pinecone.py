@@ -256,7 +256,6 @@ class PineconeIndex(BaseIndex):
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
 
-                print("index exists- pinecone index initialized:", self.index_host)
                 # grab the dimensions from the index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
@@ -278,21 +277,11 @@ class PineconeIndex(BaseIndex):
         if self.index is not None and self.host == "":
             # if the index exists we just return it
             self.index_host = self.client.describe_index(self.index_name).host
-            self._calculate_index_host()
-            # if self.index_host and self.base_url:
-            #     if "api.pinecone.io" in self.base_url:
-            #         if not self.index_host.startswith("http"):
-            #             self.index_host = f"https://{self.index_host}"
-            #     else:
-            #         if "http" not in self.index_host:
-            #             self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-            #         elif not self.index_host.startswith("http://"):
-            #             if "localhost" in self.index_host:
-            #                 self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-            #             else:
-            #                 self.index_host = f"http://{self.index_host}"
-            #     index = self.client.Index(self.index_name, host=self.index_host)
-            #     self.host = self.index_host
+
+            if self.index_host and self.base_url:
+                self._calculate_index_host()
+                index = self.client.Index(self.index_name, host=self.index_host)
+                self.host = self.index_host
         return index
 
     async def _init_async_index(self, force_create: bool = False):
