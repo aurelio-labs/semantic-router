@@ -17,18 +17,16 @@ class TestHuggingFaceEncoder:
             with pytest.raises(ImportError) as error:
                 HuggingFaceEncoder()
 
-        assert "Please install transformers to use HuggingFaceEncoder" in str(
-            error.value
-        )
+        assert "Please install transformers to use HuggingFaceEncoder" in str(error.value)
+        assert "pip install semantic-router[local]" in str(error.value)
 
     def test_huggingface_encoder_import_errors_torch(self):
         with patch.dict("sys.modules", {"torch": None}):
             with pytest.raises(ImportError) as error:
                 HuggingFaceEncoder()
 
-        assert "Please install transformers to use HuggingFaceEncoder" in str(
-            error.value
-        )
+        assert "Please install torch to use HuggingFaceEncoder" in str(error.value)
+        assert "pip install semantic-router[local]" in str(error.value)
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
