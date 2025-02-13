@@ -363,40 +363,66 @@ class PineconeIndex(BaseIndex):
         :type force_create: bool, optional
         """
         index_stats = None
-        indexes = await self._async_list_indexes()
-        index_names = [i["name"] for i in indexes["indexes"]]
-        index_exists = self.index_name in index_names
-        if self.dimensions is not None and not index_exists:
-            await self._async_create_index(
-                name=self.index_name,
-                dimension=self.dimensions,
-                metric=self.metric,
-                cloud=self.cloud,
-                region=self.region,
-            )
-            # TODO describe index and async sleep
-            index_ready = "false"
-            while index_ready != "true":
+        # first try getting dimensions if needed
+        if self.dimensions is None:
+            # check if the index exists
+            indexes = await self._async_list_indexes()
+            index_names = [i["name"] for i in indexes["indexes"]]
+            index_exists = self.index_name in index_names
+            if index_exists:
+                # we can get the dimensions from the index
+                index_stats = await self._async_describe_index(self.index_name)
+                self.dimensions = index_stats["dimension"]
+            elif index_exists and not force_create:
+                # if the index doesn't exist and we don't have the dimensions
+                # we raise warning
+                logger.warning(
+                    "Index could not be initialized. Init parameters: "
+                    f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                    f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
+                    f"{force_create=}"
+                )
+            elif force_create:
+                raise ValueError(
+                    "Index could not be initialized. Init parameters: "
+                    f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
+                )
+            else:
+                raise NotImplementedError(
+                    "Unexpected init conditions. Please report this issue in GitHub."
+                )
+        # now check if we have dimensions
+        if self.dimensions:
+            # check if the index exists
+            indexes = await self._async_list_indexes()
+            index_names = [i["name"] for i in indexes["indexes"]]
+            index_exists = self.index_name in index_names
+            # if the index doesn't exist, we create it
+            if not index_exists:
+                # confirm if the index exists
                 index_stats = await self._async_describe_index(self.index_name)
                 index_ready = index_stats["status"]["ready"]
-                await asyncio.sleep(1)
-        elif index_exists:
-            index_stats = await self._async_describe_index(self.index_name)
-            # grab dimensions for the index
-            self.dimensions = index_stats["dimension"]
-        elif force_create and self.dimensions is None:
-            raise ValueError(
-                "Cannot create an index without specifying the dimensions."
-            )
-        else:
-            # if the index doesn't exist and we don't have the dimensions
-            # we raise warning
-            logger.warning(
-                "Index could not be initialized. Init parameters: "
-                f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
-                f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
-                f"{force_create=}"
-            )
+                if index_ready == "true":
+                    # if the index is ready, we return it
+                    return index_stats
+                else:
+                    # if the index is not ready, we create it
+                    await self._async_create_index(
+                        name=self.index_name,
+                        dimension=self.dimensions,
+                        metric=self.metric,
+                        cloud=self.cloud,
+                        region=self.region,
+                    )
+                    index_ready = "false"
+                    while index_ready != "true":
+                        index_stats = await self._async_describe_index(self.index_name)
+                        index_ready = index_stats["status"]["ready"]
+                        await asyncio.sleep(0.1)
+                    return index_stats
+            else:
+                # if the index exists, we return it
+                return index_stats
         self.host = index_stats["host"] if index_stats else ""
 
     def _batch_upsert(self, batch: List[Dict]):
@@ -1015,6 +1041,25 @@ class PineconeIndex(BaseIndex):
                 except JSONDecodeError as e:
                     logger.error(f"JSON decode error: {e}")
                     return {}
+                
+    async def _is_async_ready(self, client_only: bool = False) -> bool:
+        """Checks if class attributes exist to be used for async operations.
+
+        :param client_only: Whether to check only the client attributes. If False
+            attributes will be checked for both client and index operations. If True
+            only attributes for client operations will be checked. Defaults to False.
+        :type client_only: bool, optional
+        :return: True if the class attributes exist, False otherwise.
+        :rtype: bool
+        """
+        # first check client only attributes
+        if not (self.cloud or self.region or self.base_url):
+            return False
+        if not client_only:
+            # now check index attributes
+            if not (self.index_name or self.dimensions or self.metric or self.host):
+                return False
+        return True
 
     async def _async_list_indexes(self):
         """Asynchronously lists all indexes within the current Pinecone project.
