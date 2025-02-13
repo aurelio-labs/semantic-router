@@ -10,6 +10,8 @@ from semantic_router.utils.logger import logger
 
 
 class MistralAILLM(BaseLLM):
+    """LLM for MistralAI. Requires a MistralAI API key from https://console.mistral.ai/api-keys/"""
+
     _client: Any = PrivateAttr()
     _mistralai: Any = PrivateAttr()
 
@@ -20,6 +22,17 @@ class MistralAILLM(BaseLLM):
         temperature: float = 0.01,
         max_tokens: int = 200,
     ):
+        """Initialize the MistralAILLM.
+
+        :param name: The name of the MistralAI model to use.
+        :type name: Optional[str]
+        :param mistralai_api_key: The MistralAI API key.
+        :type mistralai_api_key: Optional[str]
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: int
+        """
         if name is None:
             name = EncoderDefault.MISTRAL.value["language_model"]
         super().__init__(name=name)
@@ -28,6 +41,13 @@ class MistralAILLM(BaseLLM):
         self.max_tokens = max_tokens
 
     def _initialize_client(self, api_key):
+        """Initialize the MistralAI client.
+
+        :param api_key: The MistralAI API key.
+        :type api_key: Optional[str]
+        :return: The MistralAI client.
+        :rtype: MistralClient
+        """
         try:
             import mistralai
             from mistralai.client import MistralClient
@@ -49,9 +69,15 @@ class MistralAILLM(BaseLLM):
         return client, mistralai
 
     def __call__(self, messages: List[Message]) -> str:
+        """Call the MistralAILLM.
+
+        :param messages: The messages to pass to the MistralAILLM.
+        :type messages: List[Message]
+        :return: The response from the MistralAILLM.
+        :rtype: str
+        """
         if self._client is None:
             raise ValueError("MistralAI client is not initialized.")
-
         chat_messages = [
             self._mistralai.models.chat_completion.ChatMessage(
                 role=m.role, content=m.content

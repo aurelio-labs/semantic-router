@@ -38,6 +38,13 @@ class HybridRouter(BaseRouter):
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
     ):
+        """Initialize the HybridRouter.
+
+        :param encoder: The dense encoder to use.
+        :type encoder: DenseEncoder
+        :param sparse_encoder: The sparse encoder to use.
+        :type sparse_encoder: Optional[SparseEncoder]
+        """
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
@@ -153,6 +160,13 @@ class HybridRouter(BaseRouter):
         self._write_hash()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
+        """Get the index.
+
+        :param index: The index to get.
+        :type index: Optional[BaseIndex]
+        :return: The index.
+        :rtype: BaseIndex
+        """
         if index is None:
             logger.warning("No index provided. Using default HybridLocalIndex.")
             index = HybridLocalIndex()
@@ -163,6 +177,13 @@ class HybridRouter(BaseRouter):
     def _get_sparse_encoder(
         self, sparse_encoder: Optional[SparseEncoder]
     ) -> Optional[SparseEncoder]:
+        """Get the sparse encoder.
+
+        :param sparse_encoder: The sparse encoder to get.
+        :type sparse_encoder: Optional[SparseEncoder]
+        :return: The sparse encoder.
+        :rtype: Optional[SparseEncoder]
+        """
         if sparse_encoder is None:
             logger.warning("No sparse_encoder provided. Using default BM25Encoder.")
             sparse_encoder = BM25Encoder()
@@ -173,6 +194,11 @@ class HybridRouter(BaseRouter):
     def _encode(self, text: list[str]) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
+
+        :param text: The text to encode.
+        :type text: list[str]
+        :return: A tuple of the dense and sparse embeddings.
+        :rtype: tuple[np.ndarray, list[SparseEmbedding]]
         """
         if self.sparse_encoder is None:
             raise ValueError("self.sparse_encoder is not set.")
@@ -193,6 +219,11 @@ class HybridRouter(BaseRouter):
     ) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
+
+        :param text: The text to encode.
+        :type text: List[str]
+        :return: A tuple of the dense and sparse embeddings.
+        :rtype: tuple[np.ndarray, list[SparseEmbedding]]
         """
         if self.sparse_encoder is None:
             raise ValueError("self.sparse_encoder is not set.")
@@ -216,6 +247,19 @@ class HybridRouter(BaseRouter):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> RouteChoice:
+        """Call the HybridRouter.
+
+        :param text: The text to encode.
+        :type text: Optional[str]
+        :param vector: The vector to encode.
+        :type vector: Optional[List[float] | np.ndarray]
+        :param simulate_static: Whether to simulate a static route.
+        :type simulate_static: bool
+        :param route_filter: The route filter to use.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to use.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        """
         if not self.index.is_ready():
             raise ValueError("Index is not ready.")
         potential_sparse_vector: List[SparseEmbedding] | None = None
@@ -258,6 +302,13 @@ class HybridRouter(BaseRouter):
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
     ) -> tuple[np.ndarray, list[SparseEmbedding]]:
+        """Convex scaling of the dense and sparse vectors.
+
+        :param dense: The dense vector to scale.
+        :type dense: np.ndarray
+        :param sparse: The sparse vector to scale.
+        :type sparse: list[SparseEmbedding]
+        """
         # TODO: better way to do this?
         sparse_dicts = [sparse_vec.to_dict() for sparse_vec in sparse]
         # scale sparse and dense vecs
@@ -279,6 +330,19 @@ class HybridRouter(BaseRouter):
         max_iter: int = 500,
         local_execution: bool = False,
     ):
+        """Fit the HybridRouter.
+
+        :param X: The input data.
+        :type X: List[str]
+        :param y: The output data.
+        :type y: List[str]
+        :param batch_size: The batch size to use for fitting.
+        :type batch_size: int
+        :param max_iter: The maximum number of iterations to use for fitting.
+        :type max_iter: int
+        :param local_execution: Whether to execute the fitting locally.
+        :type local_execution: bool
+        """
         original_index = self.index
         if self.sparse_encoder is None:
             raise ValueError("Sparse encoder is not set.")
@@ -343,8 +407,16 @@ class HybridRouter(BaseRouter):
             self.index = original_index
 
     def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
-        """
-        Evaluate the accuracy of the route selection.
+        """Evaluate the accuracy of the route selection.
+
+        :param X: The input data.
+        :type X: List[str]
+        :param y: The output data.
+        :type y: List[str]
+        :param batch_size: The batch size to use for evaluation.
+        :type batch_size: int
+        :return: The accuracy of the route selection.
+        :rtype: float
         """
         if self.sparse_encoder is None:
             raise ValueError("Sparse encoder is not set.")
@@ -365,8 +437,16 @@ class HybridRouter(BaseRouter):
         Xq_s: list[SparseEmbedding],
         y: List[str],
     ) -> float:
-        """
-        Evaluate the accuracy of the route selection.
+        """Evaluate the accuracy of the route selection.
+
+        :param Xq_d: The dense vectors to evaluate.
+        :type Xq_d: Union[List[float], Any]
+        :param Xq_s: The sparse vectors to evaluate.
+        :type Xq_s: list[SparseEmbedding]
+        :param y: The output data.
+        :type y: List[str]
+        :return: The accuracy of the route selection.
+        :rtype: float
         """
         correct = 0
         for xq_d, xq_s, target_route in zip(Xq_d, Xq_s, y):

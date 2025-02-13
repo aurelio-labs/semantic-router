@@ -7,6 +7,31 @@ from semantic_router.encoders import DenseEncoder
 
 
 class CLIPEncoder(DenseEncoder):
+    """Multi-modal dense encoder for text and images using CLIP-type models via
+    HuggingFace.
+
+    :param name: The name of the model to use.
+    :type name: str
+    :param tokenizer_kwargs: Keyword arguments for the tokenizer.
+    :type tokenizer_kwargs: Dict
+    :param processor_kwargs: Keyword arguments for the processor.
+    :type processor_kwargs: Dict
+    :param model_kwargs: Keyword arguments for the model.
+    :type model_kwargs: Dict
+    :param device: The device to use for the model.
+    :type device: Optional[str]
+    :param _tokenizer: The tokenizer for the model.
+    :type _tokenizer: Any
+    :param _processor: The processor for the model.
+    :type _processor: Any
+    :param _model: The model.
+    :type _model: Any
+    :param _torch: The torch library.
+    :type _torch: Any
+    :param _Image: The PIL library.
+    :type _Image: Any
+    """
+
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     tokenizer_kwargs: Dict = {}
@@ -20,6 +45,11 @@ class CLIPEncoder(DenseEncoder):
     _Image: Any = PrivateAttr()
 
     def __init__(self, **data):
+        """Initialize the CLIPEncoder.
+
+        :param **data: Keyword arguments for the encoder.
+        :type **data: Dict
+        """
         if data.get("score_threshold") is None:
             data["score_threshold"] = 0.2
         super().__init__(**data)
@@ -31,6 +61,17 @@ class CLIPEncoder(DenseEncoder):
         batch_size: int = 32,
         normalize_embeddings: bool = True,
     ) -> List[List[float]]:
+        """Encode a list of documents. Can handle both text and images.
+
+        :param docs: The documents to encode.
+        :type docs: List[Any]
+        :param batch_size: The batch size for the encoding.
+        :type batch_size: int
+        :param normalize_embeddings: Whether to normalize the embeddings.
+        :type normalize_embeddings: bool
+        :returns: A list of embeddings.
+        :rtype: List[List[float]]
+        """
         all_embeddings = []
         if isinstance(docs[0], str):
             text = True
@@ -50,6 +91,11 @@ class CLIPEncoder(DenseEncoder):
         return all_embeddings
 
     def _initialize_hf_model(self):
+        """Initialize the HuggingFace model.
+
+        :returns: A tuple of the tokenizer, processor, and model.
+        :rtype: Tuple[Any, Any, Any]
+        """
         try:
             from transformers import CLIPModel, CLIPProcessor, CLIPTokenizerFast
         except ImportError:
@@ -92,6 +138,11 @@ class CLIPEncoder(DenseEncoder):
         return tokenizer, processor, model
 
     def _get_device(self) -> str:
+        """Get the device to use for the model. Returns either cuda, mps, or cpu.
+
+        :returns: The device to use for the model.
+        :rtype: str
+        """
         if self.device:
             device = self.device
         elif self._torch.cuda.is_available():
@@ -103,6 +154,13 @@ class CLIPEncoder(DenseEncoder):
         return device
 
     def _encode_text(self, docs: List[str]) -> Any:
+        """Encode a list of text documents.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :returns: The embeddings for the documents.
+        :rtype: Any
+        """
         inputs = self._tokenizer(
             docs, return_tensors="pt", padding=True, truncation=True
         ).to(self.device)
@@ -112,6 +170,13 @@ class CLIPEncoder(DenseEncoder):
         return embeds
 
     def _encode_image(self, images: List[Any]) -> Any:
+        """Encode a list of image documents.
+
+        :param images: The images to encode.
+        :type images: List[Any]
+        :returns: The embeddings for the images.
+        :rtype: Any
+        """
         rgb_images = [self._ensure_rgb(img) for img in images]
         inputs = self._processor(text=None, images=rgb_images, return_tensors="pt")[
             "pixel_values"
@@ -122,6 +187,13 @@ class CLIPEncoder(DenseEncoder):
         return embeds
 
     def _ensure_rgb(self, img: Any):
+        """Ensure the image is in RGB format.
+
+        :param img: The image to ensure is in RGB format.
+        :type img: Any
+        :returns: The image in RGB format.
+        :rtype: Any
+        """
         rgbimg = self._Image.new("RGB", img.size)
         rgbimg.paste(img)
         return rgbimg

@@ -11,6 +11,8 @@ from semantic_router.utils.logger import logger
 
 
 class SemanticRouter(BaseRouter):
+    """A router that uses a dense encoder to encode routes and utterances."""
+
     def __init__(
         self,
         encoder: Optional[DenseEncoder] = None,
@@ -34,13 +36,25 @@ class SemanticRouter(BaseRouter):
         )
 
     def _encode(self, text: list[str]) -> Any:
-        """Given some text, encode it."""
+        """Given some text, encode it.
+
+        :param text: The text to encode.
+        :type text: list[str]
+        :return: The encoded text.
+        :rtype: Any
+        """
         # create query vector
         xq = np.array(self.encoder(text))
         return xq
 
     async def _async_encode(self, text: list[str]) -> Any:
-        """Given some text, encode it."""
+        """Given some text, encode it.
+
+        :param text: The text to encode.
+        :type text: list[str]
+        :return: The encoded text.
+        :rtype: Any
+        """
         # create query vector
         xq = np.array(await self.encoder.acall(docs=text))
         return xq

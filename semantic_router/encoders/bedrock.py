@@ -29,6 +29,28 @@ from semantic_router.utils.logger import logger
 
 
 class BedrockEncoder(DenseEncoder):
+    """Dense encoder using Amazon Bedrock embedding API. Requires an AWS Access Key ID
+    and AWS Secret Access Key.
+
+    The BedrockEncoder class is a subclass of DenseEncoder and utilizes the
+    TextEmbeddingModel from the Amazon's Bedrock Platform to generate embeddings for
+    given documents. It supports customization of the pre-trained model, score
+    threshold, and region.
+
+    Example usage:
+
+    ```python
+    from semantic_router.encoders.bedrock_encoder import BedrockEncoder
+
+    encoder = BedrockEncoder(
+        access_key_id="your-access-key-id",
+        secret_access_key="your-secret-key",
+        region="your-region"
+    )
+    embeddings = encoder(["document1", "document2"])
+    ```
+    """
+
     client: Any = None
     type: str = "bedrock"
     input_type: Optional[str] = "search_query"
@@ -50,26 +72,32 @@ class BedrockEncoder(DenseEncoder):
     ):
         """Initializes the BedrockEncoder.
 
-        Args:
-            name: The name of the pre-trained model to use for embedding.
-                If not provided, the default model specified in EncoderDefault will
-                be used.
-            score_threshold: The threshold for similarity scores.
-            access_key_id: The AWS access key id for an IAM principle.
-                If not provided, it will be retrieved from the access_key_id
-                environment variable.
-            secret_access_key: The secret access key for an IAM principle.
-                If not provided, it will be retrieved from the AWS_SECRET_KEY
-                environment variable.
-            session_token: The session token for an IAM principle.
-                If not provided, it will be retrieved from the AWS_SESSION_TOKEN
-                environment variable.
-            region: The location of the Bedrock resources.
-                If not provided, it will be retrieved from the AWS_REGION
-                environment variable, defaulting to "us-west-1"
-
-        Raises:
-            ValueError: If the Bedrock Platform client fails to initialize.
+        :param name: The name of the pre-trained model to use for embedding.
+            If not provided, the default model specified in EncoderDefault will
+            be used.
+        :type name: str
+        :param input_type: The type of input to use for the embedding.
+            If not provided, the default input type specified in EncoderDefault will
+            be used.
+        :type input_type: str
+        :param score_threshold: The threshold for similarity scores.
+        :type score_threshold: float
+        :param access_key_id: The AWS access key id for an IAM principle.
+            If not provided, it will be retrieved from the access_key_id
+            environment variable.
+        :type access_key_id: str
+        :param secret_access_key: The secret access key for an IAM principle.
+            If not provided, it will be retrieved from the AWS_SECRET_KEY
+            environment variable.
+        :type secret_access_key: str
+        :param session_token: The session token for an IAM principle.
+            If not provided, it will be retrieved from the AWS_SESSION_TOKEN
+            environment variable.
+        :param region: The location of the Bedrock resources.
+            If not provided, it will be retrieved from the AWS_REGION
+            environment variable, defaulting to "us-west-1"
+        :type region: str
+        :raises ValueError: If the Bedrock Platform client fails to initialize.
         """
         super().__init__(name=name, score_threshold=score_threshold)
         self.access_key_id = self.get_env_variable("AWS_ACCESS_KEY_ID", access_key_id)
@@ -96,16 +124,15 @@ class BedrockEncoder(DenseEncoder):
     ):
         """Initializes the Bedrock client.
 
-        Args:
-            access_key_id: The Amazon access key ID.
-            secret_access_key: The Amazon secret key.
-            region: The location of the AI Platform resources.
-
-        Returns:
-            An instance of the TextEmbeddingModel client.
-
-        Raises:
-            ImportError: If the required Bedrock libraries are not
+        :param access_key_id: The Amazon access key ID.
+        :type access_key_id: str
+        :param secret_access_key: The Amazon secret key.
+        :type secret_access_key: str
+        :param region: The location of the AI Platform resources.
+        :type region: str
+        :returns: An instance of the TextEmbeddingModel client.
+        :rtype: Any
+        :raises ImportError: If the required Bedrock libraries are not
             installed.
             ValueError: If the Bedrock client fails to initialize.
         """
@@ -145,16 +172,14 @@ class BedrockEncoder(DenseEncoder):
     ) -> List[List[float]]:
         """Generates embeddings for the given documents.
 
-        Args:
-            docs: A list of strings representing the documents to embed.
-            model_kwargs: A dictionary of model-specific inference parameters.
-
-        Returns:
-            A list of lists, where each inner list contains the embedding values for a
+        :param docs: A list of strings representing the documents to embed.
+        :type docs: list[str]
+        :param model_kwargs: A dictionary of model-specific inference parameters.
+        :type model_kwargs: dict
+        :returns: A list of lists, where each inner list contains the embedding values for a
             document.
-
-        Raises:
-            ValueError: If the Bedrock Platform client is not initialized or if the
+        :rtype: list[list[float]]
+        :raises ValueError: If the Bedrock Platform client is not initialized or if the
             API call fails.
         """
         try:
@@ -255,15 +280,14 @@ class BedrockEncoder(DenseEncoder):
         raise ValueError("Bedrock call failed to return embeddings.")
 
     def chunk_strings(self, strings, MAX_WORDS=20):
-        """
-        Breaks up a list of strings into smaller chunks.
+        """Breaks up a list of strings into smaller chunks.
 
-        Args:
-            strings (list): A list of strings to be chunked.
-            max_chunk_size (int): The maximum size of each chunk. Default is 20.
-
-        Returns:
-            list: A list of lists, where each inner list contains a chunk of strings.
+        :param strings: A list of strings to be chunked.
+        :type strings: list
+        :param max_chunk_size: The maximum size of each chunk. Default is 20.
+        :type max_chunk_size: int
+        :returns: A list of lists, where each inner list contains a chunk of strings.
+        :rtype: list[list[str]]
         """
         encoding = tiktoken.get_encoding("cl100k_base")
         chunked_strings = []
@@ -280,17 +304,15 @@ class BedrockEncoder(DenseEncoder):
     def get_env_variable(var_name, provided_value, default=None):
         """Retrieves environment variable or uses a provided value.
 
-        Args:
-            var_name (str): The name of the environment variable.
-            provided_value (Optional[str]): The provided value to use if not None.
-            default (Optional[str]): The default value if the environment variable is not set.
-
-        Returns:
-            str: The value of the environment variable or the provided/default value.
-            None: Where AWS_SESSION_TOKEN is not set or provided
-
-        Raises:
-            ValueError: If no value is provided and the environment variable is not set.
+        :param var_name: The name of the environment variable.
+        :type var_name: str
+        :param provided_value: The provided value to use if not None.
+        :type provided_value: Optional[str]
+        :param default: The default value if the environment variable is not set.
+        :type default: Optional[str]
+        :returns: The value of the environment variable or the provided/default value.
+        :rtype: str
+        :raises ValueError: If no value is provided and the environment variable is not set.
         """
         if provided_value is not None:
             return provided_value

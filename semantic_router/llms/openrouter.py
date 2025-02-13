@@ -10,6 +10,9 @@ from semantic_router.utils.logger import logger
 
 
 class OpenRouterLLM(BaseLLM):
+    """LLM for OpenRouter. Requires an OpenRouter API key, see here for more information
+    https://openrouter.ai/docs/api-reference/authentication#using-an-api-key"""
+
     _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
     _base_url: str = PrivateAttr(default="https://openrouter.ai/api/v1")
 
@@ -21,6 +24,19 @@ class OpenRouterLLM(BaseLLM):
         temperature: float = 0.01,
         max_tokens: int = 200,
     ):
+        """Initialize the OpenRouterLLM.
+
+        :param name: The name of the OpenRouter model to use.
+        :type name: Optional[str]
+        :param openrouter_api_key: The OpenRouter API key.
+        :type openrouter_api_key: Optional[str]
+        :param base_url: The base URL for the OpenRouter API.
+        :type base_url: str
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: int
+        """
         if name is None:
             name = os.getenv(
                 "OPENROUTER_CHAT_MODEL_NAME", "mistralai/mistral-7b-instruct"
@@ -40,6 +56,13 @@ class OpenRouterLLM(BaseLLM):
         self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
+        """Call the OpenRouterLLM.
+
+        :param messages: The messages to pass to the OpenRouterLLM.
+        :type messages: List[Message]
+        :return: The response from the OpenRouterLLM.
+        :rtype: str
+        """
         if self._client is None:
             raise ValueError("OpenRouter client is not initialized.")
         try:

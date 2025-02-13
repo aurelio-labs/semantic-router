@@ -35,6 +35,23 @@ def build_records(
     metadata_list: List[Dict[str, Any]] = [],
     sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
 ) -> List[Dict]:
+    """Build records for Pinecone upsert.
+
+    :param embeddings: List of embeddings to upsert.
+    :type embeddings: List[List[float]]
+    :param routes: List of routes to upsert.
+    :type routes: List[str]
+    :param utterances: List of utterances to upsert.
+    :type utterances: List[str]
+    :param function_schemas: List of function schemas to upsert.
+    :type function_schemas: Optional[List[Dict[str, Any]]]
+    :param metadata_list: List of metadata to upsert.
+    :type metadata_list: List[Dict[str, Any]]
+    :param sparse_embeddings: List of sparse embeddings to upsert.
+    :type sparse_embeddings: Optional[List[SparseEmbedding]]
+    :return: List of records to upsert.
+    :rtype: List[Dict]
+    """
     if function_schemas is None:
         function_schemas = [{}] * len(embeddings)
     if sparse_embeddings is None:
@@ -86,6 +103,11 @@ class PineconeRecord(BaseModel):
     metadata: Dict[str, Any] = {}  # Additional metadata dictionary
 
     def __init__(self, **data):
+        """Initialize PineconeRecord.
+
+        :param **data: Keyword arguments to pass to the BaseModel constructor.
+        :type **data: dict
+        """
         super().__init__(**data)
         clean_route = clean_route_name(self.route)
         # Use SHA-256 for a more secure hash
@@ -100,6 +122,11 @@ class PineconeRecord(BaseModel):
         )
 
     def to_dict(self):
+        """Convert PineconeRecord to a dictionary.
+
+        :return: Dictionary representation of the PineconeRecord.
+        :rtype: dict
+        """
         d = {
             "id": self.id,
             "values": self.values,
@@ -140,6 +167,29 @@ class PineconeIndex(BaseIndex):
         base_url: Optional[str] = "https://api.pinecone.io",
         init_async_index: bool = False,
     ):
+        """Initialize PineconeIndex.
+
+        :param api_key: Pinecone API key.
+        :type api_key: Optional[str]
+        :param index_name: Name of the index.
+        :type index_name: str
+        :param dimensions: Dimensions of the index.
+        :type dimensions: Optional[int]
+        :param metric: Metric of the index.
+        :type metric: str
+        :param cloud: Cloud provider of the index.
+        :type cloud: str
+        :param region: Region of the index.
+        :type region: str
+        :param host: Host of the index.
+        :type host: str
+        :param namespace: Namespace of the index.
+        :type namespace: Optional[str]
+        :param base_url: Base URL of the Pinecone API.
+        :type base_url: Optional[str]
+        :param init_async_index: Whether to initialize the index asynchronously.
+        :type init_async_index: bool
+        """
         super().__init__()
         self.api_key = api_key or os.getenv("PINECONE_API_KEY")
         if not self.api_key:
@@ -182,6 +232,13 @@ class PineconeIndex(BaseIndex):
         self.index = self._init_index()
 
     def _initialize_client(self, api_key: Optional[str] = None):
+        """Initialize the Pinecone client.
+
+        :param api_key: Pinecone API key.
+        :type api_key: Optional[str]
+        :return: Pinecone client.
+        :rtype: Pinecone
+        """
         try:
             from pinecone import Pinecone, ServerlessSpec
 
@@ -203,6 +260,12 @@ class PineconeIndex(BaseIndex):
         return Pinecone(**pinecone_args)
 
     def _calculate_index_host(self):
+        """Calculate the index host. Used to differentiate between normal
+        Pinecone and Pinecone Local instance.
+
+        :return: None
+        :rtype: None
+        """
         if self.index_host and self.base_url:
             if "api.pinecone.io" in self.base_url:
                 if not self.index_host.startswith("http"):
@@ -285,6 +348,20 @@ class PineconeIndex(BaseIndex):
         return index
 
     async def _init_async_index(self, force_create: bool = False):
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        This method is used to initialize the index asynchronously.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
         index_stats = None
         indexes = await self._async_list_indexes()
         index_names = [i["name"] for i in indexes["indexes"]]
@@ -344,7 +421,23 @@ class PineconeIndex(BaseIndex):
         sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
         **kwargs,
     ):
-        """Add vectors to Pinecone in batches."""
+        """Add vectors to Pinecone in batches.
+
+        :param embeddings: List of embeddings to upsert.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to upsert.
+        :type routes: List[str]
+        :param utterances: List of utterances to upsert.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to upsert.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to upsert.
+        :type metadata_list: List[Dict[str, Any]]
+        :param batch_size: Number of vectors to upsert in a single batch.
+        :type batch_size: int, optional
+        :param sparse_embeddings: List of sparse embeddings to upsert.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
+        """
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = self._init_index(force_create=True)
@@ -371,7 +464,23 @@ class PineconeIndex(BaseIndex):
         sparse_embeddings: Optional[Optional[List[SparseEmbedding]]] = None,
         **kwargs,
     ):
-        """Add vectors to Pinecone in batches."""
+        """Add vectors to Pinecone in batches.
+
+        :param embeddings: List of embeddings to upsert.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to upsert.
+        :type routes: List[str]
+        :param utterances: List of utterances to upsert.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to upsert.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to upsert.
+        :type metadata_list: List[Dict[str, Any]]
+        :param batch_size: Number of vectors to upsert in a single batch.
+        :type batch_size: int, optional
+        :param sparse_embeddings: List of sparse embeddings to upsert.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
+        """
         if self.index is None:
             self.dimensions = self.dimensions or len(embeddings[0])
             self.index = await self._init_async_index(force_create=True)
@@ -392,6 +501,11 @@ class PineconeIndex(BaseIndex):
             )
 
     def _remove_and_sync(self, routes_to_delete: dict):
+        """Remove specified routes from index if they exist.
+
+        :param routes_to_delete: Routes to delete.
+        :type routes_to_delete: dict
+        """
         for route, utterances in routes_to_delete.items():
             remote_routes = self._get_routes_with_ids(route_name=route)
             ids_to_delete = [
@@ -404,6 +518,13 @@ class PineconeIndex(BaseIndex):
                 self.index.delete(ids=ids_to_delete, namespace=self.namespace)
 
     async def _async_remove_and_sync(self, routes_to_delete: dict):
+        """Remove specified routes from index if they exist.
+
+        This method is asyncronous.
+
+        :param routes_to_delete: Routes to delete.
+        :type routes_to_delete: dict
+        """
         for route, utterances in routes_to_delete.items():
             remote_routes = await self._async_get_routes_with_ids(route_name=route)
             ids_to_delete = [
@@ -418,16 +539,37 @@ class PineconeIndex(BaseIndex):
                 )
 
     def _get_route_ids(self, route_name: str):
+        """Get the IDs of the routes in the index.
+
+        :param route_name: Name of the route to get the IDs for.
+        :type route_name: str
+        :return: List of IDs of the routes.
+        :rtype: list[str]
+        """
         clean_route = clean_route_name(route_name)
         ids, _ = self._get_all(prefix=f"{clean_route}#")
         return ids
 
     async def _async_get_route_ids(self, route_name: str):
+        """Get the IDs of the routes in the index.
+
+        :param route_name: Name of the route to get the IDs for.
+        :type route_name: str
+        :return: List of IDs of the routes.
+        :rtype: list[str]
+        """
         clean_route = clean_route_name(route_name)
         ids, _ = await self._async_get_all(prefix=f"{clean_route}#")
         return ids
 
     def _get_routes_with_ids(self, route_name: str):
+        """Get the routes with their IDs from the index.
+
+        :param route_name: Name of the route to get the routes with their IDs for.
+        :type route_name: str
+        :return: List of routes with their IDs.
+        :rtype: list[dict]
+        """
         clean_route = clean_route_name(route_name)
         ids, metadata = self._get_all(prefix=f"{clean_route}#", include_metadata=True)
         route_tuples = []
@@ -442,6 +584,13 @@ class PineconeIndex(BaseIndex):
         return route_tuples
 
     async def _async_get_routes_with_ids(self, route_name: str):
+        """Get the routes with their IDs from the index.
+
+        :param route_name: Name of the route to get the routes with their IDs for.
+        :type route_name: str
+        :return: List of routes with their IDs.
+        :rtype: list[dict]
+        """
         clean_route = clean_route_name(route_name)
         ids, metadata = await self._async_get_all(
             prefix=f"{clean_route}#", include_metadata=True
@@ -454,8 +603,7 @@ class PineconeIndex(BaseIndex):
         return route_tuples
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
-        """
-        Retrieves all vector IDs from the Pinecone index using pagination.
+        """Retrieves all vector IDs from the Pinecone index using pagination.
 
         :param prefix: The prefix to filter the vectors by.
         :type prefix: Optional[str]
@@ -486,6 +634,11 @@ class PineconeIndex(BaseIndex):
         return all_vector_ids, metadata
 
     def delete(self, route_name: str):
+        """Delete specified route from index if it exists.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        """
         route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
             logger.info("index is not None, deleting...")
@@ -515,12 +668,22 @@ class PineconeIndex(BaseIndex):
             raise ValueError("Index is None, could not delete.")
 
     def delete_all(self):
+        """Delete all routes from index if it exists.
+
+        :return: None
+        :rtype: None
+        """
         if self.index is not None:
             self.index.delete(delete_all=True, namespace=self.namespace)
         else:
             raise ValueError("Index is None, could not delete.")
 
     def describe(self) -> IndexConfig:
+        """Describe the index.
+
+        :return: IndexConfig
+        :rtype: IndexConfig
+        """
         if self.index is not None:
             stats = self.index.describe_index_stats()
             return IndexConfig(
@@ -536,8 +699,10 @@ class PineconeIndex(BaseIndex):
             )
 
     def is_ready(self) -> bool:
-        """
-        Checks if the index is ready to be used.
+        """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
         return self.index is not None
 
@@ -602,6 +767,15 @@ class PineconeIndex(BaseIndex):
         return np.array(scores), route_names
 
     def _read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
+        """Read a config parameter from the index.
+
+        :param field: The field to read.
+        :type field: str
+        :param scope: The scope to read.
+        :type scope: str | None
+        :return: The config parameter that was read.
+        :rtype: ConfigParameter
+        """
         scope = scope or self.namespace
         if self.index is None:
             return ConfigParameter(
@@ -716,8 +890,7 @@ class PineconeIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Asynchronously search the index for the query vector and return the top_k results.
+        """Asynchronously search the index for the query vector and return the top_k results.
 
         :param vector: The query vector to search for.
         :type vector: np.ndarray
@@ -773,6 +946,11 @@ class PineconeIndex(BaseIndex):
         return await self._async_get_routes()
 
     def delete_index(self):
+        """Delete the index.
+
+        :return: None
+        :rtype: None
+        """
         self.client.delete_index(self.index_name)
         self.index = None
 
@@ -786,6 +964,21 @@ class PineconeIndex(BaseIndex):
         top_k: int = 5,
         include_metadata: bool = False,
     ):
+        """Asynchronously query the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: list[float]
+        :param sparse_vector: The sparse vector to search for.
+        :type sparse_vector: dict[str, Any] | None
+        :param namespace: The namespace to search for.
+        :type namespace: str
+        :param filter: The filter to search for.
+        :type filter: Optional[dict]
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param include_metadata: Whether to include metadata in the results, defaults to False.
+        :type include_metadata: bool, optional
+        """
         params = {
             "vector": vector,
             "sparse_vector": sparse_vector,
@@ -824,6 +1017,11 @@ class PineconeIndex(BaseIndex):
                     return {}
 
     async def _async_list_indexes(self):
+        """Asynchronously lists all indexes within the current Pinecone project.
+
+        :return: List of indexes.
+        :rtype: list[dict]
+        """
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{self.base_url}/indexes",
@@ -836,6 +1034,13 @@ class PineconeIndex(BaseIndex):
         vectors: list[dict],
         namespace: str = "",
     ):
+        """Asynchronously upserts vectors into the index.
+
+        :param vectors: The vectors to upsert.
+        :type vectors: list[dict]
+        :param namespace: The namespace to upsert the vectors into.
+        :type namespace: str
+        """
         params = {
             "vectors": vectors,
             "namespace": namespace,
@@ -865,6 +1070,19 @@ class PineconeIndex(BaseIndex):
         region: str,
         metric: str = "dotproduct",
     ):
+        """Asynchronously creates a new index in Pinecone.
+
+        :param name: The name of the index to create.
+        :type name: str
+        :param dimension: The dimension of the index.
+        :type dimension: int
+        :param cloud: The cloud provider to create the index on.
+        :type cloud: str
+        :param region: The region to create the index in.
+        :type region: str
+        :param metric: The metric to use for the index, defaults to "dotproduct".
+        :type metric: str, optional
+        """
         params = {
             "name": name,
             "dimension": dimension,
@@ -880,6 +1098,13 @@ class PineconeIndex(BaseIndex):
                 return await response.json(content_type=None)
 
     async def _async_delete(self, ids: list[str], namespace: str = ""):
+        """Asynchronously deletes vectors from the index.
+
+        :param ids: The IDs of the vectors to delete.
+        :type ids: list[str]
+        :param namespace: The namespace to delete the vectors from.
+        :type namespace: str
+        """
         params = {
             "ids": ids,
             "namespace": namespace,
@@ -900,6 +1125,11 @@ class PineconeIndex(BaseIndex):
                 return await response.json(content_type=None)
 
     async def _async_describe_index(self, name: str):
+        """Asynchronously describes the index.
+
+        :param name: The name of the index to describe.
+        :type name: str
+        """
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{self.base_url}/indexes/{name}",

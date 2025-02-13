@@ -10,6 +10,10 @@ from semantic_router.utils.logger import logger
 
 
 class LlamaCppLLM(BaseLLM):
+    """LLM for LlamaCPP. Enables fully local LLM use, helpful for local implementation of
+    dynamic routes.
+    """
+
     llm: Any
     grammar: Optional[Any] = None
     _llama_cpp: Any = PrivateAttr()
@@ -22,6 +26,19 @@ class LlamaCppLLM(BaseLLM):
         max_tokens: Optional[int] = 200,
         grammar: Optional[Any] = None,
     ):
+        """Initialize the LlamaCPPLLM.
+
+        :param llm: The LLM to use.
+        :type llm: Any
+        :param name: The name of the LLM.
+        :type name: str
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: Optional[int]
+        :param grammar: The grammar to use.
+        :type grammar: Optional[Any]
+        """
         super().__init__(
             name=name,
             llm=llm,
@@ -48,6 +65,13 @@ class LlamaCppLLM(BaseLLM):
         self,
         messages: List[Message],
     ) -> str:
+        """Call the LlamaCPPLLM.
+
+        :param messages: The messages to pass to the LlamaCPPLLM.
+        :type messages: List[Message]
+        :return: The response from the LlamaCPPLLM.
+        :rtype: str
+        """
         try:
             completion = self.llm.create_chat_completion(
                 messages=[m.to_llamacpp() for m in messages],
@@ -68,6 +92,11 @@ class LlamaCppLLM(BaseLLM):
 
     @contextmanager
     def _grammar(self):
+        """Context manager for the grammar.
+
+        :return: The grammar.
+        :rtype: Any
+        """
         grammar_path = Path(__file__).parent.joinpath("grammars", "json.gbnf")
         assert grammar_path.exists(), f"{grammar_path}\ndoes not exist"
         try:
@@ -79,6 +108,15 @@ class LlamaCppLLM(BaseLLM):
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
+        """Extract the function inputs from the query.
+
+        :param query: The query to extract the function inputs from.
+        :type query: str
+        :param function_schemas: The function schemas to extract the function inputs from.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: The function inputs.
+        :rtype: List[Dict[str, Any]]
+        """
         with self._grammar():
             return super().extract_function_inputs(
                 query=query, function_schemas=function_schemas
