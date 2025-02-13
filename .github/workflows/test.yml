@@ -56,7 +56,7 @@ jobs:
 
     - name: Download nltk data
       run: |
-        uv python -m nltk.downloader punkt stopwords wordnet punkt_tab
+        uv run python -m nltk.downloader punkt stopwords wordnet punkt_tab
 
     - name: Pytest All
       env:
