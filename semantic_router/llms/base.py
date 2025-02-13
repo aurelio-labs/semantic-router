@@ -8,6 +8,11 @@ from semantic_router.utils.logger import logger
 
 
 class BaseLLM(BaseModel):
+    """Base class for LLMs typically used by dynamic routes.
+
+    This class provides a base implementation for LLMs. It defines the common
+    configuration and methods for all LLM classes.
+    """
     name: str
     temperature: Optional[float] = 0.0
     max_tokens: Optional[int] = None
@@ -16,15 +21,39 @@ class BaseLLM(BaseModel):
         arbitrary_types_allowed = True
 
     def __init__(self, name: str, **kwargs):
+        """Initialize the BaseLLM.
+
+        :param name: The name of the LLM.
+        :type name: str
+        :param **kwargs: Additional keyword arguments for the LLM.
+        :type **kwargs: dict
+        """
         super().__init__(name=name, **kwargs)
 
     def __call__(self, messages: List[Message]) -> Optional[str]:
+        """Call the LLM.
+
+        Must be implemented by subclasses.
+
+        :param messages: The messages to pass to the LLM.
+        :type messages: List[Message]
+        :return: The response from the LLM.
+        :rtype: Optional[str]
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
     def _check_for_mandatory_inputs(
         self, inputs: dict[str, Any], mandatory_params: List[str]
     ) -> bool:
-        """Check for mandatory parameters in inputs"""
+        """Check for mandatory parameters in inputs.
+
+        :param inputs: The inputs to check for mandatory parameters.
+        :type inputs: dict[str, Any]
+        :param mandatory_params: The mandatory parameters to check for.
+        :type mandatory_params: List[str]
+        :return: True if all mandatory parameters are present, False otherwise.
+        :rtype: bool
+        """
         for name in mandatory_params:
             if name not in inputs:
                 logger.error(f"Mandatory input {name} missing from query")
@@ -34,7 +63,15 @@ class BaseLLM(BaseModel):
     def _check_for_extra_inputs(
         self, inputs: dict[str, Any], all_params: List[str]
     ) -> bool:
-        """Check for extra parameters not defined in the signature"""
+        """Check for extra parameters not defined in the signature.
+
+        :param inputs: The inputs to check for extra parameters.
+        :type inputs: dict[str, Any]
+        :param all_params: The all parameters to check for.
+        :type all_params: List[str]
+        :return: True if all extra parameters are present, False otherwise.
+        :rtype: bool
+        """
         input_keys = set(inputs.keys())
         param_keys = set(all_params)
         if not input_keys.issubset(param_keys):
@@ -49,7 +86,15 @@ class BaseLLM(BaseModel):
         self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
         """Determine if the functions chosen by the LLM exist within the function_schemas,
-        and if the input arguments are valid for those functions."""
+        and if the input arguments are valid for those functions.
+
+        :param inputs: The inputs to check for validity.
+        :type inputs: List[Dict[str, Any]]
+        :param function_schemas: The function schemas to check against.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: True if the inputs are valid, False otherwise.
+        :rtype: bool
+        """
         try:
             # Currently only supporting single functions for most LLMs in Dynamic Routes.
             if len(inputs) != 1:
@@ -72,7 +117,15 @@ class BaseLLM(BaseModel):
     def _validate_single_function_inputs(
         self, inputs: Dict[str, Any], function_schema: Dict[str, Any]
     ) -> bool:
-        """Validate the extracted inputs against the function schema"""
+        """Validate the extracted inputs against the function schema.
+
+        :param inputs: The inputs to validate.
+        :type inputs: Dict[str, Any]
+        :param function_schema: The function schema to validate against.
+        :type function_schema: Dict[str, Any]
+        :return: True if the inputs are valid, False otherwise.
+        :rtype: bool
+        """
         try:
             # Extract parameter names and determine if they are optional
             signature = function_schema["signature"]
@@ -107,7 +160,13 @@ class BaseLLM(BaseModel):
             return False
 
     def _extract_parameter_info(self, signature: str) -> tuple[List[str], List[str]]:
-        """Extract parameter names and types from the function signature."""
+        """Extract parameter names and types from the function signature.
+
+        :param signature: The function signature to extract parameter names and types from.
+        :type signature: str
+        :return: A tuple of parameter names and types.
+        :rtype: tuple[List[str], List[str]]
+        """
         param_info = [param.strip() for param in signature[1:-1].split(",")]
         param_names = [info.split(":")[0].strip() for info in param_info]
         param_types = [
@@ -118,6 +177,15 @@ class BaseLLM(BaseModel):
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
+        """Extract the function inputs from the query.
+
+        :param query: The query to extract the function inputs from.
+        :type query: str
+        :param function_schemas: The function schemas to extract the function inputs from.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: The function inputs.
+        :rtype: List[Dict[str, Any]]
+        """
         logger.info("Extracting function input...")
 
         prompt = f"""

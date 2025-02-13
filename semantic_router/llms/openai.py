@@ -22,6 +22,8 @@ from semantic_router.utils.logger import logger
 
 
 class OpenAILLM(BaseLLM):
+    """LLM for OpenAI. Requires an OpenAI API key from https://platform.openai.com/api-keys.
+    """
     _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
     _async_client: Optional[openai.AsyncOpenAI] = PrivateAttr(default=None)
 
@@ -32,6 +34,17 @@ class OpenAILLM(BaseLLM):
         temperature: float = 0.01,
         max_tokens: int = 200,
     ):
+        """Initialize the OpenAILLM.
+
+        :param name: The name of the OpenAI model to use.
+        :type name: Optional[str]
+        :param openai_api_key: The OpenAI API key.
+        :type openai_api_key: Optional[str]
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: int
+        """
         if name is None:
             name = EncoderDefault.OPENAI.value["language_model"]
         super().__init__(name=name)
@@ -51,6 +64,13 @@ class OpenAILLM(BaseLLM):
     def _extract_tool_calls_info(
         self, tool_calls: List[ChatCompletionMessageToolCall]
     ) -> List[Dict[str, Any]]:
+        """Extract the tool calls information from the tool calls.
+
+        :param tool_calls: The tool calls to extract the information from.
+        :type tool_calls: List[ChatCompletionMessageToolCall]
+        :return: The tool calls information.
+        :rtype: List[Dict[str, Any]]
+        """
         tool_calls_info = []
         for tool_call in tool_calls:
             if tool_call.function.arguments is None:
@@ -68,6 +88,13 @@ class OpenAILLM(BaseLLM):
     async def async_extract_tool_calls_info(
         self, tool_calls: List[ChatCompletionMessageToolCall]
     ) -> List[Dict[str, Any]]:
+        """Extract the tool calls information from the tool calls.
+
+        :param tool_calls: The tool calls to extract the information from.
+        :type tool_calls: List[ChatCompletionMessageToolCall]
+        :return: The tool calls information.
+        :rtype: List[Dict[str, Any]]
+        """
         tool_calls_info = []
         for tool_call in tool_calls:
             if tool_call.function.arguments is None:
@@ -87,6 +114,15 @@ class OpenAILLM(BaseLLM):
         messages: List[Message],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
+        """Call the OpenAILLM.
+
+        :param messages: The messages to pass to the OpenAILLM.
+        :type messages: List[Message]
+        :param function_schemas: The function schemas to pass to the OpenAILLM.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :return: The response from the OpenAILLM.
+        :rtype: str
+        """
         if self._client is None:
             raise ValueError("OpenAI client is not initialized.")
         try:
@@ -131,6 +167,15 @@ class OpenAILLM(BaseLLM):
         messages: List[Message],
         function_schemas: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
+        """Call the OpenAILLM asynchronously.
+
+        :param messages: The messages to pass to the OpenAILLM.
+        :type messages: List[Message]
+        :param function_schemas: The function schemas to pass to the OpenAILLM.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :return: The response from the OpenAILLM.
+        :rtype: str
+        """
         if self._async_client is None:
             raise ValueError("OpenAI async_client is not initialized.")
         try:
@@ -173,6 +218,15 @@ class OpenAILLM(BaseLLM):
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
+        """Extract the function inputs from the query.
+
+        :param query: The query to extract the function inputs from.
+        :type query: str
+        :param function_schemas: The function schemas to extract the function inputs from.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: The function inputs.
+        :rtype: List[Dict[str, Any]]
+        """
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages = [
             Message(role="system", content=system_prompt),
@@ -190,6 +244,15 @@ class OpenAILLM(BaseLLM):
     async def async_extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
+        """Extract the function inputs from the query asynchronously.
+
+        :param query: The query to extract the function inputs from.
+        :type query: str
+        :param function_schemas: The function schemas to extract the function inputs from.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: The function inputs.
+        :rtype: List[Dict[str, Any]]
+        """
         system_prompt = "You are an intelligent AI. Given a command or request from the user, call the function to complete the request."
         messages = [
             Message(role="system", content=system_prompt),
@@ -208,7 +271,15 @@ class OpenAILLM(BaseLLM):
         self, inputs: List[Dict[str, Any]], function_schemas: List[Dict[str, Any]]
     ) -> bool:
         """Determine if the functions chosen by the LLM exist within the function_schemas,
-        and if the input arguments are valid for those functions."""
+        and if the input arguments are valid for those functions.
+
+        :param inputs: The inputs to check for validity.
+        :type inputs: List[Dict[str, Any]]
+        :param function_schemas: The function schemas to check against.
+        :type function_schemas: List[Dict[str, Any]]
+        :return: True if the inputs are valid, False otherwise.
+        :rtype: bool
+        """
         try:
             for input_dict in inputs:
                 # Check if 'function_name' and 'arguments' keys exist in each input dictionary
@@ -251,7 +322,14 @@ class OpenAILLM(BaseLLM):
     def _validate_single_function_inputs(
         self, inputs: Dict[str, Any], function_schema: Dict[str, Any]
     ) -> bool:
-        """Validate the extracted inputs against the function schema"""
+        """Validate the extracted inputs against the function schema.
+
+        :param inputs: The inputs to validate.
+        :type inputs: Dict[str, Any]
+        :param function_schema: The function schema to validate against.
+        :type function_schema: Dict[str, Any]
+        :return: True if the inputs are valid, False otherwise.
+        """
         try:
             # Access the parameters and their properties from the function schema directly
             parameters = function_schema["parameters"]["properties"]
@@ -283,6 +361,13 @@ class OpenAILLM(BaseLLM):
 
 
 def get_schemas_openai(items: List[Callable]) -> List[Dict[str, Any]]:
+    """Get function schemas for the OpenAI LLM from a list of functions.
+
+    :param items: The functions to get function schemas for.
+    :type items: List[Callable]
+    :return: The schemas for the OpenAI LLM.
+    :rtype: List[Dict[str, Any]]
+    """
     schemas = []
     for item in items:
         if not callable(item):

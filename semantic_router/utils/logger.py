@@ -4,6 +4,9 @@ import colorlog
 
 
 class CustomFormatter(colorlog.ColoredFormatter):
+    """Custom formatter for the logger.
+    """
+
     def __init__(self):
         super().__init__(
             "%(log_color)s%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -21,6 +24,8 @@ class CustomFormatter(colorlog.ColoredFormatter):
 
 
 def add_coloured_handler(logger):
+    """Add a coloured handler to the logger.
+    """
     formatter = CustomFormatter()
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
@@ -29,6 +34,8 @@ def add_coloured_handler(logger):
 
 
 def setup_custom_logger(name):
+    """Setup a custom logger.
+    """
     logger = logging.getLogger(name)
 
     if not logger.hasHandlers():

@@ -31,7 +31,26 @@ from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.logger import logger
 
 
+# TODO: this should support local models, and we should have another class for remote
+# inference endpoint models
+
 class HuggingFaceEncoder(DenseEncoder):
+    """HuggingFace encoder class for local embedding models. Models can be trained and
+    loaded from private repositories, or from the Huggingface Hub. The class supports
+    customization of the score threshold for filtering or processing the embeddings.
+
+    Example usage:
+
+    ```python
+    from semantic_router.encoders import HuggingFaceEncoder
+
+    encoder = HuggingFaceEncoder(
+        name="sentence-transformers/all-MiniLM-L6-v2",
+        device="cuda"
+    )
+    embeddings = encoder(["document1", "document2"])
+    ```
+    """
     name: str = "sentence-transformers/all-MiniLM-L6-v2"
     type: str = "huggingface"
     tokenizer_kwargs: Dict = {}
@@ -92,6 +111,12 @@ class HuggingFaceEncoder(DenseEncoder):
         normalize_embeddings: bool = True,
         pooling_strategy: str = "mean",
     ) -> List[List[float]]:
+        """Encode a list of documents into embeddings using the local Hugging Face model.
+
+        :param docs: A list of documents to encode.
+        :type docs: List[str]
+        :param batch_size: The batch size for encoding.
+        """
         all_embeddings = []
         for i in range(0, len(docs), batch_size):
             batch_docs = docs[i : i + batch_size]
@@ -124,6 +149,12 @@ class HuggingFaceEncoder(DenseEncoder):
         return all_embeddings
 
     def _mean_pooling(self, model_output, attention_mask):
+        """Perform mean pooling on the token embeddings.
+
+        :param model_output: The output of the model.
+        :type model_output: torch.Tensor
+        :param attention_mask: The attention mask.
+        """
         token_embeddings = model_output[0]
         input_mask_expanded = (
             attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
@@ -133,6 +164,12 @@ class HuggingFaceEncoder(DenseEncoder):
         ) / self._torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
     def _max_pooling(self, model_output, attention_mask):
+        """Perform max pooling on the token embeddings.
+
+        :param model_output: The output of the model.
+        :type model_output: torch.Tensor
+        :param attention_mask: The attention mask.
+        """
         token_embeddings = model_output[0]
         input_mask_expanded = (
             attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
@@ -142,13 +179,24 @@ class HuggingFaceEncoder(DenseEncoder):
 
 
 class HFEndpointEncoder(DenseEncoder):
-    """
-    A class to encode documents using a Hugging Face transformer model endpoint.
+    """HFEndpointEncoder class to embeddings models using Huggingface's inference endpoints.
+    
+    The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified
+    Huggingface endpoint to generate embeddings for given documents. It requires the URL
+    of the Huggingface API endpoint and an API key for authentication. The class supports
+    customization of the score threshold for filtering or processing the embeddings.
 
-    Attributes:
-        huggingface_url (str): The URL of the Hugging Face API endpoint.
-        huggingface_api_key (str): The API key for authenticating with the Hugging Face API.
-        score_threshold (float): A threshold value used for filtering or processing the embeddings.
+    Example usage:
+
+    ```python
+    from semantic_router.encoders import HFEndpointEncoder
+
+    encoder = HFEndpointEncoder(
+        huggingface_url="https://api-inference.huggingface.co/models/BAAI/bge-large-en-v1.5",
+        huggingface_api_key="your-hugging-face-api-key"
+    )
+    embeddings = encoder(["document1", "document2"])
+    ```
     """
 
     name: str = "hugging_face_custom_endpoint"
@@ -162,21 +210,17 @@ class HFEndpointEncoder(DenseEncoder):
         huggingface_api_key: Optional[str] = None,
         score_threshold: float = 0.8,
     ):
-        """
-        Initializes the HFEndpointEncoder with the specified parameters.
+        """Initializes the HFEndpointEncoder with the specified parameters.
 
-        Args:
-            name (str, optional): The name of the encoder. Defaults to
-                "hugging_face_custom_endpoint".
-            huggingface_url (str, optional): The URL of the Hugging Face API endpoint.
-                Cannot be None.
-            huggingface_api_key (str, optional): The API key for the Hugging Face API.
-                Cannot be None.
-            score_threshold (float, optional): A threshold for processing the embeddings.
-                Defaults to 0.8.
-
-        Raises:
-            ValueError: If either `huggingface_url` or `huggingface_api_key` is None.
+        :param name: The name of the encoder.
+        :type name: str
+        :param huggingface_url: The URL of the Hugging Face API endpoint.
+        :type huggingface_url: str
+        :param huggingface_api_key: The API key for the Hugging Face API.
+        :type huggingface_api_key: str
+        :param score_threshold: A threshold for processing the embeddings.
+        :type score_threshold: float
+        :raise ValueError: If either `huggingface_url` or `huggingface_api_key` is None.
         """
         huggingface_url = huggingface_url or os.getenv("HF_API_URL")
         huggingface_api_key = huggingface_api_key or os.getenv("HF_API_KEY")
@@ -201,17 +245,13 @@ class HFEndpointEncoder(DenseEncoder):
             ) from e
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        """
-        Encodes a list of documents into embeddings using the Hugging Face API.
+        """Encodes a list of documents into embeddings using the Hugging Face API.
 
-        Args:
-            docs (List[str]): A list of documents to encode.
-
-        Returns:
-            List[List[float]]: A list of embeddings for the given documents.
-
-        Raises:
-            ValueError: If no embeddings are returned for a document.
+        :param docs: A list of documents to encode.
+        :type docs: List[str]
+        :return: A list of embeddings for the given documents.
+        :rtype: List[List[float]]
+        :raise ValueError: If no embeddings are returned for a document.
         """
         embeddings = []
         for d in docs:
@@ -228,17 +268,13 @@ class HFEndpointEncoder(DenseEncoder):
         return embeddings
 
     def query(self, payload, max_retries=3, retry_interval=5):
-        """
-        Sends a query to the Hugging Face API and returns the response.
+        """Sends a query to the Hugging Face API and returns the response.
 
-        Args:
-            payload (dict): The payload to send in the request.
-
-        Returns:
-            dict: The response from the Hugging Face API.
-
-        Raises:
-            ValueError: If the query fails or the response status is not 200.
+        :param payload: The payload to send in the request.
+        :type payload: dict
+        :return: The response from the Hugging Face API.
+        :rtype: dict
+        :raise ValueError: If the query fails or the response status is not 200.
         """
         headers = {
             "Accept": "application/json",

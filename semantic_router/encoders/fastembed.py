@@ -7,6 +7,14 @@ from semantic_router.encoders import DenseEncoder
 
 
 class FastEmbedEncoder(DenseEncoder):
+    """Dense encoder that uses local FastEmbed to embed documents. Supports text only.
+    Requires the fastembed package which can be installed with `pip install 'semantic-router[fastembed]'`
+
+    :param name: The name of the embedding model to use.
+    :param max_length: The maximum length of the input text.
+    :param cache_dir: The directory to cache the embedding model.
+    :param threads: The number of threads to use for the embedding.
+    """
     type: str = "fastembed"
     name: str = "BAAI/bge-small-en-v1.5"
     max_length: int = 512
@@ -16,11 +24,19 @@ class FastEmbedEncoder(DenseEncoder):
 
     def __init__(
         self, score_threshold: float = 0.5, **data
-    ):  # TODO default score_threshold not thoroughly tested, should optimize
+    ):
+        """Initialize the FastEmbed encoder.
+
+        :param score_threshold: The threshold for the score of the embedding.
+        :type score_threshold: float
+        """
+        # TODO default score_threshold not thoroughly tested, should optimize
         super().__init__(score_threshold=score_threshold, **data)
         self._client = self._initialize_client()
 
     def _initialize_client(self):
+        """Initialize the FastEmbed library. Requires the fastembed package.
+        """
         try:
             from fastembed import TextEmbedding
         except ImportError:
@@ -43,6 +59,14 @@ class FastEmbedEncoder(DenseEncoder):
         return embedding
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
+        """Embed a list of documents. Supports text only.
+
+        :param docs: The documents to embed.
+        :type docs: List[str]
+        :raise ValueError: If the embedding fails.
+        :return: The vector embeddings of the documents.
+        :rtype: List[List[float]]
+        """
         try:
             embeds: List[np.ndarray] = list(self._client.embed(docs))
             embeddings: List[List[float]] = [e.tolist() for e in embeds]

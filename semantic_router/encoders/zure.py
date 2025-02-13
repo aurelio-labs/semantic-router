@@ -14,6 +14,11 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAIEncoder(DenseEncoder):
+    """Encoder for Azure OpenAI API.
+
+    This class provides functionality to encode text documents using the Azure OpenAI API.
+    It supports customization of the score threshold for filtering or processing the embeddings.
+    """
     client: Optional[openai.AzureOpenAI] = None
     async_client: Optional[openai.AsyncAzureOpenAI] = None
     dimensions: Union[int, NotGiven] = NotGiven()
@@ -36,6 +41,25 @@ class AzureOpenAIEncoder(DenseEncoder):
         dimensions: Union[int, NotGiven] = NotGiven(),
         max_retries: int = 3,
     ):
+        """Initialize the AzureOpenAIEncoder.
+
+        :param api_key: The API key for the Azure OpenAI API.
+        :type api_key: str
+        :param deployment_name: The name of the deployment to use.
+        :type deployment_name: str
+        :param azure_endpoint: The endpoint for the Azure OpenAI API.
+        :type azure_endpoint: str
+        :param api_version: The version of the API to use.
+        :type api_version: str
+        :param model: The model to use.
+        :type model: str
+        :param score_threshold: The score threshold for the embeddings.
+        :type score_threshold: float
+        :param dimensions: The dimensions of the embeddings.
+        :type dimensions: int
+        :param max_retries: The maximum number of retries for the API call.
+        :type max_retries: int
+        """
         name = deployment_name
         if name is None:
             name = EncoderDefault.AZURE.value["embedding_model"]
@@ -98,6 +122,13 @@ class AzureOpenAIEncoder(DenseEncoder):
             ) from e
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
+        """Encode a list of documents into embeddings using the Azure OpenAI API.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :return: The embeddings for the documents.
+        :rtype: List[List[float]]
+        """
         if self.client is None:
             raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
@@ -136,10 +167,16 @@ class AzureOpenAIEncoder(DenseEncoder):
         return embeddings
 
     async def acall(self, docs: List[str]) -> List[List[float]]:
+        """Encode a list of documents into embeddings using the Azure OpenAI API asynchronously.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :return: The embeddings for the documents.
+        :rtype: List[List[float]]
+        """
         if self.async_client is None:
             raise ValueError("Azure OpenAI async client is not initialized.")
         embeds = None
-
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:

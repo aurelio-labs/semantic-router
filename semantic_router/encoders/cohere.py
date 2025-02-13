@@ -8,6 +8,9 @@ from semantic_router.utils.defaults import EncoderDefault
 
 
 class CohereEncoder(DenseEncoder):
+    """Dense encoder that uses Cohere API to embed documents. Supports text only. Requires
+    a Cohere API key from https://dashboard.cohere.com/api-keys.
+    """
     _client: Any = PrivateAttr()
     _embed_type: Any = PrivateAttr()
     type: str = "cohere"
@@ -20,6 +23,18 @@ class CohereEncoder(DenseEncoder):
         score_threshold: float = 0.3,
         input_type: Optional[str] = "search_query",
     ):
+        """Initialize the Cohere encoder.
+
+        :param name: The name of the embedding model to use.
+        :type name: str
+        :param cohere_api_key: The API key for the Cohere client, can also
+            be set via the COHERE_API_KEY environment variable.
+        :type cohere_api_key: str
+        :param score_threshold: The threshold for the score of the embedding.
+        :type score_threshold: float
+        :param input_type: The type of input to embed.
+        :type input_type: str
+        """
         if name is None:
             name = EncoderDefault.COHERE.value["embedding_model"]
         super().__init__(
@@ -34,9 +49,10 @@ class CohereEncoder(DenseEncoder):
         """Initializes the Cohere client.
 
         :param cohere_api_key: The API key for the Cohere client, can also
-        be set via the COHERE_API_KEY environment variable.
-
+            be set via the COHERE_API_KEY environment variable.
+        :type cohere_api_key: str
         :return: An instance of the Cohere client.
+        :rtype: cohere.Client
         """
         try:
             import cohere
@@ -61,6 +77,13 @@ class CohereEncoder(DenseEncoder):
         return client
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
+        """Embed a list of documents. Supports text only.
+
+        :param docs: The documents to embed.
+        :type docs: List[str]
+        :return: The vector embeddings of the documents.
+        :rtype: List[List[float]]
+        """
         if self._client is None:
             raise ValueError("Cohere client is not initialized.")
         try:

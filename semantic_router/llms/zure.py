@@ -11,6 +11,8 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAILLM(BaseLLM):
+    """LLM for Azure OpenAI. Requires an Azure OpenAI API key.
+    """
     _client: Optional[openai.AzureOpenAI] = PrivateAttr(default=None)
 
     def __init__(
@@ -22,6 +24,21 @@ class AzureOpenAILLM(BaseLLM):
         max_tokens: int = 200,
         api_version="2023-07-01-preview",
     ):
+        """Initialize the AzureOpenAILLM.
+
+        :param name: The name of the Azure OpenAI model to use.
+        :type name: Optional[str]
+        :param openai_api_key: The Azure OpenAI API key.
+        :type openai_api_key: Optional[str]
+        :param azure_endpoint: The Azure OpenAI endpoint.
+        :type azure_endpoint: Optional[str]
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: int
+        :param api_version: The API version to use.
+        :type api_version: str
+        """
         if name is None:
             name = EncoderDefault.AZURE.value["language_model"]
         super().__init__(name=name)
@@ -41,6 +58,13 @@ class AzureOpenAILLM(BaseLLM):
         self.max_tokens = max_tokens
 
     def __call__(self, messages: List[Message]) -> str:
+        """Call the AzureOpenAILLM.
+
+        :param messages: The messages to pass to the AzureOpenAILLM.
+        :type messages: List[Message]
+        :return: The response from the AzureOpenAILLM.
+        :rtype: str
+        """
         if self._client is None:
             raise ValueError("AzureOpenAI client is not initialized.")
         try:
