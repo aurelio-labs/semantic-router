@@ -17,7 +17,9 @@ class TestHuggingFaceEncoder:
             with pytest.raises(ImportError) as error:
                 HuggingFaceEncoder()
 
-        assert "Please install transformers to use HuggingFaceEncoder" in str(error.value)
+        assert "Please install transformers to use HuggingFaceEncoder" in str(
+            error.value
+        )
         assert "pip install semantic-router[local]" in str(error.value)
 
     def test_huggingface_encoder_import_errors_torch(self):
