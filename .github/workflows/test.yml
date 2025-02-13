@@ -2,8 +2,7 @@ name: Test
 
 on:
   pull_request:
-  push:
-    branches: [ james/uv-migration ]
+
 
 jobs:
   build:
