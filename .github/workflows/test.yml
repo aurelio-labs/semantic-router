@@ -2,7 +2,8 @@ name: Test
 
 on:
   pull_request:
-
+  push:
+    branches: [ james/uv-migration ]
 
 env:
   POETRY_VERSION: "2.0.1"
