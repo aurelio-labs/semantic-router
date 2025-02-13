@@ -31,6 +31,7 @@ class CLIPEncoder(DenseEncoder):
     :param _Image: The PIL library.
     :type _Image: Any
     """
+
     name: str = "openai/clip-vit-base-patch16"
     type: str = "huggingface"
     tokenizer_kwargs: Dict = {}

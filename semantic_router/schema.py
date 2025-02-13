@@ -12,8 +12,7 @@ from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 
 
 class EncoderType(Enum):
-    """The type of encoder.
-    """
+    """The type of encoder."""
 
     AURELIO = "aurelio"
     AZURE = "azure"
@@ -31,52 +30,49 @@ class EncoderType(Enum):
 
 
 class EncoderInfo(BaseModel):
-    """Information about an encoder.
-    """
+    """Information about an encoder."""
+
     name: str
     token_limit: int
     threshold: Optional[float] = None
 
 
 class RouteChoice(BaseModel):
-    """A route choice typically output by the routers.
-    """
+    """A route choice typically output by the routers."""
+
     name: Optional[str] = None
     function_call: Optional[List[Dict]] = None
     similarity_score: Optional[float] = None
 
 
 class Message(BaseModel):
-    """A message in a conversation, includes the role and content fields.
-    """
+    """A message in a conversation, includes the role and content fields."""
+
     role: str
     content: str
 
     def to_openai(self):
-        """Convert the message to an OpenAI-compatible format.
-        """
+        """Convert the message to an OpenAI-compatible format."""
         if self.role.lower() not in ["user", "assistant", "system", "tool"]:
-            raise ValueError("Role must be either 'user', 'assistant', 'system' or 'tool'")
+            raise ValueError(
+                "Role must be either 'user', 'assistant', 'system' or 'tool'"
+            )
         return {"role": self.role, "content": self.content}
 
     def to_cohere(self):
-        """Convert the message to a Cohere-compatible format.
-        """
+        """Convert the message to a Cohere-compatible format."""
         return {"role": self.role, "message": self.content}
 
     def to_llamacpp(self):
-        """Convert the message to a LlamaCPP-compatible format.
-        """
+        """Convert the message to a LlamaCPP-compatible format."""
         return {"role": self.role, "content": self.content}
 
     def to_mistral(self):
-        """Convert the message to a Mistral-compatible format.
-        """
+        """Convert the message to a Mistral-compatible format."""
         return {"role": self.role, "content": self.content}
 
     def __str__(self):
-        """Convert the message to a string.
-        """
+        """Convert the message to a string."""
         return f"{self.role}: {self.content}"
 
 
@@ -84,6 +80,7 @@ class ConfigParameter(BaseModel):
     """A configuration parameter for a route. Used for remote router metadata such as
     router hashes, sync locks, etc.
     """
+
     field: str
     value: str
     scope: Optional[str] = None
@@ -118,6 +115,7 @@ class Utterance(BaseModel):
     """An utterance in a conversation, includes the route, utterance, function
     schemas, metadata, and diff tag.
     """
+
     route: str
     utterance: Union[str, Any]
     function_schemas: Optional[List[Dict]] = None
@@ -191,8 +189,7 @@ class Utterance(BaseModel):
 
 
 class SyncMode(Enum):
-    """Synchronization modes for local (route layer) and remote (index) instances.
-    """
+    """Synchronization modes for local (route layer) and remote (index) instances."""
 
     ERROR = "error"
     REMOTE = "remote"
@@ -209,6 +206,7 @@ class UtteranceDiff(BaseModel):
     """A list of Utterance objects that represent the differences between local and
     remote utterances.
     """
+
     diff: List[Utterance]
 
     @classmethod
@@ -471,8 +469,8 @@ class UtteranceDiff(BaseModel):
 
 
 class Metric(Enum):
-    """The metric to use in vector-based similarity search indexes.
-    """
+    """The metric to use in vector-based similarity search indexes."""
+
     COSINE = "cosine"
     DOTPRODUCT = "dotproduct"
     EUCLIDEAN = "euclidean"

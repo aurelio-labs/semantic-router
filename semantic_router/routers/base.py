@@ -65,8 +65,7 @@ def is_valid(layer_config: str) -> bool:
 
 
 class RouterConfig:
-    """Generates a RouterConfig object that can be used for initializing routers.
-    """
+    """Generates a RouterConfig object that can be used for initializing routers."""
 
     routes: List[Route] = Field(default_factory=list)
 
@@ -348,8 +347,7 @@ def xq_reshape(xq: List[float] | np.ndarray) -> np.ndarray:
 
 
 class BaseRouter(BaseModel):
-    """Base class for all routers.
-    """
+    """Base class for all routers."""
 
     encoder: DenseEncoder = Field(default_factory=OpenAIEncoder)
     sparse_encoder: Optional[SparseEncoder] = Field(default=None)
@@ -480,8 +478,7 @@ class BaseRouter(BaseModel):
         )
 
     def _init_index_state(self):
-        """Initializes an index (where required) and runs auto_sync if active.
-        """
+        """Initializes an index (where required) and runs auto_sync if active."""
         # initialize index now, check if we need dimensions
         if self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])
@@ -1283,7 +1280,7 @@ class BaseRouter(BaseModel):
         :type include_metadata: bool
         :return: A tuple of the route names, utterances, and function schemas.
         """
-        
+
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
@@ -1615,6 +1612,7 @@ class BaseRouter(BaseModel):
         :param local_execution: Whether to execute the fitting locally.
         :type local_execution: bool
         """
+        original_index = self.index
         if local_execution:
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex

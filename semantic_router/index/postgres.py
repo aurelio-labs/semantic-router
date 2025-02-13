@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 
 
 class MetricPgVecOperatorMap(Enum):
-    """Enum to map the metric to PostgreSQL vector operators.
-    """
+    """Enum to map the metric to PostgreSQL vector operators."""
 
     cosine = "<=>"
     dotproduct = "<#>"  # inner product
@@ -51,8 +50,7 @@ def clean_route_name(route_name: str) -> str:
 
 
 class PostgresIndexRecord(BaseModel):
-    """Model to represent a record in the Postgres index.
-    """
+    """Model to represent a record in the Postgres index."""
 
     id: str = ""
     route: str
@@ -90,8 +88,7 @@ class PostgresIndexRecord(BaseModel):
 
 
 class PostgresIndex(BaseIndex):
-    """Postgres implementation of Index.
-    """
+    """Postgres implementation of Index."""
 
     connection_string: Optional[str] = None
     index_prefix: str = "semantic_router_"
@@ -498,7 +495,6 @@ class PostgresIndex(BaseIndex):
             return count[0]
 
     class Config:
-        """Configuration for the Pydantic BaseModel.
-        """
+        """Configuration for the Pydantic BaseModel."""
 
         arbitrary_types_allowed = True

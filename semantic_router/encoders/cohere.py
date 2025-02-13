@@ -11,6 +11,7 @@ class CohereEncoder(DenseEncoder):
     """Dense encoder that uses Cohere API to embed documents. Supports text only. Requires
     a Cohere API key from https://dashboard.cohere.com/api-keys.
     """
+
     _client: Any = PrivateAttr()
     _embed_type: Any = PrivateAttr()
     type: str = "cohere"

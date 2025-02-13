@@ -12,6 +12,7 @@ from semantic_router.utils.logger import logger
 class OpenRouterLLM(BaseLLM):
     """LLM for OpenRouter. Requires an OpenRouter API key, see here for more information
     https://openrouter.ai/docs/api-reference/authentication#using-an-api-key"""
+
     _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
     _base_url: str = PrivateAttr(default="https://openrouter.ai/api/v1")
 

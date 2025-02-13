@@ -41,6 +41,7 @@ class OpenAIEncoder(DenseEncoder):
     to generate embeddings for given documents. It requires an OpenAI API key and
     supports customization of the score threshold for filtering or processing the embeddings.
     """
+
     _client: Optional[openai.Client] = PrivateAttr(default=None)
     _async_client: Optional[openai.AsyncClient] = PrivateAttr(default=None)
     dimensions: Union[int, NotGiven] = NotGiven()

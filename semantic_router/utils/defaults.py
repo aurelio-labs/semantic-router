@@ -3,8 +3,7 @@ from enum import Enum
 
 
 class EncoderDefault(Enum):
-    """Default model names for each encoder type.
-    """
+    """Default model names for each encoder type."""
 
     FASTEMBED = {
         "embedding_model": "BAAI/bge-small-en-v1.5",

@@ -13,6 +13,7 @@ class LlamaCppLLM(BaseLLM):
     """LLM for LlamaCPP. Enables fully local LLM use, helpful for local implementation of
     dynamic routes.
     """
+
     llm: Any
     grammar: Optional[Any] = None
     _llama_cpp: Any = PrivateAttr()

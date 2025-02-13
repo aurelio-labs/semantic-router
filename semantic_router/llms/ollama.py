@@ -11,6 +11,7 @@ class OllamaLLM(BaseLLM):
     """LLM for Ollama. Enables fully local LLM use, helpful for local implementation of
     dynamic routes.
     """
+
     stream: bool = False
 
     def __init__(

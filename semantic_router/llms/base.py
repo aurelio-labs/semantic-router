@@ -13,6 +13,7 @@ class BaseLLM(BaseModel):
     This class provides a base implementation for LLMs. It defines the common
     configuration and methods for all LLM classes.
     """
+
     name: str
     temperature: Optional[float] = 0.0
     max_tokens: Optional[int] = None

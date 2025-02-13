@@ -51,8 +51,8 @@ class DenseEncoder(BaseModel):
 
 
 class SparseEncoder(BaseModel):
-    """An encoder that encodes documents into a sparse format.
-    """
+    """An encoder that encodes documents into a sparse format."""
+
     name: str
     type: str = Field(default="base")
 

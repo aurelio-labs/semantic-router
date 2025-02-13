@@ -11,8 +11,8 @@ from semantic_router.utils.logger import logger
 
 
 class AzureOpenAILLM(BaseLLM):
-    """LLM for Azure OpenAI. Requires an Azure OpenAI API key.
-    """
+    """LLM for Azure OpenAI. Requires an Azure OpenAI API key."""
+
     _client: Optional[openai.AzureOpenAI] = PrivateAttr(default=None)
 
     def __init__(

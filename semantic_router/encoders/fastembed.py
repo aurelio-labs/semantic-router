@@ -15,6 +15,7 @@ class FastEmbedEncoder(DenseEncoder):
     :param cache_dir: The directory to cache the embedding model.
     :param threads: The number of threads to use for the embedding.
     """
+
     type: str = "fastembed"
     name: str = "BAAI/bge-small-en-v1.5"
     max_length: int = 512
@@ -22,9 +23,7 @@ class FastEmbedEncoder(DenseEncoder):
     threads: Optional[int] = None
     _client: Any = PrivateAttr()
 
-    def __init__(
-        self, score_threshold: float = 0.5, **data
-    ):
+    def __init__(self, score_threshold: float = 0.5, **data):
         """Initialize the FastEmbed encoder.
 
         :param score_threshold: The threshold for the score of the embedding.
@@ -35,8 +34,7 @@ class FastEmbedEncoder(DenseEncoder):
         self._client = self._initialize_client()
 
     def _initialize_client(self):
-        """Initialize the FastEmbed library. Requires the fastembed package.
-        """
+        """Initialize the FastEmbed library. Requires the fastembed package."""
         try:
             from fastembed import TextEmbedding
         except ImportError:

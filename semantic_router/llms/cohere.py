@@ -13,6 +13,7 @@ class CohereLLM(BaseLLM):
     This class provides functionality to interact with the Cohere API for generating text responses.
     It extends the BaseLLM class and implements the __call__ method to generate text responses.
     """
+
     _client: Any = PrivateAttr()
 
     def __init__(

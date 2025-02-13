@@ -12,6 +12,7 @@ class AurelioSparseEncoder(SparseEncoder):
     """Sparse encoder using Aurelio Platform's embedding API. Requires an API key from
     https://platform.aurelio.ai
     """
+
     model: Optional[Any] = None
     client: AurelioClient = Field(default_factory=AurelioClient, exclude=True)
     async_client: AsyncAurelioClient = Field(

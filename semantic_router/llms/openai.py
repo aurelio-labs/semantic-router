@@ -22,8 +22,8 @@ from semantic_router.utils.logger import logger
 
 
 class OpenAILLM(BaseLLM):
-    """LLM for OpenAI. Requires an OpenAI API key from https://platform.openai.com/api-keys.
-    """
+    """LLM for OpenAI. Requires an OpenAI API key from https://platform.openai.com/api-keys."""
+
     _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
     _async_client: Optional[openai.AsyncOpenAI] = PrivateAttr(default=None)
 

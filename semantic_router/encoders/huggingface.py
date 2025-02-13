@@ -34,6 +34,7 @@ from semantic_router.utils.logger import logger
 # TODO: this should support local models, and we should have another class for remote
 # inference endpoint models
 
+
 class HuggingFaceEncoder(DenseEncoder):
     """HuggingFace encoder class for local embedding models. Models can be trained and
     loaded from private repositories, or from the Huggingface Hub. The class supports
@@ -51,6 +52,7 @@ class HuggingFaceEncoder(DenseEncoder):
     embeddings = encoder(["document1", "document2"])
     ```
     """
+
     name: str = "sentence-transformers/all-MiniLM-L6-v2"
     type: str = "huggingface"
     tokenizer_kwargs: Dict = {}
@@ -180,7 +182,7 @@ class HuggingFaceEncoder(DenseEncoder):
 
 class HFEndpointEncoder(DenseEncoder):
     """HFEndpointEncoder class to embeddings models using Huggingface's inference endpoints.
-    
+
     The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified
     Huggingface endpoint to generate embeddings for given documents. It requires the URL
     of the Huggingface API endpoint and an API key for authentication. The class supports

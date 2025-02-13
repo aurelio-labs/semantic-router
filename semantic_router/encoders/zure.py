@@ -19,6 +19,7 @@ class AzureOpenAIEncoder(DenseEncoder):
     This class provides functionality to encode text documents using the Azure OpenAI API.
     It supports customization of the score threshold for filtering or processing the embeddings.
     """
+
     client: Optional[openai.AzureOpenAI] = None
     async_client: Optional[openai.AsyncAzureOpenAI] = None
     dimensions: Union[int, NotGiven] = NotGiven()

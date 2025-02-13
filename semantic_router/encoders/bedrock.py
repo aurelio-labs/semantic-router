@@ -32,7 +32,7 @@ class BedrockEncoder(DenseEncoder):
     """Dense encoder using Amazon Bedrock embedding API. Requires an AWS Access Key ID
     and AWS Secret Access Key.
 
-    The BedrockEncoder class is a subclass of DenseEncoder and utilizes the 
+    The BedrockEncoder class is a subclass of DenseEncoder and utilizes the
     TextEmbeddingModel from the Amazon's Bedrock Platform to generate embeddings for
     given documents. It supports customization of the pre-trained model, score
     threshold, and region.
@@ -50,6 +50,7 @@ class BedrockEncoder(DenseEncoder):
     embeddings = encoder(["document1", "document2"])
     ```
     """
+
     client: Any = None
     type: str = "bedrock"
     input_type: Optional[str] = "search_query"

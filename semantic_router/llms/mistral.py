@@ -10,8 +10,8 @@ from semantic_router.utils.logger import logger
 
 
 class MistralAILLM(BaseLLM):
-    """LLM for MistralAI. Requires a MistralAI API key from https://console.mistral.ai/api-keys/
-    """
+    """LLM for MistralAI. Requires a MistralAI API key from https://console.mistral.ai/api-keys/"""
+
     _client: Any = PrivateAttr()
     _mistralai: Any = PrivateAttr()
 

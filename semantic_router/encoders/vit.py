@@ -12,6 +12,7 @@ class VitEncoder(DenseEncoder):
     model via Hugging Face. It supports various image processing and model initialization
     options.
     """
+
     name: str = "google/vit-base-patch16-224"
     type: str = "huggingface"
     processor_kwargs: Dict = {}

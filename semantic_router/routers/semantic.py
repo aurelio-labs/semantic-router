@@ -11,8 +11,8 @@ from semantic_router.utils.logger import logger
 
 
 class SemanticRouter(BaseRouter):
-    """A router that uses a dense encoder to encode routes and utterances.
-    """
+    """A router that uses a dense encoder to encode routes and utterances."""
+
     def __init__(
         self,
         encoder: Optional[DenseEncoder] = None,
