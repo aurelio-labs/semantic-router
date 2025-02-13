@@ -17,7 +17,7 @@ jobs:
           PORT: 5080
           PINECONE_HOST: localhost
         ports:
-          - "5080-6000:5080-6000"
+        - "5080-6000:5080-6000"
 
     strategy:
       matrix:
@@ -28,51 +28,46 @@ jobs:
         - "3.13"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
+    - name: Cache uv
       uses: actions/cache@v4
       with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        path: ~/.uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-poetry-
+          ${{ runner.os }}-uv-
 
     - name: Wait for Pinecone service to start
       run: |
         echo "Waiting for Pinecone service to start..."
         sleep 10  # Wait for 10 seconds to ensure the container is up
 
-    - name: Install poetry
+    - name: Install uv
       run: |
-        pipx install poetry==$POETRY_VERSION
+        curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: poetry
+      run: uv venv --python 3.13
+      cache: uv
 
     # only needed for local testing
     # - name: Add Poetry to PATH
     #   run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
-      
+
     - name: Install dependencies
-      run: |
-        poetry install --all-extras
+      run: uv pip install -e .[dev]
     - name: Install nltk
-      run: |
-        pip install nltk
+      run: uv pip install nltk
 
     - name: Download nltk data
       run: |
-        python -m nltk.downloader punkt stopwords wordnet punkt_tab
-    
+        uv python -m nltk.downloader punkt stopwords wordnet punkt_tab
+
     - name: Pytest All
       env:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-      run: |
-        make test
+      run: make test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       env:
