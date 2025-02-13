@@ -49,19 +49,19 @@ class HuggingFaceEncoder(DenseEncoder):
 
     def _initialize_hf_model(self):
         try:
-            from transformers import AutoModel, AutoTokenizer
+            import torch
         except (ImportError, RuntimeError):
             raise ImportError(
-                "Please install transformers to use HuggingFaceEncoder. "
+                "Please install torch to use HuggingFaceEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[local]`"
             )
 
         try:
-            import torch
-        except RuntimeError:
+            from transformers import AutoModel, AutoTokenizer
+        except (ImportError, RuntimeError):
             raise ImportError(
-                "Please install Pytorch to use HuggingFaceEncoder. "
+                "Please install transformers to use HuggingFaceEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[local]`"
             )
