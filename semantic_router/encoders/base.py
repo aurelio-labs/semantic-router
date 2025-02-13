@@ -15,17 +15,44 @@ class DenseEncoder(BaseModel):
         arbitrary_types_allowed = True
 
     @field_validator("score_threshold")
-    def set_score_threshold(cls, v):
+    def set_score_threshold(cls, v: float | None) -> float | None:
+        """Set the score threshold. If None, the score threshold is not used.
+
+        :param v: The score threshold.
+        :type v: float | None
+        :return: The score threshold.
+        :rtype: float | None
+        """
         return float(v) if v is not None else None
 
     def __call__(self, docs: List[Any]) -> List[List[float]]:
+        """Encode a list of documents. Documents can be any type, but the encoder must
+        be built to handle that data type. Typically, these types are strings or
+        arrays representing images.
+
+        :param docs: The documents to encode.
+        :type docs: List[Any]
+        :return: The encoded documents.
+        :rtype: List[List[float]]
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
     def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[List[float]]]:
+        """Encode a list of documents asynchronously. Documents can be any type, but the
+        encoder must be built to handle that data type. Typically, these types are
+        strings or arrays representing images.
+
+        :param docs: The documents to encode.
+        :type docs: List[Any]
+        :return: The encoded documents.
+        :rtype: List[List[float]]
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
 
 class SparseEncoder(BaseModel):
+    """An encoder that encodes documents into a sparse format.
+    """
     name: str
     type: str = Field(default="base")
 
@@ -33,15 +60,38 @@ class SparseEncoder(BaseModel):
         arbitrary_types_allowed = True
 
     def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        """Encode a list of documents. Documents must be strings, sparse encoders do not
+        support other types.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :return: The encoded documents.
+        :rtype: List[SparseEmbedding]
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
     async def acall(self, docs: List[str]) -> list[SparseEmbedding]:
+        """Encode a list of documents. Documents must be strings, sparse encoders do not
+        support other types.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :return: The encoded documents.
+        :rtype: List[SparseEmbedding]
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
     def _array_to_sparse_embeddings(
         self, sparse_arrays: np.ndarray
     ) -> List[SparseEmbedding]:
-        """Consumes several sparse vectors containing zero-values and returns a compact array."""
+        """Consumes several sparse vectors containing zero-values and returns a compact
+        array.
+
+        :param sparse_arrays: The sparse arrays to compact.
+        :type sparse_arrays: np.ndarray
+        :return: The compact array.
+        :rtype: List[SparseEmbedding]
+        """
         if sparse_arrays.ndim != 2:
             raise ValueError(f"Expected a 2D array, got a {sparse_arrays.ndim}D array.")
         # get coordinates of non-zero values
