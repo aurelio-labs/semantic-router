@@ -26,9 +26,7 @@ class TestHuggingFaceEncoder:
             with pytest.raises(ImportError) as error:
                 HuggingFaceEncoder()
 
-        assert "Please install transformers to use HuggingFaceEncoder" in str(
-            error.value
-        )
+        assert "Please install Pytorch to use HuggingFaceEncoder" in str(error.value)
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
