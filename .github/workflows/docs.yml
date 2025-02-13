@@ -15,11 +15,9 @@ jobs:
       matrix:
         python-version:
         - "3.13"
-    env:
-      POETRY_VERSION: "2.0.1"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
+    - name: Cache uv
       uses: actions/cache@v4
       with:
         path: ~/.uv

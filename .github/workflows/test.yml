@@ -5,9 +5,6 @@ on:
   push:
     branches: [ james/uv-migration ]
 
-env:
-  POETRY_VERSION: "2.0.1"
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -68,7 +65,8 @@ jobs:
         PINECONE_API_BASE_URL: http://localhost:5080
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-      run: make test
+      run: |
+        make test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       env:
