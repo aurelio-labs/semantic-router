@@ -1121,7 +1121,7 @@ class BaseRouter(BaseModel):
         # ensure index is not locked
         if await self.index._ais_locked():
             raise ValueError("Index is locked. Cannot delete route.")
-        current_local_hash = await self._async_get_hash()
+        current_local_hash = self._get_hash()
         current_remote_hash = await self.index._async_read_hash()
         if current_remote_hash.value == "":
             # if remote hash is empty, the index is to be initialized

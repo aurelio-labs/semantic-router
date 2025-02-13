@@ -659,11 +659,14 @@ class PineconeIndex(BaseIndex):
 
         return all_vector_ids, metadata
 
-    def delete(self, route_name: str):
-        """Delete specified route from index if it exists.
+    def delete(self, route_name: str) -> list[str]:
+        """Delete specified route from index if it exists. Returns the IDs of the vectors
+        deleted.
 
         :param route_name: Name of the route to delete.
         :type route_name: str
+        :return: List of IDs of the vectors deleted.
+        :rtype: list[str]
         """
         route_vec_ids = self._get_route_ids(route_name=route_name)
         if self.index is not None:
@@ -690,6 +693,23 @@ class PineconeIndex(BaseIndex):
                     raise Exception(
                         f"Failed to delete vectors: {response.status_code} : {error_message}"
                     )
+            return route_vec_ids
+        else:
+            raise ValueError("Index is None, could not delete.")
+
+    async def adelete(self, route_name: str) -> list[str]:
+        """Asynchronously delete specified route from index if it exists. Returns the IDs
+        of the vectors deleted.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        :return: List of IDs of the vectors deleted.
+        :rtype: list[str]
+        """
+        route_vec_ids = await self._async_get_route_ids(route_name=route_name)
+        if self.index is not None:
+            await self._async_delete(ids=route_vec_ids, namespace=self.namespace or "")
+            return route_vec_ids
         else:
             raise ValueError("Index is None, could not delete.")
 
@@ -1041,7 +1061,7 @@ class PineconeIndex(BaseIndex):
                 except JSONDecodeError as e:
                     logger.error(f"JSON decode error: {e}")
                     return {}
-                
+
     async def _is_async_ready(self, client_only: bool = False) -> bool:
         """Checks if class attributes exist to be used for async operations.
 

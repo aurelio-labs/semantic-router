@@ -191,6 +191,18 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    async def adelete(self, route_name: str) -> list[str]:
+        """Asynchronously delete specified route from index if it exists. Returns the IDs
+        of the vectors deleted.
+        This method should be implemented by subclasses.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        :return: List of IDs of the vectors deleted.
+        :rtype: list[str]
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def describe(self) -> IndexConfig:
         """Returns an IndexConfig object with index details such as type, dimensions,
         and total vector count.
