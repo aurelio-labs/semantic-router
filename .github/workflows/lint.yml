@@ -27,8 +27,6 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Set up Python ${{ matrix.python-version }}
       run: uv venv --python 3.13
-      with:
-        cache: uv
     - name: Install dependencies
       run: uv pip install -e .[dev]
     - name: Analyzing the code with our lint

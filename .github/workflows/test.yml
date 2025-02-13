@@ -44,8 +44,6 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Set up Python ${{ matrix.python-version }}
       run: uv venv --python 3.13
-      with:
-        cache: uv
 
     # only needed for local testing
     # - name: Add Poetry to PATH

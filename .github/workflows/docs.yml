@@ -34,8 +34,6 @@ jobs:
     #     cache: uv
     - name: Set up Python ${{ matrix.python-version }}
       run: uv venv --python 3.13
-      with:
-        cache: uv
     - name: Install dependencies
       run: uv pip install -e .[dev]
     - name: Build docs
