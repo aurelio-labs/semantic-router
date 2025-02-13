@@ -3288,6 +3288,24 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "boto3" },
+    { name = "botocore" },
+    { name = "cohere" },
+    { name = "fastembed", marker = "python_full_version < '3.13'" },
+    { name = "google-cloud-aiplatform" },
+    { name = "llama-cpp-python", marker = "python_full_version < '3.13'" },
+    { name = "mistralai" },
+    { name = "pillow", marker = "python_full_version < '3.13'" },
+    { name = "pinecone" },
+    { name = "pinecone-text" },
+    { name = "qdrant-client", version = "1.12.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "qdrant-client", version = "1.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
+    { name = "tokenizers", marker = "python_full_version < '3.13'" },
+    { name = "torch", marker = "python_full_version < '3.13'" },
+    { name = "torchvision", marker = "python_full_version < '3.13'" },
+    { name = "transformers", marker = "python_full_version < '3.13'" },
+]
 bedrock = [
     { name = "boto3" },
     { name = "botocore" },
@@ -3372,6 +3390,17 @@ requires-dist = [
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.11.1,<2" },
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "requests-mock", specifier = ">=1.12.1,<2" },
+    { name = "semantic-router", extras = ["bedrock"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["cohere"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["fastembed"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["google"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["hybrid"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["local"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["mistralai"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["pinecone"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["postgres"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["qdrant"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["vision"], marker = "extra == 'all'" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0.0,<8" },
     { name = "sphinxawesome-theme", marker = "extra == 'docs'", specifier = ">=5.2.0,<6" },
     { name = "tiktoken", specifier = ">=0.6.0,<1.0.0" },

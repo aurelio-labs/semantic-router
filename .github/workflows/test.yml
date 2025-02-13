@@ -49,7 +49,7 @@ jobs:
     #   run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
 
     - name: Install dependencies
-      run: uv pip install -e .[dev]
+      run: uv pip install -e .[all]
     - name: Install nltk
       run: uv pip install nltk
 
