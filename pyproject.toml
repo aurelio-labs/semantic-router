@@ -39,6 +39,7 @@ psycopg2-binary = {version = "^2.9.9", optional = true}
 sphinx = {version = "^7.0.0", optional = true}
 sphinxawesome-theme = {version = "^5.2.0", optional = true}
 tornado = {version = "^6.4.2", optional = true}
+urllib3 = ">=1.25.4,<1.27"
 
 [tool.poetry.extras]
 hybrid = ["pinecone-text"]
@@ -66,6 +67,7 @@ mypy = "^1.7.1"
 types-pyyaml = "^6.0.12.12"
 types-requests = "^2.31.0"
 black = {extras = ["jupyter"], version = ">=23.12.1,<24.5.0"}
+pydoc-markdown="^4.8.2"
 
 [build-system]
 requires = ["poetry-core"]
