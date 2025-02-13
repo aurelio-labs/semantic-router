@@ -1,10 +1,9 @@
 name: lint
 
 on:
-  push:
-    branches: [ main, james/uv-migration ]
   pull_request:
-
+    branches: [ main ]
+    types: [ opened, edited, synchronize ]
 
 jobs:
   build:
