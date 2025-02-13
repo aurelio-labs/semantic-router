@@ -32,7 +32,7 @@ repos:
     language: python
     types: [ text ]
     args: [ "--write-changes", "--ignore-words-list", "asend" ]
-    exclude: "poetry.lock"
+    exclude: "uv.lock"
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.4.0

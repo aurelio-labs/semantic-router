@@ -11,16 +11,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.13'
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python - -y --version 1.5.1
+      run: uv venv --python 3.13
+      cache: uv
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Install dependencies
-      run: poetry install
+      run: uv pip install -e .[dev]
     - name: Build
-      run: poetry build
+      run: uv build
 
   publish:
     needs: build
@@ -28,15 +26,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.13'
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python - -y --version 2.0.1
+      run: uv venv --python 3.13
+      cache: uv
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    - name: Install dependencies
+      run: uv pip install -e .[dev]
+    - name: Build
+      run: uv build
     - name: Publish to PyPI
       run: |
-        poetry config repositories.remote https://upload.pypi.org/legacy/
-        poetry --no-interaction -v publish --build --repository remote --username "__token__" --password "$PYPI_API_TOKEN"
+        uv config repositories.remote https://upload.pypi.org/legacy/
+        uv --no-interaction -v publish --build --repository remote --username "__token__" --password "$PYPI_API_TOKEN"
       env:
         PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
