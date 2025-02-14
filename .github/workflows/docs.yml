@@ -15,31 +15,30 @@ jobs:
       matrix:
         python-version:
         - "3.13"
-    env:
-      POETRY_VERSION: "2.0.1"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
+    - name: Cache uv
       uses: actions/cache@v4
       with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        path: ~/.uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-poetry-
-    - name: Install poetry
+          ${{ runner.os }}-uv-
+    - name: Install uv
       run: |
-        pipx install poetry==$POETRY_VERSION
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+    # - name: Set up Python ${{ matrix.python-version }}
+    #   uses: actions/setup-python@v4
+    #   with:
+    #     python-version: ${{ matrix.python-version }}
+    #     cache: uv
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: poetry
+      run: uv venv --python 3.13
     - name: Install dependencies
-      run: |
-        poetry install --all-extras
+      run: uv pip install -e .[docs]
     - name: Build docs
       run: |
-        poetry run sphinx-build -M html docs/source docs/build
+        uv run sphinx-build -M html docs/source docs/build
     - name: Authenticate to Google Cloud
       id: auth
       uses: google-github-actions/auth@v2
