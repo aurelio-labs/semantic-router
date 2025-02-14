@@ -49,7 +49,7 @@ jobs:
       with:
         repository: aurelio-labs/docs
         path: temp-docs
-        token: ${{ secrets.DOCS_PAT }}
+        token: ${{ secrets.PAT }}
 
     - name: Copy and rename docs
       run: |
