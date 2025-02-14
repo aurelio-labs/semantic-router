@@ -21,13 +21,6 @@ jobs:
         - "3.11"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache uv
-      uses: actions/cache@v4
-      with:
-        path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-
     - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
