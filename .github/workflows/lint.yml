@@ -25,9 +25,6 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         uv venv --python 3.13
         uv pip install .[dev]
-      with:
-        cache-key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}-${{ matrix.python-version }}
-        cache-name: uv
     - name: Analyzing the code with our lint
       run: |
         make lint
