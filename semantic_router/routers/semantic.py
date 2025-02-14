@@ -73,9 +73,12 @@ class SemanticRouter(BaseRouter):
         if isinstance(routes, Route):
             routes = [routes]
         # create embeddings for all routes
-        route_names, all_utterances, all_function_schemas, all_metadata = (
-            self._extract_routes_details(routes, include_metadata=True)
-        )
+        (
+            route_names,
+            all_utterances,
+            all_function_schemas,
+            all_metadata,
+        ) = self._extract_routes_details(routes, include_metadata=True)
         dense_emb = self._encode(all_utterances)
         self.index.add(
             embeddings=dense_emb.tolist(),

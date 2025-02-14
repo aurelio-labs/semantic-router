@@ -674,7 +674,6 @@ class PineconeIndex(BaseIndex):
             if self.base_url and "api.pinecone.io" in self.base_url:
                 self.index.delete(ids=route_vec_ids, namespace=self.namespace)
             else:
-
                 response = requests.post(
                     f"{self.index_host}/vectors/delete",
                     json=DeleteRequest(

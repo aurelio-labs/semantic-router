@@ -101,9 +101,12 @@ class HybridRouter(BaseRouter):
         if isinstance(routes, Route):
             routes = [routes]
         # create embeddings for all routes
-        route_names, all_utterances, all_function_schemas, all_metadata = (
-            self._extract_routes_details(routes, include_metadata=True)
-        )
+        (
+            route_names,
+            all_utterances,
+            all_function_schemas,
+            all_metadata,
+        ) = self._extract_routes_details(routes, include_metadata=True)
         # TODO: to merge, self._encode should probably output a special
         # TODO Embedding type that can be either dense or hybrid
         dense_emb, sparse_emb = self._encode(all_utterances)
