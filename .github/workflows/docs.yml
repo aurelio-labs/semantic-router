@@ -25,12 +25,12 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        cache: pydocs
     - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Install dependencies
       run: |
+        uv venv --python ${{ matrix.python-version }}
         uv pip install .[docs]
 
     - name: Build docs
