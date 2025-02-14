@@ -32,7 +32,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       run: uv venv --python ${{ matrix.python-version }}
     - name: Install dependencies
-      run: uv pip install -e .[docs]
+      run: uv pip install .[docs]
 
     - name: Build docs
       run: |

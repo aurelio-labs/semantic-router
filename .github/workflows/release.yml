@@ -15,7 +15,7 @@ jobs:
     - name: Install uv
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Install dependencies
-      run: uv pip install -e .[dev]
+      run: uv pip install .[dev]
     - name: Build
       run: uv build
 
@@ -29,7 +29,7 @@ jobs:
     - name: Install uv
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Install dependencies
-      run: uv pip install -e .[dev]
+      run: uv pip install .[dev]
     - name: Build
       run: uv build
     - name: Publish to PyPI

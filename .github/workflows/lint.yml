@@ -26,7 +26,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       run: uv venv --python 3.13
     - name: Install dependencies
-      run: uv pip install -e .[dev]
+      run: uv pip install .[dev]
     - name: Analyzing the code with our lint
       run: |
         make lint
