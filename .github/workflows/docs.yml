@@ -3,10 +3,6 @@ name: Release Docs
 on:
   release:
     types: [ released ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
 
 jobs:
   build-docs:
