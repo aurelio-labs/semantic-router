@@ -5,6 +5,7 @@ on:
     types: [ released ]
   workflow_dispatch:
 
+
 jobs:
   build-docs:
     permissions:
@@ -16,47 +17,46 @@ jobs:
       matrix:
         python-version:
         - "3.13"
-    env:
-      POETRY_VERSION: "2.0.1"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
+    - name: Cache uv
       uses: actions/cache@v4
       with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        path: ~/.uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-poetry-
-    - name: Install poetry
+          ${{ runner.os }}-uv-
+    - name: Install uv
       run: |
-        pipx install poetry==$POETRY_VERSION
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+    # - name: Set up Python ${{ matrix.python-version }}
+    #   uses: actions/setup-python@v4
+    #   with:
+    #     python-version: ${{ matrix.python-version }}
+    #     cache: uv
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: poetry
+      run: uv venv --python 3.11
     - name: Install dependencies
-      run: |
-        poetry install --all-extras
+      run: uv pip install -e .[docs]
 
     - name: Build docs
       run: |
         mkdir -p docs/build
-        poetry run pydoc-markdown .pydoc-markdown.yml
-    
+        uv run pydoc-markdown .pydoc-markdown.yml
+
     - name: Checkout docs repo
       uses: actions/checkout@v4
       with:
         repository: aurelio-labs/docs
         path: temp-docs
         token: ${{ secrets.DOCS_PAT }}
-    
+
     - name: Copy and rename docs
       run: |
         ROOT_DIR=$(pwd)
         rm -rf temp-docs/semantic-router/client-reference
         mkdir -p temp-docs/semantic-router/client-reference/
-        
+
         # Find and copy all md files
         cd docs/build/semantic_router
         find . -type f -name "*.md" | while read file; do
@@ -65,7 +65,7 @@ jobs:
           mkdir -p "$ROOT_DIR/temp-docs/semantic-router/client-reference/$dir"
           cp "$file" "$ROOT_DIR/temp-docs/semantic-router/client-reference/${file%.md}.mdx"
         done
-      
+
     - name: Update frontmatter keys
       run: |
         find temp-docs/semantic-router/client-reference -type f -name "*.mdx" -exec sed -i 's/sidebar_label:/sidebarTitle:/g' {} +
@@ -93,7 +93,7 @@ jobs:
             }))[]
           ]
         ')
-        
+
         # Update the docs.json file
         jq --arg pages "$files" '
           (.navigation.tabs[] | select(.tab == "Semantic Router") | 

@@ -1112,6 +1112,41 @@ class BaseRouter(BaseModel):
                 "to see details."
             )
 
+    async def adelete(self, route_name: str):
+        """Deletes a route given a specific route name asynchronously.
+
+        :param route_name: the name of the route to be deleted
+        :type str:
+        """
+        # ensure index is not locked
+        if await self.index._ais_locked():
+            raise ValueError("Index is locked. Cannot delete route.")
+        current_local_hash = self._get_hash()
+        current_remote_hash = await self.index._async_read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
+        if route_name not in [route.name for route in self.routes]:
+            err_msg = f"Route `{route_name}` not found in {self.__class__.__name__}"
+            logger.warning(err_msg)
+            try:
+                await self.index.adelete(route_name=route_name)
+            except Exception as e:
+                logger.error(f"Failed to delete route from the index: {e}")
+        else:
+            self.routes = [route for route in self.routes if route.name != route_name]
+            await self.index.adelete(route_name=route_name)
+
+        if current_local_hash.value == current_remote_hash.value:
+            await self._async_write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
+
     def _refresh_routes(self):
         """Pulls out the latest routes from the index.
 

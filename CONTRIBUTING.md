@@ -27,6 +27,7 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
 1. Fork on GitHub:
     Go to the [repository's page](https://github.com/aurelio-labs/semantic-router) on GitHub: 
     Click the "Fork" button in the top-right corner of the page.
+
 2. Clone Your Fork:
     After forking, you'll be taken to your new fork of the repository on GitHub. Copy the URL of your fork from the address bar or by clicking the "Code" button and copying the URL under "Clone with HTTPS" or "Clone with SSH".
     Open your terminal or command prompt.
@@ -34,18 +35,20 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
     ```
     git clone https://github.com/<your-gh-username>/<semantic-router>.git
     ```
-3. Ensure you have poetry installed: `pip install poetry`.
-4. Then navigate to the cloned folder, create a virtualenv, and install via poetry (which defaults to an editable installation):
+
+3. Ensure you have [`uv` installed](https://docs.astral.sh/uv/getting-started/installation/), for macos and linux use `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+4. Then navigate to the cloned folder, create a virtualenv, and install via `uv`:
     ```
     # Move into the cloned folder
     cd semantic-router/
 
     # Create a virtual environment
-    python3 -m venv venv
+    uv venv --python 3.13
 
     # Activate the environment
-    source venv/bin/activate
+    source .venv/bin/activate
 
-    # Install via poetry with all extras relevant to perform unit tests
-    poetry install --all-extras
+    # Install via uv with all extras relevant to perform unit tests
+    uv pip install -e .[dev]
     ```
