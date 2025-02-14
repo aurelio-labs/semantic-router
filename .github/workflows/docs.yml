@@ -23,7 +23,7 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
         python-version: ${{ matrix.python-version }}
-    - name: Sync uv for docs
+    - name: Install Dependencies
       run: uv sync --extra docs
     - name: Build docs
       run: |

@@ -9,20 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Cache uv
-      uses: actions/cache@v4
-      with:
-        path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}-${{ matrix.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-uv-${{ matrix.python-version }}
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      run: uv venv --python 3.13
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
-      run: uv pip install .[dev]
+      run: uv sync --extra dev
     - name: Build
       run: uv build
 
@@ -31,12 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python
-      run: uv venv --python 3.13
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
-      run: uv pip install .[dev]
+      run: uv sync --extra dev
     - name: Build
       run: uv build
     - name: Publish to PyPI
