@@ -97,8 +97,6 @@ jobs:
       run: |
         git config --local user.email "admin@aurelio.ai"
         git config --local user.name "aurelio-bot"
+        git remote set-url origin https://aurelio-bot:${{ secrets.PAT }}@github.com/aurelio-labs/docs.git
         git add .
-        if ! git diff --quiet || ! git diff --staged --quiet; then
-          git commit -m "chore: update semantic router docs"
-          git push "https://${{ secrets.PAT }}@github.com/aurelio-labs/docs.git" HEAD:main
-        fi
+        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update semantic router docs" && git push)
