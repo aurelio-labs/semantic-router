@@ -17,16 +17,17 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}-${{ matrix.python-version }}
         restore-keys: |
-          ${{ runner.os }}-uv-
+          ${{ runner.os }}-uv-${{ matrix.python-version }}
     - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv venv --python 3.13
-    - name: Install dependencies
-      run: uv pip install .[dev]
+        uv venv --python 3.13
+        uv pip install .[dev]
+      with:
+        cache-key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}-${{ matrix.python-version }}
+        cache-name: uv
     - name: Analyzing the code with our lint
       run: |
         make lint

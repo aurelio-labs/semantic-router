@@ -29,9 +29,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}-${{ matrix.python-version }}
         restore-keys: |
-          ${{ runner.os }}-uv-
+          ${{ runner.os }}-uv-${{ matrix.python-version }}
 
     - name: Wait for Pinecone service to start
       run: |
@@ -42,7 +42,7 @@ jobs:
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Set up Python ${{ matrix.python-version }}
-      run: uv venv --python 3.13
+      run: uv venv --python ${{ matrix.python-version }}
 
     # only needed for local testing
     # - name: Add Poetry to PATH
