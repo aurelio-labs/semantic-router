@@ -1,9 +1,9 @@
 """
 This module provides the HFEndpointEncoder class to embeddings models using Huggingface's endpoint.
 
-The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified Huggingface 
-endpoint to generate embeddings for given documents. It requires the URL of the Huggingface 
-API endpoint and an API key for authentication. The class supports customization of the score 
+The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified Huggingface
+endpoint to generate embeddings for given documents. It requires the URL of the Huggingface
+API endpoint and an API key for authentication. The class supports customization of the score
 threshold for filtering or processing the embeddings.
 
 Example usage:
@@ -70,17 +70,8 @@ class HuggingFaceEncoder(DenseEncoder):
 
     def _initialize_hf_model(self):
         try:
-            from transformers import AutoModel, AutoTokenizer
-        except ImportError:
-            raise ImportError(
-                "Please install transformers to use HuggingFaceEncoder. "
-                "You can install it with: "
-                "`pip install semantic-router[local]`"
-            )
-
-        try:
             import torch
-        except ImportError:
+        except (RuntimeError, ModuleNotFoundError):
             raise ImportError(
                 "Please install Pytorch to use HuggingFaceEncoder. "
                 "You can install it with: "
@@ -88,6 +79,15 @@ class HuggingFaceEncoder(DenseEncoder):
             )
 
         self._torch = torch
+
+        try:
+            from transformers import AutoModel, AutoTokenizer
+        except (ImportError, RuntimeError):
+            raise ImportError(
+                "Please install transformers to use HuggingFaceEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[local]`"
+            )
 
         tokenizer = AutoTokenizer.from_pretrained(
             self.name,
