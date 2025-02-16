@@ -33,8 +33,8 @@ local = [
 ]
 pinecone = ["pinecone>=5.0.0,<6.0.0"]
 vision = [
-    "torch>=2.1.0",
-    "torchvision>=0.17.0",
+    "torch>=2.1.0 ; python_version < '3.13'",
+    "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
 ]
@@ -64,8 +64,14 @@ all = [
 ]
 
 [tool.uv.sources]
-torch = { git = "https://github.com/pytorch/pytorch.git", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  }
-torchvision = { git = "https://github.com/pytorch/vision.git", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  }
+torch = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]
+torchvision = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]
 
 [dependency-groups]
 dev = [
@@ -100,3 +106,14 @@ line-length = 88
 
 [tool.mypy]
 ignore_missing_imports = true
+
+# PyTorch indexes
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cpu"
+explicit = true
