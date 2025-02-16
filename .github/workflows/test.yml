@@ -25,31 +25,14 @@ jobs:
         - "3.13"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache uv
-      uses: actions/cache@v4
-      with:
-        path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-
-
-    - name: Wait for Pinecone service to start
-      run: |
-        echo "Waiting for Pinecone service to start..."
-        sleep 10  # Wait for 10 seconds to ensure the container is up
-
     - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv venv --python 3.13
-
-    # only needed for local testing
-    # - name: Add Poetry to PATH
-    #   run: echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
-
-    - name: Install dependencies
-      run: uv pip install -e .[all]
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: uv sync --extra all
     - name: Install nltk
       run: uv pip install nltk
 

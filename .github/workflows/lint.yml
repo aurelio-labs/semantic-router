@@ -13,20 +13,15 @@ jobs:
         - "3.13"
     steps:
     - uses: actions/checkout@v3
-    - name: Cache uv
-      uses: actions/cache@v4
-      with:
-        path: ~/.uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-
     - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
       run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv venv --python 3.13
-    - name: Install dependencies
-      run: uv pip install -e .[dev]
-    - name: Analyzing the code with our lint
+        uv sync --extra dev
+    - name: Run Lint
       run: |
         make lint

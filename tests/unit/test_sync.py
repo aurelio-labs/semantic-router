@@ -115,7 +115,6 @@ def init_index(
     issues during testing.
     """
     if index_cls is PineconeIndex:
-
         if index_name:
             if not dimensions and "OpenAIEncoder" in index_name:
                 dimensions = 1536

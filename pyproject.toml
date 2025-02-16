@@ -20,6 +20,7 @@ dependencies = [
     "aiohttp>=3.10.11,<4",
     "psycopg2-binary>=2.9.9,<3",
     "tornado>=6.4.2,<7",
+    "urllib3>=1.25.4,<1.27"
 ]
 
 [project.optional-dependencies]
@@ -32,8 +33,8 @@ local = [
 ]
 pinecone = ["pinecone>=5.0.0,<6.0.0"]
 vision = [
-    "torch>=2.1.0,<2.6.0 ; python_version < '3.13'",
-    "torchvision>=0.17.0,<0.18.0 ; python_version < '3.13'",
+    "torch>=2.1.0 ; python_version < '3.13'",
+    "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
 ]
@@ -46,10 +47,7 @@ bedrock = [
 ]
 postgres = []
 fastembed = ["fastembed>=0.3.0,<0.4 ; python_version < '3.13'"]
-docs = [
-    "sphinx>=7.0.0,<8",
-    "sphinxawesome-theme>=5.2.0,<6",
-]
+docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
 cohere = ["cohere>=5.9.4,<6.00"]
 all = [
     "semantic-router[local]",
@@ -66,8 +64,14 @@ all = [
 ]
 
 [tool.uv.sources]
-torch = { git = "https://github.com/pytorch/pytorch.git" }
-torchvision = { git = "https://github.com/pytorch/vision.git" }
+torch = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]
+torchvision = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]
 
 [dependency-groups]
 dev = [
@@ -81,7 +85,7 @@ dev = [
     "mypy>=1.7.1,<2",
     "types-pyyaml>=6.0.12.12,<7",
     "types-requests>=2.31.0,<3",
-    "black[jupyter]>=23.12.1,<24.5.0",
+    "black[jupyter]>=23.1.0",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -102,3 +106,14 @@ line-length = 88
 
 [tool.mypy]
 ignore_missing_imports = true
+
+# PyTorch indexes
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-nightly"
+url = "https://download.pytorch.org/whl/nightly/cpu"
+explicit = true

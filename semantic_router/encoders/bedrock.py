@@ -198,7 +198,6 @@ class BedrockEncoder(DenseEncoder):
                 embeddings = []
                 if self.name and "amazon" in self.name:
                     for doc in docs:
-
                         embedding_body = {}
 
                         if isinstance(doc, dict):
