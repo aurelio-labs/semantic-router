@@ -3,6 +3,8 @@ from typing import Any, List, Optional
 import numpy as np
 
 from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.base import AsymmetricDenseMixin
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index.base import BaseIndex
 from semantic_router.llms import BaseLLM
 from semantic_router.route import Route
@@ -35,28 +37,60 @@ class SemanticRouter(BaseRouter):
             auto_sync=auto_sync,
         )
 
-    def _encode(self, text: list[str]) -> Any:
+    def _encode(self, text: list[str], input_type: EncodeInputType) -> Any:
         """Given some text, encode it.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The encoded text.
         :rtype: Any
         """
         # create query vector
-        xq = np.array(self.encoder(text))
+        match input_type:
+            case "queries":
+                xq = np.array(
+                    self.encoder(text)
+                    if not isinstance(self.encoder, AsymmetricDenseMixin)
+                    else self.encoder.encode_queries(text)
+                )
+            case "documents":
+                xq = np.array(
+                    self.encoder(text)
+                    if not isinstance(self.encoder, AsymmetricDenseMixin)
+                    else self.encoder.encode_documents(text)
+                )
         return xq
 
-    async def _async_encode(self, text: list[str]) -> Any:
+    async def _async_encode(self, text: list[str], input_type: EncodeInputType) -> Any:
         """Given some text, encode it.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The encoded text.
         :rtype: Any
         """
         # create query vector
-        xq = np.array(await self.encoder.acall(docs=text))
+        match input_type:
+            case "queries":
+                xq = np.array(
+                    await (
+                        self.encoder.acall(docs=text)
+                        if not isinstance(self.encoder, AsymmetricDenseMixin)
+                        else self.encoder.aencode_queries(docs=text)
+                    )
+                )
+            case "documents":
+                xq = np.array(
+                    await (
+                        self.encoder.acall(docs=text)
+                        if not isinstance(self.encoder, AsymmetricDenseMixin)
+                        else self.encoder.aencode_documents(docs=text)
+                    )
+                )
         return xq
 
     def add(self, routes: List[Route] | Route):
@@ -79,7 +113,7 @@ class SemanticRouter(BaseRouter):
             all_function_schemas,
             all_metadata,
         ) = self._extract_routes_details(routes, include_metadata=True)
-        dense_emb = self._encode(all_utterances)
+        dense_emb = self._encode(all_utterances, input_type="documents")
         self.index.add(
             embeddings=dense_emb.tolist(),
             routes=route_names,

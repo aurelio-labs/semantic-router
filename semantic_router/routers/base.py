@@ -3,7 +3,7 @@ import importlib
 import json
 import os
 import random
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import yaml  # type: ignore
@@ -17,6 +17,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
     SparseEncoder,
 )
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
@@ -1336,7 +1337,9 @@ class BaseRouter(BaseModel):
         return route_names, utterances, function_schemas
 
     def _encode(
-        self, text: list[str], input_type: Literal["queries", "documents"]
+        self,
+        text: list[str],
+        input_type: EncodeInputType,
     ) -> Any:
         """Generates embeddings for a given text.
 
@@ -1345,7 +1348,7 @@ class BaseRouter(BaseModel):
         :param text: The text to encode.
         :type text: list[str]
         :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
-        :type input_type: Literal["queries", "documents"]
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The embeddings of the text.
         :rtype: Any
         """
@@ -1353,7 +1356,9 @@ class BaseRouter(BaseModel):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     async def _async_encode(
-        self, text: list[str], input_type: Literal["queries", "documents"]
+        self,
+        text: list[str],
+        input_type: EncodeInputType,
     ) -> Any:
         """Asynchronously generates embeddings for a given text.
 
@@ -1362,7 +1367,7 @@ class BaseRouter(BaseModel):
         :param text: The text to encode.
         :type text: list[str]
         :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
-        :type input_type: Literal["queries", "documents"]
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The embeddings of the text.
         :rtype: Any
         """

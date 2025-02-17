@@ -10,7 +10,11 @@ from semantic_router.encoders import (
     DenseEncoder,
     SparseEncoder,
 )
-from semantic_router.encoders.base import FittableMixin
+from semantic_router.encoders.base import (
+    AsymmetricDenseMixin,
+    AsymmetricSparseMixin,
+    FittableMixin,
+)
 from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index import BaseIndex, HybridLocalIndex
 from semantic_router.llms import BaseLLM
@@ -219,15 +223,23 @@ class HybridRouter(BaseRouter):
         if self.sparse_encoder is None:
             raise ValueError("self.sparse_encoder is not set.")
 
-        # Create dense vector
-        xq_d = np.array(self.encoder(text, input_type=input_type))
+        if isinstance(self.encoder, AsymmetricDenseMixin):
+            match input_type:
+                case "queries":
+                    xq_d = self.encoder.encode_queries(text)
+                case "documents":
+                    xq_d = self.encoder.encode_documents(text)
+        else:
+            xq_d = self.encoder(text)
 
-        # Create sparse vector, handling BM25's query/document distinction
-        match input_type:
-            case "queries":
-                xq_s = self.sparse_encoder.encode_queries(text)
-            case "documents":
-                xq_s = self.sparse_encoder.encode_documents(text)
+        if isinstance(self.sparse_encoder, AsymmetricSparseMixin):
+            match input_type:
+                case "queries":
+                    xq_s = self.sparse_encoder.encode_queries(text)
+                case "documents":
+                    xq_s = self.sparse_encoder.encode_documents(text)
+        else:
+            xq_s = self.sparse_encoder(text)
 
         # Convex scaling
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
@@ -251,8 +263,24 @@ class HybridRouter(BaseRouter):
         # TODO: should encode "content" rather than text
         # TODO: add alpha as a parameter
         # async encode both dense and sparse
-        dense_coro = self.encoder.acall(text, input_type=input_type)
-        sparse_coro = self.sparse_encoder.acall(text, input_type=input_type)
+
+        if isinstance(self.encoder, AsymmetricDenseMixin):
+            match input_type:
+                case "queries":
+                    dense_coro = self.encoder.aencode_queries(text)
+                case "documents":
+                    dense_coro = self.encoder.aencode_documents(text)
+        else:
+            dense_coro = self.encoder.acall(text)
+
+        if isinstance(self.sparse_encoder, AsymmetricSparseMixin):
+            match input_type:
+                case "queries":
+                    sparse_coro = self.sparse_encoder.aencode_queries(text)
+                case "documents":
+                    sparse_coro = self.sparse_encoder.aencode_documents(text)
+        else:
+            sparse_coro = self.sparse_encoder.acall(text)
         dense_vec, xq_s = await asyncio.gather(dense_coro, sparse_coro)
         # create dense query vector
         xq_d = np.array(dense_vec)
@@ -290,8 +318,8 @@ class HybridRouter(BaseRouter):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            xq_d = np.array(self.encoder([text], input_type="queries"))
-            xq_s = self.sparse_encoder([text], input_type="queries")
+            xq_d = np.array(self.encoder([text]))
+            xq_s = self.sparse_encoder([text])
             vector, potential_sparse_vector = self._convex_scaling(
                 dense=xq_d, sparse=xq_s
             )
@@ -386,8 +414,16 @@ class HybridRouter(BaseRouter):
                 routes.append(utterance.route)
                 utterances.append(utterance.utterance)
                 metadata.append(utterance.metadata)
-            embeddings = self.encoder(utterances, input_type="documents")
-            sparse_embeddings = self.sparse_encoder.encode_documents(utterances)
+            embeddings = (
+                self.encoder(utterances)
+                if not isinstance(self.encoder, AsymmetricDenseMixin)
+                else self.encoder.encode_documents(utterances)
+            )
+            sparse_embeddings = (
+                self.sparse_encoder(utterances)
+                if not isinstance(self.sparse_encoder, AsymmetricSparseMixin)
+                else self.sparse_encoder.encode_documents(utterances)
+            )
             self.index = HybridLocalIndex()
             self.index.add(
                 embeddings=embeddings,
@@ -402,11 +438,17 @@ class HybridRouter(BaseRouter):
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
             emb_d = np.array(
-                self.encoder(X[i : i + batch_size], input_type="documents")
+                self.encoder(X[i : i + batch_size])
+                if not isinstance(self.encoder, AsymmetricDenseMixin)
+                else self.encoder.encode_queries(X[i : i + batch_size])
             )
             # TODO JB: for some reason the sparse encoder is receiving a tuple
             # like `("Hello",)`
-            emb_s = self.sparse_encoder.encode_documents(X[i : i + batch_size])
+            emb_s = (
+                self.sparse_encoder(X[i : i + batch_size])
+                if not isinstance(self.sparse_encoder, AsymmetricSparseMixin)
+                else self.sparse_encoder.encode_queries(X[i : i + batch_size])
+            )
             Xq_d.extend(emb_d)
             Xq_s.extend(emb_s)
         # initial eval (we will iterate from here)
@@ -452,8 +494,16 @@ class HybridRouter(BaseRouter):
         Xq_d: List[List[float]] = []
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
-            emb_d = np.array(self.encoder(X[i : i + batch_size], input_type="queries"))
-            emb_s = self.sparse_encoder(X[i : i + batch_size], input_type="queries")
+            emb_d = np.array(
+                self.encoder(X[i : i + batch_size])
+                if not isinstance(self.encoder, AsymmetricDenseMixin)
+                else self.encoder.encode_queries(X[i : i + batch_size])
+            )
+            emb_s = (
+                self.sparse_encoder(X[i : i + batch_size])
+                if not isinstance(self.sparse_encoder, AsymmetricSparseMixin)
+                else self.sparse_encoder.encode_queries(X[i : i + batch_size])
+            )
             Xq_d.extend(emb_d)
             Xq_s.extend(emb_s)
 

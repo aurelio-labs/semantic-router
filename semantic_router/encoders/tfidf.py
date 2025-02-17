@@ -7,7 +7,6 @@ import numpy as np
 
 from semantic_router.encoders import SparseEncoder
 from semantic_router.encoders.base import FittableMixin
-from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
 
@@ -24,9 +23,7 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         self.word_index = {}
         self.idf = np.array([])
 
-    def __call__(
-        self, docs: List[str], input_type: EncodeInputType
-    ) -> list[SparseEmbedding]:
+    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
         if len(self.word_index) == 0 or self.idf.size == 0:
             raise ValueError("Vectorizer is not initialized.")
         if len(docs) == 0:
@@ -38,27 +35,9 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         return self._array_to_sparse_embeddings(tfidf)
 
     async def acall(
-        self, docs: List[str], input_type: EncodeInputType
+        self, docs: List[str]
     ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
-        return asyncio.to_thread(lambda: self.__call__(docs, input_type))
-
-    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
-        """Encode documents using TF-IDF"""
-        # TF-IDF uses same method for docs and queries
-        return self.__call__(docs, input_type="queries")
-
-    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
-        """Encode documents using TF-IDF"""
-        # TF-IDF uses same method for docs and queries
-        return self.__call__(docs, input_type="documents")
-
-    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
-        """Async version of encode_queries"""
-        return self.__call__(docs, input_type="queries")
-
-    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
-        """Async version of encode_documents"""
-        return self.__call__(docs, input_type="documents")
+        return asyncio.to_thread(lambda: self.__call__(docs))
 
     def fit(self, routes: List[Route]):
         """Trains the encoder weights on the provided routes.

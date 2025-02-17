@@ -1,17 +1,21 @@
 import asyncio
 from functools import partial
-from typing import Any, Coroutine, List, Literal
+from typing import Any, Coroutine, List
 
 import numpy as np
 
-from semantic_router.encoders.base import FittableMixin, SparseEncoder
+from semantic_router.encoders.base import (
+    AsymmetricSparseMixin,
+    FittableMixin,
+    SparseEncoder,
+)
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
 from semantic_router.tokenizers import BaseTokenizer, PretrainedTokenizer
 from semantic_router.utils.logger import logger
 
 
-class BM25Encoder(SparseEncoder, FittableMixin):
+class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
     """BM25Encoder, running a vectorized version of ATIRE BM25 algorithm
 
     Concept:
@@ -270,26 +274,22 @@ class BM25Encoder(SparseEncoder, FittableMixin):
 
         return self.encode_queries(docs)
 
-    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+    async def aencode_queries(
+        self, docs: List[str]
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
         # While this is a CPU-bound operation, and doesn't benefit from asyncio
         # we provide this method to abide by the `SparseEncoder` superclass
+        return asyncio.to_thread(lambda: self.encode_queries(docs))
+
+    async def aencode_documents(
+        self, docs: List[str]
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+        # While this is a CPU-bound operation, and doesn't benefit from asyncio
+        # we provide this method to abide by the `SparseEncoder` superclass
+        return asyncio.to_thread(lambda: self.encode_documents(docs))
+
+    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
         return self.encode_queries(docs)
 
-    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
-        # While this is a CPU-bound operation, and doesn't benefit from asyncio
-        # we provide this method to abide by the `SparseEncoder` superclass
-        return self.encode_documents(docs)
-
-    def __call__(
-        self, docs: List[str], input_type: Literal["queries", "documents"]
-    ) -> list[SparseEmbedding]:
-        match input_type:
-            case "queries":
-                return self.encode_queries(docs)
-            case "documents":
-                return self.encode_documents(docs)
-
-    def acall(
-        self, docs: List[Any], input_type: Literal["queries", "documents"]
-    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
-        return asyncio.to_thread(lambda: self.__call__(docs, input_type))
+    def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+        return asyncio.to_thread(lambda: self.__call__(docs))
