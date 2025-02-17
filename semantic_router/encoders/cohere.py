@@ -1,9 +1,11 @@
 import os
 from typing import Any, List, Optional
 
+from cohere import EmbedInputType
 from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.utils.defaults import EncoderDefault
 
 
@@ -15,14 +17,12 @@ class CohereEncoder(DenseEncoder):
     _client: Any = PrivateAttr()
     _embed_type: Any = PrivateAttr()
     type: str = "cohere"
-    input_type: Optional[str] = "search_query"
 
     def __init__(
         self,
         name: Optional[str] = None,
         cohere_api_key: Optional[str] = None,
         score_threshold: float = 0.3,
-        input_type: Optional[str] = "search_query",
     ):
         """Initialize the Cohere encoder.
 
@@ -41,9 +41,7 @@ class CohereEncoder(DenseEncoder):
         super().__init__(
             name=name,
             score_threshold=score_threshold,
-            input_type=input_type,  # type: ignore
         )
-        self.input_type = input_type
         self._client = self._initialize_client(cohere_api_key)
 
     def _initialize_client(self, cohere_api_key: Optional[str] = None):
@@ -77,19 +75,30 @@ class CohereEncoder(DenseEncoder):
             ) from e
         return client
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
+    def __call__(
+        self, docs: List[str], input_type: EncodeInputType
+    ) -> List[List[float]]:
         """Embed a list of documents. Supports text only.
 
         :param docs: The documents to embed.
         :type docs: List[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The vector embeddings of the documents.
         :rtype: List[List[float]]
         """
         if self._client is None:
             raise ValueError("Cohere client is not initialized.")
+
+        cohere_input_type: EmbedInputType = None
+        match input_type:
+            case "queries":
+                cohere_input_type = "search_query"
+            case "documents":
+                cohere_input_type = "search_document"
         try:
             embeds = self._client.embed(
-                texts=docs, input_type=self.input_type, model=self.name
+                texts=docs, input_type=cohere_input_type, model=self.name
             )
             # Check for unsupported type.
             if isinstance(embeds, self._embed_type):
