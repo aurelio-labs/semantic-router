@@ -11,6 +11,7 @@ from semantic_router.encoders import (
     SparseEncoder,
 )
 from semantic_router.encoders.base import FittableMixin
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index import BaseIndex, HybridLocalIndex
 from semantic_router.llms import BaseLLM
 from semantic_router.route import Route
@@ -112,7 +113,7 @@ class HybridRouter(BaseRouter):
         ) = self._extract_routes_details(routes, include_metadata=True)
         # TODO: to merge, self._encode should probably output a special
         # TODO Embedding type that can be either dense or hybrid
-        dense_emb, sparse_emb = self._encode(all_utterances)
+        dense_emb, sparse_emb = self._encode(all_utterances, input_type="documents")
         self.index.add(
             embeddings=dense_emb.tolist(),
             routes=route_names,
@@ -148,7 +149,9 @@ class HybridRouter(BaseRouter):
             self.index._remove_and_sync(data_to_delete)
         if strategy["remote"]["upsert"]:
             utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
-            dense_emb, sparse_emb = self._encode(utterances_text)
+            dense_emb, sparse_emb = self._encode(
+                utterances_text, input_type="documents"
+            )
             self.index.add(
                 embeddings=dense_emb.tolist(),
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
@@ -202,38 +205,44 @@ class HybridRouter(BaseRouter):
         return sparse_encoder
 
     def _encode(
-        self,
-        text: list[str],
+        self, text: list[str], input_type: EncodeInputType
     ) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
 
         :param text: List of texts to encode
         :type text: List[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: Tuple of dense and sparse embeddings
         """
         if self.sparse_encoder is None:
             raise ValueError("self.sparse_encoder is not set.")
 
         # Create dense vector
-        xq_d = np.array(self.encoder(text))
+        xq_d = np.array(self.encoder(text, input_type=input_type))
 
         # Create sparse vector, handling BM25's query/document distinction
-        xq_s = self.sparse_encoder.encode_documents(text)
+        match input_type:
+            case "queries":
+                xq_s = self.sparse_encoder.encode_queries(text)
+            case "documents":
+                xq_s = self.sparse_encoder.encode_documents(text)
 
         # Convex scaling
         xq_d, xq_s = self._convex_scaling(dense=xq_d, sparse=xq_s)
         return xq_d, xq_s
 
     async def _async_encode(
-        self,
-        text: List[str],
+        self, text: List[str], input_type: EncodeInputType
     ) -> tuple[np.ndarray, list[SparseEmbedding]]:
         """Given some text, generates dense and sparse embeddings, then scales them
         using the chosen alpha value.
 
         :param text: The text to encode.
         :type text: List[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: A tuple of the dense and sparse embeddings.
         :rtype: tuple[np.ndarray, list[SparseEmbedding]]
         """
@@ -242,8 +251,8 @@ class HybridRouter(BaseRouter):
         # TODO: should encode "content" rather than text
         # TODO: add alpha as a parameter
         # async encode both dense and sparse
-        dense_coro = self.encoder.acall(text)
-        sparse_coro = self.sparse_encoder.aencode_documents(text)
+        dense_coro = self.encoder.acall(text, input_type=input_type)
+        sparse_coro = self.sparse_encoder.acall(text, input_type=input_type)
         dense_vec, xq_s = await asyncio.gather(dense_coro, sparse_coro)
         # create dense query vector
         xq_d = np.array(dense_vec)
@@ -281,8 +290,8 @@ class HybridRouter(BaseRouter):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            xq_d = np.array(self.encoder([text]))
-            xq_s = self.sparse_encoder.encode_queries([text])
+            xq_d = np.array(self.encoder([text], input_type="queries"))
+            xq_s = self.sparse_encoder([text], input_type="queries")
             vector, potential_sparse_vector = self._convex_scaling(
                 dense=xq_d, sparse=xq_s
             )
@@ -377,7 +386,7 @@ class HybridRouter(BaseRouter):
                 routes.append(utterance.route)
                 utterances.append(utterance.utterance)
                 metadata.append(utterance.metadata)
-            embeddings = self.encoder(utterances)
+            embeddings = self.encoder(utterances, input_type="documents")
             sparse_embeddings = self.sparse_encoder.encode_documents(utterances)
             self.index = HybridLocalIndex()
             self.index.add(
@@ -392,7 +401,9 @@ class HybridRouter(BaseRouter):
         Xq_d: List[List[float]] = []
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
-            emb_d = np.array(self.encoder(X[i : i + batch_size]))
+            emb_d = np.array(
+                self.encoder(X[i : i + batch_size], input_type="documents")
+            )
             # TODO JB: for some reason the sparse encoder is receiving a tuple
             # like `("Hello",)`
             emb_s = self.sparse_encoder.encode_documents(X[i : i + batch_size])
@@ -441,8 +452,8 @@ class HybridRouter(BaseRouter):
         Xq_d: List[List[float]] = []
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
-            emb_d = np.array(self.encoder(X[i : i + batch_size]))
-            emb_s = self.sparse_encoder.encode_queries(X[i : i + batch_size])
+            emb_d = np.array(self.encoder(X[i : i + batch_size], input_type="queries"))
+            emb_s = self.sparse_encoder(X[i : i + batch_size], input_type="queries")
             Xq_d.extend(emb_d)
             Xq_s.extend(emb_s)
 

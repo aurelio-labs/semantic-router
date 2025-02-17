@@ -3,7 +3,7 @@ import importlib
 import json
 import os
 import random
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import yaml  # type: ignore
@@ -822,7 +822,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas
+                    for utt in strategy["remote"]["upsert"]  # type: ignore
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
@@ -855,7 +856,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas
+                    for utt in strategy["remote"]["upsert"]  # type: ignore
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
@@ -1333,26 +1335,34 @@ class BaseRouter(BaseModel):
             return route_names, utterances, function_schemas, metadata
         return route_names, utterances, function_schemas
 
-    def _encode(self, text: list[str]) -> Any:
+    def _encode(
+        self, text: list[str], input_type: Literal["queries", "documents"]
+    ) -> Any:
         """Generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: Literal["queries", "documents"]
         :return: The embeddings of the text.
         :rtype: Any
         """
         # TODO: should encode "content" rather than text
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    async def _async_encode(self, text: list[str]) -> Any:
+    async def _async_encode(
+        self, text: list[str], input_type: Literal["queries", "documents"]
+    ) -> Any:
         """Asynchronously generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: Literal["queries", "documents"]
         :return: The embeddings of the text.
         :rtype: Any
         """

@@ -1,5 +1,6 @@
+import asyncio
 from functools import partial
-from typing import List
+from typing import Any, Coroutine, List, Literal
 
 import numpy as np
 
@@ -269,5 +270,26 @@ class BM25Encoder(SparseEncoder, FittableMixin):
 
         return self.encode_queries(docs)
 
-    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
+    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+        # While this is a CPU-bound operation, and doesn't benefit from asyncio
+        # we provide this method to abide by the `SparseEncoder` superclass
         return self.encode_queries(docs)
+
+    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+        # While this is a CPU-bound operation, and doesn't benefit from asyncio
+        # we provide this method to abide by the `SparseEncoder` superclass
+        return self.encode_documents(docs)
+
+    def __call__(
+        self, docs: List[str], input_type: Literal["queries", "documents"]
+    ) -> list[SparseEmbedding]:
+        match input_type:
+            case "queries":
+                return self.encode_queries(docs)
+            case "documents":
+                return self.encode_documents(docs)
+
+    def acall(
+        self, docs: List[Any], input_type: Literal["queries", "documents"]
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+        return asyncio.to_thread(lambda: self.__call__(docs, input_type))

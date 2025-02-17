@@ -1,11 +1,13 @@
+import asyncio
 import string
 from collections import Counter
-from typing import Dict, List
+from typing import Any, Coroutine, Dict, List
 
 import numpy as np
 
 from semantic_router.encoders import SparseEncoder
 from semantic_router.encoders.base import FittableMixin
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
 
@@ -22,7 +24,9 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         self.word_index = {}
         self.idf = np.array([])
 
-    def __call__(self, docs: List[str]) -> list[SparseEmbedding]:
+    def __call__(
+        self, docs: List[str], input_type: EncodeInputType
+    ) -> list[SparseEmbedding]:
         if len(self.word_index) == 0 or self.idf.size == 0:
             raise ValueError("Vectorizer is not initialized.")
         if len(docs) == 0:
@@ -33,21 +37,28 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         tfidf = tf * self.idf
         return self._array_to_sparse_embeddings(tfidf)
 
-    def encode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
-        """Encode documents using TF-IDF"""
-        return self.__call__(docs)  # TF-IDF uses same method for docs and queries
+    async def acall(
+        self, docs: List[str], input_type: EncodeInputType
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+        return asyncio.to_thread(lambda: self.__call__(docs, input_type))
 
-    def encode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
         """Encode documents using TF-IDF"""
-        return self.__call__(docs)  # TF-IDF uses same method for docs and queries
+        # TF-IDF uses same method for docs and queries
+        return self.__call__(docs, input_type="queries")
 
-    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        """Encode documents using TF-IDF"""
+        # TF-IDF uses same method for docs and queries
+        return self.__call__(docs, input_type="documents")
+
+    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_queries"""
-        return self.__call__(docs)
+        return self.__call__(docs, input_type="queries")
 
-    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_documents"""
-        return self.__call__(docs)
+        return self.__call__(docs, input_type="documents")
 
     def fit(self, routes: List[Route]):
         """Trains the encoder weights on the provided routes.

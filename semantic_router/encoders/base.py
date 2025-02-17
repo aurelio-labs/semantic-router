@@ -3,6 +3,7 @@ from typing import Any, Coroutine, List, Optional
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
 
@@ -26,25 +27,33 @@ class DenseEncoder(BaseModel):
         """
         return float(v) if v is not None else None
 
-    def __call__(self, docs: List[Any]) -> List[List[float]]:
+    def __call__(
+        self, docs: List[Any], input_type: EncodeInputType
+    ) -> List[List[float]]:
         """Encode a list of documents. Documents can be any type, but the encoder must
         be built to handle that data type. Typically, these types are strings or
         arrays representing images.
 
         :param docs: The documents to encode.
         :type docs: List[Any]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: Literal["queries", "documents"]
         :return: The encoded documents.
         :rtype: List[List[float]]
         """
         raise NotImplementedError("Subclasses must implement this method")
 
-    def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[List[float]]]:
+    def acall(
+        self, docs: List[Any], input_type: EncodeInputType
+    ) -> Coroutine[Any, Any, List[List[float]]]:
         """Encode a list of documents asynchronously. Documents can be any type, but the
         encoder must be built to handle that data type. Typically, these types are
         strings or arrays representing images.
 
         :param docs: The documents to encode.
         :type docs: List[Any]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The encoded documents.
         :rtype: List[List[float]]
         """
@@ -60,13 +69,35 @@ class SparseEncoder(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+    def __call__(
+        self,
+        docs: List[str],
+        input_type: Optional[EncodeInputType] = "queries",
+    ) -> List[SparseEmbedding]:
         """Sparsely encode a list of documents. Documents can be any type, but the encoder must
         be built to handle that data type. Typically, these types are strings or
         arrays representing images.
 
         :param docs: The documents to encode.
         :type docs: List[Any]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
+        :return: The encoded documents.
+        :rtype: List[SparseEmbedding]
+        """
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def acall(
+        self, docs: List[Any], input_type: EncodeInputType
+    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+        """Encode a list of documents asynchronously. Documents can be any type, but the
+        encoder must be built to handle that data type. Typically, these types are
+        strings or arrays representing images.
+
+        :param docs: The documents to encode.
+        :type docs: List[Any]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: Literal["queries", "documents"]
         :return: The encoded documents.
         :rtype: List[SparseEmbedding]
         """
@@ -80,11 +111,11 @@ class SparseEncoder(BaseModel):
         """Convert document texts to sparse embeddings optimized for storage"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
+    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_queries"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
+    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_documents"""
         raise NotImplementedError("Subclasses must implement this method")
 
