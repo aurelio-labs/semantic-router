@@ -79,9 +79,9 @@ encoder = OpenAIEncoder()
 With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
 
 ```python
-from semantic_router.layer import RouteLayer
+from semantic_router.routers import SemanticRouter
 
-rl = RouteLayer(encoder=encoder, routes=routes)
+rl = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
 ```
 
 We can now use our route layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our route decisions:
