@@ -562,7 +562,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=[text])
+            vector = self._encode(text=[text], input_type="queries")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
         # get scores and routes
@@ -635,7 +635,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = await self._async_encode(text=[text])
+            vector = await self._async_encode(text=[text], input_type="queries")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
         # get scores and routes
