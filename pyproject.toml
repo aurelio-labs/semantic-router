@@ -24,7 +24,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-hybrid = ["pinecone-text>=0.7.1"]
 local = [
     "torch>=2.1.0,<2.6.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
@@ -51,7 +50,6 @@ docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
 cohere = ["cohere>=5.9.4,<6.00"]
 all = [
     "semantic-router[local]",
-    "semantic-router[hybrid]",
     "semantic-router[pinecone]",
     "semantic-router[vision]",
     "semantic-router[mistralai]",

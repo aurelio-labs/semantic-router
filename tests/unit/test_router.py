@@ -5,18 +5,29 @@ import time
 from datetime import datetime
 from functools import wraps
 from platform import python_version
-from typing import Optional
+from typing import Any, List, Optional
 from unittest.mock import mock_open, patch
 
+import numpy as np
 import pytest
 
-from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
+from semantic_router.encoders import (
+    CohereEncoder,
+    DenseEncoder,
+    OpenAIEncoder,
+)
+from semantic_router.encoders.base import (
+    AsymmetricDenseMixin,
+    AsymmetricSparseMixin,
+    SparseEncoder,
+)
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
+from semantic_router.schema import SparseEmbedding
 from semantic_router.utils.logger import logger
 
 PINECONE_SLEEP = 8
@@ -282,9 +293,7 @@ def get_test_encoders():
 
 
 def get_test_routers():
-    routers = [SemanticRouter]
-    if importlib.util.find_spec("pinecone_text") is not None:
-        routers.append(HybridRouter)
+    routers = [SemanticRouter, HybridRouter]
     return routers
 
 
@@ -1300,3 +1309,173 @@ class TestLayerFit:
         route_layer.fit(
             X=list(X), y=list(y), batch_size=int(len(X) / 5), local_execution=True
         )
+
+
+class MockSymmetricDenseEncoder(DenseEncoder):
+    def __call__(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+
+class MockSymmetricSparseEncoder(SparseEncoder):
+    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+
+class MockAsymmetricDenseEncoder(DenseEncoder, AsymmetricDenseMixin):
+    def __call__(self, docs: List[Any]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def acall(self, docs: List[Any]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    def encode_queries(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    def encode_documents(self, docs: List[str]) -> List[List[float]]:
+        return [[0.4, 0.5, 0.6] for _ in docs]
+
+    async def aencode_queries(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def aencode_documents(self, docs: List[str]) -> List[List[float]]:
+        return [[0.4, 0.5, 0.6] for _ in docs]
+
+
+class MockAsymmetricSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
+    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+
+@pytest.mark.parametrize(
+    "dense_encoder_cls,sparse_encoder_cls,input_type",
+    [
+        (encoder, sparse_encoder, input_type)
+        for encoder in [MockSymmetricDenseEncoder, MockAsymmetricDenseEncoder]
+        for sparse_encoder in [MockSymmetricSparseEncoder, MockAsymmetricSparseEncoder]
+        for input_type in ["queries", "documents"]
+    ],
+)
+class TestHybridRouter:
+    def test_encode(
+        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+    ):
+        encoder = dense_encoder_cls(name="Dense Encoder")
+        sparse_encoder = sparse_encoder_cls(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Set up spies for symmetric methods
+        dense_call_spy = mocker.spy(dense_encoder_cls, "__call__")
+        sparse_call_spy = mocker.spy(sparse_encoder_cls, "__call__")
+
+        # Set up spies for asymmetric methods if applicable
+        if isinstance(encoder, AsymmetricDenseMixin):
+            dense_encode_queries_spy = mocker.spy(dense_encoder_cls, "encode_queries")
+            dense_encode_documents_spy = mocker.spy(
+                dense_encoder_cls, "encode_documents"
+            )
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            sparse_encode_queries_spy = mocker.spy(sparse_encoder_cls, "encode_queries")
+            sparse_encode_documents_spy = mocker.spy(
+                sparse_encoder_cls, "encode_documents"
+            )
+
+        test_query = ["test query"]
+
+        # Test synchronous encoding
+        router._encode(test_query, input_type=input_type)
+
+        # Verify correct methods were called based on encoder type and input_type
+        if isinstance(encoder, AsymmetricDenseMixin):
+            if input_type == "documents":
+                assert dense_encode_documents_spy.called
+            else:  # queries
+                assert dense_encode_queries_spy.called
+        else:
+            assert dense_call_spy.called
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            if input_type == "documents":
+                assert sparse_encode_documents_spy.called
+            else:  # queries
+                assert sparse_encode_queries_spy.called
+        else:
+            assert sparse_call_spy.called
+
+    @pytest.mark.asyncio
+    async def test_async_encode(
+        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+    ):
+        encoder = dense_encoder_cls(name="Dense Encoder")
+        sparse_encoder = sparse_encoder_cls(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Set up spies for symmetric methods
+        dense_call_spy = mocker.spy(dense_encoder_cls, "acall")
+        sparse_call_spy = mocker.spy(sparse_encoder_cls, "acall")
+
+        # Set up spies for asymmetric methods if applicable
+        if isinstance(encoder, AsymmetricDenseMixin):
+            dense_encode_queries_spy = mocker.spy(dense_encoder_cls, "aencode_queries")
+            dense_encode_documents_spy = mocker.spy(
+                dense_encoder_cls, "aencode_documents"
+            )
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            sparse_encode_queries_spy = mocker.spy(
+                sparse_encoder_cls, "aencode_queries"
+            )
+            sparse_encode_documents_spy = mocker.spy(
+                sparse_encoder_cls, "aencode_documents"
+            )
+
+        test_query = ["test query"]
+
+        # Test asynchronous encoding
+        await router._async_encode(test_query, input_type=input_type)
+
+        # Verify correct methods were called based on encoder type and input_type
+        if isinstance(encoder, AsymmetricDenseMixin):
+            if input_type == "documents":
+                assert dense_encode_documents_spy.called
+            else:  # queries
+                assert dense_encode_queries_spy.called
+        else:
+            assert dense_call_spy.called
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            if input_type == "documents":
+                assert sparse_encode_documents_spy.called
+            else:  # queries
+                assert sparse_encode_queries_spy.called
+        else:
+            assert sparse_call_spy.called
