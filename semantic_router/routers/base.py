@@ -823,8 +823,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas
-                    for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
@@ -857,8 +857,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas
-                    for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )

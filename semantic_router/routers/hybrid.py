@@ -226,11 +226,12 @@ class HybridRouter(BaseRouter):
         if isinstance(self.encoder, AsymmetricDenseMixin):
             match input_type:
                 case "queries":
-                    xq_d = self.encoder.encode_queries(text)
+                    dense_v = self.encoder.encode_queries(text)
                 case "documents":
-                    xq_d = self.encoder.encode_documents(text)
+                    dense_v = self.encoder.encode_documents(text)
         else:
-            xq_d = self.encoder(text)
+            dense_v = self.encoder(text)
+        xq_d = np.array(dense_v)  # type: ignore
 
         if isinstance(self.sparse_encoder, AsymmetricSparseMixin):
             match input_type:

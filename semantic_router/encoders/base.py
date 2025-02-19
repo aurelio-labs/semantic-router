@@ -1,4 +1,4 @@
-from typing import Any, Coroutine, List, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
@@ -38,7 +38,7 @@ class DenseEncoder(BaseModel):
         """
         raise NotImplementedError("Subclasses must implement this method")
 
-    def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[List[float]]]:
+    async def acall(self, docs: List[Any]) -> List[List[float]]:
         """Encode a list of documents asynchronously. Documents can be any type, but the
         encoder must be built to handle that data type. Typically, these types are
         strings or arrays representing images.
@@ -72,7 +72,7 @@ class SparseEncoder(BaseModel):
         """
         raise NotImplementedError("Subclasses must implement this method")
 
-    def acall(self, docs: List[Any]) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+    async def acall(self, docs: List[Any]) -> List[SparseEmbedding]:
         """Encode a list of documents asynchronously. Documents can be any type, but the
         encoder must be built to handle that data type. Typically, these types are
         strings or arrays representing images.
@@ -123,15 +123,11 @@ class AsymmetricDenseMixin:
         """Convert document texts to dense embeddings optimized for storage"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_queries(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[List[float]]]:
+    async def aencode_queries(self, docs: List[str]) -> List[List[float]]:
         """Async version of encode_queries"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_documents(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[List[float]]]:
+    async def aencode_documents(self, docs: List[str]) -> List[List[float]]:
         """Async version of encode_documents"""
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -145,14 +141,10 @@ class AsymmetricSparseMixin:
         """Convert document texts to dense embeddings optimized for storage"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_queries(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_queries"""
         raise NotImplementedError("Subclasses must implement this method")
 
-    async def aencode_documents(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
+    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
         """Async version of encode_documents"""
         raise NotImplementedError("Subclasses must implement this method")

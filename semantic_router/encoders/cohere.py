@@ -1,5 +1,5 @@
 import os
-from typing import Any, Coroutine, List, Optional
+from typing import Any, List, Optional
 
 from pydantic import PrivateAttr
 
@@ -86,6 +86,9 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
         """
         return self.encode_queries(docs)
 
+    async def acall(self, docs: List[Any]) -> List[List[float]]:
+        return await self.aencode_queries(docs)
+
     def encode_queries(self, docs: List[str]) -> List[List[float]]:
         if self._client is None:
             raise ValueError("Cohere client is not initialized.")
@@ -120,9 +123,7 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
-    async def aencode_queries(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[List[float]]]:
+    async def aencode_queries(self, docs: List[str]) -> List[List[float]]:
         if self._async_client is None:
             raise ValueError("Cohere client is not initialized.")
 
@@ -139,9 +140,7 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
-    async def aencode_documents(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[List[float]]]:
+    async def aencode_documents(self, docs: List[str]) -> List[List[float]]:
         if self._async_client is None:
             raise ValueError("Cohere client is not initialized.")
 

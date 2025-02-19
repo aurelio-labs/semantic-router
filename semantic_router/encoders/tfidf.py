@@ -1,7 +1,7 @@
 import asyncio
 import string
 from collections import Counter
-from typing import Any, Coroutine, Dict, List
+from typing import Dict, List
 
 import numpy as np
 
@@ -34,10 +34,8 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         tfidf = tf * self.idf
         return self._array_to_sparse_embeddings(tfidf)
 
-    async def acall(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, List[SparseEmbedding]]:
-        return asyncio.to_thread(lambda: self.__call__(docs))
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return await asyncio.to_thread(lambda: self.__call__(docs))
 
     def fit(self, routes: List[Route]):
         """Trains the encoder weights on the provided routes.

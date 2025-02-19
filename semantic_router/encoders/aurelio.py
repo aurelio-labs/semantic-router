@@ -1,8 +1,7 @@
 import os
-from typing import Any, Coroutine, List, Optional
+from typing import Any, List, Optional
 
 from aurelio_sdk import AsyncAurelioClient, AurelioClient, EmbeddingResponse
-from aurelio_sdk.client_async import asyncio
 from pydantic import Field
 
 from semantic_router.encoders.base import AsymmetricSparseMixin, SparseEncoder
@@ -63,31 +62,21 @@ class AurelioSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
         embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
-    async def aencode_queries(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, list[SparseEmbedding]]:
+    async def aencode_queries(self, docs: List[str]) -> list[SparseEmbedding]:
         res: EmbeddingResponse = await self.async_client.embedding(
             input=docs, model=self.name, input_type="queries"
         )
-        embeds = asyncio.to_thread(
-            lambda: [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
-        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
-    async def aencode_documents(
-        self, docs: List[str]
-    ) -> Coroutine[Any, Any, list[SparseEmbedding]]:
+    async def aencode_documents(self, docs: List[str]) -> list[SparseEmbedding]:
         res: EmbeddingResponse = await self.async_client.embedding(
             input=docs, model=self.name, input_type="documents"
         )
-        embeds = asyncio.to_thread(
-            lambda: [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
-        )
+        embeds = [SparseEmbedding.from_aurelio(r.embedding) for r in res.data]
         return embeds
 
-    async def acall(
-        self, docs: list[str]
-    ) -> Coroutine[Any, Any, list[SparseEmbedding]]:
+    async def acall(self, docs: list[str]) -> list[SparseEmbedding]:
         """Asynchronously encode a list of documents using the Aurelio Platform
         embedding API. Documents must be strings, sparse encoders do not support other
         types.
