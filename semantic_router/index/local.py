@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 import numpy as np
+from pydantic import ConfigDict
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
@@ -14,9 +15,8 @@ class LocalIndex(BaseIndex):
     def __init__(self):
         super().__init__()
 
-    class Config:
-        # Stop pydantic from complaining about Optional[np.ndarray]type hints.
-        arbitrary_types_allowed = True
+    # Stop pydantic from complaining about Optional[np.ndarray]type hints.
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def add(
         self,

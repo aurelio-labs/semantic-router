@@ -1,8 +1,8 @@
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
@@ -72,8 +72,7 @@ class Route(BaseModel):
     score_threshold: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = {}
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def __call__(self, query: Optional[str] = None) -> RouteChoice:
         """Call the route. If dynamic routes have been provided the query must have been

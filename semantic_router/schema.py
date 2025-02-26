@@ -2,11 +2,11 @@ import json
 from datetime import datetime, timezone
 from difflib import Differ
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.utils.logger import logger
 
@@ -484,8 +484,7 @@ class SparseEmbedding(BaseModel):
 
     embedding: np.ndarray
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def from_compact_array(cls, array: np.ndarray):

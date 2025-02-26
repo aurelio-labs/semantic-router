@@ -3,11 +3,11 @@ import importlib
 import json
 import os
 import random
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import yaml  # type: ignore
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from tqdm.auto import tqdm
 from typing_extensions import deprecated
 
@@ -70,8 +70,7 @@ class RouterConfig:
 
     routes: List[Route] = Field(default_factory=list)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(
         self,
@@ -361,8 +360,7 @@ class BaseRouter(BaseModel):
     aggregation_method: Optional[Callable] = None
     auto_sync: Optional[str] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(
         self,

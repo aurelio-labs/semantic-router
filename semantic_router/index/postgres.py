@@ -1,10 +1,10 @@
 import os
 import uuid
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
@@ -494,7 +494,5 @@ class PostgresIndex(BaseIndex):
                 return 0
             return count[0]
 
-    class Config:
-        """Configuration for the Pydantic BaseModel."""
-
-        arbitrary_types_allowed = True
+    """Configuration for the Pydantic BaseModel."""
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
