@@ -1,6 +1,8 @@
 import os
+
 import pytest
 from openai import OpenAIError
+
 from semantic_router.encoders.base import DenseEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 

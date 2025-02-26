@@ -1,7 +1,9 @@
-import os
-import pytest
 import json
+import os
 from io import BytesIO
+
+import pytest
+
 from semantic_router.encoders import BedrockEncoder
 
 

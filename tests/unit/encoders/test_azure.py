@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 from openai import OpenAIError
 from openai.types import CreateEmbeddingResponse, Embedding
 from openai.types.create_embedding_response import Usage
