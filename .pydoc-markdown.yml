@@ -1,0 +1,20 @@
+loaders:
+  - type: python
+    packages: 
+      - semantic_router
+    search_path: ["."]
+
+processors:
+  - type: filter
+    skip_empty_modules: true
+    exclude_private: true
+    exclude_special: true
+    documented_only: true
+    do_not_filter_modules: true
+  - type: smart
+  - type: crossref
+
+renderer:
+  type: docusaurus
+  docs_base_path: docs/build
+  relative_output_path: .

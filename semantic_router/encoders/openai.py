@@ -1,20 +1,19 @@
-from asyncio import sleep as asleep
 import os
+from asyncio import sleep as asleep
 from time import sleep
 from typing import Any, List, Optional, Union
-from pydantic import PrivateAttr
 
 import openai
+import tiktoken
 from openai import OpenAIError
 from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
-import tiktoken
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.schema import EncoderInfo
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
-
 
 model_configs = {
     "text-embedding-ada-002": EncoderInfo(
@@ -36,6 +35,13 @@ model_configs = {
 
 
 class OpenAIEncoder(DenseEncoder):
+    """OpenAI encoder class for generating embeddings using OpenAI API.
+
+    The OpenAIEncoder class is a subclass of DenseEncoder and utilizes the OpenAI API
+    to generate embeddings for given documents. It requires an OpenAI API key and
+    supports customization of the score threshold for filtering or processing the embeddings.
+    """
+
     _client: Optional[openai.Client] = PrivateAttr(default=None)
     _async_client: Optional[openai.AsyncClient] = PrivateAttr(default=None)
     dimensions: Union[int, NotGiven] = NotGiven()
@@ -54,6 +60,23 @@ class OpenAIEncoder(DenseEncoder):
         dimensions: Union[int, NotGiven] = NotGiven(),
         max_retries: int = 3,
     ):
+        """Initialize the OpenAIEncoder.
+
+        :param name: The name of the embedding model to use.
+        :type name: str
+        :param openai_base_url: The base URL for the OpenAI API.
+        :type openai_base_url: str
+        :param openai_api_key: The OpenAI API key.
+        :type openai_api_key: str
+        :param openai_org_id: The OpenAI organization ID.
+        :type openai_org_id: str
+        :param score_threshold: The score threshold for the embeddings.
+        :type score_threshold: float
+        :param dimensions: The dimensions of the embeddings.
+        :type dimensions: int
+        :param max_retries: The maximum number of retries for the OpenAI API call.
+        :type max_retries: int
+        """
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
         if score_threshold is None and name in model_configs:
@@ -147,6 +170,13 @@ class OpenAIEncoder(DenseEncoder):
         return embeddings
 
     def _truncate(self, text: str) -> str:
+        """Truncate a document to the token limit.
+
+        :param text: The document to truncate.
+        :type text: str
+        :return: The truncated document.
+        :rtype: str
+        """
         # we use encode_ordinary as faster equivalent to encode(text, disallowed_special=())
         tokens = self._token_encoder.encode_ordinary(text)
         if len(tokens) > self.token_limit:
@@ -160,6 +190,13 @@ class OpenAIEncoder(DenseEncoder):
         return text
 
     async def acall(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
+        """Encode a list of text documents into embeddings using OpenAI API asynchronously.
+
+        :param docs: List of text documents to encode.
+        :param truncate: Whether to truncate the documents to token limit. If
+            False and a document exceeds the token limit, an error will be
+            raised.
+        :return: List of embeddings for each document."""
         if self._async_client is None:
             raise ValueError("OpenAI async client is not initialized.")
         embeds = None

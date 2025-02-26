@@ -1,15 +1,19 @@
+import json
 from datetime import datetime, timezone
 from difflib import Differ
 from enum import Enum
-import json
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
-from typing import List, Optional, Union, Any, Dict, Tuple
+from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 from pydantic import BaseModel, Field
+
 from semantic_router.utils.logger import logger
-from aurelio_sdk.schema import BM25Embedding
 
 
 class EncoderType(Enum):
+    """The type of encoder."""
+
     AURELIO = "aurelio"
     AZURE = "azure"
     COHERE = "cohere"
@@ -26,40 +30,57 @@ class EncoderType(Enum):
 
 
 class EncoderInfo(BaseModel):
+    """Information about an encoder."""
+
     name: str
     token_limit: int
     threshold: Optional[float] = None
 
 
 class RouteChoice(BaseModel):
+    """A route choice typically output by the routers."""
+
     name: Optional[str] = None
     function_call: Optional[List[Dict]] = None
     similarity_score: Optional[float] = None
 
 
 class Message(BaseModel):
+    """A message in a conversation, includes the role and content fields."""
+
     role: str
     content: str
 
     def to_openai(self):
-        if self.role.lower() not in ["user", "assistant", "system"]:
-            raise ValueError("Role must be either 'user', 'assistant' or 'system'")
+        """Convert the message to an OpenAI-compatible format."""
+        if self.role.lower() not in ["user", "assistant", "system", "tool"]:
+            raise ValueError(
+                "Role must be either 'user', 'assistant', 'system' or 'tool'"
+            )
         return {"role": self.role, "content": self.content}
 
     def to_cohere(self):
+        """Convert the message to a Cohere-compatible format."""
         return {"role": self.role, "message": self.content}
 
     def to_llamacpp(self):
+        """Convert the message to a LlamaCPP-compatible format."""
         return {"role": self.role, "content": self.content}
 
     def to_mistral(self):
+        """Convert the message to a Mistral-compatible format."""
         return {"role": self.role, "content": self.content}
 
     def __str__(self):
+        """Convert the message to a string."""
         return f"{self.role}: {self.content}"
 
 
 class ConfigParameter(BaseModel):
+    """A configuration parameter for a route. Used for remote router metadata such as
+    router hashes, sync locks, etc.
+    """
+
     field: str
     value: str
     scope: Optional[str] = None
@@ -68,6 +89,15 @@ class ConfigParameter(BaseModel):
     )
 
     def to_pinecone(self, dimensions: int):
+        """Convert the configuration parameter to a Pinecone-compatible format. Should
+        be used when upserting configuration parameters to a separate config namespace
+        within your Pinecone index.
+
+        :param dimensions: The dimensions of the Pinecone index.
+        :type dimensions: int
+        :return: A Pinecone-compatible configuration parameter.
+        :rtype: dict
+        """
         namespace = self.scope or ""
         return {
             "id": f"{self.field}#{namespace}",
@@ -82,6 +112,10 @@ class ConfigParameter(BaseModel):
 
 
 class Utterance(BaseModel):
+    """An utterance in a conversation, includes the route, utterance, function
+    schemas, metadata, and diff tag.
+    """
+
     route: str
     utterance: Union[str, Any]
     function_schemas: Optional[List[Dict]] = None
@@ -127,6 +161,14 @@ class Utterance(BaseModel):
         )
 
     def to_str(self, include_metadata: bool = False):
+        """Convert an Utterance object to a string. Used for comparisons during sync
+        check operations.
+
+        :param include_metadata: Whether to include metadata in the string.
+        :type include_metadata: bool
+        :return: A string representation of the Utterance object.
+        :rtype: str
+        """
         if include_metadata:
             # we sort the dicts to ensure consistent order as we need this to compare
             # stringified function schemas accurately
@@ -147,9 +189,7 @@ class Utterance(BaseModel):
 
 
 class SyncMode(Enum):
-    """Synchronization modes for local (route layer) and remote (index)
-    instances.
-    """
+    """Synchronization modes for local (route layer) and remote (index) instances."""
 
     ERROR = "error"
     REMOTE = "remote"
@@ -163,12 +203,23 @@ SYNC_MODES = [x.value for x in SyncMode]
 
 
 class UtteranceDiff(BaseModel):
+    """A list of Utterance objects that represent the differences between local and
+    remote utterances.
+    """
+
     diff: List[Utterance]
 
     @classmethod
     def from_utterances(
         cls, local_utterances: List[Utterance], remote_utterances: List[Utterance]
     ):
+        """Create a UtteranceDiff object from two lists of Utterance objects.
+
+        :param local_utterances: A list of Utterance objects.
+        :type local_utterances: List[Utterance]
+        :param remote_utterances: A list of Utterance objects.
+        :type remote_utterances: List[Utterance]
+        """
         local_utterances_map = {
             x.to_str(include_metadata=True): x for x in local_utterances
         }
@@ -220,14 +271,18 @@ class UtteranceDiff(BaseModel):
 
         This diff tells us that the remote has "route2: utterance3" and
         "route2: utterance4", which do not exist locally.
+
+        :param include_metadata: Whether to include metadata in the string.
+        :type include_metadata: bool
+        :return: A list of diff strings.
+        :rtype: List[str]
         """
         return [x.to_diff_str(include_metadata=include_metadata) for x in self.diff]
 
     def get_tag(self, diff_tag: str) -> List[Utterance]:
         """Get all utterances with a given diff tag.
 
-        :param diff_tag: The diff tag to filter by. Must be one of "+", "-", or
-        " ".
+        :param diff_tag: The diff tag to filter by. Must be one of "+", "-", or " ".
         :type diff_tag: str
         :return: A list of Utterance objects.
         :rtype: List[Utterance]
@@ -237,8 +292,7 @@ class UtteranceDiff(BaseModel):
         return [x for x in self.diff if x.diff_tag == diff_tag]
 
     def get_sync_strategy(self, sync_mode: str) -> dict:
-        """Generates the optimal synchronization plan for local and remote
-        instances.
+        """Generates the optimal synchronization plan for local and remote instances.
 
         :param sync_mode: The mode to sync the routes with the remote index.
         :type sync_mode: str
@@ -415,6 +469,8 @@ class UtteranceDiff(BaseModel):
 
 
 class Metric(Enum):
+    """The metric to use in vector-based similarity search indexes."""
+
     COSINE = "cosine"
     DOTPRODUCT = "dotproduct"
     EUCLIDEAN = "euclidean"
@@ -433,6 +489,13 @@ class SparseEmbedding(BaseModel):
 
     @classmethod
     def from_compact_array(cls, array: np.ndarray):
+        """Create a SparseEmbedding object from a compact array.
+
+        :param array: A compact array.
+        :type array: np.ndarray
+        :return: A SparseEmbedding object.
+        :rtype: SparseEmbedding
+        """
         if array.ndim != 2 or array.shape[1] != 2:
             raise ValueError(
                 f"Expected a 2D array with 2 columns, got a {array.ndim}D array with {array.shape[1]} columns. "
@@ -442,32 +505,69 @@ class SparseEmbedding(BaseModel):
 
     @classmethod
     def from_vector(cls, vector: np.ndarray):
-        """Consumes an array of sparse vectors containing zero-values."""
+        """Consumes an array of sparse vectors containing zero-values.
+
+        :param vector: A sparse vector.
+        :type vector: np.ndarray
+        :return: A SparseEmbedding object.
+        :rtype: SparseEmbedding
+        """
         if vector.ndim != 1:
             raise ValueError(f"Expected a 1D array, got a {vector.ndim}D array.")
         return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)
 
     @classmethod
-    def from_aurelio(cls, embedding: BM25Embedding):
+    def from_aurelio(cls, embedding: BM25SparseEmbedding):
+        """Create a SparseEmbedding object from an AurelioSparseEmbedding object.
+
+        :param embedding: An AurelioSparseEmbedding object.
+        :type embedding: BM25SparseEmbedding
+        :return: A SparseEmbedding object.
+        :rtype: SparseEmbedding
+        """
         arr = np.array([embedding.indices, embedding.values]).T
         return cls.from_compact_array(arr)
 
     @classmethod
     def from_dict(cls, sparse_dict: dict):
+        """Create a SparseEmbedding object from a dictionary.
+
+        :param sparse_dict: A dictionary of sparse values.
+        :type sparse_dict: dict
+        :return: A SparseEmbedding object.
+        :rtype: SparseEmbedding
+        """
         arr = np.array([list(sparse_dict.keys()), list(sparse_dict.values())]).T
         return cls.from_compact_array(arr)
 
     @classmethod
     def from_pinecone_dict(cls, sparse_dict: dict):
+        """Create a SparseEmbedding object from a Pinecone dictionary.
+
+        :param sparse_dict: A Pinecone dictionary.
+        :type sparse_dict: dict
+        :return: A SparseEmbedding object.
+        :rtype: SparseEmbedding
+        """
         arr = np.array([sparse_dict["indices"], sparse_dict["values"]]).T
         return cls.from_compact_array(arr)
 
     def to_dict(self):
+        """Convert a SparseEmbedding object to a dictionary.
+
+        :return: A dictionary of sparse values.
+        :rtype: dict
+        """
         return {
             i: v for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])
         }
 
     def to_pinecone(self):
+        """Convert a SparseEmbedding object to a Pinecone dictionary.
+
+        :return: A Pinecone dictionary.
+        :rtype: dict
+        """
         return {
             "indices": self.embedding[:, 0].astype(int).tolist(),
             "values": self.embedding[:, 1].tolist(),
@@ -475,6 +575,11 @@ class SparseEmbedding(BaseModel):
 
     # dictionary interface
     def items(self):
+        """Return a list of (index, value) tuples from the SparseEmbedding object.
+
+        :return: A list of (index, value) tuples.
+        :rtype: list
+        """
         return [
             (i, v)
             for i, v in zip(self.embedding[:, 0].astype(int), self.embedding[:, 1])

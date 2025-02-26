@@ -1,12 +1,8 @@
 name: lint
 
 on:
-  push:
-    branches: [main]
   pull_request:
 
-env:
-  POETRY_VERSION: "1.8.4"
 
 jobs:
   build:
@@ -14,27 +10,18 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.13"
+        - "3.13"
     steps:
-      - uses: actions/checkout@v3
-      - name: Cache Poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.poetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-      - name: Install poetry
-        run: |
-          pipx install poetry==$POETRY_VERSION
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry install
-      - name: Analyzing the code with our lint
-        run: |
-          make lint
+    - uses: actions/checkout@v3
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |
+        uv sync --extra dev
+    - name: Run Lint
+      run: |
+        make lint
