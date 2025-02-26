@@ -1,7 +1,7 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
@@ -18,8 +18,7 @@ class BaseLLM(BaseModel):
     temperature: Optional[float] = 0.0
     max_tokens: Optional[int] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, name: str, **kwargs):
         """Initialize the BaseLLM.

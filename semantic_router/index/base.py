@@ -2,10 +2,10 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from semantic_router.route import Route
 from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
@@ -515,8 +515,7 @@ class BaseIndex(BaseModel):
         route_info = parse_route_info(metadata=metadata)
         return route_info  # type: ignore
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
 
 def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
