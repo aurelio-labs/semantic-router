@@ -13,6 +13,7 @@ venv/
 # local env files
 .env*.local
 .env
+my.secrets
 mac.env
 local.mac.env
 

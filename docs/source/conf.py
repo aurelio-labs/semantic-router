@@ -1,6 +1,6 @@
-from typing import List
 import os
 import sys
+from typing import List
 
 sys.path.insert(0, os.path.abspath("../.."))  # Source code dir relative to this file
 
@@ -13,9 +13,9 @@ sys.path.insert(0, os.path.abspath("../.."))  # Source code dir relative to this
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Semantic Router"
-copyright = "2024, Aurelio AI"
+copyright = "2025, Aurelio AI"
 author = "Aurelio AI"
-release = "0.1.0.dev5"
+release = "0.1.0.dev10"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
