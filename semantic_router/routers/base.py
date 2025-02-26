@@ -1,15 +1,15 @@
+import hashlib
 import importlib
 import json
 import os
 import random
-import hashlib
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from typing_extensions import deprecated
-from pydantic import BaseModel, Field
 
 import numpy as np
 import yaml  # type: ignore
+from pydantic import BaseModel, Field
 from tqdm.auto import tqdm
+from typing_extensions import deprecated
 
 from semantic_router.encoders import (
     AutoEncoder,
@@ -17,6 +17,7 @@ from semantic_router.encoders import (
     OpenAIEncoder,
     SparseEncoder,
 )
+from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
@@ -65,10 +66,7 @@ def is_valid(layer_config: str) -> bool:
 
 
 class RouterConfig:
-    """
-    Generates a RouterConfig object that can be used for initializing a
-    Routers.
-    """
+    """Generates a RouterConfig object that can be used for initializing routers."""
 
     routes: List[Route] = Field(default_factory=list)
 
@@ -81,6 +79,15 @@ class RouterConfig:
         encoder_type: str = "openai",
         encoder_name: Optional[str] = None,
     ):
+        """Initialize a RouterConfig object.
+
+        :param routes: A list of routes.
+        :type routes: List[Route]
+        :param encoder_type: The type of encoder to use.
+        :type encoder_type: str
+        :param encoder_name: The name of the encoder to use.
+        :type encoder_name: Optional[str]
+        """
         self.encoder_type = encoder_type
         if encoder_name is None:
             for encode_type in EncoderType:
@@ -99,6 +106,12 @@ class RouterConfig:
 
     @classmethod
     def from_file(cls, path: str) -> "RouterConfig":
+        """Initialize a RouterConfig from a file. Expects a JSON or YAML file with file
+        extension .json, .yaml, or .yml.
+
+        :param path: The path to the file to load the RouterConfig from.
+        :type path: str
+        """
         logger.info(f"Loading route config from {path}")
         _, ext = os.path.splitext(path)
         with open(path, "r") as f:
@@ -206,6 +219,11 @@ class RouterConfig:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert the RouterConfig to a dictionary.
+
+        :return: A dictionary representation of the RouterConfig.
+        :rtype: Dict[str, Any]
+        """
         return {
             "encoder_type": self.encoder_type,
             "encoder_name": self.encoder_name,
@@ -213,7 +231,11 @@ class RouterConfig:
         }
 
     def to_file(self, path: str):
-        """Save the routes to a file in JSON or YAML format"""
+        """Save the routes to a file in JSON or YAML format.
+
+        :param path: The path to save the RouterConfig to.
+        :type path: str
+        """
         logger.info(f"Saving route config to {path}")
         _, ext = os.path.splitext(path)
 
@@ -266,6 +288,13 @@ class RouterConfig:
         logger.info(f"Added route `{route.name}`")
 
     def get(self, name: str) -> Optional[Route]:
+        """Get a route from the RouterConfig by name.
+
+        :param name: The name of the route to get.
+        :type name: str
+        :return: The route if found, otherwise None.
+        :rtype: Optional[Route]
+        """
         for route in self.routes:
             if route.name == name:
                 return route
@@ -273,6 +302,11 @@ class RouterConfig:
         return None
 
     def remove(self, name: str):
+        """Remove a route from the RouterConfig by name.
+
+        :param name: The name of the route to remove.
+        :type name: str
+        """
         if name not in [route.name for route in self.routes]:
             logger.error(f"Route `{name}` not found")
         else:
@@ -280,6 +314,11 @@ class RouterConfig:
             logger.info(f"Removed route `{name}`")
 
     def get_hash(self) -> ConfigParameter:
+        """Get the hash of the RouterConfig. Used for syncing.
+
+        :return: The hash of the RouterConfig.
+        :rtype: ConfigParameter
+        """
         layer = self.to_dict()
         return ConfigParameter(
             field="sr_hash",
@@ -288,6 +327,13 @@ class RouterConfig:
 
 
 def xq_reshape(xq: List[float] | np.ndarray) -> np.ndarray:
+    """Reshape the query vector to be a 2D numpy array.
+
+    :param xq: The query vector.
+    :type xq: List[float] | np.ndarray
+    :return: The reshaped query vector.
+    :rtype: np.ndarray
+    """
     # convert to numpy array if not already
     if not isinstance(xq, np.ndarray):
         xq = np.array(xq)
@@ -302,6 +348,8 @@ def xq_reshape(xq: List[float] | np.ndarray) -> np.ndarray:
 
 
 class BaseRouter(BaseModel):
+    """Base class for all routers."""
+
     encoder: DenseEncoder = Field(default_factory=OpenAIEncoder)
     sparse_encoder: Optional[SparseEncoder] = Field(default=None)
     index: BaseIndex = Field(default_factory=BaseIndex)
@@ -327,6 +375,26 @@ class BaseRouter(BaseModel):
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
     ):
+        """Initialize a BaseRouter object. Expected to be used as a base class only,
+        not directly instantiated.
+
+        :param encoder: The encoder to use.
+        :type encoder: Optional[DenseEncoder]
+        :param sparse_encoder: The sparse encoder to use.
+        :type sparse_encoder: Optional[SparseEncoder]
+        :param llm: The LLM to use.
+        :type llm: Optional[BaseLLM]
+        :param routes: The routes to use.
+        :type routes: Optional[List[Route]]
+        :param index: The index to use.
+        :type index: Optional[BaseIndex]
+        :param top_k: The number of routes to return.
+        :type top_k: int
+        :param aggregation: The aggregation method to use.
+        :type aggregation: str
+        :param auto_sync: The auto sync mode to use.
+        :type auto_sync: Optional[str]
+        """
         routes = routes.copy() if routes else []
         super().__init__(
             encoder=encoder,
@@ -365,6 +433,13 @@ class BaseRouter(BaseModel):
         self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
+        """Get the index to use.
+
+        :param index: The index to use.
+        :type index: Optional[BaseIndex]
+        :return: The index to use.
+        :rtype: BaseIndex
+        """
         if index is None:
             logger.warning("No index provided. Using default LocalIndex.")
             index = LocalIndex()
@@ -373,6 +448,13 @@ class BaseRouter(BaseModel):
         return index
 
     def _get_encoder(self, encoder: Optional[DenseEncoder]) -> DenseEncoder:
+        """Get the dense encoder to be used for creating dense vector embeddings.
+
+        :param encoder: The encoder to use.
+        :type encoder: Optional[DenseEncoder]
+        :return: The encoder to use.
+        :rtype: DenseEncoder
+        """
         if encoder is None:
             logger.warning("No encoder provided. Using default OpenAIEncoder.")
             encoder = OpenAIEncoder()
@@ -383,6 +465,13 @@ class BaseRouter(BaseModel):
     def _get_sparse_encoder(
         self, sparse_encoder: Optional[SparseEncoder]
     ) -> Optional[SparseEncoder]:
+        """Get the sparse encoder to be used for creating sparse vector embeddings.
+
+        :param sparse_encoder: The sparse encoder to use.
+        :type sparse_encoder: Optional[SparseEncoder]
+        :return: The sparse encoder to use.
+        :rtype: Optional[SparseEncoder]
+        """
         if sparse_encoder is None:
             return None
         raise NotImplementedError(
@@ -397,7 +486,11 @@ class BaseRouter(BaseModel):
             self.index.dimensions = dims
         # now init index
         if isinstance(self.index, PineconeIndex):
+            # _init_index will not create index if already exists — it will also check
+            # for required attributes like self.index.host and self.index.dimensions and
+            # fetch them if not set
             self.index.index = self.index._init_index(force_create=True)
+
         # run auto sync if active
         if self.auto_sync:
             local_utterances = self.to_config().to_utterances()
@@ -425,6 +518,13 @@ class BaseRouter(BaseModel):
                 )
 
     def check_for_matching_routes(self, top_class: str) -> Optional[Route]:
+        """Check for a matching route in the routes list.
+
+        :param top_class: The top class to check for.
+        :type top_class: str
+        :return: The matching route if found, otherwise None.
+        :rtype: Optional[Route]
+        """
         matching_route = next(
             (route for route in self.routes if route.name == top_class), None
         )
@@ -443,13 +543,26 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        """Call the router to get a route choice.
+
+        :param text: The text to route.
+        :type text: Optional[str]
+        :param vector: The vector to route.
+        :type vector: Optional[List[float] | np.ndarray]
+        :param simulate_static: Whether to simulate a static route.
+        :type simulate_static: bool
+        :param route_filter: The route filter to use.
+        :type route_filter: Optional[List[str]]
+        :return: The route choice.
+        :rtype: RouteChoice
+        """
         if not self.index.is_ready():
             raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = self._encode(text=[text])
+            vector = self._encode(text=[text], input_type="queries")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
         # get scores and routes
@@ -501,6 +614,20 @@ class BaseRouter(BaseModel):
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice:
+        """Asynchronously call the router to get a route choice.
+
+        :param text: The text to route.
+        :type text: Optional[str]
+        :param vector: The vector to route.
+        :type vector: Optional[List[float] | np.ndarray]
+        :param simulate_static: Whether to simulate a static route (ie avoid dynamic route
+            LLM calls during fit or evaluate).
+        :type simulate_static: bool
+        :param route_filter: The route filter to use.
+        :type route_filter: Optional[List[str]]
+        :return: The route choice.
+        :rtype: RouteChoice
+        """
         if not self.index.is_ready():
             # TODO: need async version for qdrant
             raise ValueError("Index is not ready.")
@@ -508,7 +635,7 @@ class BaseRouter(BaseModel):
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
-            vector = await self._async_encode(text=[text])
+            vector = await self._async_encode(text=[text], input_type="queries")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
         # get scores and routes
@@ -696,7 +823,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
@@ -729,7 +857,8 @@ class BaseRouter(BaseModel):
                 routes=[utt.route for utt in strategy["remote"]["upsert"]],
                 utterances=utterances_text,
                 function_schemas=[
-                    utt.function_schemas for utt in strategy["remote"]["upsert"]  # type: ignore
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
                 ],
                 metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
             )
@@ -802,10 +931,15 @@ class BaseRouter(BaseModel):
         self.routes = new_routes
 
     def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
+        """Check if the route's score passes the specified threshold.
+
+        :param scores: The scores to check.
+        :type scores: List[float]
+        :param route: The route to check.
+        :type route: Optional[Route]
+        :return: True if the route's score passes the threshold, otherwise False.
+        :rtype: bool
         """
-        Check if the route's score passes the specified threshold.
-        """
-        # TODO JB: do we need this?
         if route is None:
             return False
         threshold = (
@@ -824,6 +958,13 @@ class BaseRouter(BaseModel):
 
     @classmethod
     def from_json(cls, file_path: str):
+        """Load a RouterConfig from a JSON file.
+
+        :param file_path: The path to the JSON file.
+        :type file_path: str
+        :return: The RouterConfig object.
+        :rtype: RouterConfig
+        """
         config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         if isinstance(encoder, DenseEncoder):
@@ -833,6 +974,13 @@ class BaseRouter(BaseModel):
 
     @classmethod
     def from_yaml(cls, file_path: str):
+        """Load a RouterConfig from a YAML file.
+
+        :param file_path: The path to the YAML file.
+        :type file_path: str
+        :return: The RouterConfig object.
+        :rtype: RouterConfig
+        """
         config = RouterConfig.from_file(file_path)
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         if isinstance(encoder, DenseEncoder):
@@ -842,6 +990,13 @@ class BaseRouter(BaseModel):
 
     @classmethod
     def from_config(cls, config: RouterConfig, index: Optional[BaseIndex] = None):
+        """Create a Router from a RouterConfig object.
+
+        :param config: The RouterConfig object.
+        :type config: RouterConfig
+        :param index: The index to use.
+        :type index: Optional[BaseIndex]
+        """
         encoder = AutoEncoder(type=config.encoder_type, name=config.encoder_name).model
         if isinstance(encoder, DenseEncoder):
             return cls(encoder=encoder, routes=config.routes, index=index)
@@ -881,6 +1036,13 @@ class BaseRouter(BaseModel):
 
         The name must exist within the local SemanticRouter, if not a
         KeyError will be raised.
+
+        :param name: The name of the route to update.
+        :type name: str
+        :param threshold: The threshold to update.
+        :type threshold: Optional[float]
+        :param utterances: The utterances to update.
+        :type utterances: Optional[List[str]]
         """
         # TODO JB: should modify update to take a Route object
         current_local_hash = self._get_hash()
@@ -953,8 +1115,46 @@ class BaseRouter(BaseModel):
                 "to see details."
             )
 
+    async def adelete(self, route_name: str):
+        """Deletes a route given a specific route name asynchronously.
+
+        :param route_name: the name of the route to be deleted
+        :type str:
+        """
+        # ensure index is not locked
+        if await self.index._ais_locked():
+            raise ValueError("Index is locked. Cannot delete route.")
+        current_local_hash = self._get_hash()
+        current_remote_hash = await self.index._async_read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
+        if route_name not in [route.name for route in self.routes]:
+            err_msg = f"Route `{route_name}` not found in {self.__class__.__name__}"
+            logger.warning(err_msg)
+            try:
+                await self.index.adelete(route_name=route_name)
+            except Exception as e:
+                logger.error(f"Failed to delete route from the index: {e}")
+        else:
+            self.routes = [route for route in self.routes if route.name != route_name]
+            await self.index.adelete(route_name=route_name)
+
+        if current_local_hash.value == current_remote_hash.value:
+            await self._async_write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
+
     def _refresh_routes(self):
-        """Pulls out the latest routes from the index."""
+        """Pulls out the latest routes from the index.
+
+        Not yet implemented for BaseRouter.
+        """
         raise NotImplementedError("This method has not yet been implemented.")
         route_mapping = {route.name: route for route in self.routes}
         index_routes = self.index.get_utterances()
@@ -971,16 +1171,31 @@ class BaseRouter(BaseModel):
             self.routes.append(route)
 
     def _get_hash(self) -> ConfigParameter:
+        """Get the hash of the current routes.
+
+        :return: The hash of the current routes.
+        :rtype: ConfigParameter
+        """
         config = self.to_config()
         return config.get_hash()
 
     def _write_hash(self) -> ConfigParameter:
+        """Write the hash of the current routes to the index.
+
+        :return: The hash of the current routes.
+        :rtype: ConfigParameter
+        """
         config = self.to_config()
         hash_config = config.get_hash()
         self.index._write_config(config=hash_config)
         return hash_config
 
     async def _async_write_hash(self) -> ConfigParameter:
+        """Write the hash of the current routes to the index asynchronously.
+
+        :return: The hash of the current routes.
+        :rtype: ConfigParameter
+        """
         config = self.to_config()
         hash_config = config.get_hash()
         await self.index._async_write_config(config=hash_config)
@@ -1038,6 +1253,12 @@ class BaseRouter(BaseModel):
 
         This diff tells us that the remote has "route2: utterance3" and
         "route2: utterance4", which do not exist locally.
+
+        :param include_metadata: Whether to include metadata in the diff.
+        :type include_metadata: bool
+        :return: A list of strings showing the difference between the local and remote
+            utterances.
+        :rtype: List[str]
         """
         # first we get remote and local utterances
         remote_utterances = self.index.get_utterances(include_metadata=include_metadata)
@@ -1068,6 +1289,12 @@ class BaseRouter(BaseModel):
 
         This diff tells us that the remote has "route2: utterance3" and
         "route2: utterance4", which do not exist locally.
+
+        :param include_metadata: Whether to include metadata in the diff.
+        :type include_metadata: bool
+        :return: A list of strings showing the difference between the local and remote
+            utterances.
+        :rtype: List[str]
         """
         # first we get remote and local utterances
         remote_utterances = await self.index.aget_utterances(
@@ -1083,10 +1310,23 @@ class BaseRouter(BaseModel):
     def _extract_routes_details(
         self, routes: List[Route], include_metadata: bool = False
     ) -> Tuple:
+        """Extract the routes details.
+
+        :param routes: The routes to extract the details from.
+        :type routes: List[Route]
+        :param include_metadata: Whether to include metadata in the details.
+        :type include_metadata: bool
+        :return: A tuple of the route names, utterances, and function schemas.
+        """
+
         route_names = [route.name for route in routes for _ in route.utterances]
         utterances = [utterance for route in routes for utterance in route.utterances]
         function_schemas = [
-            route.function_schemas[0] if route.function_schemas is not None else {}
+            (
+                route.function_schemas[0]
+                if route.function_schemas and len(route.function_schemas) > 0
+                else {}
+            )
             for route in routes
             for _ in route.utterances
         ]
@@ -1096,26 +1336,38 @@ class BaseRouter(BaseModel):
             return route_names, utterances, function_schemas, metadata
         return route_names, utterances, function_schemas
 
-    def _encode(self, text: list[str]) -> Any:
+    def _encode(
+        self,
+        text: list[str],
+        input_type: EncodeInputType,
+    ) -> Any:
         """Generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The embeddings of the text.
         :rtype: Any
         """
         # TODO: should encode "content" rather than text
         raise NotImplementedError("This method should be implemented by subclasses.")
 
-    async def _async_encode(self, text: list[str]) -> Any:
+    async def _async_encode(
+        self,
+        text: list[str],
+        input_type: EncodeInputType,
+    ) -> Any:
         """Asynchronously generates embeddings for a given text.
 
         Must be implemented by a subclass.
 
         :param text: The text to encode.
         :type text: list[str]
+        :param input_type: Specify whether encoding 'queries' or 'documents', used in asymmetric retrieval
+        :type input_type: semantic_router.encoders.encode_input_type.EncodeInputType
         :return: The embeddings of the text.
         :rtype: Any
         """
@@ -1123,6 +1375,13 @@ class BaseRouter(BaseModel):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def _set_aggregation_method(self, aggregation: str = "sum"):
+        """Set the aggregation method.
+
+        :param aggregation: The aggregation method to use.
+        :type aggregation: str
+        :return: The aggregation method.
+        :rtype: Callable
+        """
         # TODO is this really needed?
         if aggregation == "sum":
             return lambda x: sum(x)
@@ -1197,6 +1456,13 @@ class BaseRouter(BaseModel):
             return "", []
 
     def get(self, name: str) -> Optional[Route]:
+        """Get a route by name.
+
+        :param name: The name of the route to get.
+        :type name: str
+        :return: The route.
+        :rtype: Optional[Route]
+        """
         for route in self.routes:
             if route.name == name:
                 return route
@@ -1207,6 +1473,14 @@ class BaseRouter(BaseModel):
     def _semantic_classify_multiple_routes(
         self, query_results: List[Dict]
     ) -> List[Tuple[str, float]]:
+        """Classify the query results into multiple routes based on the highest total score.
+
+        :param query_results: The query results to classify. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A list of tuples containing the route name and its associated scores.
+        :rtype: List[Tuple[str, float]]
+        """
         scores_by_class = self.group_scores_by_class(query_results)
 
         # Filter classes based on threshold and find max score for each
@@ -1230,6 +1504,14 @@ class BaseRouter(BaseModel):
     def group_scores_by_class(
         self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
+        """Group the scores by class.
+
+        :param query_results: The query results to group. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A dictionary of route names and their associated scores.
+        :rtype: Dict[str, List[float]]
+        """
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
@@ -1243,6 +1525,14 @@ class BaseRouter(BaseModel):
     async def async_group_scores_by_class(
         self, query_results: List[Dict]
     ) -> Dict[str, List[float]]:
+        """Group the scores by class asynchronously.
+
+        :param query_results: The query results to group. Expected format is a list of
+        dictionaries with "route" and "score" keys.
+        :type query_results: List[Dict]
+        :return: A dictionary of route names and their associated scores.
+        :rtype: Dict[str, List[float]]
+        """
         scores_by_class: Dict[str, List[float]] = {}
         for result in query_results:
             score = result["score"]
@@ -1309,6 +1599,11 @@ class BaseRouter(BaseModel):
                 logger.error(f"Route `{route_name}` not found")
 
     def to_config(self) -> RouterConfig:
+        """Convert the router to a RouterConfig object.
+
+        :return: The RouterConfig object.
+        :rtype: RouterConfig
+        """
         return RouterConfig(
             encoder_type=self.encoder.type,
             encoder_name=self.encoder.name,
@@ -1316,14 +1611,29 @@ class BaseRouter(BaseModel):
         )
 
     def to_json(self, file_path: str):
+        """Convert the router to a JSON file.
+
+        :param file_path: The path to the JSON file.
+        :type file_path: str
+        """
         config = self.to_config()
         config.to_file(file_path)
 
     def to_yaml(self, file_path: str):
+        """Convert the router to a YAML file.
+
+        :param file_path: The path to the YAML file.
+        :type file_path: str
+        """
         config = self.to_config()
         config.to_file(file_path)
 
     def get_thresholds(self) -> Dict[str, float]:
+        """Get the score thresholds for each route.
+
+        :return: A dictionary of route names and their associated thresholds.
+        :rtype: Dict[str, float]
+        """
         thresholds = {
             route.name: route.score_threshold or self.score_threshold or 0.0
             for route in self.routes
@@ -1338,16 +1648,34 @@ class BaseRouter(BaseModel):
         max_iter: int = 500,
         local_execution: bool = False,
     ):
+        """Fit the router to the data. Works best with a large number of examples for each
+        route and with many `None` utterances.
+
+        :param X: The input data.
+        :type X: List[str]
+        :param y: The output data.
+        :type y: List[str]
+        :param batch_size: The batch size to use for fitting.
+        :type batch_size: int
+        :param max_iter: The maximum number of iterations to use for fitting.
+        :type max_iter: int
+        :param local_execution: Whether to execute the fitting locally.
+        :type local_execution: bool
+        """
         original_index = self.index
         if local_execution:
             # Switch to a local index for fitting
             from semantic_router.index.local import LocalIndex
 
-            remote_routes = self.index.get_utterances(include_metadata=True)
+            remote_utterances = self.index.get_utterances(include_metadata=True)
             # TODO Enhance by retrieving directly the vectors instead of embedding all utterances again
-            routes, utterances, function_schemas, metadata = map(
-                list, zip(*remote_routes)
-            )
+            routes = []
+            utterances = []
+            metadata = []
+            for utterance in remote_utterances:
+                routes.append(utterance.route)
+                utterances.append(utterance.utterance)
+                metadata.append(utterance.metadata)
             embeddings = self.encoder(utterances)
             self.index = LocalIndex()
             self.index.add(
@@ -1389,8 +1717,16 @@ class BaseRouter(BaseModel):
             self.index = original_index
 
     def evaluate(self, X: List[str], y: List[str], batch_size: int = 500) -> float:
-        """
-        Evaluate the accuracy of the route selection.
+        """Evaluate the accuracy of the route selection.
+
+        :param X: The input data.
+        :type X: List[str]
+        :param y: The output data.
+        :type y: List[str]
+        :param batch_size: The batch size to use for evaluation.
+        :type batch_size: int
+        :return: The accuracy of the route selection.
+        :rtype: float
         """
         Xq: List[List[float]] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
@@ -1403,8 +1739,14 @@ class BaseRouter(BaseModel):
     def _vec_evaluate(
         self, Xq_d: Union[List[float], Any], y: List[str], **kwargs
     ) -> float:
-        """
-        Evaluate the accuracy of the route selection.
+        """Evaluate the accuracy of the route selection.
+
+        :param Xq_d: The input data.
+        :type Xq_d: Union[List[float], Any]
+        :param y: The output data.
+        :type y: List[str]
+        :return: The accuracy of the route selection.
+        :rtype: float
         """
         correct = 0
         for xq, target_route in zip(Xq_d, y):
@@ -1416,6 +1758,11 @@ class BaseRouter(BaseModel):
         return accuracy
 
     def _get_route_names(self) -> List[str]:
+        """Get the names of the routes.
+
+        :return: The names of the routes.
+        :rtype: List[str]
+        """
         return [route.name for route in self.routes]
 
 
@@ -1423,7 +1770,15 @@ def threshold_random_search(
     route_layer: BaseRouter,
     search_range: Union[int, float],
 ) -> Dict[str, float]:
-    """Performs a random search iteration given a route layer and a search range."""
+    """Performs a random search iteration given a route layer and a search range.
+
+    :param route_layer: The route layer to search.
+    :type route_layer: BaseRouter
+    :param search_range: The search range to use.
+    :type search_range: Union[int, float]
+    :return: A dictionary of route names and their associated thresholds.
+    :rtype: Dict[str, float]
+    """
     # extract the route names
     routes = route_layer.get_thresholds()
     route_names = list(routes.keys())

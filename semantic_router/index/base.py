@@ -1,16 +1,15 @@
 import asyncio
-from datetime import datetime
-import time
-from typing import Any, List, Optional, Tuple, Union, Dict
 import json
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel
 
-from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.route import Route
+from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
-
 
 RETRY_WAIT_TIME = 2.5
 
@@ -48,6 +47,17 @@ class BaseIndex(BaseModel):
     ):
         """Add embeddings to the index.
         This method should be implemented by subclasses.
+
+        :param embeddings: List of embeddings to add to the index.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to add to the index.
+        :type routes: List[str]
+        :param utterances: List of utterances to add to the index.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to add to the index.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to add to the index.
+        :type metadata_list: List[Dict[str, Any]]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
@@ -62,6 +72,17 @@ class BaseIndex(BaseModel):
     ):
         """Add vectors to the index asynchronously.
         This method should be implemented by subclasses.
+
+        :param embeddings: List of embeddings to add to the index.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to add to the index.
+        :type routes: List[str]
+        :param utterances: List of utterances to add to the index.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to add to the index.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to add to the index.
+        :type metadata_list: List[Dict[str, Any]]
         """
         logger.warning("Async method not implemented.")
         return self.add(
@@ -144,6 +165,9 @@ class BaseIndex(BaseModel):
         """
         Remove embeddings in a routes syncing process from the index.
         This method should be implemented by subclasses.
+
+        :param routes_to_delete: Dictionary of routes to delete.
+        :type routes_to_delete: dict
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
@@ -151,29 +175,50 @@ class BaseIndex(BaseModel):
         """
         Remove embeddings in a routes syncing process from the index asynchronously.
         This method should be implemented by subclasses.
+
+        :param routes_to_delete: Dictionary of routes to delete.
+        :type routes_to_delete: dict
         """
         logger.warning("Async method not implemented.")
         return self._remove_and_sync(routes_to_delete=routes_to_delete)
 
     def delete(self, route_name: str):
-        """
-        Deletes route by route name.
+        """Deletes route by route name.
         This method should be implemented by subclasses.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def adelete(self, route_name: str) -> list[str]:
+        """Asynchronously delete specified route from index if it exists. Returns the IDs
+        of the vectors deleted.
+        This method should be implemented by subclasses.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        :return: List of IDs of the vectors deleted.
+        :rtype: list[str]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def describe(self) -> IndexConfig:
-        """
-        Returns an IndexConfig object with index details such as type, dimensions, and
-        total vector count.
+        """Returns an IndexConfig object with index details such as type, dimensions,
+        and total vector count.
         This method should be implemented by subclasses.
+
+        :return: An IndexConfig object.
+        :rtype: IndexConfig
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def is_ready(self) -> bool:
-        """
-        Checks if the index is ready to be used.
+        """Checks if the index is ready to be used.
         This method should be implemented by subclasses.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
@@ -184,9 +229,19 @@ class BaseIndex(BaseModel):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Search the index for the query_vector and return top_k results.
+        """Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.
+
+        :param vector: The vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The routes to filter the search by.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to search for.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple containing the query vector and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
@@ -197,9 +252,19 @@ class BaseIndex(BaseModel):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """
-        Search the index for the query_vector and return top_k results.
+        """Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.
+
+        :param vector: The vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The routes to filter the search by.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to search for.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple containing the query vector and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
@@ -215,8 +280,10 @@ class BaseIndex(BaseModel):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
     def delete_all(self):
-        """
-        Deletes all records from the index.
+        """Deletes all records from the index.
+        This method should be implemented by subclasses.
+
+        :raises NotImplementedError: If the method is not implemented by the subclass.
         """
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
@@ -224,9 +291,10 @@ class BaseIndex(BaseModel):
         self.utterances = None
 
     def delete_index(self):
-        """
-        Deletes or resets the index.
+        """Deletes or resets the index.
         This method should be implemented by subclasses.
+
+        :raises NotImplementedError: If the method is not implemented by the subclass.
         """
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
@@ -405,9 +473,7 @@ class BaseIndex(BaseModel):
         return lock_param
 
     def _get_all(self, prefix: Optional[str] = None, include_metadata: bool = False):
-        """
-        Retrieves all vector IDs from the index.
-
+        """Retrieves all vector IDs from the index.
         This method should be implemented by subclasses.
 
         :param prefix: The prefix to filter the vectors by.
@@ -423,7 +489,6 @@ class BaseIndex(BaseModel):
         self, prefix: Optional[str] = None, include_metadata: bool = False
     ) -> tuple[list[str], list[dict]]:
         """Retrieves all vector IDs from the index asynchronously.
-
         This method should be implemented by subclasses.
 
         :param prefix: The prefix to filter the vectors by.

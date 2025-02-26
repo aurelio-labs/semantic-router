@@ -95,6 +95,11 @@ class QdrantIndex(BaseIndex):
         self.client, self.aclient = self._initialize_clients()
 
     def _initialize_clients(self):
+        """Initialize the clients for the Qdrant index.
+
+        :return: A tuple of the sync and async clients.
+        :rtype: Tuple[QdrantClient, Optional[AsyncQdrantClient]]
+        """
         try:
             from qdrant_client import AsyncQdrantClient, QdrantClient
 
@@ -142,6 +147,11 @@ class QdrantIndex(BaseIndex):
             ) from e
 
     def _init_collection(self) -> None:
+        """Initialize the collection for the Qdrant index.
+
+        :return: None
+        :rtype: None
+        """
         from qdrant_client import QdrantClient, models
 
         self.client: QdrantClient
@@ -160,6 +170,11 @@ class QdrantIndex(BaseIndex):
             )
 
     def _remove_and_sync(self, routes_to_delete: dict):
+        """Remove and sync the index.
+
+        :param routes_to_delete: The routes to delete.
+        :type routes_to_delete: dict
+        """
         logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def add(
@@ -172,6 +187,21 @@ class QdrantIndex(BaseIndex):
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
         **kwargs,
     ):
+        """Add records to the index.
+
+        :param embeddings: The embeddings to add.
+        :type embeddings: List[List[float]]
+        :param routes: The routes to add.
+        :type routes: List[str]
+        :param utterances: The utterances to add.
+        :type utterances: List[str]
+        :param function_schemas: The function schemas to add.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: The metadata to add.
+        :type metadata_list: List[Dict[str, Any]]
+        :param batch_size: The batch size to use for the upload.
+        :type batch_size: int
+        """
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
 
@@ -239,6 +269,11 @@ class QdrantIndex(BaseIndex):
         return utterances
 
     def delete(self, route_name: str):
+        """Delete records from the index.
+
+        :param route_name: The name of the route to delete.
+        :type route_name: str
+        """
         from qdrant_client import models
 
         self.client.delete(
@@ -254,6 +289,11 @@ class QdrantIndex(BaseIndex):
         )
 
     def describe(self) -> IndexConfig:
+        """Describe the index.
+
+        :return: The index configuration.
+        :rtype: IndexConfig
+        """
         collection_info = self.client.get_collection(self.index_name)
 
         return IndexConfig(
@@ -263,8 +303,10 @@ class QdrantIndex(BaseIndex):
         )
 
     def is_ready(self) -> bool:
-        """
-        Checks if the index is ready to be used.
+        """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
         """
         return self.client.collection_exists(self.index_name)
 
@@ -275,6 +317,19 @@ class QdrantIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
+        """Query the index.
+
+        :param vector: The vector to query.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The route filter to apply.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to query.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple of the scores and route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        """
         from qdrant_client import QdrantClient, models
 
         self.client: QdrantClient
@@ -309,6 +364,19 @@ class QdrantIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
+        """Asynchronously query the index.
+
+        :param vector: The vector to query.
+        :type vector: np.ndarray
+        :param top_k: The number of results to return.
+        :type top_k: int
+        :param route_filter: The route filter to apply.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to query.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple of the scores and route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        """
         from qdrant_client import AsyncQdrantClient, models
 
         self.aclient: Optional[AsyncQdrantClient]
@@ -341,12 +409,29 @@ class QdrantIndex(BaseIndex):
         return np.array(scores), route_names
 
     def aget_routes(self):
+        """Asynchronously get all routes from the index.
+
+        :return: A list of routes.
+        :rtype: List[str]
+        """
         logger.error("Sync remove is not implemented for QdrantIndex.")
 
     def delete_index(self):
+        """Delete the index.
+
+        :return: None
+        :rtype: None
+        """
         self.client.delete_collection(self.index_name)
 
     def convert_metric(self, metric: Metric):
+        """Convert the metric to a Qdrant distance metric.
+
+        :param metric: The metric to convert.
+        :type metric: Metric
+        :return: The converted metric.
+        :rtype: Distance
+        """
         from qdrant_client.models import Distance
 
         mapping = {
@@ -362,6 +447,11 @@ class QdrantIndex(BaseIndex):
         return mapping[metric]
 
     def _write_config(self, config: ConfigParameter):
+        """Write the config to the index.
+
+        :param config: The config to write to the index.
+        :type config: ConfigParameter
+        """
         logger.warning("No config is written for QdrantIndex.")
 
     def __len__(self):

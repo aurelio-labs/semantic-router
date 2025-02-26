@@ -4,12 +4,18 @@ on:
   pull_request:
 
 
-env:
-  POETRY_VERSION: "2.0.1"
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      pinecone:
+        image: ghcr.io/pinecone-io/pinecone-local:latest
+        env:
+          PORT: 5080
+          PINECONE_HOST: localhost
+        ports:
+        - "5080-6000:5080-6000"
+
     strategy:
       matrix:
         python-version:
@@ -19,33 +25,25 @@ jobs:
         - "3.13"
     steps:
     - uses: actions/checkout@v4
-    - name: Cache Poetry
-      uses: actions/cache@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
-        path: ~/.poetry
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
-    - name: Install poetry
-      run: |
-        pipx install poetry==$POETRY_VERSION
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
         python-version: ${{ matrix.python-version }}
-        cache: poetry
-    - name: Install dependencies
-      run: |
-        poetry install --all-extras
+    - name: Install Dependencies
+      run: uv sync --extra all
     - name: Install nltk
-      run: |
-        pip install nltk
+      run: uv pip install nltk
+
     - name: Download nltk data
       run: |
-        python -m nltk.downloader punkt stopwords wordnet punkt_tab
+        uv run python -m nltk.downloader punkt stopwords wordnet punkt_tab
+
     - name: Pytest All
       env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        PINECONE_API_KEY: pclocal
+        PINECONE_API_BASE_URL: http://localhost:5080
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
       run: |

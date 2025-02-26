@@ -1,25 +1,26 @@
 import asyncio
-from functools import wraps
 import importlib
 import os
-from datetime import datetime
-import pytest
 import time
+from datetime import datetime
+from functools import wraps
+from platform import python_version
 from typing import Optional
-from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+
+import pytest
+
+from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.index import (
-    PineconeIndex,
     HybridLocalIndex,
     LocalIndex,
-    QdrantIndex,
+    PineconeIndex,
     PostgresIndex,
+    QdrantIndex,
 )
-from semantic_router.schema import Utterance
-from semantic_router.routers import SemanticRouter, HybridRouter
 from semantic_router.route import Route
+from semantic_router.routers import HybridRouter, SemanticRouter
+from semantic_router.schema import Utterance
 from semantic_router.utils.logger import logger
-from platform import python_version
-
 
 PINECONE_SLEEP = 6
 RETRY_COUNT = 5
@@ -105,7 +106,7 @@ TEST_ID = (
 
 def init_index(
     index_cls,
-    dimensions: Optional[int] = None,
+    dimensions: Optional[int] = 3,
     namespace: Optional[str] = "",
     init_async_index: bool = False,
     index_name: Optional[str] = None,
@@ -114,6 +115,13 @@ def init_index(
     issues during testing.
     """
     if index_cls is PineconeIndex:
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
         index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
         index = index_cls(
             index_name=index_name,
@@ -310,9 +318,7 @@ def get_test_indexes():
 
 
 def get_test_routers():
-    routers = [SemanticRouter]
-    if importlib.util.find_spec("pinecone_text") is not None:
-        routers.append(HybridRouter)
+    routers = [SemanticRouter, HybridRouter]
     return routers
 
 

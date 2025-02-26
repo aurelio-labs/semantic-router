@@ -11,7 +11,8 @@ from semantic_router.utils.defaults import EncoderDefault
 
 
 class MistralEncoder(DenseEncoder):
-    """Class to encode text using MistralAI"""
+    """Class to encode text using MistralAI. Requires a MistralAI API key from
+    https://console.mistral.ai/api-keys/"""
 
     _client: Any = PrivateAttr()
     _mistralai: Any = PrivateAttr()
@@ -23,12 +24,27 @@ class MistralEncoder(DenseEncoder):
         mistralai_api_key: Optional[str] = None,
         score_threshold: float = 0.82,
     ):
+        """Initialize the MistralEncoder.
+
+        :param name: The name of the embedding model to use.
+        :type name: str
+        :param mistralai_api_key: The MistralAI API key.
+        :type mistralai_api_key: str
+        :param score_threshold: The score threshold for the embeddings.
+        """
         if name is None:
             name = EncoderDefault.MISTRAL.value["embedding_model"]
         super().__init__(name=name, score_threshold=score_threshold)
         self._client, self._mistralai = self._initialize_client(mistralai_api_key)
 
     def _initialize_client(self, api_key):
+        """Initialize the MistralAI client.
+
+        :param api_key: The MistralAI API key.
+        :type api_key: str
+        :return: The MistralAI client.
+        :rtype: MistralClient
+        """
         try:
             import mistralai
             from mistralai.client import MistralClient
@@ -49,6 +65,13 @@ class MistralEncoder(DenseEncoder):
         return client, mistralai
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
+        """Encode a list of documents into embeddings using MistralAI.
+
+        :param docs: The documents to encode.
+        :type docs: List[str]
+        :return: The embeddings for the documents.
+        :rtype: List[List[float]]
+        """
         if self._client is None:
             raise ValueError("Mistral client not initialized")
         embeds = None

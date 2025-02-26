@@ -1,6 +1,8 @@
-import pytest
-from semantic_router.llms import BaseLLM
 from unittest.mock import patch
+
+import pytest
+
+from semantic_router.llms import BaseLLM
 
 
 class TestBaseLLM:

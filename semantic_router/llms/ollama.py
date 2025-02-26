@@ -8,6 +8,10 @@ from semantic_router.utils.logger import logger
 
 
 class OllamaLLM(BaseLLM):
+    """LLM for Ollama. Enables fully local LLM use, helpful for local implementation of
+    dynamic routes.
+    """
+
     stream: bool = False
 
     def __init__(
@@ -17,6 +21,17 @@ class OllamaLLM(BaseLLM):
         max_tokens: Optional[int] = 200,
         stream: bool = False,
     ):
+        """Initialize the OllamaLLM.
+
+        :param name: The name of the Ollama model to use.
+        :type name: str
+        :param temperature: The temperature of the LLM.
+        :type temperature: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: Optional[int]
+        :param stream: Whether to stream the response.
+        :type stream: bool
+        """
         super().__init__(name=name)
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -30,6 +45,19 @@ class OllamaLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         stream: Optional[bool] = None,
     ) -> str:
+        """Call the OllamaLLM.
+
+        :param messages: The messages to pass to the OllamaLLM.
+        :type messages: List[Message]
+        :param temperature: The temperature of the LLM.
+        :type temperature: Optional[float]
+        :param name: The name of the Ollama model to use.
+        :type name: Optional[str]
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: Optional[int]
+        :param stream: Whether to stream the response.
+        :type stream: Optional[bool]
+        """
         # Use instance defaults if not overridden
         temperature = temperature if temperature is not None else self.temperature
         name = name if name is not None else self.name

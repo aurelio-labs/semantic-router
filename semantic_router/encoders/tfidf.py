@@ -1,3 +1,4 @@
+import asyncio
 import string
 from collections import Counter
 from typing import Dict, List
@@ -5,11 +6,12 @@ from typing import Dict, List
 import numpy as np
 
 from semantic_router.encoders import SparseEncoder
+from semantic_router.encoders.base import FittableMixin
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
 
 
-class TfidfEncoder(SparseEncoder):
+class TfidfEncoder(SparseEncoder, FittableMixin):
     idf: np.ndarray = np.array([])
     # TODO: add option to use default params like with BM25Encoder
     word_index: Dict = {}
@@ -31,6 +33,9 @@ class TfidfEncoder(SparseEncoder):
         tf = self._compute_tf(docs)
         tfidf = tf * self.idf
         return self._array_to_sparse_embeddings(tfidf)
+
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return await asyncio.to_thread(lambda: self.__call__(docs))
 
     def fit(self, routes: List[Route]):
         """Trains the encoder weights on the provided routes.
