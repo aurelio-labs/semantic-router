@@ -251,6 +251,8 @@ synchronized by running `rl.is_synced()`:
 
 If the above returns `True` we are now synchronized!
 
+.. code-block:: text
+
                       .=                
                      :%%*               
                     -%%%%#              
