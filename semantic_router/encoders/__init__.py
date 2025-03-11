@@ -1,7 +1,8 @@
 from typing import List, Optional
 
+from semantic_router.encoders.base import DenseEncoder, SparseEncoder  # isort: skip
 from semantic_router.encoders.aurelio import AurelioSparseEncoder
-from semantic_router.encoders.base import DenseEncoder, SparseEncoder
+from semantic_router.encoders.azure_openai import AzureOpenAIEncoder
 from semantic_router.encoders.bedrock import BedrockEncoder
 from semantic_router.encoders.bm25 import BM25Encoder
 from semantic_router.encoders.clip import CLIPEncoder
@@ -13,7 +14,6 @@ from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
-from semantic_router.encoders.zure import AzureOpenAIEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
 
 __all__ = [
@@ -45,8 +45,7 @@ class AutoEncoder:
         self.type = EncoderType(type)
         self.name = name
         if self.type == EncoderType.AZURE:
-            # TODO should change `model` to `name` JB
-            self.model = AzureOpenAIEncoder(model=name)
+            self.model = AzureOpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
             self.model = CohereEncoder(name=name)
         elif self.type == EncoderType.OPENAI:
