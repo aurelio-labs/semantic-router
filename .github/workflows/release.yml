@@ -44,6 +44,6 @@ jobs:
       run: uv build
     - name: Publish to PyPI
       run: |
-        uv publish --binary --repository pypi --username "__token__" --password "$PYPI_API_TOKEN"
+        uv publish --username "__token__" --password "$PYPI_API_TOKEN"
       env:
         PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
