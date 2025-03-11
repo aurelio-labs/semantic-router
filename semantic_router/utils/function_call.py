@@ -1,7 +1,7 @@
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
@@ -23,8 +23,7 @@ class Parameter(BaseModel):
     :type required: bool
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(description="The name of the parameter")
     description: Optional[str] = Field(
