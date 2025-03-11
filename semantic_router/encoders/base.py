@@ -1,7 +1,7 @@
-from typing import Any, List, Optional
+from typing import Any, ClassVar, List, Optional
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
@@ -12,8 +12,7 @@ class DenseEncoder(BaseModel):
     score_threshold: Optional[float] = None
     type: str = Field(default="base")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("score_threshold")
     def set_score_threshold(cls, v: float | None) -> float | None:
@@ -57,8 +56,7 @@ class SparseEncoder(BaseModel):
     name: str
     type: str = Field(default="base")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
         """Sparsely encode a list of documents. Documents can be any type, but the encoder must
