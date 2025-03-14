@@ -41,17 +41,21 @@ jobs:
         ref: main
         token: ${{ secrets.PAT }}
 
-    - name: Copy and rename root docs
+    - name: Copy and rename getting started docs
       run: |
         ROOT_DIR=$(pwd)
+
+        # Create a separate mdx directory for the converted files
+        rm -rf temp-docs/semantic-router/getting-started
+        mkdir -p temp-docs/semantic-router/getting-started/
 
         # Find and copy all md files from ref
         cd docs/getting-started
         find . -type f -name "*.md" | while read file; do
           dir=$(dirname "$file")
           echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/docs/getting-started/$dir"
-          cp "$file" "$ROOT_DIR/docs/getting-started/${file%.md}.mdx"
+          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/getting-started/$dir"
+          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/getting-started/${file%.md}.mdx"
         done
 
     - name: Copy and rename reference docs
