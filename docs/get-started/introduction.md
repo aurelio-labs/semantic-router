@@ -24,7 +24,7 @@ Semantic Router v0.1 is now available! If you're migrating from an earlier versi
 
 ## Getting Started
 
-For a quick introduction to using Semantic Router, check out our [quickstart guide](essentials/quickstart).
+For a quick introduction to using Semantic Router, check out our [quickstart guide](quickstart).
 
 ## Execution Options
 

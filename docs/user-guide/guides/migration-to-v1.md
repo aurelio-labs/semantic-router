@@ -30,7 +30,7 @@ The v0.1 release of semantic router introduces several breaking changes to impro
 
 - If expecting routes to sync between local and remote on initialization, use `SemanticRouter(..., auto_sync="local")`. 
 
-  The `auto_sync` parameter provides control over how routes are synchronized between local and remote indexes. Read more about `auto_sync` and [synchronization strategies](sync).
+  The `auto_sync` parameter provides control over how routes are synchronized between local and remote indexes. Read more about `auto_sync` and [synchronization strategies](../features/sync).
 
   Available synchronization modes:
   
