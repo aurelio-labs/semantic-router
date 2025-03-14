@@ -115,9 +115,9 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         """Returns term frequency of query terms in trained corpus
 
         :param docs: 2D shaped array of each document's token ids
-        :type docs: :class:`numpy.ndarray`
+        :type docs: numpy.ndarray
         :return: Matrix where value @ (m, n) represents how many times token id `n` appears in document `m`
-        :rtype: :class:`numpy.ndarray`
+        :rtype: numpy.ndarray
         """
         if self._tokenizer is None:
             raise ValueError(
@@ -141,9 +141,9 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         This is done in a faster, vectorized way, instead of looping through each query
 
         :param queries: 2D shaped array of each query token ids
-        :type queries: :class:`numpy.ndarray`
+        :type queries: numpy.ndarray
         :return: Matrix where value @ (m, n) represents how many times token id `n` in query `m` appears in the trained corpus
-        :rtype: :class:`numpy.ndarray`
+        :rtype: numpy.ndarray
         """
         if self._documents_containing_word is None:
             raise ValueError(
@@ -175,7 +175,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         :param queries: List of queries to encode
         :type queries: list
         :return: BM25 scores for each query against the corpus
-        :rtype: np.ndarray
+        :rtype: list[SparseEmbedding]
         """
         if (
             self.corpus_size is None
@@ -215,7 +215,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         r"""Returns document term frequency normed by itself & average trained corpus length
         (This is the right-hand side of the BM25 equation, which gets matmul-ed with the query IDF component)
 
-        LaTeX: \frac{f(d_i, D)}{f(d_i, D) + k_1 \times (1 - b + b \times \frac{|D|}{avgdl})}
+        LaTeX: $\frac{f(d_i, D)}{f(d_i, D) + k_1 \times (1 - b + b \times \frac{|D|}{avgdl})}$
         where:
             f(d_i, D) is frequency of term `d_i ∈ D`
             |D| is the document length
@@ -224,7 +224,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         :param documents: List of queries to encode
         :type documents: list
         :return: Encoded queries (as either sparse or dict)
-        :rtype: :class:`scipy.sparse.csr_matrix`, list[dict]
+        :rtype: list[SparseEmbedding]
         """
         if (
             self.corpus_size is None
