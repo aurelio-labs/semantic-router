@@ -1,9 +1,8 @@
-Migration Guide for v0.1.0
-==========================
+# Migration Guide for v0.1.0
 
 The v0.1 release of semantic router introduces a few breaking changes. This guide will 
 help you migrate your code to the new version.
 
 - `from semantic_router import RouteLayer` -> `from semantic_router.routers import SemanticRouter`
 - `SemanticRouter.add(route: Route)` -> `SemanticRouter.add(routes: List[Route])`
-- If expecting routes to sync between local and remote on initialization, use `SemanticRouter(..., auto_sync="local")`. Read more about `auto_sync` and :doc:`synchronization strategies <semantic-router/route-layer/sync>`.
+- If expecting routes to sync between local and remote on initialization, use `SemanticRouter(..., auto_sync="local")`. Read more about `auto_sync` and [synchronization strategies](../semantic-router/route-layer/sync.md). 

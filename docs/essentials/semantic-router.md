@@ -1,12 +1,12 @@
-# Route Layer
+# Semantic Router
 
-The `RouteLayer` is the main class of the semantic router. It is responsible
+The `SemanticRouter` is the main class of the semantic router. It is responsible
 for making decisions about which route to take based on an input utterance.
-A `RouteLayer` consists of an `encoder`, an `index`, and a list of `routes`.
+A `SemanticRouter` consists of an `encoder`, an `index`, and a list of `routes`.
 Route layers that include dynamic routes (i.e. routes that can generate dynamic
 decision outputs) also include an `llm`.
 
-To use a `RouteLayer` we first need some `routes`. We can initialize them like
+To use a `SemanticRouter` we first need some `routes`. We can initialize them like
 so:
 
 ```python
@@ -53,15 +53,15 @@ Now we define the `RouteLayer`. When called, the route layer will consume text
 `RouteLayer` we need our `encoder` model and a list of `routes`.
 
 ```python
-from semantic_router.layer import RouteLayer
+from semantic_router import SemanticRouter
 
-rl = RouteLayer(encoder=encoder, routes=routes)
+sr = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
 ```
 
 Now we can call the `RouteLayer` with an input query:
 
 ```python
-rl("don't you love politics?")
+sr("don't you love politics?")
 ```
 
 ```
@@ -75,7 +75,7 @@ choice.
 We can try another query:
 
 ```python
-rl("how's the weather today?")
+sr("how's the weather today?")
 ```
 
 ```
@@ -86,7 +86,7 @@ Both are classified accurately, what if we send a query that is unrelated to
 our existing Route objects?
 
 ```python
-rl("I'm interested in learning about llama 3")
+sr("I'm interested in learning about llama 3")
 ```
 
 ```
@@ -100,7 +100,7 @@ We can also retrieve multiple routes with their associated score using
 `retrieve_multiple_routes`:
 
 ```python
-rl.retrieve_multiple_routes("Hi! How are you doing in politics??")
+sr.retrieve_multiple_routes("Hi! How are you doing in politics??")
 ```
 
 ```
@@ -112,7 +112,7 @@ If `retrieve_multiple_routes` is called with a query that does not match any
 routes, it will return an empty list:
 
 ```python
-rl.retrieve_multiple_routes("I'm interested in learning about llama 3")
+sr.retrieve_multiple_routes("I'm interested in learning about llama 3")
 ```
 
 ```
