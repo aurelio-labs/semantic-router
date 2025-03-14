@@ -18,7 +18,7 @@ router.to_yaml("router.yaml")
 new_router = SemanticRouter.from_yaml("router.yaml")
 ```
 
-The saved files contain all the information needed to initialize new semantic routers. If you are using a remote index, you can use the [sync features](sync.md) to keep the router in sync with the index.
+The saved files contain all the information needed to initialize new semantic routers. If you are using a remote index, you can use the [sync features](../features/sync) to keep the router in sync with the index.
 
 ## Full Example
 
