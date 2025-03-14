@@ -1,8 +1,8 @@
 name: Release Docs
 
 on:
-  release:
-    types: [ released ]
+  workflow_call:
+
 
 jobs:
   build-docs:
