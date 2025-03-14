@@ -64,11 +64,13 @@ class AzureOpenAIEncoder(DenseEncoder):
 
         :param http_client_options: Dictionary of options to configure httpx client
             Example:
+            ```
                 {
                     "proxies": "http://proxy.server:8080",
                     "timeout": 20.0,
                     "headers": {"Authorization": "Bearer xyz"}
                 }
+            ```
         :type http_client_options: Dict[str, Any], optional
 
         :param deployment_name: The name of the model deployment to use.
