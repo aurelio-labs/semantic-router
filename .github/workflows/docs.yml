@@ -46,16 +46,16 @@ jobs:
         ROOT_DIR=$(pwd)
 
         # Create a separate mdx directory for the converted files
-        rm -rf temp-docs/semantic-router/getting-started
-        mkdir -p temp-docs/semantic-router/getting-started/
+        rm -rf temp-docs/semantic-router/essentials
+        mkdir -p temp-docs/semantic-router/essentials/
 
         # Find and copy all md files from ref
-        cd docs/getting-started
+        cd docs/essentials
         find . -type f -name "*.md" | while read file; do
           dir=$(dirname "$file")
           echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/getting-started/$dir"
-          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/getting-started/${file%.md}.mdx"
+          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/essentials/$dir"
+          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/essentials/${file%.md}.mdx"
         done
 
     - name: Copy and rename reference docs
