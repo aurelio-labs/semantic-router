@@ -1,5 +1,3 @@
-# Route Layers from File
-
 Route layers can be saved to and loaded from files. This can be useful if we want to save a route layer to a file for later use, or if we want to load a route layer from a file.
 
 We can save and load route layers to/from YAML or JSON files. For JSON we do:

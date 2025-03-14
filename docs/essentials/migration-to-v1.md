@@ -1,5 +1,3 @@
-# Migration Guide for v0.1.0
-
 The v0.1 release of semantic router introduces several breaking changes to improve the API design and add new functionality. This guide will help you migrate your code to the new version.
 
 ## Key API Changes
