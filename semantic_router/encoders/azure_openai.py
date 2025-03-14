@@ -45,11 +45,11 @@ class AzureOpenAIEncoder(DenseEncoder):
         """Initialize the AzureOpenAIEncoder.
 
         :param azure_endpoint: The endpoint for the Azure OpenAI API.
-            Example: ``https://accountname.openai.azure.com``
+            Example: `"https://accountname.openai.azure.com"`
         :type azure_endpoint: str, optional
 
         :param api_version: The version of the API to use.
-            Example: ``"2025-02-01-preview"``
+            Example: `"2025-02-01-preview"`
         :type api_version: str, optional
 
         :param api_key: The API key for the Azure OpenAI API.
@@ -75,14 +75,14 @@ class AzureOpenAIEncoder(DenseEncoder):
         :type deployment_name: str, optional
 
         :param score_threshold: The score threshold for filtering embeddings.
-            Default is ``0.82``.
+            Default is `0.82`.
         :type score_threshold: float, optional
 
         :param dimensions: The number of dimensions for the embeddings. If not given, it defaults to the model's default setting.
         :type dimensions: int, optional
 
         :param max_retries: The maximum number of retries for API calls in case of failures.
-            Default is ``3``.
+            Default is `3`.
         :type max_retries: int, optional
         """
         if name is None:

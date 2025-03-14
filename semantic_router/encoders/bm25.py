@@ -19,7 +19,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
     """BM25Encoder, running a vectorized version of ATIRE BM25 algorithm
 
     Concept:
-    - BM25 uses scoring between queries & corpus to retrieve the most relevant documents ∈ corpus
+    - BM25 uses scoring between queries & corpus to retrieve the most relevant documents in corpus
     - most vector databases (VDB) store embedded documents and score them versus received queries for retrieval
     - we need to break up the BM25 formula into `encode_queries` and `encode_documents`, with the latter to be stored in VDB
     - dot product of `encode_queries(q)` and `encode_documents([D_0, D_1, ...])` is the BM25 score of the documents `[D_0, D_1, ...]` for the given query `q`
@@ -29,7 +29,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
     ATIRE Paper: https://www.cs.otago.ac.nz/research/student-publications/atire-opensource.pdf
     Pinecone Implementation: https://github.com/pinecone-io/pinecone-text/blob/8399f9ff28c4652766c35165c0db9b0eff309077/pinecone_text/sparse/bm25_encoder.py
 
-    :param k1: normalizer parameter that limits how much a single query term `q_i ∈ q` can affect score for document `D_n`
+    :param k1: normalizer parameter that limits how much a single query term `q_i in q` can affect score for document `D_n`
     :type k1: float
     :param b: normalizer parameter that balances the effect of a single document length compared to the average document length
     :type b: float
@@ -37,8 +37,8 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
     :type corpus_size: int, optional
     :param _avg_doc_len: float representing the average document length in the trained corpus
     :type _avg_doc_len: float, optional
-    :param _documents_containing_word: (1, tokenizer.vocab_size) shaped array, denoting how many documents contain `token ∈ vocab`
-    :type _documents_containing_word: class:`numpy.ndarray`, optional
+    :param _documents_containing_word: (1, tokenizer.vocab_size) shaped array, denoting how many documents contain `token in vocab`
+    :type _documents_containing_word: numpy.ndarray, optional
 
     """
 
@@ -115,9 +115,9 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         """Returns term frequency of query terms in trained corpus
 
         :param docs: 2D shaped array of each document's token ids
-        :type docs: :class:`numpy.ndarray`
+        :type docs: numpy.ndarray
         :return: Matrix where value @ (m, n) represents how many times token id `n` appears in document `m`
-        :rtype: :class:`numpy.ndarray`
+        :rtype: numpy.ndarray
         """
         if self._tokenizer is None:
             raise ValueError(
@@ -141,9 +141,9 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         This is done in a faster, vectorized way, instead of looping through each query
 
         :param queries: 2D shaped array of each query token ids
-        :type queries: :class:`numpy.ndarray`
+        :type queries: numpy.ndarray
         :return: Matrix where value @ (m, n) represents how many times token id `n` in query `m` appears in the trained corpus
-        :rtype: :class:`numpy.ndarray`
+        :rtype: numpy.ndarray
         """
         if self._documents_containing_word is None:
             raise ValueError(
@@ -175,7 +175,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         :param queries: List of queries to encode
         :type queries: list
         :return: BM25 scores for each query against the corpus
-        :rtype: np.ndarray
+        :rtype: list[SparseEmbedding]
         """
         if (
             self.corpus_size is None
@@ -217,14 +217,14 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
 
         LaTeX: \frac{f(d_i, D)}{f(d_i, D) + k_1 \times (1 - b + b \times \frac{|D|}{avgdl})}
         where:
-            f(d_i, D) is frequency of term `d_i ∈ D`
+            f(d_i, D) is frequency of term `d_i in D`
             |D| is the document length
             avgdl is average document length in trained corpus
 
         :param documents: List of queries to encode
         :type documents: list
         :return: Encoded queries (as either sparse or dict)
-        :rtype: :class:`scipy.sparse.csr_matrix`, list[dict]
+        :rtype: list[SparseEmbedding]
         """
         if (
             self.corpus_size is None
