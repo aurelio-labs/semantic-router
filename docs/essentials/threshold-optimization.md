@@ -1,5 +1,3 @@
-# Route Threshold Optimization
-
 Route score thresholds are what defines whether a route should be chosen. If the score we identify for any given route is higher than the `Route.score_threshold` it passes, otherwise it does not and *either* another route is chosen, or we return *no* route.
 
 Given that this one `score_threshold` parameter can define the choice of a route, it's important to get it right — but it's incredibly inefficient to do so manually. Instead, we can use the `fit` and `evaluate` methods of our `SemanticRouter`. All we must do is pass a smaller number of *(utterance, target route)* examples to our methods, and with `fit` we will often see dramatically improved performance within seconds.

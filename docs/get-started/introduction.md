@@ -1,5 +1,3 @@
-# Semantic Router
-
 Semantic Router is a superfast decision-making layer for LLMs and agents. Instead of waiting for slow LLM generations to make tool-use decisions, it uses semantic vector space to route requests based on meaning.
 
 ## What is Semantic Router?

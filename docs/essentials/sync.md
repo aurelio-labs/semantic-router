@@ -1,5 +1,3 @@
-# Synchronizing the Route Layer with Indexes
-
 The `SemanticRouter` class is the main class in the semantic router package. It contains the routes and allows us to interact with the underlying index. Both the `SemanticRouter` and the various index classes support synchronization strategies that allow us to synchronize the routes and utterances in the layer with the underlying index.
 
 This functionality becomes increasingly important when using the semantic router in a distributed environment. For example, when using one of the *remote instances*, such as `PineconeIndex` or `QdrantIndex`. Deciding the correct synchronization strategy for these remote indexes will save application time and reduce the risk of errors.

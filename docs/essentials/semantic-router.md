@@ -1,5 +1,3 @@
-# Semantic Router
-
 The `SemanticRouter` is the main class of the semantic router. It is responsible
 for making decisions about which route to take based on an input utterance.
 A `SemanticRouter` consists of an `encoder`, an `index`, and a list of `routes`.

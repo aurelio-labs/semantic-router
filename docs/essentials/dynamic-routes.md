@@ -1,5 +1,3 @@
-# Dynamic Routes
-
 In semantic-router there are two types of routes that can be chosen. Both routes belong to the `Route` object, the only difference between them is that *static* routes return a `Route.name` when chosen, whereas *dynamic* routes use an LLM call to produce parameter input values.
 
 For example, a *static* route will tell us if a query is talking about mathematics by returning the route name (which could be `"math"` for example). A *dynamic* route does the same thing, but it also extracts key information from the input utterance to be used in a function associated with that route.

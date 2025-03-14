@@ -1,5 +1,3 @@
-# Quickstart
-
 To get started with *semantic-router* we install it like so:
 
 ```bash

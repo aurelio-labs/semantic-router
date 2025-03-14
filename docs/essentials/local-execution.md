@@ -1,7 +1,3 @@
-# Local Dynamic Routes
-
-## Fully local Semantic Router with `llama.cpp` and HuggingFace Encoder
-
 There are many reasons users might choose to roll their own LLMs rather than use a third-party service. Whether it's due to cost, privacy or compliance, Semantic Router supports the use of "local" LLMs through `llama.cpp`.
 
 Using `llama.cpp` also enables the use of quantized GGUF models, reducing the memory footprint of deployed models, allowing even 13-billion parameter models to run with hardware acceleration on an Apple M1 Pro chip.
