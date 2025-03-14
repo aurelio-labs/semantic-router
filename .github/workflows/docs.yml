@@ -41,54 +41,63 @@ jobs:
         ref: main
         token: ${{ secrets.PAT }}
 
-    - name: Copy and rename get started docs
+    - name: Process regular documentation
       run: |
         ROOT_DIR=$(pwd)
 
-        # Create a separate mdx directory for the converted files
+        # Clean existing documentation in target repo
         rm -rf temp-docs/semantic-router
         mkdir -p temp-docs/semantic-router/
 
-        # Find and copy all md files from ref
-        cd docs/get-started
-        find . -type f -name "*.md" | while read file; do
-          dir=$(dirname "$file")
-          echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/$dir"
-          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/${file%.md}.mdx"
+        # Define directories to process (excluding client-reference which is auto-generated separately)
+        DOC_DIRS=("get-started" "user-guide")
+
+        # Process each documentation directory
+        for doc_dir in "${DOC_DIRS[@]}"; do
+          echo "Processing directory: $doc_dir"
+          
+          # Find all markdown files in the directory and its subdirectories
+          find "docs/$doc_dir" -type f -name "*.md" | while read file; do
+            # Get the relative path from the docs directory
+            rel_path=$(realpath --relative-to="docs/$doc_dir" "$(dirname "$file")")
+            file_name=$(basename "$file")
+            
+            # Create target directory if it doesn't exist
+            if [ "$rel_path" = "." ]; then
+              # File is directly in the doc_dir
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir"
+            else
+              # File is in a subdirectory
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir/$rel_path"
+            fi
+            
+            mkdir -p "$target_dir"
+            
+            # Copy and rename from .md to .mdx
+            cp "$file" "$target_dir/${file_name%.md}.mdx"
+            echo "Copied $file to $target_dir/${file_name%.md}.mdx"
+          done
         done
 
-    - name: Copy and rename essentials docs
-      run: |
-        ROOT_DIR=$(pwd)
-
-        # Create a separate mdx directory for the converted files
-        rm -rf temp-docs/semantic-router/essentials
-        mkdir -p temp-docs/semantic-router/essentials/
-
-        # Find and copy all md files from ref
-        cd docs/essentials
-        find . -type f -name "*.md" | while read file; do
-          dir=$(dirname "$file")
-          echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/essentials/$dir"
-          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/essentials/${file%.md}.mdx"
-        done
-
-    - name: Copy and rename reference docs
+    - name: Process reference documentation
       run: |
         ROOT_DIR=$(pwd)
         rm -rf temp-docs/semantic-router/client-reference
         mkdir -p temp-docs/semantic-router/client-reference/
 
-        # Find and copy all md files from ref
-        cd docs/build/semantic_router
-        find . -type f -name "*.md" | while read file; do
-          dir=$(dirname "$file")
-          echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/client-reference/$dir"
-          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/client-reference/${file%.md}.mdx"
-        done
+        # Check if build directory exists
+        if [ -d "docs/build/semantic_router" ]; then
+          # Find and copy all md files from reference docs
+          cd docs/build/semantic_router
+          find . -type f -name "*.md" | while read file; do
+            dir=$(dirname "$file")
+            echo "Processing file: $file in directory: $dir"
+            mkdir -p "$ROOT_DIR/temp-docs/semantic-router/client-reference/$dir"
+            cp "$file" "$ROOT_DIR/temp-docs/semantic-router/client-reference/${file%.md}.mdx"
+          done
+        else
+          echo "Warning: Reference docs build directory does not exist. Skipping reference documentation processing."
+        fi
 
     - name: Update frontmatter keys
       run: |
