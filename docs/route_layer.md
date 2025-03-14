@@ -64,7 +64,7 @@ Now we can call the `RouteLayer` with an input query:
 rl("don't you love politics?")
 ```
 
-```text
+```
 [Out]: RouteChoice(name='politics', function_call=None, similarity_score=None)
 ```
 
@@ -78,7 +78,7 @@ We can try another query:
 rl("how's the weather today?")
 ```
 
-```text
+```
 [Out]: RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
@@ -89,7 +89,7 @@ our existing Route objects?
 rl("I'm interested in learning about llama 3")
 ```
 
-```text
+```
 [Out]: RouteChoice(name=None, function_call=None, similarity_score=None)
 ```
 
@@ -103,7 +103,7 @@ We can also retrieve multiple routes with their associated score using
 rl.retrieve_multiple_routes("Hi! How are you doing in politics??")
 ```
 
-```text
+```
 [Out]: [RouteChoice(name='politics', function_call=None, similarity_score=0.859),
         RouteChoice(name='chitchat', function_call=None, similarity_score=0.835)]
 ```
@@ -115,7 +115,7 @@ routes, it will return an empty list:
 rl.retrieve_multiple_routes("I'm interested in learning about llama 3")
 ```
 
-```text
+```
 [Out]: []
 ```
 
