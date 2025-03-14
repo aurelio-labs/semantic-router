@@ -6,14 +6,14 @@ permissions:
 
 on:
   pull_request:
-    types: [ opened, synchronize, ready_for_review ]
-    branches: [ 'main' ]
+    branches: [ main ]
+    types: [ opened, edited, synchronize ]
 
 jobs:
 
   diff:
     name: "Diff"
-    uses: ./.github/workflows/diff.yaml
+    uses: ./.github/workflows/diff.yml
     with:
       config: diff-config.yaml
 
