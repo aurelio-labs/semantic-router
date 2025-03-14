@@ -22,3 +22,5 @@ jobs:
     name: "Docs"
     if: ${{ fromJson(needs.diff.outputs.tags).docs.changed }}
     uses: ./.github/workflows/docs.yml
+    secrets:
+      PAT: ${{ secrets.PAT }}

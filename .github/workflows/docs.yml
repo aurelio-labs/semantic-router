@@ -2,7 +2,10 @@ name: Release Docs
 
 on:
   workflow_call:
-
+    secrets:
+      PAT:
+        required: true
+        description: "Personal Access Token with access to the docs repository"
 
 jobs:
   build-docs:
