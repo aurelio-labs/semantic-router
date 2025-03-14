@@ -18,13 +18,13 @@ Semantic Router enables:
 - **Multi-modal capabilities**: Route based on image content, not just text
 - **Local execution**: Run entirely on your machine with no API dependencies
 
-## Version 1.0 Released
+## Version 0.1 Released
 
-Semantic Router v1.0 is now available! If you're migrating from an earlier version, please see our [migration guide](essentials/migration-to-v1.md).
+Semantic Router v0.1 is now available! If you're migrating from an earlier version, please see our [migration guide](../user-guide/guides/migration-to-v1).
 
 ## Getting Started
 
-For a quick introduction to using Semantic Router, check out our [quickstart guide](essentials/quickstart.md).
+For a quick introduction to using Semantic Router, check out our [quickstart guide](essentials/quickstart).
 
 ## Execution Options
 
