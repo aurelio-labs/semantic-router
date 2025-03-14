@@ -44,16 +44,14 @@ jobs:
     - name: Copy and rename root docs
       run: |
         ROOT_DIR=$(pwd)
-        rm -rf temp-docs/semantic-router
-        mkdir -p temp-docs/semantic-router/
 
         # Find and copy all md files from ref
-        cd docs
+        cd docs/getting-started
         find . -type f -name "*.md" | while read file; do
           dir=$(dirname "$file")
           echo "Processing file: $file in directory: $dir"
-          mkdir -p "$ROOT_DIR/temp-docs/semantic-router/$dir"
-          cp "$file" "$ROOT_DIR/temp-docs/semantic-router/${file%.md}.mdx"
+          mkdir -p "$ROOT_DIR/docs/getting-started/$dir"
+          cp "$file" "$ROOT_DIR/docs/getting-started/${file%.md}.mdx"
         done
 
     - name: Copy and rename reference docs
