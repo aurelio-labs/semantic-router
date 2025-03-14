@@ -1,8 +1,9 @@
 name: Release Docs
 
 on:
-  release:
-    types: [ released ]
+  push:
+    branches:
+    - main
 
 jobs:
   build-docs:
