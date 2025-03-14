@@ -1,0 +1,30 @@
+name: PR Workflow
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  pull_request:
+    types: [ opened, synchronize, ready_for_review ]
+    branches: [ 'main' ]
+
+jobs:
+
+  diff:
+    name: "Diff"
+    uses: ./.github/workflows/diff.yaml
+    with:
+      config: diff-config.yaml
+
+  lint:
+    needs: [ diff ]
+    name: "Lint"
+    if: ${{ fromJson(needs.diff.outputs.tags).code.changed }}
+    uses: ./.github/workflows/lint.yml
+
+  tests:
+    needs: [ diff ]
+    name: "Tests"
+    if: ${{ fromJson(needs.diff.outputs.tags).code.changed }}
+    uses: ./.github/workflows/test.yml
