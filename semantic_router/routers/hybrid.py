@@ -26,7 +26,6 @@ from semantic_router.utils.logger import logger
 
 class HybridRouter(BaseRouter):
     """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
-
     # there are a few additional attributes for hybrid
     sparse_encoder: Optional[SparseEncoder] = Field(default=None)
     alpha: float = 0.3
