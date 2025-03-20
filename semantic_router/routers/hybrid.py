@@ -26,6 +26,7 @@ from semantic_router.utils.logger import logger
 
 class HybridRouter(BaseRouter):
     """A hybrid layer that uses both dense and sparse embeddings to classify routes."""
+
     # there are a few additional attributes for hybrid
     sparse_encoder: Optional[SparseEncoder] = Field(default=None)
     alpha: float = 0.3
@@ -439,7 +440,6 @@ class HybridRouter(BaseRouter):
         Xq_d: List[List[float]] = []
         Xq_s: List[SparseEmbedding] = []
         for i in tqdm(range(0, len(X), batch_size), desc="Generating embeddings"):
-
             emb_d = np.array(
                 self.encoder(X[i : i + batch_size])
                 if not isinstance(self.encoder, AsymmetricDenseMixin)
