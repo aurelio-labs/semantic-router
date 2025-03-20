@@ -3381,6 +3381,19 @@ bedrock = [
 cohere = [
     { name = "cohere" },
 ]
+dev = [
+    { name = "black", extra = ["jupyter"] },
+    { name = "ipykernel" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "types-pyyaml" },
+    { name = "types-requests" },
+]
 docs = [
     { name = "pydoc-markdown", marker = "python_full_version < '3.12'" },
 ]
@@ -3416,25 +3429,11 @@ vision = [
     { name = "transformers", marker = "python_full_version < '3.13'" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "black", extra = ["jupyter"] },
-    { name = "ipykernel" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-    { name = "types-pyyaml" },
-    { name = "types-requests" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.10.11,<4" },
     { name = "aurelio-sdk", specifier = ">=0.0.18,<0.0.19" },
+    { name = "black", extras = ["jupyter"], marker = "extra == 'dev'", specifier = ">=23.1.0" },
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.34.98,<2" },
     { name = "botocore", marker = "extra == 'bedrock'", specifier = ">=1.34.110,<2" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.9.4,<6.0" },
@@ -3442,8 +3441,10 @@ requires-dist = [
     { name = "colorlog", specifier = ">=6.8.0,<7" },
     { name = "fastembed", marker = "python_full_version < '3.13' and extra == 'fastembed'", specifier = ">=0.3.0,<0.4" },
     { name = "google-cloud-aiplatform", marker = "extra == 'google'", specifier = ">=1.45.0,<2" },
+    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.25.0,<7" },
     { name = "llama-cpp-python", marker = "python_full_version < '3.13' and extra == 'local'", specifier = ">=0.2.28,<0.2.86" },
     { name = "mistralai", marker = "extra == 'mistralai'", specifier = ">=0.0.12,<0.1.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.1,<2" },
     { name = "numpy", specifier = ">=1.25.2,<2" },
     { name = "openai", specifier = ">=1.10.0,<2.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
@@ -3451,10 +3452,16 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = ">=2.9.9,<3" },
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pydoc-markdown", marker = "python_full_version < '3.12' and extra == 'docs'", specifier = ">=4.8.2" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = "~=8.2" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0,<0.25" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0,<5" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12.0,<4" },
+    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.5.0,<4" },
     { name = "pyyaml", specifier = ">=6.0.1,<7" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.11.1,<2" },
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "requests-mock", specifier = ">=1.12.1,<2" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.5,<0.2" },
     { name = "semantic-router", extras = ["bedrock"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["cohere"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["fastembed"], marker = "extra == 'all'" },
@@ -3473,24 +3480,11 @@ requires-dist = [
     { name = "tornado", specifier = ">=6.4.2,<7" },
     { name = "transformers", marker = "python_full_version < '3.13' and extra == 'local'", specifier = ">=4.36.2" },
     { name = "transformers", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=4.36.2" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.12,<7" },
+    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0,<3" },
     { name = "urllib3", specifier = ">=1.25.4,<1.27" },
 ]
-provides-extras = ["local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "all"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", extras = ["jupyter"], specifier = ">=23.1.0" },
-    { name = "ipykernel", specifier = ">=6.25.0,<7" },
-    { name = "mypy", specifier = ">=1.7.1,<2" },
-    { name = "pytest", specifier = "~=8.2" },
-    { name = "pytest-asyncio", specifier = ">=0.24.0,<0.25" },
-    { name = "pytest-cov", specifier = ">=4.1.0,<5" },
-    { name = "pytest-mock", specifier = ">=3.12.0,<4" },
-    { name = "pytest-xdist", specifier = ">=3.5.0,<4" },
-    { name = "ruff", specifier = ">=0.1.5,<0.2" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.12,<7" },
-    { name = "types-requests", specifier = ">=2.31.0,<3" },
-]
+provides-extras = ["local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
 
 [[package]]
 name = "setuptools"
