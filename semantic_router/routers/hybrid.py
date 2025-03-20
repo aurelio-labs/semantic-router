@@ -349,7 +349,9 @@ class HybridRouter(BaseRouter):
         top_class, top_class_scores = self._semantic_classify(
             query_results=query_results
         )
-        passed = self._pass_threshold(top_class_scores, self.score_threshold)
+        route = self.check_for_matching_routes(top_class)
+        passed = self._check_threshold(top_class_scores, route)
+
         if passed:
             return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
         else:
@@ -450,6 +452,7 @@ class HybridRouter(BaseRouter):
                 if not isinstance(self.sparse_encoder, AsymmetricSparseMixin)
                 else self.sparse_encoder.encode_queries(X[i : i + batch_size])
             )
+
             Xq_d.extend(emb_d)
             Xq_s.extend(emb_s)
         # initial eval (we will iterate from here)
