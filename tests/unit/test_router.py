@@ -27,7 +27,7 @@ from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
-from semantic_router.schema import SparseEmbedding
+from semantic_router.schema import RouteChoice, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 PINECONE_SLEEP = 8
@@ -1121,7 +1121,7 @@ class TestRouterOnly:
         # set threshold to 1.0 so that no routes pass
         route_layer.set_threshold(threshold=1.0)
         results = route_layer(text="Hello", limit=None)
-        assert len(results) == 0
+        assert results == RouteChoice()
 
     def test_with_no_query_results(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
