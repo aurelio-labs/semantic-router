@@ -50,14 +50,10 @@ jobs:
       env:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
-        OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
-        COHERE_API_KEY: ${{ env.COHERE_API_KEY }}
       run: |
         make test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
-      env:
-        CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
