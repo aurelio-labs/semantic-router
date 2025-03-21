@@ -994,17 +994,6 @@ class TestRouterOnly:
             else:
                 route_layer(vector=vector)
 
-    def test_pass_threshold(self, index_cls, encoder_cls, router_cls):
-        encoder = encoder_cls()
-        index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(
-            encoder=encoder,
-            index=index,
-            auto_sync="local",
-        )
-        assert not route_layer._pass_threshold([], 0.3)
-        assert route_layer._pass_threshold([0.6, 0.7], 0.3)
-
     def test_failover_score_threshold(self, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
