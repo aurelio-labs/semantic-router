@@ -72,6 +72,7 @@ all = [
     "semantic-router[postgres]",
     "semantic-router[fastembed]",
     "semantic-router[cohere]",
+    "semantic-router[dev]",
 ]
 
 [tool.uv.sources]
