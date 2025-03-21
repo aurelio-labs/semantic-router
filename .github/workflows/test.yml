@@ -2,14 +2,21 @@ name: Test
 
 on:
   workflow_call:
+    secrets:
+      OPENAI_API_KEY:
+        required: false
+      COHERE_API_KEY:
+        required: false
+      CODECOV_TOKEN:
+        required: false
 
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
-      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || 'co-test-key' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || '' }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     services:
       pinecone:
@@ -17,8 +24,8 @@ jobs:
         env:
           PORT: 5080
           PINECONE_HOST: localhost
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || 'co-test-key' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || '' }}
         ports:
         - "5080-6000:5080-6000"
 
