@@ -19,8 +19,8 @@ QUERIES = ["weights", "ratio logarithm"]
 
 @pytest.fixture
 @pytest.mark.skipif(
-    os.environ.get("RUN_HF_TESTS") is None, 
-    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+    os.environ.get("RUN_HF_TESTS") is None,
+    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
 )
 def bm25_encoder():
     sparse_encoder = BM25Encoder(use_default_params=True)
@@ -37,8 +37,8 @@ class TestBM25Encoder:
         ).sum(axis=0)
 
     @pytest.mark.skipif(
-        os.environ.get("RUN_HF_TESTS") is None, 
-        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+        os.environ.get("RUN_HF_TESTS") is None,
+        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
     )
     def test_bm25_scoring(self, bm25_encoder):
         vocab_size = bm25_encoder._tokenizer.vocab_size

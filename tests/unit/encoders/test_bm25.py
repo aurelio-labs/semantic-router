@@ -16,8 +16,8 @@ UTTERANCES = [
 
 @pytest.fixture
 @pytest.mark.skipif(
-    os.environ.get("RUN_HF_TESTS") is None, 
-    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+    os.environ.get("RUN_HF_TESTS") is None,
+    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
 )
 def bm25_encoder():
     sparse_encoder = BM25Encoder(use_default_params=True)
@@ -97,8 +97,8 @@ class TestBM25Encoder:
             bm25_encoder.encode_queries([])
 
     @pytest.mark.skipif(
-        os.environ.get("RUN_HF_TESTS") is None, 
-        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+        os.environ.get("RUN_HF_TESTS") is None,
+        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
     )
     def test_encode_queries_unfitted(self):
         encoder = BM25Encoder(use_default_params=True)
@@ -117,8 +117,8 @@ class TestBM25Encoder:
             bm25_encoder.encode_documents([])
 
     @pytest.mark.skipif(
-        os.environ.get("RUN_HF_TESTS") is None, 
-        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+        os.environ.get("RUN_HF_TESTS") is None,
+        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
     )
     def test_encode_documents_unfitted(self):
         encoder = BM25Encoder(use_default_params=True)
