@@ -1097,7 +1097,7 @@ class TestRouterOnly:
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.set_threshold = 0.1  # Set the score_threshold if needed
+        route_layer.set_threshold(threshold=0.0)
         # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
         results = route_layer(text="Hello", limit=2)
         assert len(results) == 2
