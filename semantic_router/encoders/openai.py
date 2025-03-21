@@ -95,8 +95,8 @@ class OpenAIEncoder(DenseEncoder):
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")
-        if api_key is None:
-            raise ValueError("OpenAI API key cannot be 'None'.")
+        if api_key is None or api_key.strip() == "":
+            raise ValueError("OpenAI API key cannot be 'None' or empty.")
         if max_retries is not None:
             self.max_retries = max_retries
         try:
