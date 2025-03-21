@@ -1514,7 +1514,9 @@ class BaseRouter(BaseModel):
         return total_scores
 
     # TODO JB allow return of multiple routes
-    @deprecated("Direct use of `_semantic_classify` is deprecated. Use `__call__` or `acall` instead.")
+    @deprecated(
+        "Direct use of `_semantic_classify` is deprecated. Use `__call__` or `acall` instead."
+    )
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         """Classify the query results into a single class based on the highest total score.
         If no classification is found, return an empty string and an empty list.
