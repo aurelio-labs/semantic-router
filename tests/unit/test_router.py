@@ -1141,7 +1141,7 @@ class TestRouterOnly:
         )
         route_layer.set_threshold(threshold=0.5)
         # Test with a route name that does not exist in the route_layer's routes
-        query_results = {"route": "UnrecognizedRoute", "score": 0.9}
+        query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
         expected = []
         results = route_layer._semantic_classify(query_results)
         assert results == expected, "Should ignore and not return unrecognized routes"
