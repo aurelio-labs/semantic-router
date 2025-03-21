@@ -4,6 +4,7 @@ import json
 import os
 import random
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union
+from typing_extensions import deprecated
 
 import numpy as np
 import yaml  # type: ignore
@@ -1773,6 +1774,22 @@ class BaseRouter(BaseModel):
         :rtype: List[str]
         """
         return [route.name for route in self.routes]
+
+    @deprecated("Use `__call__` or `acall` with `limit=None` instead.")
+    def _semantic_classify_multiple_routes(
+        self, query_results: list[dict]
+    ) -> list[dict]:
+        """Classify the query results into a list of routes.
+
+        :param query_results: The query results to classify.
+        :type query_results: List[Dict]
+        :return: Most similar results with scores.
+        :rtype list[dict]:
+        """
+        raise NotImplementedError(
+            "This method has been deprecated. Use `__call__` or `acall` with "
+            "`limit=None` instead."
+        )
 
 
 def threshold_random_search(

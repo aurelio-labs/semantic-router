@@ -1097,18 +1097,16 @@ class TestRouterOnly:
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.3  # Set the score_threshold if needed
+        route_layer.score_threshold = 0.1  # Set the score_threshold if needed
         # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
-        query_results = [
-            {"route": "Route 1", "score": 0.1},
-            {"route": "Route 2", "score": 0.8},
-            {"route": "Route 1", "score": 0.9},
-        ]
-        expected = [("Route 1", 0.9), ("Route 2", 0.8)]
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert sorted(results) == sorted(
-            expected
-        ), "Should classify and return routes above their thresholds"
+        results = route_layer(query="Hello")
+        assert len(results) == 2
+        assert (
+            results[0].name == "Route 1"
+        ), f"Expected Route 1 in position 0, got {results}"
+        assert (
+            results[1].name == "Route 2"
+        ), f"Expected Route 2 in position 1, got {results}"
 
     def test_with_no_routes_passing_threshold(
         self, routes, index_cls, encoder_cls, router_cls
