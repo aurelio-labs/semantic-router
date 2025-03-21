@@ -31,7 +31,7 @@ The v0.1 release of semantic router introduces several breaking changes to impro
   The `retrieve_multiple_routes` method has been removed. If you need similar functionality:
   
   - In versions 0.1.0-0.1.2: You can use the deprecated `_semantic_classify_multiple_routes` method
-  - In version 0.1.3+: Use the `__call__` or `acall` methods with appropriate `limit` parameter
+  - In version 0.1.3+ (0.1.4+ is recommended): Use the `__call__` or `acall` methods with appropriate `limit` parameter.
   
   ```python
   # Before (v0.0.x)
@@ -44,7 +44,7 @@ The v0.1 release of semantic router introduces several breaking changes to impro
   query_results = semantic_router._query(query_text)
   multiple_routes = semantic_router._semantic_classify_multiple_routes(query_results)
   
-  # After (v0.1.3+)
+  # After (v0.1.4+)
   semantic_router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
   # Return all routes that pass their score thresholds
   all_routes = semantic_router(query_text, limit=None)

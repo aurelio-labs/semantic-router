@@ -91,7 +91,7 @@ Then add the new route to a router.
 
 ```python
 !pip install tzdata
-!pip install -qU semantic-router>=0.1.3
+!pip install -qU semantic-router>=0.1.4
 ```
 
 ### Initializing Routes and SemanticRouter
