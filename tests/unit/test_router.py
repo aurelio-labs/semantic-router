@@ -1117,28 +1117,17 @@ class TestRouterOnly:
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
         # set threshold to 1.0 so that no routes pass
-        route_layer.score_threshold = 1.0
-        query_results = [
-            {"route": "Route 1", "score": 0.01},
-            {"route": "Route 2", "score": 0.02},
-        ]
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when no routes pass their thresholds"
+        route_layer.set_threshold(threshold=1.0)
+        results = route_layer(text="Hello", limit=None)
+        assert len(results) == 0
 
     def test_with_no_query_results(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
-        query_results = []
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when there are no query results"
+        route_layer.set_threshold(threshold=0.5)
+        results = route_layer(text="this should not be similar to anything", limit=None)
+        assert len(results) == 0
 
     def test_with_unrecognized_route(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
@@ -1146,9 +1135,9 @@ class TestRouterOnly:
         route_layer = router_cls(encoder=encoder, routes=routes, index=index)
         route_layer.score_threshold = 0.5
         # Test with a route name that does not exist in the route_layer's routes
-        query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
+        query_results = {"route": "UnrecognizedRoute", "score": 0.9}
         expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
+        results = route_layer._semantic_classify(query_results)
         assert results == expected, "Should ignore and not return unrecognized routes"
 
     def test_set_aggregation_method_with_unsupported_value(
