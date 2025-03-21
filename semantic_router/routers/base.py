@@ -1514,9 +1514,7 @@ class BaseRouter(BaseModel):
         return total_scores
 
     # TODO JB allow return of multiple routes
-    @deprecated(
-        "Direct use of `_semantic_classify` is deprecated. Use `__call__` or `acall` instead."
-    )
+    @deprecated("Direct use of `_semantic_classify` is deprecated. Use `__call__` or `acall` instead.")
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         """Classify the query results into a single class based on the highest total score.
         If no classification is found, return an empty string and an empty list.
@@ -1528,10 +1526,9 @@ class BaseRouter(BaseModel):
         :rtype: Tuple[str, List[float]]
         """
         top_class, top_score, scores = self._score_routes(query_results)[0]
-        route_names = [route.name for route in self.routes]
 
         # Return the top class and its associated scores
-        if top_class is not None and top_class in route_names:
+        if top_class is not None:
             return str(top_class), scores
         else:
             logger.warning("No classification found for semantic classifier.")
