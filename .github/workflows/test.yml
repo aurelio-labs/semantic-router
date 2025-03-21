@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
     services:
       pinecone:
         image: ghcr.io/pinecone-io/pinecone-local:latest
@@ -44,8 +47,8 @@ jobs:
       env:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+        OPENAI_API_KEY: ${{ env.OPENAI_API_KEY }}
+        COHERE_API_KEY: ${{ env.COHERE_API_KEY }}
       run: |
         make test
     - name: Upload coverage to Codecov
