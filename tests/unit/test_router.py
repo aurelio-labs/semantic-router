@@ -1144,7 +1144,7 @@ class TestRouterOnly:
         query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
         results = route_layer._semantic_classify(query_results)
         assert (
-            results == query_results
+            results == ("UnrecognizedRoute", [0.9])
         ), "Semantic classify can return unrecognized routes"
 
     def test_set_aggregation_method_with_unsupported_value(
