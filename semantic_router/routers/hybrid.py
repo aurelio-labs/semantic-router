@@ -295,8 +295,9 @@ class HybridRouter(BaseRouter):
         vector: Optional[List[float] | np.ndarray] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
+        limit: int | None = 1,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> RouteChoice:
+    ) -> RouteChoice | list[RouteChoice]:
         """Call the HybridRouter.
 
         :param text: The text to encode.
@@ -307,8 +308,13 @@ class HybridRouter(BaseRouter):
         :type simulate_static: bool
         :param route_filter: The route filter to use.
         :type route_filter: Optional[List[str]]
+        :param limit: The number of routes to return, defaults to 1. If set to None, no
+            limit is applied and all routes are returned.
+        :type limit: int | None
         :param sparse_vector: The sparse vector to use.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A RouteChoice or a list of RouteChoices.
+        :rtype: RouteChoice | list[RouteChoice]
         """
         if not self.index.is_ready():
             raise ValueError("Index is not ready.")
@@ -344,18 +350,15 @@ class HybridRouter(BaseRouter):
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(route_names, scores)
         ]
-        # TODO JB we should probably make _semantic_classify consume arrays rather than
-        # needing to convert to list here
-        top_class, top_class_scores = self._semantic_classify(
-            query_results=query_results
+        # decide most relevant routes
+        scored_routes = self._score_routes(query_results=query_results)
+        route_choices = self._pass_routes(
+            scored_routes=scored_routes,
+            simulate_static=simulate_static,
+            text=text,
+            limit=limit,
         )
-        route = self.check_for_matching_routes(top_class)
-        passed = self._check_threshold(top_class_scores, route)
-
-        if passed:
-            return RouteChoice(name=top_class, similarity_score=max(top_class_scores))
-        else:
-            return RouteChoice()
+        return route_choices
 
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
@@ -535,7 +538,11 @@ class HybridRouter(BaseRouter):
         for xq_d, xq_s, target_route in zip(Xq_d, Xq_s, y):
             # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
             route_choice = self(vector=xq_d, sparse_vector=xq_s, simulate_static=True)
-            if route_choice.name == target_route:
+            if isinstance(route_choice, list):
+                route_name = route_choice[0].name
+            else:
+                route_name = route_choice.name
+            if route_name == target_route:
                 correct += 1
         accuracy = correct / len(Xq_d)
         return accuracy

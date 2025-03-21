@@ -26,6 +26,39 @@ The v0.1 release of semantic router introduces several breaking changes to impro
   semantic_router.add(route3)  # Still works for a single route
   ```
 
+- `RouteLayer.retrieve_multiple_routes()` → `SemanticRouter.__call__(limit=None)` or `SemanticRouter.acall(limit=None)`
+
+  The `retrieve_multiple_routes` method has been removed. If you need similar functionality:
+  
+  - In versions 0.1.0-0.1.2: You can use the deprecated `_semantic_classify_multiple_routes` method
+  - In version 0.1.3+: Use the `__call__` or `acall` methods with appropriate `limit` parameter
+  
+  ```python
+  # Before (v0.0.x)
+  route_layer = RouteLayer(encoder=encoder, routes=routes)
+  multiple_routes = route_layer.retrieve_multiple_routes(query_text)
+  
+  # Transitional (v0.1.0-0.1.2)
+  # Using deprecated method (not recommended)
+  semantic_router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+  query_results = semantic_router._query(query_text)
+  multiple_routes = semantic_router._semantic_classify_multiple_routes(query_results)
+  
+  # After (v0.1.3+)
+  semantic_router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+  # Return all routes that pass their score thresholds
+  all_routes = semantic_router(query_text, limit=None)
+  # Or return top N routes that pass their score thresholds
+  top_routes = semantic_router(query_text, limit=3)
+  
+  # To get scores for all routes regardless of threshold
+  semantic_router.set_threshold(threshold=0.0)  # Set all route thresholds to 0
+  all_route_scores = semantic_router(query_text, limit=None)
+  ```
+  
+  When `limit=1` (the default), a single `RouteChoice` object is returned.
+  When `limit=None` or `limit > 1`, a list of `RouteChoice` objects is returned.
+
 ### Synchronization Strategy
 
 - If expecting routes to sync between local and remote on initialization, use `SemanticRouter(..., auto_sync="local")`. 

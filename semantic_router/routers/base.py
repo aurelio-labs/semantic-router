@@ -4,12 +4,12 @@ import json
 import os
 import random
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union
+from typing_extensions import deprecated
 
 import numpy as np
 import yaml  # type: ignore
 from pydantic import BaseModel, ConfigDict, Field
 from tqdm.auto import tqdm
-from typing_extensions import deprecated
 
 from semantic_router.encoders import (
     AutoEncoder,
@@ -540,7 +540,8 @@ class BaseRouter(BaseModel):
         vector: Optional[List[float] | np.ndarray] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
-    ) -> RouteChoice:
+        limit: int | None = 1,
+    ) -> RouteChoice | List[RouteChoice]:
         """Call the router to get a route choice.
 
         :param text: The text to route.
@@ -551,8 +552,11 @@ class BaseRouter(BaseModel):
         :type simulate_static: bool
         :param route_filter: The route filter to use.
         :type route_filter: Optional[List[str]]
+        :param limit: The number of routes to return, defaults to 1. If set to None, no
+            limit is applied and all routes are returned.
+        :type limit: int | None
         :return: The route choice.
-        :rtype: RouteChoice
+        :rtype: RouteChoice | List[RouteChoice]
         """
         if not self.index.is_ready():
             raise ValueError("Index is not ready.")
@@ -571,36 +575,174 @@ class BaseRouter(BaseModel):
             {"route": d, "score": s.item()} for d, s in zip(routes, scores)
         ]
         # decide most relevant routes
-        top_class, top_class_scores = self._semantic_classify(
-            query_results=query_results
+        scored_routes = self._score_routes(query_results=query_results)
+        return self._pass_routes(
+            scored_routes=scored_routes,
+            simulate_static=simulate_static,
+            text=text,
+            limit=limit,
         )
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        passed = self._check_threshold(top_class_scores, route)
-        if passed and route is not None and not simulate_static:
-            if route.function_schemas and text is None:
-                raise ValueError(
-                    "Route has a function schema, but no text was provided."
-                )
-            if route.function_schemas and not isinstance(route.llm, BaseLLM):
-                if not self.llm:
-                    logger.warning(
-                        "No LLM provided for dynamic route, will use OpenAI LLM "
-                        "default. Ensure API key is set in OPENAI_API_KEY environment "
-                        "variable."
-                    )
 
-                    self.llm = OpenAILLM()
-                    route.llm = self.llm
+    def _pass_routes(
+        self,
+        scored_routes: List[Tuple[str, float, List[float]]],
+        simulate_static: bool,
+        text: Optional[str],
+        limit: int | None,
+    ) -> RouteChoice | list[RouteChoice]:
+        """Returns a list of RouteChoice objects that passed the thresholds set.
+
+        :param scored_routes: The scored routes to pass.
+        :type scored_routes: List[Tuple[str, float, List[float]]]
+        :param simulate_static: Whether to simulate a static route.
+        :type simulate_static: bool
+        :param text: The text to route.
+        :type text: Optional[str]
+        :param limit: The number of routes to return, defaults to 1. If set to None, no
+            limit is applied and all routes are returned.
+        :type limit: int | None
+        :return: The route choice.
+        :rtype: RouteChoice | list[RouteChoice]
+        """
+        passed_routes: list[RouteChoice] = []
+        for route_name, total_score, scores in scored_routes:
+            route = self.check_for_matching_routes(top_class=route_name)
+            if route is None:
+                # if no route is found we cannot use it
+                continue
+            if current_threshold := (
+                route.score_threshold if route.score_threshold else self.score_threshold
+            ):
+                # check if our route score exceeds the set threshold
+                passed = total_score >= current_threshold
+            else:
+                # if no threshold is set, we always pass
+                passed = True
+            if passed and route is not None and not simulate_static:
+                if route.function_schemas and text is None:
+                    raise ValueError(
+                        "Route has a function schema, but no text was provided."
+                    )
+                if route.function_schemas and not isinstance(route.llm, BaseLLM):
+                    if not self.llm:
+                        logger.warning(
+                            "No LLM provided for dynamic route, will use OpenAI LLM "
+                            "default. Ensure API key is set in OPENAI_API_KEY environment "
+                            "variable."
+                        )
+
+                        self.llm = OpenAILLM()
+                        route.llm = self.llm
+                    else:
+                        route.llm = self.llm
+                # call dynamic route to generate the function_call content
+                route_choice = route(query=text)
+                passed_routes.append(route_choice)
+            elif passed and route is not None and simulate_static:
+                passed_routes.append(
+                    RouteChoice(
+                        name=route.name,
+                        function_call=None,
+                        similarity_score=None,
+                    )
+                )
+            if limit is None:
+                # without limit we continue through all routes
+                continue
+            if len(passed_routes) >= limit:
+                if limit == 1:
+                    # maintain backward compatibility and return single route choice
+                    return passed_routes[0]
                 else:
-                    route.llm = self.llm
-            return route(text)
-        elif passed and route is not None and simulate_static:
-            return RouteChoice(
-                name=route.name,
-                function_call=None,
-                similarity_score=None,
-            )
+                    # otherwise return all passed routes
+                    return passed_routes
+        if len(passed_routes) == 1:
+            return passed_routes[0]
+        elif len(passed_routes) > 1:
+            return passed_routes
+        else:
+            # if no route passes threshold, return empty route choice
+            return RouteChoice()
+
+    async def _async_pass_routes(
+        self,
+        scored_routes: List[Tuple[str, float, List[float]]],
+        simulate_static: bool,
+        text: Optional[str],
+        limit: int | None,
+    ) -> RouteChoice | list[RouteChoice]:
+        """Returns a list of RouteChoice objects that passed the thresholds set. Runs any
+        dynamic route calls asynchronously. If there are no dynamic routes this method is
+        equivalent to _pass_routes.
+
+        :param scored_routes: The scored routes to pass.
+        :type scored_routes: List[Tuple[str, float, List[float]]]
+        :param simulate_static: Whether to simulate a static route.
+        :type simulate_static: bool
+        :param text: The text to route.
+        :type text: Optional[str]
+        :param limit: The number of routes to return, defaults to 1. If set to None, no
+            limit is applied and all routes are returned.
+        :type limit: int | None
+        :return: The route choice.
+        :rtype: RouteChoice | list[RouteChoice]
+        """
+        passed_routes: list[RouteChoice] = []
+        for route_name, total_score, scores in scored_routes:
+            route = self.check_for_matching_routes(top_class=route_name)
+            if route is None:
+                # if no route is found we cannot use it
+                continue
+            if current_threshold := (
+                route.score_threshold if route.score_threshold else self.score_threshold
+            ):
+                # check if our route score exceeds the set threshold
+                passed = total_score >= current_threshold
+            else:
+                # if no threshold is set, we always pass
+                passed = True
+            if passed and route is not None and not simulate_static:
+                if route.function_schemas and text is None:
+                    raise ValueError(
+                        "Route has a function schema, but no text was provided."
+                    )
+                if route.function_schemas and not isinstance(route.llm, BaseLLM):
+                    if not self.llm:
+                        logger.warning(
+                            "No LLM provided for dynamic route, will use OpenAI LLM "
+                            "default. Ensure API key is set in OPENAI_API_KEY environment "
+                            "variable."
+                        )
+
+                        self.llm = OpenAILLM()
+                        route.llm = self.llm
+                    else:
+                        route.llm = self.llm
+                # TODO need to move to asyncio tasks and gather
+                route_choice = await route.acall(query=text)
+                passed_routes.append(route_choice)
+            elif passed and route is not None and simulate_static:
+                passed_routes.append(
+                    RouteChoice(
+                        name=route.name,
+                        function_call=None,
+                        similarity_score=None,
+                    )
+                )
+            if limit is None:
+                # without limit we continue through all routes
+                continue
+            if len(passed_routes) >= limit:
+                if limit == 1:
+                    # maintain backward compatibility and return single route choice
+                    return passed_routes[0]
+                else:
+                    # otherwise return all passed routes
+                    return passed_routes
+        if len(passed_routes) == 1:
+            return passed_routes[0]
+        elif len(passed_routes) > 1:
+            return passed_routes
         else:
             # if no route passes threshold, return empty route choice
             return RouteChoice()
@@ -611,7 +753,7 @@ class BaseRouter(BaseModel):
         vector: Optional[List[float] | np.ndarray] = None,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
-    ) -> RouteChoice:
+    ) -> RouteChoice | list[RouteChoice]:
         """Asynchronously call the router to get a route choice.
 
         :param text: The text to route.
@@ -643,37 +785,13 @@ class BaseRouter(BaseModel):
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(routes, scores)
         ]
-        # decide most relevant routes
-        top_class, top_class_scores = await self._async_semantic_classify(
-            query_results=query_results
+        scored_routes = self._score_routes(query_results=query_results)
+        return await self._async_pass_routes(
+            scored_routes=scored_routes,
+            simulate_static=simulate_static,
+            text=text,
+            limit=1,
         )
-        # TODO do we need this check?
-        route = self.check_for_matching_routes(top_class)
-        passed = self._check_threshold(top_class_scores, route)
-        if passed and route is not None and not simulate_static:
-            if route.function_schemas and text is None:
-                raise ValueError(
-                    "Route has a function schema, but no text was provided."
-                )
-            if route.function_schemas and not isinstance(route.llm, BaseLLM):
-                if not self.llm:
-                    logger.warning(
-                        "No LLM provided for dynamic route, will use OpenAI LLM default"
-                    )
-                    self.llm = OpenAILLM()
-                    route.llm = self.llm
-                else:
-                    route.llm = self.llm
-            return await route.acall(text)
-        elif passed and route is not None and simulate_static:
-            return RouteChoice(
-                name=route.name,
-                function_call=None,
-                similarity_score=None,
-            )
-        else:
-            # if no route passes threshold, return empty route choice
-            return RouteChoice()
 
     def _index_ready(self) -> bool:
         """Method to check if the index is ready to be used.
@@ -927,25 +1045,6 @@ class BaseRouter(BaseModel):
                 new_routes.append(route)
 
         self.routes = new_routes
-
-    def _check_threshold(self, scores: List[float], route: Optional[Route]) -> bool:
-        """Check if the route's score passes the specified threshold.
-
-        :param scores: The scores to check.
-        :type scores: List[float]
-        :param route: The route to check.
-        :type route: Optional[Route]
-        :return: True if the route's score passes the threshold, otherwise False.
-        :rtype: bool
-        """
-        if route is None:
-            return False
-        threshold = (
-            route.score_threshold
-            if route.score_threshold is not None
-            else self.score_threshold
-        )
-        return self._pass_threshold(scores, threshold)
 
     def __str__(self):
         return (
@@ -1392,7 +1491,32 @@ class BaseRouter(BaseModel):
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
 
+    def _score_routes(
+        self, query_results: list[dict]
+    ) -> list[tuple[str, float, list[float]]]:
+        """Score the routes based on the query results.
+
+        :param query_results: The query results to score.
+        :type query_results: List[Dict]
+        :return: A tuple of routes, their total scores, and their individual scores.
+        """
+        scores_by_class = self.group_scores_by_class(query_results)
+        if self.aggregation_method is None:
+            raise ValueError("self.aggregation_method is not set.")
+
+        # Calculate total score for each class
+        total_scores = [
+            (route, self.aggregation_method(scores), scores)
+            for route, scores in scores_by_class.items()
+        ]
+        # order from highest to lowest score
+        total_scores.sort(key=lambda x: x[1], reverse=True)
+        return total_scores
+
     # TODO JB allow return of multiple routes
+    @deprecated(
+        "Direct use of `_semantic_classify` is deprecated. Use `__call__` or `acall` instead."
+    )
     def _semantic_classify(self, query_results: List[Dict]) -> Tuple[str, List[float]]:
         """Classify the query results into a single class based on the highest total score.
         If no classification is found, return an empty string and an empty list.
@@ -1403,52 +1527,11 @@ class BaseRouter(BaseModel):
         :return: A tuple containing the top class and its associated scores.
         :rtype: Tuple[str, List[float]]
         """
-        scores_by_class = self.group_scores_by_class(query_results)
-
-        if self.aggregation_method is None:
-            raise ValueError("self.aggregation_method is not set.")
-
-        # Calculate total score for each class
-        total_scores = {
-            route: self.aggregation_method(scores)
-            for route, scores in scores_by_class.items()
-        }
-        top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
+        top_class, top_score, scores = self._score_routes(query_results)[0]
 
         # Return the top class and its associated scores
         if top_class is not None:
-            return str(top_class), scores_by_class.get(top_class, [])
-        else:
-            logger.warning("No classification found for semantic classifier.")
-            return "", []
-
-    async def _async_semantic_classify(
-        self, query_results: List[Dict]
-    ) -> Tuple[str, List[float]]:
-        """Classify the query results into a single class based on the highest total score.
-        If no classification is found, return an empty string and an empty list.
-
-        :param query_results: The query results to classify. Expected format is a list of
-        dictionaries with "route" and "score" keys.
-        :type query_results: List[Dict]
-        :return: A tuple containing the top class and its associated scores.
-        :rtype: Tuple[str, List[float]]
-        """
-        scores_by_class = await self.async_group_scores_by_class(query_results)
-
-        if self.aggregation_method is None:
-            raise ValueError("self.aggregation_method is not set.")
-
-        # Calculate total score for each class
-        total_scores = {
-            route: self.aggregation_method(scores)
-            for route, scores in scores_by_class.items()
-        }
-        top_class = max(total_scores, key=lambda x: total_scores[x], default=None)
-
-        # Return the top class and its associated scores
-        if top_class is not None:
-            return str(top_class), scores_by_class.get(top_class, [])
+            return str(top_class), scores
         else:
             logger.warning("No classification found for semantic classifier.")
             return "", []
@@ -1466,38 +1549,6 @@ class BaseRouter(BaseModel):
                 return route
         logger.error(f"Route `{name}` not found")
         return None
-
-    @deprecated("This method is deprecated. Use `semantic_classify` instead.")
-    def _semantic_classify_multiple_routes(
-        self, query_results: List[Dict]
-    ) -> List[Tuple[str, float]]:
-        """Classify the query results into multiple routes based on the highest total score.
-
-        :param query_results: The query results to classify. Expected format is a list of
-        dictionaries with "route" and "score" keys.
-        :type query_results: List[Dict]
-        :return: A list of tuples containing the route name and its associated scores.
-        :rtype: List[Tuple[str, float]]
-        """
-        scores_by_class = self.group_scores_by_class(query_results)
-
-        # Filter classes based on threshold and find max score for each
-        classes_above_threshold = []
-        for route_name, scores in scores_by_class.items():
-            # Use the get method to find the Route object by its name
-            route_obj = self.get(route_name)
-            if route_obj is not None:
-                # Use the Route object's threshold if it exists, otherwise use the provided threshold
-                _threshold = (
-                    route_obj.score_threshold
-                    if route_obj.score_threshold is not None
-                    else self.score_threshold
-                )
-                if self._pass_threshold(scores, _threshold):
-                    max_score = max(scores)
-                    classes_above_threshold.append((route_name, max_score))
-
-        return classes_above_threshold
 
     def group_scores_by_class(
         self, query_results: List[Dict]
@@ -1519,46 +1570,6 @@ class BaseRouter(BaseModel):
             else:
                 scores_by_class[route] = [score]
         return scores_by_class
-
-    async def async_group_scores_by_class(
-        self, query_results: List[Dict]
-    ) -> Dict[str, List[float]]:
-        """Group the scores by class asynchronously.
-
-        :param query_results: The query results to group. Expected format is a list of
-        dictionaries with "route" and "score" keys.
-        :type query_results: List[Dict]
-        :return: A dictionary of route names and their associated scores.
-        :rtype: Dict[str, List[float]]
-        """
-        scores_by_class: Dict[str, List[float]] = {}
-        for result in query_results:
-            score = result["score"]
-            route = result["route"]
-            if route in scores_by_class:
-                scores_by_class[route].append(score)
-            else:
-                scores_by_class[route] = [score]
-        return scores_by_class
-
-    def _pass_threshold(self, scores: List[float], threshold: float | None) -> bool:
-        """Test if the route score passes the minimum threshold. A threshold of None defaults
-        to 0.0, so the route will always pass no matter how low it scores.
-
-        :param scores: The scores to test.
-        :type scores: List[float]
-        :param threshold: The minimum threshold to pass.
-        :type threshold: float | None
-        :return: True if the route passes the threshold, False otherwise.
-        :rtype: bool
-        """
-        if threshold is None:
-            return True
-        if scores:
-            # TODO JB is this correct?
-            return max(scores) > threshold
-        else:
-            return False
 
     def _update_thresholds(self, route_thresholds: Optional[Dict[str, float]] = None):
         """Update the score thresholds for each route using a dictionary of
@@ -1750,7 +1761,11 @@ class BaseRouter(BaseModel):
         for xq, target_route in zip(Xq_d, y):
             # We treate dynamic routes as static here, because when evaluating we use only vectors, and dynamic routes expect strings by default.
             route_choice = self(vector=xq, simulate_static=True)
-            if route_choice.name == target_route:
+            if isinstance(route_choice, list):
+                route_name = route_choice[0].name
+            else:
+                route_name = route_choice.name
+            if route_name == target_route:
                 correct += 1
         accuracy = correct / len(Xq_d)
         return accuracy
@@ -1762,6 +1777,22 @@ class BaseRouter(BaseModel):
         :rtype: List[str]
         """
         return [route.name for route in self.routes]
+
+    @deprecated("Use `__call__` or `acall` with `limit=None` instead.")
+    def _semantic_classify_multiple_routes(
+        self, query_results: list[dict]
+    ) -> list[dict]:
+        """Classify the query results into a list of routes.
+
+        :param query_results: The query results to classify.
+        :type query_results: List[Dict]
+        :return: Most similar results with scores.
+        :rtype list[dict]:
+        """
+        raise NotImplementedError(
+            "This method has been deprecated. Use `__call__` or `acall` with "
+            "`limit=None` instead."
+        )
 
 
 def threshold_random_search(

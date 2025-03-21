@@ -27,7 +27,7 @@ from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
-from semantic_router.schema import SparseEmbedding
+from semantic_router.schema import RouteChoice, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 PINECONE_SLEEP = 8
@@ -994,17 +994,6 @@ class TestRouterOnly:
             else:
                 route_layer(vector=vector)
 
-    def test_pass_threshold(self, index_cls, encoder_cls, router_cls):
-        encoder = encoder_cls()
-        index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(
-            encoder=encoder,
-            index=index,
-            auto_sync="local",
-        )
-        assert not route_layer._pass_threshold([], 0.3)
-        assert route_layer._pass_threshold([0.6, 0.7], 0.3)
-
     def test_failover_score_threshold(self, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
@@ -1107,60 +1096,57 @@ class TestRouterOnly:
     ):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.3  # Set the score_threshold if needed
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
+        route_layer.set_threshold(threshold=0.0)
         # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
-        query_results = [
-            {"route": "Route 1", "score": 0.1},
-            {"route": "Route 2", "score": 0.8},
-            {"route": "Route 1", "score": 0.9},
-        ]
-        expected = [("Route 1", 0.9), ("Route 2", 0.8)]
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert sorted(results) == sorted(
-            expected
-        ), "Should classify and return routes above their thresholds"
+        results = route_layer(text="Hello", limit=2)
+        assert len(results) == 2
+        assert (
+            results[0].name == "Route 1"
+        ), f"Expected Route 1 in position 0, got {results}"
+        assert (
+            results[1].name == "Route 2"
+        ), f"Expected Route 2 in position 1, got {results}"
 
     def test_with_no_routes_passing_threshold(
         self, routes, index_cls, encoder_cls, router_cls
     ):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
         # set threshold to 1.0 so that no routes pass
-        route_layer.score_threshold = 1.0
-        query_results = [
-            {"route": "Route 1", "score": 0.01},
-            {"route": "Route 2", "score": 0.02},
-        ]
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when no routes pass their thresholds"
+        route_layer.set_threshold(threshold=1.0)
+        results = route_layer(text="Hello", limit=None)
+        assert results == RouteChoice()
 
     def test_with_no_query_results(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
-        query_results = []
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when there are no query results"
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
+        route_layer.set_threshold(threshold=0.5)
+        results = route_layer(text="this should not be similar to anything", limit=None)
+        assert results == RouteChoice()
 
     def test_with_unrecognized_route(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
+        route_layer.set_threshold(threshold=0.5)
         # Test with a route name that does not exist in the route_layer's routes
         query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert results == expected, "Should ignore and not return unrecognized routes"
+        results = route_layer._semantic_classify(query_results)
+        assert results == (
+            "UnrecognizedRoute",
+            [0.9],
+        ), "Semantic classify can return unrecognized routes"
 
     def test_set_aggregation_method_with_unsupported_value(
         self, routes, index_cls, encoder_cls, router_cls
