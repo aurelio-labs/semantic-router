@@ -35,17 +35,17 @@ The v0.1 release of semantic router introduces several breaking changes to impro
   
   ```python
   # Before (v0.0.x)
-  route_layer = RouteLayer(encoder=encoder)
+  route_layer = RouteLayer(encoder=encoder, routes=routes)
   multiple_routes = route_layer.retrieve_multiple_routes(query_text)
   
   # Transitional (v0.1.0-0.1.2)
   # Using deprecated method (not recommended)
-  semantic_router = SemanticRouter(encoder=encoder)
+  semantic_router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
   query_results = semantic_router._query(query_text)
   multiple_routes = semantic_router._semantic_classify_multiple_routes(query_results)
   
   # After (v0.1.3+)
-  semantic_router = SemanticRouter(encoder=encoder)
+  semantic_router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
   # Return all routes that pass their score thresholds
   all_routes = semantic_router(query_text, limit=None)
   # Or return top N routes that pass their score thresholds
