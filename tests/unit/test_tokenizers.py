@@ -54,10 +54,10 @@ class TestBaseTokenizer:
 class TestPretrainedTokenizer:
     @pytest.fixture
     def tokenizer(self):
-        return PretrainedTokenizer("bert-base-uncased")
+        return PretrainedTokenizer("google-bert/bert-base-uncased")
 
     def test_initialization(self, tokenizer):
-        assert tokenizer.model_ident == "bert-base-uncased"
+        assert tokenizer.model_ident == "google-bert/bert-base-uncased"
         assert tokenizer.add_special_tokens is False
         assert tokenizer.pad is True
 

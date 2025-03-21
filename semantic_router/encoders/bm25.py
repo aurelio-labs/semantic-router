@@ -70,7 +70,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         self._avg_doc_len = np.float64(avg_doc_len) if avg_doc_len else None
         if use_default_params and not tokenizer:
             logger.info("Initializing default BM25 model parameters.")
-            self._tokenizer = PretrainedTokenizer("bert-base-uncased")
+            self._tokenizer = PretrainedTokenizer("google-bert/bert-base-uncased")
         elif tokenizer is not None:
             self._tokenizer = tokenizer
         else:
