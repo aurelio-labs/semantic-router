@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import os
 
 from semantic_router.encoders import BM25Encoder
 from semantic_router.route import Route
@@ -14,6 +15,10 @@ UTTERANCES = [
 
 
 @pytest.fixture
+@pytest.mark.skipif(
+    os.environ.get("RUN_HF_TESTS") is None, 
+    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+)
 def bm25_encoder():
     sparse_encoder = BM25Encoder(use_default_params=True)
     sparse_encoder.fit(
@@ -91,6 +96,10 @@ class TestBM25Encoder:
         with pytest.raises(ValueError, match="No documents provided for encoding"):
             bm25_encoder.encode_queries([])
 
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, 
+        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+    )
     def test_encode_queries_unfitted(self):
         encoder = BM25Encoder(use_default_params=True)
         with pytest.raises(ValueError, match="Encoder not fitted"):
@@ -107,6 +116,10 @@ class TestBM25Encoder:
         with pytest.raises(ValueError, match="No documents provided for encoding"):
             bm25_encoder.encode_documents([])
 
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, 
+        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI."
+    )
     def test_encode_documents_unfitted(self):
         encoder = BM25Encoder(use_default_params=True)
         with pytest.raises(ValueError, match="Encoder not fitted"):
