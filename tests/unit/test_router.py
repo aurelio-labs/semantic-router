@@ -1131,7 +1131,7 @@ class TestRouterOnly:
         )
         route_layer.set_threshold(threshold=0.5)
         results = route_layer(text="this should not be similar to anything", limit=None)
-        assert len(results) == 0
+        assert results == RouteChoice()
 
     def test_with_unrecognized_route(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
