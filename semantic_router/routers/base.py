@@ -611,7 +611,9 @@ class BaseRouter(BaseModel):
                 # if no route is found we cannot use it
                 continue
             if current_threshold := (
-                route.score_threshold if route.score_threshold else self.score_threshold
+                route.score_threshold
+                if route.score_threshold is not None
+                else self.score_threshold
             ):
                 # check if our route score exceeds the set threshold
                 passed = total_score >= current_threshold
@@ -694,7 +696,9 @@ class BaseRouter(BaseModel):
                 # if no route is found we cannot use it
                 continue
             if current_threshold := (
-                route.score_threshold if route.score_threshold else self.score_threshold
+                route.score_threshold
+                if route.score_threshold is not None
+                else self.score_threshold
             ):
                 # check if our route score exceeds the set threshold
                 passed = total_score >= current_threshold
@@ -1600,6 +1604,8 @@ class BaseRouter(BaseModel):
         if route_name is None:
             for route in self.routes:
                 route.score_threshold = threshold
+            # set the router threshold too
+            self.score_threshold = threshold
         else:
             route_get: Route | None = self.get(route_name)
             if route_get is not None:
