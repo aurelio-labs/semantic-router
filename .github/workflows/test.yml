@@ -10,12 +10,15 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     services:
       pinecone:
         image: ghcr.io/pinecone-io/pinecone-local:latest
         env:
           PORT: 5080
           PINECONE_HOST: localhost
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
         ports:
         - "5080-6000:5080-6000"
 
@@ -54,7 +57,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
