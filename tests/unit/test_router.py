@@ -1115,7 +1115,9 @@ class TestRouterOnly:
     ):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
         # set threshold to 1.0 so that no routes pass
         route_layer.set_threshold(threshold=1.0)
         results = route_layer(text="Hello", limit=None)
@@ -1124,7 +1126,9 @@ class TestRouterOnly:
     def test_with_no_query_results(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
         route_layer.set_threshold(threshold=0.5)
         results = route_layer(text="this should not be similar to anything", limit=None)
         assert len(results) == 0
@@ -1132,8 +1136,10 @@ class TestRouterOnly:
     def test_with_unrecognized_route(self, routes, index_cls, encoder_cls, router_cls):
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
+        route_layer = router_cls(
+            encoder=encoder, routes=routes, index=index, auto_sync="local"
+        )
+        route_layer.set_threshold(threshold=0.5)
         # Test with a route name that does not exist in the route_layer's routes
         query_results = {"route": "UnrecognizedRoute", "score": 0.9}
         expected = []
