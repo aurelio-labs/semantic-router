@@ -311,7 +311,9 @@ class TestIndexEncoders:
         # Mock the API key check in OpenAIEncoder
         if encoder_cls == OpenAIEncoder:
             mocker.patch.object(OpenAIEncoder, "__init__", return_value=None)
-            mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
+            mocker.patch.object(
+                OpenAIEncoder, "__call__", side_effect=mock_encoder_call
+            )
             encoder = encoder_cls()
             # Call __post_init__ manually since we mocked __init__
             encoder.name = "text-embedding-3-small"
@@ -319,7 +321,7 @@ class TestIndexEncoders:
             encoder.type = "openai"
         else:
             encoder = encoder_cls()
-            
+
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
             encoder=encoder,
