@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+from typing import Any
+import importlib.util
 
 import numpy as np
-from tokenizers import Tokenizer
-from tokenizers.normalizers import Sequence
+
+# Tokenizers imports moved to be optional
 
 
 class BaseTokenizer:
@@ -84,7 +86,6 @@ class PretrainedTokenizer(BaseTokenizer):
     :type model_ident: str
     """
 
-    tokenizer: Tokenizer
     add_special_tokens: bool
     pad: bool
     model_ident: str
@@ -92,11 +93,21 @@ class PretrainedTokenizer(BaseTokenizer):
     def __init__(
         self,
         model_ident: str,
-        custom_normalizer: Sequence | None = None,
+        custom_normalizer: Any = None,
         add_special_tokens: bool = False,
         pad: bool = True,
     ) -> None:
         """Constructor method"""
+        # Check if tokenizers is available
+        if importlib.util.find_spec("tokenizers") is None:
+            raise ImportError(
+                "The 'tokenizers' package is required for PretrainedTokenizer but not installed. "
+                "Please install it with `pip install tokenizers`."
+            )
+
+        # Import tokenizers only when needed
+        from tokenizers import Tokenizer
+
         super().__init__()
         self.add_special_tokens = add_special_tokens
         self.model_ident = model_ident
