@@ -44,7 +44,11 @@ jobs:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
         python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
+    - name: Install Dependencies (Essential Only)
+      run: uv sync
+    - name: Confirm Library Imports
+      run: uv run python -c "import semantic_router"
+    - name: Install Dependencies (All)
       run: uv sync --extra all
     - name: Install nltk
       run: uv pip install nltk
