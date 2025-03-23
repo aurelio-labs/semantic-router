@@ -7,7 +7,7 @@ Given that this one `score_threshold` parameter can define the choice of a route
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/docs/06-threshold-optimization.ipynb) [![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/06-threshold-optimization)
 
 ```python
-!pip install -qU "semantic-router>=0.1.4"
+!pip install -qU "semantic-router>=0.1.5"
 ```
 
 ## Define SemanticRouter
