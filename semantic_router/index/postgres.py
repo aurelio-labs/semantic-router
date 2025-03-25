@@ -214,15 +214,28 @@ class PostgresIndex(BaseIndex):
                 """
             )
             self.conn.commit()
+        self._create_route_index()
         self._create_index()
+
+    def _create_route_index(self) -> None:
+        """Creates a index on the route column."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg2.extensions.connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);")
+                self.conn.commit()
+        except psycopg2.errors.DuplicateTable:
+            pass
 
     def _create_index(self) -> None:
         """Creates an HNSW index on the vector column."""
         table_name = self._get_table_name()
         if not isinstance(self.conn, psycopg2.extensions.connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            try:
+        try:
+            with self.conn.cursor() as cur:
                 if self.metric == Metric.COSINE:
                     cur.execute(
                         f"""
@@ -248,8 +261,9 @@ class PostgresIndex(BaseIndex):
                         """
                     )
                 self.conn.commit()
-            except psycopg2.errors.DuplicateTable:
-                pass
+        except psycopg2.errors.DuplicateTable:
+            pass
+
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
