@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.1.5"
+version = "0.1.6"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.9,<3.14"
@@ -12,7 +12,7 @@ dependencies = [
     "numpy>=1.25.2,<2",
     "colorlog>=6.8.0,<7",
     "pyyaml>=6.0.1,<7",
-    "aurelio-sdk>=0.0.18,<0.0.19",
+    "aurelio-sdk>=0.0.19",
     "colorama>=0.4.6,<0.5",
     "regex>=2023.12.25",
     "tiktoken>=0.6.0,<1.0.0",
