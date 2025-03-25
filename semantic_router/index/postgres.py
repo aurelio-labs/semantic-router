@@ -214,6 +214,42 @@ class PostgresIndex(BaseIndex):
                 """
             )
             self.conn.commit()
+        self._create_index()
+
+    def _create_index(self) -> None:
+        """Creates an HNSW index on the vector column."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg2.extensions.connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        with self.conn.cursor() as cur:
+            try:
+                if self.metric == Metric.COSINE:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
+                        """
+                    )
+                elif self.metric == Metric.DOTPRODUCT:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
+                        """
+                    )
+                elif self.metric == Metric.EUCLIDEAN:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
+                        """
+                    )
+                elif self.metric == Metric.MANHATTAN:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
+                        """
+                    )
+                self.conn.commit()
+            except psycopg2.errors.DuplicateTable:
+                pass
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
