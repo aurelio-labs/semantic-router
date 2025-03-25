@@ -141,6 +141,7 @@ class PostgresIndex(BaseIndex):
             if not connection_string:
                 raise ValueError("No connection string provided")
             self.connection_string = connection_string
+        self.index = self
         self.index_prefix = index_prefix
         self.index_name = index_name
         self.dimensions = dimensions
