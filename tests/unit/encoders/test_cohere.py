@@ -12,9 +12,9 @@ def cohere_encoder(mocker):
 class TestCohereEncoder:
     def test_initialization_with_api_key(self, cohere_encoder):
         assert cohere_encoder._client is not None, "Client should be initialized"
-        assert (
-            cohere_encoder.name == "embed-english-v3.0"
-        ), "Default name not set correctly"
+        assert cohere_encoder.name == "embed-english-v3.0", (
+            "Default name not set correctly"
+        )
 
     def test_initialization_without_api_key(self, mocker, monkeypatch):
         monkeypatch.delenv("COHERE_API_KEY", raising=False)
@@ -29,9 +29,9 @@ class TestCohereEncoder:
 
         result = cohere_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         cohere_encoder._client.embed.assert_called_once()
 
     def test_returns_list_of_embeddings_for_valid_input(self, cohere_encoder, mocker):
@@ -41,9 +41,9 @@ class TestCohereEncoder:
 
         result = cohere_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         cohere_encoder._client.embed.assert_called_once()
 
     def test_handles_multiple_inputs_correctly(self, cohere_encoder, mocker):
@@ -53,9 +53,9 @@ class TestCohereEncoder:
 
         result = cohere_encoder(["test1", "test2"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         cohere_encoder._client.embed.assert_called_once()
 
     def test_raises_value_error_if_api_key_is_none(self, mocker, monkeypatch):

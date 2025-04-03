@@ -4,12 +4,12 @@ import json
 import os
 import random
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union
-from typing_extensions import deprecated
 
 import numpy as np
 import yaml  # type: ignore
 from pydantic import BaseModel, ConfigDict, Field
 from tqdm.auto import tqdm
+from typing_extensions import deprecated
 
 from semantic_router.encoders import (
     AutoEncoder,

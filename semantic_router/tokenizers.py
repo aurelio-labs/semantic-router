@@ -1,7 +1,7 @@
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
-import importlib.util
 
 import numpy as np
 

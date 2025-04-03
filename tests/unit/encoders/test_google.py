@@ -16,9 +16,9 @@ def google_encoder(mocker):
 class TestGoogleEncoder:
     def test_initialization_with_project_id(self, google_encoder):
         assert google_encoder.client is not None, "Client should be initialized"
-        assert (
-            google_encoder.name == "textembedding-gecko@003"
-        ), "Default name not set correctly"
+        assert google_encoder.name == "textembedding-gecko@003", (
+            "Default name not set correctly"
+        )
 
     def test_initialization_without_project_id(self, mocker, monkeypatch):
         monkeypatch.delenv("GOOGLE_PROJECT_ID", raising=False)
@@ -40,9 +40,9 @@ class TestGoogleEncoder:
 
         result = google_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         google_encoder.client.get_embeddings.assert_called_once()
 
     def test_returns_list_of_embeddings_for_valid_input(self, google_encoder, mocker):
@@ -58,9 +58,9 @@ class TestGoogleEncoder:
 
         result = google_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         google_encoder.client.get_embeddings.assert_called_once()
 
     def test_handles_multiple_inputs_correctly(self, google_encoder, mocker):
@@ -80,9 +80,9 @@ class TestGoogleEncoder:
 
         result = google_encoder(["test1", "test2"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(sublist, list) for sublist in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(sublist, list) for sublist in result), (
+            "Each item in result should be a list"
+        )
         google_encoder.client.get_embeddings.assert_called_once()
 
     def test_raises_value_error_if_project_id_is_none(self, mocker, monkeypatch):
