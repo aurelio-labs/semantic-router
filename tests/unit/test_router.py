@@ -426,9 +426,9 @@ class TestRouterConfig:
             # and assert that it raises an exception due to invalid configuration
             with pytest.raises(Exception) as excinfo:
                 RouterConfig.from_file(str(config_path))
-            assert "Invalid config JSON or YAML" in str(
-                excinfo.value
-            ), "Loading an invalid configuration should raise an exception."
+            assert "Invalid config JSON or YAML" in str(excinfo.value), (
+                "Loading an invalid configuration should raise an exception."
+            )
 
     def test_from_file_with_llm(self, tmp_path):
         llm_config_json = """
@@ -456,13 +456,13 @@ class TestRouterConfig:
         layer_config = RouterConfig.from_file(str(config_path))
 
         # Using BaseLLM because trying to create a usable Mock LLM is a nightmare.
-        assert isinstance(
-            layer_config.routes[0].llm, BaseLLM
-        ), "LLM should be instantiated and associated with the route based on the "
+        assert isinstance(layer_config.routes[0].llm, BaseLLM), (
+            "LLM should be instantiated and associated with the route based on the "
+        )
         "config"
-        assert (
-            layer_config.routes[0].llm.name == "fake-model-v1"
-        ), "LLM instance should have the 'name' attribute set correctly"
+        assert layer_config.routes[0].llm.name == "fake-model-v1", (
+            "LLM instance should have the 'name' attribute set correctly"
+        )
 
     def test_init(self):
         layer_config = RouterConfig()
@@ -716,9 +716,9 @@ class TestSemanticRouter:
         @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
         def check_route_names():
             route_names = route_layer.list_route_names()
-            assert set(route_names) == {
-                route.name for route in routes
-            }, "The list of route names should match the names of the routes added."
+            assert set(route_names) == {route.name for route in routes}, (
+                "The list of route names should match the names of the routes added."
+            )
 
         check_route_names()
 
@@ -738,14 +738,14 @@ class TestSemanticRouter:
             route_to_delete = routes[0].name
             route_layer.delete(route_to_delete)
             # Ensure the route is no longer in the route layer
-            assert (
-                route_to_delete not in route_layer.list_route_names()
-            ), "The route should be deleted from the route layer."
+            assert route_to_delete not in route_layer.list_route_names(), (
+                "The route should be deleted from the route layer."
+            )
             # Ensure the route's utterances are no longer in the index
             for utterance in routes[0].utterances:
-                assert (
-                    utterance not in route_layer.index
-                ), "The route's utterances should be deleted from the index."
+                assert utterance not in route_layer.index, (
+                    "The route's utterances should be deleted from the index."
+                )
 
         delete_route_by_name()
 
@@ -1103,12 +1103,12 @@ class TestRouterOnly:
         # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
         results = route_layer(text="Hello", limit=2)
         assert len(results) == 2
-        assert (
-            results[0].name == "Route 1"
-        ), f"Expected Route 1 in position 0, got {results}"
-        assert (
-            results[1].name == "Route 2"
-        ), f"Expected Route 2 in position 1, got {results}"
+        assert results[0].name == "Route 1", (
+            f"Expected Route 1 in position 0, got {results}"
+        )
+        assert results[1].name == "Route 2", (
+            f"Expected Route 2 in position 1, got {results}"
+        )
 
     def test_with_no_routes_passing_threshold(
         self, routes, index_cls, encoder_cls, router_cls
@@ -1180,9 +1180,9 @@ class TestRouterOnly:
         new_threshold = 0.8
         route_layer.update(name=route_name, threshold=new_threshold)
         updated_route = route_layer.get(route_name)
-        assert (
-            updated_route.score_threshold == new_threshold
-        ), f"Expected threshold to be updated to {new_threshold}, but got {updated_route.score_threshold}"
+        assert updated_route.score_threshold == new_threshold, (
+            f"Expected threshold to be updated to {new_threshold}, but got {updated_route.score_threshold}"
+        )
 
     def test_update_non_existent_route(
         self, routes, index_cls, encoder_cls, router_cls
