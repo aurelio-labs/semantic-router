@@ -10,8 +10,20 @@ from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
+try:
+    import psycopg2
+    import psycopg2.extensions
+except ImportError:
+    if not TYPE_CHECKING:
+        raise ImportError(
+            "Please install psycopg2 to use PostgresIndex. "
+            "You can install it with: `pip install 'semantic-router[postgres]'`"
+        )
+
+# This is only for supressing type checker errors in the IDE
 if TYPE_CHECKING:
     import psycopg2
+    import psycopg2.extensions
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -126,14 +138,6 @@ class PostgresIndex(BaseIndex):
         if dimensions is None:
             dimensions = 1536
         super().__init__()
-        # try and import psycopg2
-        try:
-            import psycopg2
-        except ImportError:
-            raise ImportError(
-                "Please install psycopg2 to use PostgresIndex. "
-                "You can install it with: `pip install 'semantic-router[postgres]'`"
-            )
         if connection_string:
             self.connection_string = connection_string
         else:
