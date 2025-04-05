@@ -170,9 +170,9 @@ class TestOpenAILLM:
 
         expected_error_message = "LLM error: Invalid output, expected a tool call."
         actual_error_message = str(exc_info.value)
-        assert expected_error_message in actual_error_message, (
-            f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
-        )
+        assert (
+            expected_error_message in actual_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
 
     def test_openai_llm_call_with_no_arguments_in_tool_calls(self, openai_llm, mocker):
         mock_completion = mocker.MagicMock()
@@ -190,9 +190,9 @@ class TestOpenAILLM:
 
         expected_error_message = "LLM error: Invalid output, expected arguments to be specified for each tool call."
         actual_error_message = str(exc_info.value)
-        assert expected_error_message in actual_error_message, (
-            f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
-        )
+        assert (
+            expected_error_message in actual_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{actual_error_message}'"
 
     def test_extract_function_inputs(self, openai_llm, mocker):
         query = "fetch user data"
@@ -246,9 +246,9 @@ class TestOpenAILLM:
         expected_error_message = (
             "LLM error: Invalid output, expected at least one tool to be specified."
         )
-        assert str(exc_info.value) == expected_error_message, (
-            f"Expected error message: '{expected_error_message}', but got: '{str(exc_info.value)}'"
-        )
+        assert (
+            str(exc_info.value) == expected_error_message
+        ), f"Expected error message: '{expected_error_message}', but got: '{str(exc_info.value)}'"
 
     def test_extract_function_inputs_no_output(self, openai_llm, mocker):
         query = "fetch user data"
@@ -283,9 +283,9 @@ class TestOpenAILLM:
         with pytest.raises(ValueError) as exc_info:
             openai_llm.extract_function_inputs(query, function_schemas)
 
-        assert str(exc_info.value) == "Invalid inputs", (
-            "Expected exception message not found"
-        )
+        assert (
+            str(exc_info.value) == "Invalid inputs"
+        ), "Expected exception message not found"
 
     def test_is_valid_inputs_missing_function_name(self, openai_llm, mocker):
         # Mock the logger to capture the error messages
@@ -299,9 +299,9 @@ class TestOpenAILLM:
         result = openai_llm._is_valid_inputs(inputs, function_schemas)
 
         # Assert that the method returns False due to missing 'function_name'
-        assert not result, (
-            "The method should return False when 'function_name' is missing"
-        )
+        assert (
+            not result
+        ), "The method should return False when 'function_name' is missing"
 
         # Check that the appropriate error message was logged
         mocked_logger.assert_called_once_with(
@@ -344,9 +344,9 @@ class TestOpenAILLM:
         result = openai_llm._is_valid_inputs(inputs, function_schemas)
 
         # Assert that the method returns False due to no matching function schema
-        assert not result, (
-            "The method should return False when no matching function schema is found"
-        )
+        assert (
+            not result
+        ), "The method should return False when no matching function schema is found"
 
         # Check that the appropriate error message was logged
         expected_error_message = "No matching function schema found for function name: name_that_does_not_exist_in_schema"
@@ -417,9 +417,9 @@ class TestOpenAILLM:
         result = openai_llm._validate_single_function_inputs(inputs, function_schema)
 
         # Assert that the method returns False due to missing required parameter
-        assert not result, (
-            "The method should return False when a required parameter is missing"
-        )
+        assert (
+            not result
+        ), "The method should return False when a required parameter is missing"
 
         # Check that the appropriate error message was logged
         expected_error_message = "Required input 'user_id' missing from query"
