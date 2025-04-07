@@ -1,10 +1,9 @@
-from typing import List, Optional
+from typing import Any
 
 import litellm
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
-from semantic_router.utils.logger import logger
 
 
 class LiteLLMEncoder(DenseEncoder):
@@ -19,9 +18,8 @@ class LiteLLMEncoder(DenseEncoder):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        score_threshold: Optional[float] = None,
-        **kwargs,
+        name: str | None = None,
+        score_threshold: float | None = None,
     ):
         """Initialize the OpenAIEncoder.
 
@@ -31,7 +29,7 @@ class LiteLLMEncoder(DenseEncoder):
         :type score_threshold: float
         """
         if name is None:
-            self.name = EncoderDefault.OPENAI.value["embedding_model"]
+            self.name = "openai/" + EncoderDefault.OPENAI.value["embedding_model"]
         else:
             self.name = name
         if score_threshold is None:
@@ -39,7 +37,7 @@ class LiteLLMEncoder(DenseEncoder):
         else:
             self.score_threshold = score_threshold
 
-    def __call__(self, docs: list[Any], **kwargs) -> List[List[float]]:
+    def __call__(self, docs: list[Any], **kwargs) -> list[list[float]]:
         """Encode a list of text documents into embeddings using LiteLLM.
 
         :param docs: List of text documents to encode.
@@ -61,7 +59,7 @@ class LiteLLMEncoder(DenseEncoder):
         embeddings = [x["embedding"] for x in embeds.data]
         return embeddings
 
-    async def acall(self, docs: list[Any], **kwargs) -> List[List[float]]:
+    async def acall(self, docs: list[Any], **kwargs) -> list[list[float]]:
         """Encode a list of documents into embeddings using LiteLLM asynchronously.
 
         :param docs: List of documents to encode.
