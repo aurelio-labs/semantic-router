@@ -20,6 +20,7 @@ def litellm_to_list(embeds: litellm.EmbeddingResponse) -> list[list[float]]:
         raise ValueError("No embeddings found in LiteLLM embedding response.")
     return [x["embedding"] for x in embeds.data]
 
+
 class LiteLLMEncoder(DenseEncoder):
     """LiteLLM encoder class for generating embeddings using LiteLLM.
 
@@ -47,7 +48,7 @@ class LiteLLMEncoder(DenseEncoder):
         else:
             self.name = name
         if score_threshold is None:
-            self.score_threshold = EncoderDefault.OPENAI.value["threshold"]
+            self.score_threshold = 0.3
         else:
             self.score_threshold = score_threshold
 
@@ -56,11 +57,7 @@ class LiteLLMEncoder(DenseEncoder):
 
         :param docs: List of text documents to encode.
         :return: List of embeddings for each document."""
-        embeds = litellm.embedding(
-            input=docs,
-            model=self.name,
-            **kwargs
-        )
+        embeds = litellm.embedding(input=docs, model=self.name, **kwargs)
         if (
             not embeds
             or not isinstance(embeds, litellm.EmbeddingResponse)
@@ -75,11 +72,7 @@ class LiteLLMEncoder(DenseEncoder):
 
         :param docs: List of documents to encode.
         :return: List of embeddings for each document."""
-        embeds = await litellm.aembedding(
-            input=docs,
-            model=self.name,
-            **kwargs
-        )
+        embeds = await litellm.aembedding(input=docs, model=self.name, **kwargs)
         if (
             not embeds
             or not isinstance(embeds, litellm.EmbeddingResponse)

@@ -102,7 +102,9 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
     def encode_documents(self, docs: list[str]) -> list[list[float]]:
         try:
             embeds = litellm.embedding(
-                input=docs, input_type="search_document", model=f"{self.type}/{self.name}"
+                input=docs,
+                input_type="search_document",
+                model=f"{self.type}/{self.name}",
             )
             return litellm_to_list(embeds)
         except Exception as e:
@@ -120,7 +122,9 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
     async def aencode_documents(self, docs: list[str]) -> list[list[float]]:
         try:
             embeds = await litellm.aembedding(
-                input=docs, input_type="search_document", model=f"{self.type}/{self.name}"
+                input=docs,
+                input_type="search_document",
+                model=f"{self.type}/{self.name}",
             )
             return litellm_to_list(embeds)
         except Exception as e:
