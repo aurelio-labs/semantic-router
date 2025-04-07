@@ -5,7 +5,6 @@ import litellm
 from pydantic import PrivateAttr
 from typing_extensions import deprecated
 
-from semantic_router.encoders.base import AsymmetricDenseMixin
 from semantic_router.encoders.litellm import LiteLLMEncoder, litellm_to_list
 from semantic_router.utils.defaults import EncoderDefault
 
@@ -69,7 +68,10 @@ class CohereEncoder(LiteLLMEncoder):
     def encode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
             embeds = litellm.embedding(
-                input=docs, input_type="search_query", model=f"{self.type}/{self.name}", **kwargs
+                input=docs,
+                input_type="search_query",
+                model=f"{self.type}/{self.name}",
+                **kwargs,
             )
             return litellm_to_list(embeds)
         except Exception as e:
@@ -90,7 +92,10 @@ class CohereEncoder(LiteLLMEncoder):
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
             embeds = await litellm.aembedding(
-                input=docs, input_type="search_query", model=f"{self.type}/{self.name}", **kwargs
+                input=docs,
+                input_type="search_query",
+                model=f"{self.type}/{self.name}",
+                **kwargs,
             )
             return litellm_to_list(embeds)
         except Exception as e:

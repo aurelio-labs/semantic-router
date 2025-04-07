@@ -85,7 +85,9 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             )
             return litellm_to_list(embeds)
         except Exception as e:
-            raise ValueError(f"{self.type.capitalize()} API call failed. Error: {e}") from e
+            raise ValueError(
+                f"{self.type.capitalize()} API call failed. Error: {e}"
+            ) from e
 
     def encode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
@@ -94,7 +96,9 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             )
             return litellm_to_list(embeds)
         except Exception as e:
-            raise ValueError(f"{self.type.capitalize()} API call failed. Error: {e}") from e
+            raise ValueError(
+                f"{self.type.capitalize()} API call failed. Error: {e}"
+            ) from e
 
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
@@ -103,7 +107,9 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             )
             return litellm_to_list(embeds)
         except Exception as e:
-            raise ValueError(f"{self.type.capitalize()} API call failed. Error: {e}") from e
+            raise ValueError(
+                f"{self.type.capitalize()} API call failed. Error: {e}"
+            ) from e
 
     async def aencode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
@@ -112,4 +118,6 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             )
             return litellm_to_list(embeds)
         except Exception as e:
-            raise ValueError(f"{self.type.capitalize()} API call failed. Error: {e}") from e
+            raise ValueError(
+                f"{self.type.capitalize()} API call failed. Error: {e}"
+            ) from e

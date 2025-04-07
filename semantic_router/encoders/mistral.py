@@ -3,7 +3,6 @@
 import os
 from typing import Any
 
-import litellm
 from pydantic import PrivateAttr
 from typing_extensions import deprecated
 
