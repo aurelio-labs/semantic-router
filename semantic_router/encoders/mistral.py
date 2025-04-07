@@ -8,8 +8,9 @@ from pydantic import PrivateAttr
 from typing_extensions import deprecated
 
 from semantic_router.encoders import DenseEncoder
-from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.encoders.litellm import litellm_to_list
+from semantic_router.utils.defaults import EncoderDefault
+
 
 class MistralEncoder(DenseEncoder):
     """Class to encode text using MistralAI. Requires a MistralAI API key from
@@ -58,7 +59,9 @@ class MistralEncoder(DenseEncoder):
         :return: None
         :rtype: None
         """
-        api_key = api_key or os.getenv("MISTRALAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
+        api_key = (
+            api_key or os.getenv("MISTRALAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
+        )
         if api_key is None:
             raise ValueError("Mistral API key not provided")
         return None
@@ -72,7 +75,7 @@ class MistralEncoder(DenseEncoder):
         :rtype: List[List[float]]
         """
         return self.encode_queries(docs)
-    
+
     async def acall(self, docs: list[str]) -> list[list[float]]:
         """Embed a list of documents asynchronously. Supports text only.
 
@@ -82,21 +85,17 @@ class MistralEncoder(DenseEncoder):
         :rtype: List[List[float]]
         """
         return await self.aencode_queries(docs)
-    
+
     def encode_queries(self, docs: list[str]) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
-                input=docs, model=f"{self.type}/{self.name}"
-            )
+            embeds = litellm.embedding(input=docs, model=f"{self.type}/{self.name}")
             return litellm_to_list(embeds)
         except Exception as e:
             raise ValueError(f"Mistral API call failed. Error: {e}") from e
 
     def encode_documents(self, docs: list[str]) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
-                input=docs, model=f"{self.type}/{self.name}"
-            )
+            embeds = litellm.embedding(input=docs, model=f"{self.type}/{self.name}")
             return litellm_to_list(embeds)
         except Exception as e:
             raise ValueError(f"Mistral API call failed. Error: {e}") from e
