@@ -23,7 +23,7 @@ class CohereEncoder(LiteLLMEncoder):
     def __init__(
         self,
         name: str | None = None,
-        cohere_api_key: str | None = None,
+        cohere_api_key: str | None = None,  # TODO: rename to api_key in v0.2.0
         score_threshold: float = 0.3,
     ):
         """Initialize the Cohere encoder.
