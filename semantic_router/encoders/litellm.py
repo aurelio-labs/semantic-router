@@ -6,6 +6,20 @@ from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
 
+def litellm_to_list(embeds: litellm.EmbeddingResponse) -> list[list[float]]:
+    """Convert a LiteLLM embedding response to a list of embeddings.
+
+    :param embeds: The LiteLLM embedding response.
+    :return: A list of embeddings.
+    """
+    if (
+        not embeds
+        or not isinstance(embeds, litellm.EmbeddingResponse)
+        or not embeds.data
+    ):
+        raise ValueError("No embeddings found in LiteLLM embedding response.")
+    return [x["embedding"] for x in embeds.data]
+
 class LiteLLMEncoder(DenseEncoder):
     """LiteLLM encoder class for generating embeddings using LiteLLM.
 
