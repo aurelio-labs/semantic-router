@@ -42,14 +42,11 @@ class LiteLLMEncoder(DenseEncoder):
 
         :param docs: List of text documents to encode.
         :return: List of embeddings for each document."""
-        if self._client is None:
-            raise ValueError("OpenAI client is not initialized.")
-        embeds = None
-
         embeds = litellm.embedding(
             input=docs,
             model=self.name,
             **kwargs
+        )
         if (
             not embeds
             or not isinstance(embeds, litellm.EmbeddingResponse)
@@ -71,10 +68,9 @@ class LiteLLMEncoder(DenseEncoder):
         )
         if (
             not embeds
-            or not isinstance(embeds, CreateEmbeddingResponse)
+            or not isinstance(embeds, litellm.EmbeddingResponse)
             or not embeds.data
         ):
-            logger.info(f"Returned embeddings: {embeds}")
             raise ValueError("No embeddings returned.")
 
         embeddings = [x["embedding"] for x in embeds.data]
