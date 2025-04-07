@@ -16,8 +16,8 @@ class MistralEncoder(DenseEncoder):
     """Class to encode text using MistralAI. Requires a MistralAI API key from
     https://console.mistral.ai/api-keys/"""
 
-    _client: Any = PrivateAttr()
-    _mistralai: Any = PrivateAttr()
+    _client: Any = PrivateAttr()  # TODO JB: deprecated, to remove
+    _mistralai: Any = PrivateAttr()  # TODO JB: deprecated, to remove
     type: str = "mistral"
 
     def __init__(
