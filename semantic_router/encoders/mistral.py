@@ -1,14 +1,15 @@
 """This file contains the MistralEncoder class which is used to encode text using MistralAI"""
 
 import os
-from time import sleep
-from typing import Any, List, Optional
+from typing import Any
 
+import litellm
 from pydantic import PrivateAttr
+from typing_extensions import deprecated
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
-
+from semantic_router.encoders.litellm import litellm_to_list
 
 class MistralEncoder(DenseEncoder):
     """Class to encode text using MistralAI. Requires a MistralAI API key from
@@ -20,8 +21,8 @@ class MistralEncoder(DenseEncoder):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        mistralai_api_key: Optional[str] = None,
+        name: str | None = None,
+        mistralai_api_key: str | None = None,
         score_threshold: float = 0.82,
     ):
         """Initialize the MistralEncoder.
@@ -34,68 +35,86 @@ class MistralEncoder(DenseEncoder):
         """
         if name is None:
             name = EncoderDefault.MISTRAL.value["embedding_model"]
-        super().__init__(name=name, score_threshold=score_threshold)
-        self._client, self._mistralai = self._initialize_client(mistralai_api_key)
+        super().__init__(
+            name=name,
+            score_threshold=score_threshold,
+        )
+        if mistralai_api_key is None:
+            mistralai_api_key = os.getenv("MISTRALAI_API_KEY")
+        if mistralai_api_key is None:
+            mistralai_api_key = os.getenv("MISTRAL_API_KEY")
+        if mistralai_api_key is None:
+            raise ValueError(
+                "MistralAI API key must be provided via `mistralai_api_key` parameter or "
+                "`MISTRALAI_API_KEY` environment variable."
+            )
 
+    @deprecated("_initialize_client method no longer required")
     def _initialize_client(self, api_key):
         """Initialize the MistralAI client.
 
         :param api_key: The MistralAI API key.
         :type api_key: str
-        :return: The MistralAI client.
-        :rtype: MistralClient
+        :return: None
+        :rtype: None
         """
-        try:
-            import mistralai
-            from mistralai.client import MistralClient
-        except ImportError:
-            raise ImportError(
-                "Please install MistralAI to use MistralEncoder. "
-                "You can install it with: "
-                "`pip install 'semantic-router[mistralai]'`"
-            )
-
-        api_key = api_key or os.getenv("MISTRALAI_API_KEY")
+        api_key = api_key or os.getenv("MISTRALAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
         if api_key is None:
             raise ValueError("Mistral API key not provided")
-        try:
-            client = MistralClient(api_key=api_key)
-        except Exception as e:
-            raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
-        return client, mistralai
+        return None
 
-    def __call__(self, docs: List[str]) -> List[List[float]]:
-        """Encode a list of documents into embeddings using MistralAI.
+    def __call__(self, docs: list[str]) -> list[list[float]]:
+        """Embed a list of documents. Supports text only.
 
-        :param docs: The documents to encode.
+        :param docs: The documents to embed.
         :type docs: List[str]
-        :return: The embeddings for the documents.
+        :return: The vector embeddings of the documents.
         :rtype: List[List[float]]
         """
-        if self._client is None:
-            raise ValueError("Mistral client not initialized")
-        embeds = None
-        error_message = ""
+        return self.encode_queries(docs)
+    
+    async def acall(self, docs: list[str]) -> list[list[float]]:
+        """Embed a list of documents asynchronously. Supports text only.
 
-        # Exponential backoff
-        for _ in range(3):
-            try:
-                embeds = self._client.embeddings(model=self.name, input=docs)
-                if embeds.data:
-                    break
-            except self._mistralai.exceptions.MistralException as e:
-                sleep(2**_)
-                error_message = str(e)
-            except Exception as e:
-                raise ValueError(f"Unable to connect to MistralAI {e.args}: {e}") from e
-
-        if (
-            not embeds
-            or not isinstance(
-                embeds, self._mistralai.models.embeddings.EmbeddingResponse
+        :param docs: The documents to embed.
+        :type docs: List[str]
+        :return: The vector embeddings of the documents.
+        :rtype: List[List[float]]
+        """
+        return await self.aencode_queries(docs)
+    
+    def encode_queries(self, docs: list[str]) -> list[list[float]]:
+        try:
+            embeds = litellm.embedding(
+                input=docs, model=f"{self.type}/{self.name}"
             )
-            or not embeds.data
-        ):
-            raise ValueError(f"No embeddings returned from MistralAI: {error_message}")
-        embeddings = [embeds_obj.embedding for embeds_obj in embeds.data]
-        return embeddings
+            return litellm_to_list(embeds)
+        except Exception as e:
+            raise ValueError(f"Mistral API call failed. Error: {e}") from e
+
+    def encode_documents(self, docs: list[str]) -> list[list[float]]:
+        try:
+            embeds = litellm.embedding(
+                input=docs, model=f"{self.type}/{self.name}"
+            )
+            return litellm_to_list(embeds)
+        except Exception as e:
+            raise ValueError(f"Mistral API call failed. Error: {e}") from e
+
+    async def aencode_queries(self, docs: list[str]) -> list[list[float]]:
+        try:
+            embeds = await litellm.aembedding(
+                input=docs, model=f"{self.type}/{self.name}"
+            )
+            return litellm_to_list(embeds)
+        except Exception as e:
+            raise ValueError(f"Mistral API call failed. Error: {e}") from e
+
+    async def aencode_documents(self, docs: list[str]) -> list[list[float]]:
+        try:
+            embeds = await litellm.aembedding(
+                input=docs, model=f"{self.type}/{self.name}"
+            )
+            return litellm_to_list(embeds)
+        except Exception as e:
+            raise ValueError(f"Mistral API call failed. Error: {e}") from e
