@@ -35,7 +35,7 @@ vision = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
 ]
-mistralai = ["mistralai>=1.6.0"]
+mistralai = ["mistralai>=0.0.12,<0.1.0"]
 qdrant = ["qdrant-client>=1.11.1,<2"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
 bedrock = [
@@ -47,7 +47,7 @@ postgres = [
 ]
 fastembed = ["fastembed>=0.3.0,<0.4 ; python_version < '3.13'"]
 docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
-cohere = ["cohere>=5.14.2"]
+cohere = ["cohere>=5.9.4,<6.00"]
 dev = [
     "ipykernel>=6.25.0,<7",
     "ruff>=0.11.2,<0.12",
