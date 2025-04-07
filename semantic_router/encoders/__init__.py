@@ -10,6 +10,7 @@ from semantic_router.encoders.cohere import CohereEncoder
 from semantic_router.encoders.fastembed import FastEmbedEncoder
 from semantic_router.encoders.google import GoogleEncoder
 from semantic_router.encoders.huggingface import HFEndpointEncoder, HuggingFaceEncoder
+from semantic_router.encoders.litellm import LiteLLMEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
@@ -33,6 +34,7 @@ __all__ = [
     "CLIPEncoder",
     "GoogleEncoder",
     "BedrockEncoder",
+    "LiteLLMEncoder",
 ]
 
 
@@ -74,6 +76,8 @@ class AutoEncoder:
             self.model = GoogleEncoder(name=name)
         elif self.type == EncoderType.BEDROCK:
             self.model = BedrockEncoder(name=name)  # type: ignore
+        elif self.type == EncoderType.LITELLM:
+            self.model = LiteLLMEncoder(name=name)
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 

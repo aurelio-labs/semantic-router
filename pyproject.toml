@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.1.7"
+version = "0.1.8"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.9,<3.14"
@@ -8,7 +8,6 @@ readme = "README.md"
 license = "MIT"
 dependencies = [
     "pydantic>=2.10.2,<3",
-    "openai>=1.10.0,<2.0.0",
     "numpy>=1.25.2",
     "colorlog>=6.8.0,<7",
     "pyyaml>=6.0.1,<7",
@@ -18,7 +17,8 @@ dependencies = [
     "tiktoken>=0.6.0,<1.0.0",
     "aiohttp>=3.10.11,<4",
     "tornado>=6.4.2,<7",
-    "urllib3>=1.25.4,<1.27"
+    "urllib3>=1.25.4,<1.27",
+    "litellm>=1.61.3",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +35,7 @@ vision = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
 ]
-mistralai = ["mistralai>=0.0.12,<0.1.0"]
+mistralai = []
 qdrant = ["qdrant-client>=1.11.1,<2"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
 bedrock = [
@@ -47,7 +47,7 @@ postgres = [
 ]
 fastembed = ["fastembed>=0.3.0,<0.4 ; python_version < '3.13'"]
 docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
-cohere = ["cohere>=5.9.4,<6.00"]
+cohere = []
 dev = [
     "ipykernel>=6.25.0,<7",
     "ruff>=0.11.2,<0.12",
