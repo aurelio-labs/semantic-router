@@ -2,8 +2,9 @@
 
 import litellm
 
-from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.encoders.litellm import LiteLLMEncoder, litellm_to_list
+from semantic_router.utils.defaults import EncoderDefault
+
 
 class VoyageEncoder(LiteLLMEncoder):
     """Class to encode text using Voyage. Requires a Voyage API key from
