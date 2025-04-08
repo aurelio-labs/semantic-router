@@ -16,6 +16,7 @@ from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
+from semantic_router.encoders.jina import JinaEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "BedrockEncoder",
     "LiteLLMEncoder",
     "VoyageEncoder",
+    "JinaEncoder",
 ]
 
 
@@ -70,6 +72,10 @@ class AutoEncoder:
             self.model = HuggingFaceEncoder(name=name)
         elif self.type == EncoderType.MISTRAL:
             self.model = MistralEncoder(name=name)
+        elif self.type == EncoderType.VOYAGE:
+            self.model = VoyageEncoder(name=name)
+        elif self.type == EncoderType.JINA:
+            self.model = JinaEncoder(name=name)
         elif self.type == EncoderType.VIT:
             self.model = VitEncoder(name=name)
         elif self.type == EncoderType.CLIP:
