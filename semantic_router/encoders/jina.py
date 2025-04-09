@@ -1,8 +1,6 @@
 """This file contains the JinaEncoder class which is used to encode text using Jina"""
 
-import litellm
-
-from semantic_router.encoders.litellm import LiteLLMEncoder, litellm_to_list
+from semantic_router.encoders.litellm import LiteLLMEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
 
