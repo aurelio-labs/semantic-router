@@ -276,7 +276,7 @@ class TestIndexEncoders:
         else:
             assert score_threshold == 0.3
 
-pytest.mark.parametrize(
+@pytest.mark.parametrize(
     "index_cls,encoder_cls,router_cls",
     [
         (index, encoder, router)
