@@ -54,7 +54,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             name=name,
             score_threshold=score_threshold if score_threshold is not None else 0.3,
         )
-        self.type, self.name = self.name.split("/")
+        self.type, self.name = self.name.split("/", 1)
         if api_key is None:
             api_key = os.getenv(self.type.upper() + "_API_KEY")
         if api_key is None:
