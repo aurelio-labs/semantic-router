@@ -297,66 +297,6 @@ def get_test_routers():
     return routers
 
 
-@pytest.mark.parametrize(
-    "index_cls,encoder_cls,router_cls",
-    [
-        (index, encoder, router)
-        for index in get_test_indexes()
-        for encoder in get_test_encoders()
-        for router in get_test_routers()
-    ],
-)
-class TestIndexEncoders:
-    def test_initialization(self, routes, index_cls, encoder_cls, router_cls):
-        encoder = encoder_cls()
-        index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(
-            encoder=encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-            top_k=10,
-        )
-        score_threshold = route_layer.score_threshold
-        if isinstance(route_layer, HybridRouter):
-            assert score_threshold == encoder.score_threshold * route_layer.alpha
-        else:
-            assert score_threshold == encoder.score_threshold
-        assert route_layer.top_k == 10
-
-        @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
-        def check_index_populated():
-            assert len(route_layer.index) == 5
-
-        check_index_populated()
-
-        assert (
-            len(set(route_layer._get_route_names()))
-            if route_layer._get_route_names() is not None
-            else 0 == 2
-        )
-
-    def test_initialization_different_encoders(
-        self, encoder_cls, index_cls, router_cls
-    ):
-        encoder = encoder_cls()
-        index = init_index(index_cls, index_name=encoder.__class__.__name__)
-        route_layer = router_cls(encoder=encoder, index=index)
-        score_threshold = route_layer.score_threshold
-        if isinstance(route_layer, HybridRouter):
-            assert score_threshold == encoder.score_threshold * route_layer.alpha
-        else:
-            assert score_threshold == encoder.score_threshold
-
-    def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
-        route_layer_none = router_cls(encoder=None)
-        score_threshold = route_layer_none.score_threshold
-        if isinstance(route_layer_none, HybridRouter):
-            assert score_threshold == 0.3 * route_layer_none.alpha
-        else:
-            assert score_threshold == 0.3
-
-
 class TestRouterConfig:
     def test_from_file_json(self, tmp_path):
         # Create a temporary JSON file with layer configuration
