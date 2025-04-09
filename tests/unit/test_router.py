@@ -1,9 +1,7 @@
 import importlib
 import os
 import tempfile
-import time
 from datetime import datetime
-from functools import wraps
 from platform import python_version
 from typing import Any, List, Optional
 from unittest.mock import mock_open, patch
@@ -28,7 +26,6 @@ from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.schema import RouteChoice, SparseEmbedding
-from semantic_router.utils.logger import logger
 
 PINECONE_SLEEP = 8
 RETRY_COUNT = 10
