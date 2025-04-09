@@ -4,7 +4,13 @@ import litellm
 import pytest
 from litellm.types.utils import Embedding
 
-from semantic_router.encoders import CohereEncoder, LiteLLMEncoder, MistralEncoder
+from semantic_router.encoders import (
+    CohereEncoder,
+    JinaEncoder,
+    LiteLLMEncoder,
+    MistralEncoder,
+    VoyageEncoder,
+)
 
 matrix = [
     [
@@ -21,7 +27,27 @@ matrix = [
         "COHERE_API_KEY",
         CohereEncoder,
     ],
-    ["mistral", "mistral-embed", "mistral-embed", "MISTRAL_API_KEY", MistralEncoder],
+    [
+        "mistral",
+        "mistral-embed",
+        "mistral-embed",
+        "MISTRAL_API_KEY",
+        MistralEncoder,
+    ],
+    [
+        "jina_ai",
+        "jina-embeddings-v3",
+        "jina-embeddings-v3",
+        "JINA_AI_API_KEY",
+        JinaEncoder,
+    ],
+    [
+        "voyage",
+        "voyage-3",
+        "voyage-3",
+        "VOYAGE_API_KEY",
+        VoyageEncoder,
+    ],
 ]
 
 
