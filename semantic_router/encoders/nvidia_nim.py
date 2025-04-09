@@ -1,8 +1,6 @@
 """This file contains the NimEncoder class which is used to encode text using Nim"""
 
-import os
 import litellm
-from typing import Any
 
 from semantic_router.encoders.litellm import LiteLLMEncoder, litellm_to_list
 from semantic_router.utils.defaults import EncoderDefault
