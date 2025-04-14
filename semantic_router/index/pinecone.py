@@ -3,12 +3,12 @@ import hashlib
 import json
 import os
 import time
-import requests
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import numpy as np
+import requests
 from pydantic import BaseModel, Field
 
 from semantic_router.index.base import BaseIndex, IndexConfig

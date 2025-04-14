@@ -1,6 +1,7 @@
+import os
+
 import numpy as np
 import pytest
-import os
 
 from semantic_router import Route
 from semantic_router.encoders.bm25 import BM25Encoder

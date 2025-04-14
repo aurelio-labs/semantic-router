@@ -21,6 +21,14 @@ class EncoderDefault(Enum):
         "embedding_model": os.getenv("MISTRAL_MODEL_NAME", "mistral-embed"),
         "language_model": os.getenv("MISTRALAI_CHAT_MODEL_NAME", "mistral-tiny"),
     }
+    VOYAGE = {
+        "embedding_model": os.getenv("VOYAGE_MODEL_NAME", "voyage-3-lite"),
+        "language_model": os.getenv("VOYAGE_CHAT_MODEL_NAME", "voyage-3-lite"),
+    }
+    JINA = {
+        "embedding_model": os.getenv("JINA_MODEL_NAME", "jina-embeddings-v3"),
+        "language_model": os.getenv("JINA_CHAT_MODEL_NAME", "ReaderLM-v2"),
+    }
     AZURE = {
         "embedding_model": os.getenv("AZURE_OPENAI_MODEL", "text-embedding-3-small"),
         "language_model": os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-4o"),

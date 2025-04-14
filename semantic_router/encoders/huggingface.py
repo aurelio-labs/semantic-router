@@ -30,7 +30,6 @@ from pydantic import PrivateAttr
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.logger import logger
 
-
 # TODO: this should support local models, and we should have another class for remote
 # inference endpoint models
 

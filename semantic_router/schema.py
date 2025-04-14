@@ -27,6 +27,9 @@ class EncoderType(Enum):
     CLIP = "clip"
     GOOGLE = "google"
     BEDROCK = "bedrock"
+    LITELLM = "litellm"
+    JINA = "jina_ai"
+    VOYAGE = "voyage"
 
 
 class EncoderInfo(BaseModel):
@@ -69,6 +72,14 @@ class Message(BaseModel):
 
     def to_mistral(self):
         """Convert the message to a Mistral-compatible format."""
+        return {"role": self.role, "content": self.content}
+
+    def to_voyage(self):
+        """Convert the message to a Voyage-compatible format."""
+        return {"role": self.role, "content": self.content}
+
+    def to_jina(self):
+        """Convert the message to a Jina-compatible format."""
         return {"role": self.role, "content": self.content}
 
     def __str__(self):

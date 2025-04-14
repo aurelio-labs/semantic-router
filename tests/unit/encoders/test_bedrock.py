@@ -32,9 +32,9 @@ def bedrock_encoder_with_cohere(mocker):
 
 class TestBedrockEncoder:
     def test_initialisation_with_default_values(self, bedrock_encoder):
-        assert (
-            bedrock_encoder.input_type == "search_query"
-        ), "Default input type not set correctly"
+        assert bedrock_encoder.input_type == "search_query", (
+            "Default input type not set correctly"
+        )
         assert bedrock_encoder.region == "us-west-2", "Region should be initialised"
 
     def test_initialisation_with_custom_values(self, mocker):
@@ -52,12 +52,12 @@ class TestBedrockEncoder:
         )
         assert bedrock_encoder.name == name, "Custom name not set correctly"
         assert bedrock_encoder.region == "us-west-2", "Custom region not set correctly"
-        assert (
-            bedrock_encoder.score_threshold == score_threshold
-        ), "Custom score threshold not set correctly"
-        assert (
-            bedrock_encoder.input_type == input_type
-        ), "Custom input type not set correctly"
+        assert bedrock_encoder.score_threshold == score_threshold, (
+            "Custom score threshold not set correctly"
+        )
+        assert bedrock_encoder.input_type == input_type, (
+            "Custom input type not set correctly"
+        )
 
     def test_initialisation_with_session_token(self, mocker):
         mocker.patch(
@@ -69,9 +69,9 @@ class TestBedrockEncoder:
             session_token="fake_token",
             region="us-west-2",
         )
-        assert (
-            bedrock_encoder.session_token == "fake_token"
-        ), "Session token not set correctly"
+        assert bedrock_encoder.session_token == "fake_token", (
+            "Session token not set correctly"
+        )
 
     def test_initialisation_with_missing_access_key(self, mocker):
         mocker.patch.dict(os.environ, {"AWS_ACCESS_KEY_ID": "env_id"})
@@ -84,9 +84,9 @@ class TestBedrockEncoder:
             session_token="fake_token",
             region="us-west-2",
         )
-        assert (
-            bedrock_encoder.access_key_id == "env_id"
-        ), "Access key ID not set correctly from environment variable"
+        assert bedrock_encoder.access_key_id == "env_id", (
+            "Access key ID not set correctly from environment variable"
+        )
 
     def test_missing_access_key_id(self, mocker):
         mocker.patch(
@@ -132,9 +132,9 @@ class TestBedrockEncoder:
         bedrock_encoder.client.invoke_model.return_value = mock_response
         result = bedrock_encoder(["test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(item, list) for item in result
-        ), "Each item in result should be a list"
+        assert all(isinstance(item, list) for item in result), (
+            "Each item in result should be a list"
+        )
         assert result == [[0.1, 0.2, 0.3]], "Embedding should be [0.1, 0.2, 0.3]"
 
     def test_call_with_expired_token(self, mocker, bedrock_encoder):
@@ -186,12 +186,12 @@ class TestBedrockEncoder:
         docs = ["This is a long text that needs to be chunked properly."]
         chunked_docs = bedrock_encoder.chunk_strings(docs, MAX_WORDS=5)
         assert isinstance(chunked_docs, list), "Chunked result should be a list"
-        assert (
-            len(chunked_docs[0]) > 1
-        ), "Document should be chunked into multiple parts"
-        assert all(
-            isinstance(chunk, str) for chunk in chunked_docs[0]
-        ), "Chunks should be strings"
+        assert len(chunked_docs[0]) > 1, (
+            "Document should be chunked into multiple parts"
+        )
+        assert all(isinstance(chunk, str) for chunk in chunked_docs[0]), (
+            "Chunks should be strings"
+        )
 
     def test_get_env_variable(self):
         var_name = "TEST_ENV_VAR"
@@ -232,9 +232,9 @@ class TestBedrockEncoderWithCohere:
         bedrock_encoder_with_cohere.client.invoke_model.return_value = mock_response
         result = bedrock_encoder_with_cohere(["short test"])
         assert isinstance(result, list), "Result should be a list"
-        assert all(
-            isinstance(item, list) for item in result
-        ), "Each item should be a list"
+        assert all(isinstance(item, list) for item in result), (
+            "Each item should be a list"
+        )
         assert result == [[0.1, 0.2, 0.3]], "Expected embedding [0.1, 0.2, 0.3]"
 
     def test_cohere_input_type(self, bedrock_encoder_with_cohere):
