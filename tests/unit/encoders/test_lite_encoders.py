@@ -9,6 +9,7 @@ from semantic_router.encoders import (
     JinaEncoder,
     LiteLLMEncoder,
     MistralEncoder,
+    NimEncoder,
     VoyageEncoder,
 )
 
@@ -47,6 +48,13 @@ matrix = [
         "voyage-3",
         "VOYAGE_API_KEY",
         VoyageEncoder,
+    ],
+    [
+        "nvidia_nim",
+        "nv-embedqa-e5-v5",
+        "nv-embedqa-e5-v5",
+        "NVIDIA_NIM_API_KEY",
+        NimEncoder,
     ],
 ]
 
