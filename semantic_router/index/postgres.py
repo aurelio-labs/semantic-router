@@ -141,6 +141,7 @@ class PostgresIndex(BaseIndex):
             if not connection_string:
                 raise ValueError("No connection string provided")
             self.connection_string = connection_string
+        self.index = self
         self.index_prefix = index_prefix
         self.index_name = index_name
         self.dimensions = dimensions
@@ -213,6 +214,56 @@ class PostgresIndex(BaseIndex):
                 """
             )
             self.conn.commit()
+        self._create_route_index()
+        self._create_index()
+
+    def _create_route_index(self) -> None:
+        """Creates a index on the route column."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg2.extensions.connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);")
+                self.conn.commit()
+        except psycopg2.errors.DuplicateTable:
+            pass
+
+    def _create_index(self) -> None:
+        """Creates an HNSW index on the vector column."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg2.extensions.connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                if self.metric == Metric.COSINE:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
+                        """
+                    )
+                elif self.metric == Metric.DOTPRODUCT:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
+                        """
+                    )
+                elif self.metric == Metric.EUCLIDEAN:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
+                        """
+                    )
+                elif self.metric == Metric.MANHATTAN:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
+                        """
+                    )
+                self.conn.commit()
+        except psycopg2.errors.DuplicateTable:
+            pass
+
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
