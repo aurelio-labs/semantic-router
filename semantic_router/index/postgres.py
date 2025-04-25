@@ -15,12 +15,10 @@ if TYPE_CHECKING:
 
 try:
     import psycopg2
+
+    _psycopg2_installed = True
 except ImportError:
-    if not TYPE_CHECKING:
-        raise ImportError(
-            "Please install psycopg2 to use PostgresIndex. "
-            "You can install it with: `pip install 'semantic-router[postgres]'`"
-        )
+    _psycopg2_installed = False
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -72,6 +70,11 @@ class PostgresIndexRecord(BaseModel):
         :param data: Field values for the record.
         :type data: dict
         """
+        if not _psycopg2_installed:
+            raise ImportError(
+                "Please install psycopg2 to use PostgresIndex. "
+                "You can install it with: `pip install 'semantic-router[postgres]'`"
+            )
         super().__init__(**data)
         clean_route = self.route.strip().replace(" ", "-")
         if len(clean_route) > 255:
@@ -225,7 +228,9 @@ class PostgresIndex(BaseIndex):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
-                cur.execute(f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);")
+                cur.execute(
+                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                )
                 self.conn.commit()
         except psycopg2.errors.DuplicateTable:
             pass
@@ -264,7 +269,6 @@ class PostgresIndex(BaseIndex):
                 self.conn.commit()
         except psycopg2.errors.DuplicateTable:
             pass
-
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
