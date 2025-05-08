@@ -655,6 +655,7 @@ class TestHybridRouter:
             encoder=dense_encoder,
             sparse_encoder=sparse_encoder,
             routes=routes,
+            auto_sync="local",
         )
 
         # Setup a mock for the similarity calculation method
@@ -696,6 +697,7 @@ class TestHybridRouter:
             encoder=dense_encoder,
             sparse_encoder=sparse_encoder,
             routes=routes,
+            auto_sync="local",
         )
 
         # Setup a mock for the async similarity calculation method
