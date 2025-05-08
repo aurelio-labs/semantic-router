@@ -644,7 +644,9 @@ class TestHybridRouter:
         else:
             assert sparse_call_spy.called
 
-    def test_limit_parameter(self, routes, mocker):
+    def test_limit_parameter(
+            self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+        ):
         """Test that the limit parameter works correctly for sync router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
@@ -683,7 +685,9 @@ class TestHybridRouter:
         assert len(result) > 2  # Should return all matches
 
     @pytest.mark.asyncio
-    async def test_async_limit_parameter(self, routes, mocker):
+    async def test_async_limit_parameter(
+        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+    ):
         """Test that the limit parameter works correctly for async router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
