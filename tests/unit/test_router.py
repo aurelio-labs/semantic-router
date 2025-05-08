@@ -24,7 +24,7 @@ from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
-from semantic_router.schema import SparseEmbedding
+from semantic_router.schema import RouteChoice, SparseEmbedding
 
 PINECONE_SLEEP = 8
 RETRY_COUNT = 10
@@ -673,7 +673,7 @@ class TestHybridRouter:
         # Test without limit (should return only the top match)
         result = router("test query")
         assert result is not None
-        assert len(result) == 1  # Default behavior returns only the top match
+        assert isinstance(result, RouteChoice)
 
         # Test with limit=2 (should return top 2 matches)
         result = router("test query", limit=2)
@@ -715,7 +715,7 @@ class TestHybridRouter:
         # Test without limit (should return only the top match)
         result = await router.acall("test query")
         assert result is not None
-        assert len(result) == 1  # Default behavior returns only the top match
+        assert isinstance(result, RouteChoice)
 
         # Test with limit=2 (should return top 2 matches)
         result = await router.acall("test query", limit=2)
