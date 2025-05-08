@@ -755,6 +755,7 @@ class BaseRouter(BaseModel):
         self,
         text: Optional[str] = None,
         vector: Optional[List[float] | np.ndarray] = None,
+        limit: int | None = 1,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice | list[RouteChoice]:
@@ -794,7 +795,7 @@ class BaseRouter(BaseModel):
             scored_routes=scored_routes,
             simulate_static=simulate_static,
             text=text,
-            limit=1,
+            limit=limit,
         )
 
     def _index_ready(self) -> bool:

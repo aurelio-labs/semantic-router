@@ -643,3 +643,80 @@ class TestHybridRouter:
                 assert sparse_encode_queries_spy.called
         else:
             assert sparse_call_spy.called
+
+    def test_limit_parameter(self, routes, mocker):
+        """Test that the limit parameter works correctly for sync router calls."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=dense_encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_calculate_similarities",
+            return_value=[
+                {"route": "Route 1", "score": 0.9},
+                {"route": "Route 2", "score": 0.8},
+                {"route": "Route 1", "score": 0.7},
+                {"route": "Route 2", "score": 0.6},
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = router("test query")
+        assert result is not None
+        assert len(result) == 1  # Default behavior returns only the top match
+
+        # Test with limit=2 (should return top 2 matches)
+        result = router("test query", limit=2)
+        assert result is not None
+        assert len(result) == 2
+
+        # Test with limit=None (should return all matches)
+        result = router("test query", limit=None)
+        assert result is not None
+        assert len(result) > 2  # Should return all matches
+
+    @pytest.mark.asyncio
+    async def test_async_limit_parameter(self, routes, mocker):
+        """Test that the limit parameter works correctly for async router calls."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=dense_encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Setup a mock for the async similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_async_calculate_similarities",
+            return_value=[
+                {"route": "Route 1", "score": 0.9},
+                {"route": "Route 2", "score": 0.8},
+                {"route": "Route 1", "score": 0.7},
+                {"route": "Route 2", "score": 0.6},
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert len(result) == 1  # Default behavior returns only the top match
+
+        # Test with limit=2 (should return top 2 matches)
+        result = await router.acall("test query", limit=2)
+        assert result is not None
+        assert len(result) == 2
+
+        # Test with limit=None (should return all matches)
+        result = await router.acall("test query", limit=None)
+        assert result is not None
+        assert len(result) > 2  # Should return all matches
