@@ -660,12 +660,12 @@ class TestHybridRouter:
         # Setup a mock for the similarity calculation method
         _ = mocker.patch.object(
             router,
-            "_calculate_similarities",
+            "_score_routes",
             return_value=[
-                {"route": "Route 1", "score": 0.9},
-                {"route": "Route 2", "score": 0.8},
-                {"route": "Route 1", "score": 0.7},
-                {"route": "Route 2", "score": 0.6},
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
             ],
         )
 
@@ -682,7 +682,7 @@ class TestHybridRouter:
         # Test with limit=None (should return all matches)
         result = router("test query", limit=None)
         assert result is not None
-        assert len(result) > 2  # Should return all matches
+        assert len(result) == 4  # Should return all matches
 
     @pytest.mark.asyncio
     async def test_async_limit_parameter(
@@ -701,12 +701,12 @@ class TestHybridRouter:
         # Setup a mock for the async similarity calculation method
         _ = mocker.patch.object(
             router,
-            "_async_calculate_similarities",
+            "_score_routes",
             return_value=[
-                {"route": "Route 1", "score": 0.9},
-                {"route": "Route 2", "score": 0.8},
-                {"route": "Route 1", "score": 0.7},
-                {"route": "Route 2", "score": 0.6},
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
             ],
         )
 
@@ -723,4 +723,4 @@ class TestHybridRouter:
         # Test with limit=None (should return all matches)
         result = await router.acall("test query", limit=None)
         assert result is not None
-        assert len(result) > 2  # Should return all matches
+        assert len(result) == 4  # Should return all matches
