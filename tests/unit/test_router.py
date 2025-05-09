@@ -205,6 +205,15 @@ def routes_4():
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
 
+@pytest.fixture
+def routes_5():
+    return [
+        Route(name="Route 1", utterances=["Hello", "Hi"], metadata={"type": "default"}),
+        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
+        Route(name="Route 3", utterances=["Hello", "Hi"]),
+        Route(name="Route 4", utterances=["Goodbye", "Bye", "Au revoir"]),
+    ]
+
 
 @pytest.fixture
 def route_single_utterance():
@@ -644,19 +653,35 @@ class TestHybridRouter:
         else:
             assert sparse_call_spy.called
 
+
+@pytest.mark.parametrize(
+    "router_cls",
+    [
+        HybridRouter,
+        SemanticRouter,
+    ],
+)
+class TestRouter:
     def test_limit_parameter(
-            self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
-        ):
+        self, router_cls, routes_5, mocker
+    ):
         """Test that the limit parameter works correctly for sync router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-        router = HybridRouter(
-            encoder=dense_encoder,
-            sparse_encoder=sparse_encoder,
-            routes=routes,
-            auto_sync="local",
-        )
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
 
         # Setup a mock for the similarity calculation method
         _ = mocker.patch.object(
@@ -687,18 +712,25 @@ class TestHybridRouter:
 
     @pytest.mark.asyncio
     async def test_async_limit_parameter(
-        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+        self, router_cls, routes_5, mocker
     ):
         """Test that the limit parameter works correctly for async router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-        router = HybridRouter(
-            encoder=dense_encoder,
-            sparse_encoder=sparse_encoder,
-            routes=routes,
-            auto_sync="local",
-        )
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
 
         # Setup a mock for the async similarity calculation method
         _ = mocker.patch.object(
