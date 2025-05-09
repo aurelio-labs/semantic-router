@@ -205,6 +205,7 @@ def routes_4():
         Route(name="Route 2", utterances=["Asparagus"]),
     ]
 
+
 @pytest.fixture
 def routes_5():
     return [
@@ -662,9 +663,90 @@ class TestHybridRouter:
     ],
 )
 class TestRouter:
-    def test_limit_parameter(
-        self, router_cls, routes_5, mocker
-    ):
+    def test_query_parameter(self, router_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = router("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
+    @pytest.mark.asyncio
+    async def test_async_query_parameter(self, router_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
+    def test_limit_parameter(self, router_cls, routes_5, mocker):
         """Test that the limit parameter works correctly for sync router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
@@ -711,9 +793,7 @@ class TestRouter:
         assert len(result) == 4  # Should return all matches
 
     @pytest.mark.asyncio
-    async def test_async_limit_parameter(
-        self, router_cls, routes_5, mocker
-    ):
+    async def test_async_limit_parameter(self, router_cls, routes_5, mocker):
         """Test that the limit parameter works correctly for async router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")

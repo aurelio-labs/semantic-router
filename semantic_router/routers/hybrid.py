@@ -91,7 +91,7 @@ class HybridRouter(BaseRouter):
         """Add a route to the local HybridRouter and index.
 
         :param route: The route to add.
-        :type route: Route 
+        :type route: Route
         """
 
         if self.sparse_encoder is None:
@@ -359,7 +359,7 @@ class HybridRouter(BaseRouter):
             limit=limit,
         )
         return route_choices
-    
+
     async def acall(
         self,
         text: Optional[str] = None,
@@ -396,8 +396,7 @@ class HybridRouter(BaseRouter):
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector, potential_sparse_vector = await self._async_encode(
-                text=[text],
-                input_type="queries"
+                text=[text], input_type="queries"
             )
         # convert to numpy array if not already
         vector = xq_reshape(xq=vector)
