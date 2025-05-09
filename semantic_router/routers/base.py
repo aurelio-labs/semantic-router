@@ -639,6 +639,8 @@ class BaseRouter(BaseModel):
                         route.llm = self.llm
                 # call dynamic route to generate the function_call content
                 route_choice = route(query=text)
+                if route_choice is not None and route_choice.similarity_score is None:
+                    route_choice.similarity_score = total_score
                 passed_routes.append(route_choice)
             elif passed and route is not None and simulate_static:
                 passed_routes.append(
@@ -757,6 +759,7 @@ class BaseRouter(BaseModel):
         self,
         text: Optional[str] = None,
         vector: Optional[List[float] | np.ndarray] = None,
+        limit: int | None = 1,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice | list[RouteChoice]:
@@ -796,7 +799,7 @@ class BaseRouter(BaseModel):
             scored_routes=scored_routes,
             simulate_static=simulate_static,
             text=text,
-            limit=1,
+            limit=limit,
         )
 
     def _index_ready(self) -> bool:

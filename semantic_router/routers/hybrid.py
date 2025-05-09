@@ -319,7 +319,7 @@ class HybridRouter(BaseRouter):
         if not self.index.is_ready():
             raise ValueError("Index is not ready.")
         if self.sparse_encoder is None:
-            raise ValueError
+            raise ValueError("Sparse encoder is not set.")
         potential_sparse_vector: List[SparseEmbedding] | None = None
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -359,6 +359,70 @@ class HybridRouter(BaseRouter):
             limit=limit,
         )
         return route_choices
+
+    async def acall(
+        self,
+        text: Optional[str] = None,
+        vector: Optional[List[float] | np.ndarray] = None,
+        limit: int | None = 1,
+        simulate_static: bool = False,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+    ) -> RouteChoice | list[RouteChoice]:
+        """Asynchronously call the router to get a route choice.
+
+        :param text: The text to route.
+        :type text: Optional[str]
+        :param vector: The vector to route.
+        :type vector: Optional[List[float] | np.ndarray]
+        :param simulate_static: Whether to simulate a static route (ie avoid dynamic route
+            LLM calls during fit or evaluate).
+        :type simulate_static: bool
+        :param route_filter: The route filter to use.
+        :type route_filter: Optional[List[str]]
+        :param sparse_vector: The sparse vector to use.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: The route choice.
+        :rtype: RouteChoice
+        """
+        if not self.index.is_ready():
+            # TODO: need async version for qdrant
+            raise ValueError("Index is not ready.")
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse encoder is not set.")
+        potential_sparse_vector: List[SparseEmbedding] | None = None
+        # if no vector provided, encode text to get vector
+        if vector is None:
+            if text is None:
+                raise ValueError("Either text or vector must be provided")
+            vector, potential_sparse_vector = await self._async_encode(
+                text=[text], input_type="queries"
+            )
+        # convert to numpy array if not already
+        vector = xq_reshape(xq=vector)
+        if sparse_vector is None:
+            if text is None:
+                raise ValueError("Either text or sparse_vector must be provided")
+            sparse_vector = (
+                potential_sparse_vector[0] if potential_sparse_vector else None
+            )
+        # get scores and routes
+        scores, routes = await self.index.aquery(
+            vector=vector[0],
+            top_k=self.top_k,
+            route_filter=route_filter,
+            sparse_vector=sparse_vector,
+        )
+        query_results = [
+            {"route": d, "score": s.item()} for d, s in zip(routes, scores)
+        ]
+        scored_routes = self._score_routes(query_results=query_results)
+        return await self._async_pass_routes(
+            scored_routes=scored_routes,
+            simulate_static=simulate_static,
+            text=text,
+            limit=limit,
+        )
 
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
