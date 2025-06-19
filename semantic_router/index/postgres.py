@@ -409,11 +409,8 @@ class PostgresIndex(BaseIndex):
             )
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cur.fetchone()
-            if count is None:
-                count = 0
-            else:
-                count = count[0]  # Extract the actual count from the tuple
+            result = cur.fetchone()
+            count = result[0] if result is not None else 0
             return IndexConfig(
                 type=self.type,
                 dimensions=self.dimensions or 0,
