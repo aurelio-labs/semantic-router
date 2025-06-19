@@ -155,8 +155,8 @@ class PostgresIndex(BaseIndex):
         self.metric = metric
         self.namespace = namespace
         self.conn = psycopg.connect(conninfo=self.connection_string)
-        if self.has_connection() == False:
-            raise ValueError("Connection not valid")
+        if not self.has_connection():
+            raise ValueError("Index has not established a connection to Postgres")
         self.setup_index()
 
     def _get_table_name(self) -> str:
@@ -233,7 +233,9 @@ class PostgresIndex(BaseIndex):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
-                cur.execute(f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);")
+                cur.execute(
+                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                )
                 self.conn.commit()
         except psycopg.errors.DuplicateTable:
             self.conn.rollback()
