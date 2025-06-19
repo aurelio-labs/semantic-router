@@ -1,6 +1,6 @@
 import os
 import uuid
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -23,7 +23,7 @@ class MetricPgVecOperatorMap(Enum):
     manhattan = "<+>"  # L1 distance
 
 
-class IndexType(StrEnum):
+class IndexType(str, Enum):
     FLAT = "flat"
     HNSW = "hnsw"
     IVFFLAT = "ivfflat"
