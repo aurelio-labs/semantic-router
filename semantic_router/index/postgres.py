@@ -1,6 +1,6 @@
 import os
 import uuid
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -11,7 +11,7 @@ from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 if TYPE_CHECKING:
-    import psycopg2
+    import psycopg
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -21,6 +21,12 @@ class MetricPgVecOperatorMap(Enum):
     dotproduct = "<#>"  # inner product
     euclidean = "<->"  # L2 distance
     manhattan = "<+>"  # L1 distance
+
+
+class IndexType(StrEnum):
+    FLAT = "flat"
+    HNSW = "hnsw"
+    IVFFLAT = "ivfflat"
 
 
 def parse_vector(vector_str: Union[str, Any]) -> List[float]:
@@ -95,9 +101,10 @@ class PostgresIndex(BaseIndex):
     index_name: str = "index"
     metric: Metric = Metric.COSINE
     namespace: Optional[str] = ""
-    conn: Optional["psycopg2.extensions.connection"] = None
+    conn: Optional["psycopg.Connection"] = None
     type: str = "postgres"
     pg2: Any = Field(default=None, exclude=True)
+    index_type: IndexType = IndexType.FLAT
 
     def __init__(
         self,
@@ -126,12 +133,12 @@ class PostgresIndex(BaseIndex):
         if dimensions is None:
             dimensions = 1536
         super().__init__()
-        # try and import psycopg2
+        # try and import psycopg
         try:
-            import psycopg2
+            import psycopg
         except ImportError:
             raise ImportError(
-                "Please install psycopg2 to use PostgresIndex. "
+                "Please install psycopg to use PostgresIndex. "
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
         if connection_string:
@@ -147,7 +154,9 @@ class PostgresIndex(BaseIndex):
         self.dimensions = dimensions
         self.metric = metric
         self.namespace = namespace
-        self.conn = psycopg2.connect(dsn=self.connection_string)
+        self.conn = psycopg.connect(conninfo=self.connection_string)
+        if self.has_connection() == False:
+            raise ValueError("Connection not valid")
         self.setup_index()
 
     def _get_table_name(self) -> str:
@@ -198,7 +207,7 @@ class PostgresIndex(BaseIndex):
             raise ValueError(
                 f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
             )
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(
@@ -220,50 +229,69 @@ class PostgresIndex(BaseIndex):
     def _create_route_index(self) -> None:
         """Creates a index on the route column."""
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
                 cur.execute(f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);")
                 self.conn.commit()
-        except psycopg2.errors.DuplicateTable:
-            pass
+        except psycopg.errors.DuplicateTable:
+            self.conn.rollback()
+        except Exception:
+            self.conn.rollback()
+            raise
 
     def _create_index(self) -> None:
-        """Creates an HNSW index on the vector column."""
+        """Creates an index on the vector column based on index_type."""
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
-                if self.metric == Metric.COSINE:
+                if self.index_type == IndexType.HNSW:
+                    if self.metric == Metric.COSINE:
+                        cur.execute(
+                            f"""
+                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
+                            """
+                        )
+                    elif self.metric == Metric.DOTPRODUCT:
+                        cur.execute(
+                            f"""
+                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
+                            """
+                        )
+                    elif self.metric == Metric.EUCLIDEAN:
+                        cur.execute(
+                            f"""
+                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
+                            """
+                        )
+                    elif self.metric == Metric.MANHATTAN:
+                        cur.execute(
+                            f"""
+                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
+                            """
+                        )
+                elif self.index_type == IndexType.IVFFLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector vector_cosine_ops) WITH (lists = 100);
                         """
                     )
-                elif self.metric == Metric.DOTPRODUCT:
+                elif self.index_type == IndexType.FLAT:
+                    # Create ivfflat with lists=1 for flat search
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
-                        """
-                    )
-                elif self.metric == Metric.EUCLIDEAN:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
-                        """
-                    )
-                elif self.metric == Metric.MANHATTAN:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector vector_cosine_ops) WITH (lists = 1);
                         """
                     )
                 self.conn.commit()
-        except psycopg2.errors.DuplicateTable:
-            pass
-
+        except psycopg.errors.DuplicateTable:
+            self.conn.rollback()
+        except Exception:
+            self.conn.rollback()
+            raise
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
@@ -274,7 +302,7 @@ class PostgresIndex(BaseIndex):
         :raises ValueError: If the vector column comment does not contain a valid integer.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(
@@ -337,7 +365,7 @@ class PostgresIndex(BaseIndex):
             PostgresIndexRecord(vector=vector, route=route, utterance=utterance)
             for vector, route, utterance in zip(embeddings, routes, utterances)
         ]
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.executemany(
@@ -357,7 +385,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"DELETE FROM {table_name} WHERE route = '{route_name}'")
@@ -370,7 +398,7 @@ class PostgresIndex(BaseIndex):
         :rtype: IndexConfig
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             logger.warning("Index has not established a connection to Postgres")
             return IndexConfig(
                 type=self.type,
@@ -396,7 +424,7 @@ class PostgresIndex(BaseIndex):
         :return: True if the index is ready, False otherwise.
         :rtype: bool
         """
-        return isinstance(self.conn, psycopg2.extensions.connection)
+        return isinstance(self.conn, psycopg.Connection)
 
     def query(
         self,
@@ -420,7 +448,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             filter_query = f" AND route = ANY({route_filter})" if route_filter else ""
@@ -462,7 +490,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
 
         query = "SELECT id"
@@ -492,7 +520,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"DELETE FROM {table_name}")
@@ -504,7 +532,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {table_name}")
@@ -536,7 +564,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
@@ -544,6 +572,30 @@ class PostgresIndex(BaseIndex):
             if count is None:
                 return 0
             return count[0]
+
+    def close(self):
+        """Closes the psycopg connection if it exists."""
+        if self.conn is not None:
+            try:
+                self.conn.close()
+            except Exception as e:
+                logger.warning(f"Error closing Postgres connection: {e}")
+            self.conn = None
+
+    def __del__(self):
+        self.close()
+
+    def has_connection(self) -> bool:
+        """Returns True if there is an active and valid psycopg connection, otherwise False."""
+        if self.conn is None or self.conn.closed:
+            return False
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT 1;")
+                cur.fetchone()
+            return True
+        except Exception:
+            return False
 
     """Configuration for the Pydantic BaseModel."""
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)

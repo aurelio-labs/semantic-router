@@ -44,7 +44,7 @@ bedrock = [
     "botocore>=1.34.110,<2",
 ]
 postgres = [
-    "psycopg2-binary>=2.9.9,<3",
+    "psycopg[binary]>=3.1.0,<4",
 ]
 fastembed = ["fastembed>=0.3.0,<0.4 ; python_version < '3.13'"]
 docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
