@@ -78,7 +78,7 @@ class PostgresIndexRecord(BaseModel):
         """
         if not _psycopg_installed:
             raise ImportError(
-                "Please install psycopg2 to use PostgresIndex. "
+                "Please install psycopg to use PostgresIndex. "
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
         super().__init__(**data)
