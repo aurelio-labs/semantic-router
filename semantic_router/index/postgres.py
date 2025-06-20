@@ -279,8 +279,8 @@ class PostgresIndex(BaseIndex):
                 )
                 self.conn.commit()
         except psycopg.errors.DuplicateTable:
-            if self.conn is not None:
-                self.conn.rollback()
+            # Index already exists, not an error, do nothing
+            pass
         except Exception:
             if self.conn is not None:
                 self.conn.rollback()
@@ -314,8 +314,8 @@ class PostgresIndex(BaseIndex):
                     )
                 self.conn.commit()
         except psycopg.errors.DuplicateTable:
-            if self.conn is not None:
-                self.conn.rollback()
+            # Index already exists, not an error, do nothing
+            pass
         except Exception:
             if self.conn is not None:
                 self.conn.rollback()
