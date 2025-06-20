@@ -50,5 +50,5 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
     source .venv/bin/activate
 
     # Install via uv with all extras relevant to perform unit tests
-    uv pip install -e .[dev]
+    uv sync --extra all
     ```

@@ -13,6 +13,12 @@ from semantic_router.utils.logger import logger
 if TYPE_CHECKING:
     import psycopg
 
+try:
+    import psycopg
+    _psycopg_installed = True
+except ImportError:
+    _psycopg_installed = False
+
 
 class MetricPgVecOperatorMap(Enum):
     """Enum to map the metric to PostgreSQL vector operators."""
@@ -69,6 +75,11 @@ class PostgresIndexRecord(BaseModel):
         :param data: Field values for the record.
         :type data: dict
         """
+        if not _psycopg2_installed:
+            raise ImportError(
+                "Please install psycopg2 to use PostgresIndex. "
+                "You can install it with: `pip install 'semantic-router[postgres]'`"
+            )
         super().__init__(**data)
         clean_route = self.route.strip().replace(" ", "-")
         if len(clean_route) > 255:
@@ -130,17 +141,14 @@ class PostgresIndex(BaseIndex):
         :param namespace: An optional namespace for the index.
         :type namespace: Optional[str]
         """
-        if dimensions is None:
-            dimensions = 1536
-        super().__init__()
-        # try and import psycopg
-        try:
-            import psycopg
-        except ImportError:
+        if not _psycopg_installed:
             raise ImportError(
                 "Please install psycopg to use PostgresIndex. "
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
+        if dimensions is None:
+            dimensions = 1536
+        super().__init__()
         if connection_string:
             self.connection_string = connection_string
         else:
