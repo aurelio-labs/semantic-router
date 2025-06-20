@@ -46,7 +46,7 @@ jobs:
       POSTGRES_PORT: ${{ inputs.postgres_port }}
     services:
       pinecone:
-        image: ghcr.io/pinecone-io/pinecone-local:latest
+        image: ghcr.io/pinecone-io/pinecone-local:pg17
         env:
           PORT: 5080
           PINECONE_HOST: localhost
