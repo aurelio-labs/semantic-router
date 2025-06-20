@@ -40,7 +40,7 @@ class NimEncoder(LiteLLMEncoder):
         try:
             embeds = litellm.embedding(
                 input=docs,
-                input_type = "passage",
+                input_type="passage",
                 model=f"{self.type}/{self.name}",
                 **kwargs,
             )
@@ -52,7 +52,7 @@ class NimEncoder(LiteLLMEncoder):
         try:
             embeds = litellm.embedding(
                 input=docs,
-                input_type = "passage",
+                input_type="passage",
                 model=f"{self.type}/{self.name}",
                 **kwargs,
             )
@@ -64,7 +64,7 @@ class NimEncoder(LiteLLMEncoder):
         try:
             embeds = await litellm.aembedding(
                 input=docs,
-                input_type = "passage",
+                input_type="passage",
                 model=f"{self.type}/{self.name}",
                 **kwargs,
             )
@@ -76,7 +76,7 @@ class NimEncoder(LiteLLMEncoder):
         try:
             embeds = await litellm.aembedding(
                 input=docs,
-                input_type = "passage",
+                input_type="passage",
                 model=f"{self.type}/{self.name}",
                 **kwargs,
             )
