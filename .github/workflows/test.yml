@@ -9,6 +9,23 @@ on:
         required: false
       CODECOV_TOKEN:
         required: false
+    inputs:
+      postgres_user:
+        type: string
+        required: false
+        default: 'postgres'
+      postgres_password:
+        type: string
+        required: false
+        default: 'postgres'
+      postgres_db:
+        type: string
+        required: false
+        default: 'routes'
+      postgres_host:
+        type: string
+        required: false
+        default: 'localhost'
 
 
 jobs:
@@ -18,16 +35,32 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || '' }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      POSTGRES_USER: ${{ inputs.postgres_user }}
+      POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+      POSTGRES_DB: ${{ inputs.postgres_db }}
+      POSTGRES_HOST: ${{ inputs.postgres_host }}
     services:
       pinecone:
         image: ghcr.io/pinecone-io/pinecone-local:latest
         env:
           PORT: 5080
           PINECONE_HOST: localhost
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || '' }}
         ports:
         - "5080-6000:5080-6000"
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: ${{ inputs.postgres_user }}
+          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+          POSTGRES_DB: ${{ inputs.postgres_db }}
+          POSTGRES_HOST: ${{ inputs.postgres_host }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     strategy:
       matrix:
