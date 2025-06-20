@@ -59,14 +59,13 @@ jobs:
           POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
           POSTGRES_DB: ${{ inputs.postgres_db }}
           POSTGRES_HOST: ${{ inputs.postgres_host }}
-          POSTGRES_PORT: ${{ inputs.postgres_port }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5433:5432
+          - ${{ inputs.postgres_port }}:5432
 
     strategy:
       matrix:
