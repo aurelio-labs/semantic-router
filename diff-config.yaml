@@ -1,0 +1,10 @@
+modules:
+  semantic_router:
+    tags: [ code, docs ]
+    pattern: semantic_router/**
+  tests:
+    tags: [ code ]
+    pattern: tests/**
+  docs:
+    tags: [ docs ]
+    pattern: docs/**

@@ -1,6 +1,8 @@
-import pytest
-from semantic_router.llms import BaseLLM
 from unittest.mock import patch
+
+import pytest
+
+from semantic_router.llms import BaseLLM
 
 
 class TestBaseLLM:
@@ -162,9 +164,9 @@ class TestBaseLLM:
         result = base_llm._is_valid_inputs(test_inputs, test_schemas)
 
         # Assert that the method returns False
-        assert (
-            not result
-        ), "Method should return False when multiple inputs are provided"
+        assert not result, (
+            "Method should return False when multiple inputs are provided"
+        )
 
         # Check that the appropriate error message was logged
         mocked_logger.assert_called_once_with(

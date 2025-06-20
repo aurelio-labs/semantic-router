@@ -1,17 +1,29 @@
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.llms import BaseLLM
 from semantic_router.schema import Message, RouteChoice
 from semantic_router.utils.logger import logger
-from pydantic import Field
 
 
 class Parameter(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    """Parameter for a function.
+
+    :param name: The name of the parameter.
+    :type name: str
+    :param description: The description of the parameter.
+    :type description: Optional[str]
+    :param type: The type of the parameter.
+    :type type: str
+    :param default: The default value of the parameter.
+    :type default: Any
+    :param required: Whether the parameter is required.
+    :type required: bool
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(description="The name of the parameter")
     description: Optional[str] = Field(
@@ -22,6 +34,11 @@ class Parameter(BaseModel):
     required: bool = Field(description="Whether the parameter is required")
 
     def to_ollama(self):
+        """Convert the parameter to a dictionary for an Ollama-compatible function schema.
+
+        :return: The parameter in dictionary format.
+        :rtype: Dict[str, Any]
+        """
         return {
             self.name: {
                 "description": self.description,
@@ -42,6 +59,11 @@ class FunctionSchema:
     parameters: List[Parameter] = Field(description="The parameters of the function")
 
     def __init__(self, function: Union[Callable, BaseModel]):
+        """Initialize the FunctionSchema.
+
+        :param function: The function to consume.
+        :type function: Union[Callable, BaseModel]
+        """
         self.function = function
         if callable(function):
             self._process_function(function)
@@ -51,6 +73,11 @@ class FunctionSchema:
             raise TypeError("Function must be a Callable or BaseModel")
 
     def _process_function(self, function: Callable):
+        """Process the function to get the name, description, signature, and output.
+
+        :param function: The function to process.
+        :type function: Callable
+        """
         self.name = function.__name__
         self.description = str(inspect.getdoc(function))
         self.signature = str(inspect.signature(function))
@@ -68,6 +95,11 @@ class FunctionSchema:
         self.parameters = parameters
 
     def to_ollama(self):
+        """Convert the FunctionSchema to an Ollama-compatible function schema dictionary.
+
+        :return: The function schema in dictionary format.
+        :rtype: Dict[str, Any]
+        """
         schema_dict = {
             "type": "function",
             "function": {
@@ -95,6 +127,13 @@ class FunctionSchema:
         return schema_dict
 
     def _ollama_type_mapping(self, param_type: str) -> str:
+        """Map the parameter type to an Ollama-compatible type.
+
+        :param param_type: The type of the parameter.
+        :type param_type: str
+        :return: The Ollama-compatible type.
+        :rtype: str
+        """
         if param_type == "int":
             return "number"
         elif param_type == "float":
@@ -108,6 +147,13 @@ class FunctionSchema:
 
 
 def get_schema_list(items: List[Union[BaseModel, Callable]]) -> List[Dict[str, Any]]:
+    """Get a list of function schemas from a list of functions or Pydantic BaseModels.
+
+    :param items: The functions or BaseModels to get the schemas for.
+    :type items: List[Union[BaseModel, Callable]]
+    :return: A list of function schemas.
+    :rtype: List[Dict[str, Any]]
+    """
     schemas = []
     for item in items:
         schema = get_schema(item)
@@ -116,6 +162,13 @@ def get_schema_list(items: List[Union[BaseModel, Callable]]) -> List[Dict[str, A
 
 
 def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
+    """Get a function schema from a function or Pydantic BaseModel.
+
+    :param item: The function or BaseModel to get the schema for.
+    :type item: Union[BaseModel, Callable]
+    :return: The function schema.
+    :rtype: Dict[str, Any]
+    """
     if isinstance(item, BaseModel):
         signature_parts = []
         for field_name, field_model in item.__annotations__.items():
@@ -148,6 +201,13 @@ def get_schema(item: Union[BaseModel, Callable]) -> Dict[str, Any]:
 
 
 def convert_python_type_to_json_type(param_type: str) -> str:
+    """Convert a Python type to a JSON type.
+
+    :param param_type: The type of the parameter.
+    :type param_type: str
+    :return: The JSON type.
+    :rtype: str
+    """
     if param_type == "int":
         return "number"
     if param_type == "float":
@@ -168,6 +228,19 @@ def convert_python_type_to_json_type(param_type: str) -> str:
 async def route_and_execute(
     query: str, llm: BaseLLM, functions: List[Callable], layer
 ) -> Any:
+    """Route and execute a function.
+
+    :param query: The query to route and execute.
+    :type query: str
+    :param llm: The LLM to use.
+    :type llm: BaseLLM
+    :param functions: The functions to execute.
+    :type functions: List[Callable]
+    :param layer: The layer to use.
+    :type layer: Layer
+    :return: The result of the function.
+    :rtype: Any
+    """
     route_choice: RouteChoice = layer(query)
 
     for function in functions:

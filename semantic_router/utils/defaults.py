@@ -3,6 +3,8 @@ from enum import Enum
 
 
 class EncoderDefault(Enum):
+    """Default model names for each encoder type."""
+
     FASTEMBED = {
         "embedding_model": "BAAI/bge-small-en-v1.5",
         "language_model": "BAAI/bge-small-en-v1.5",
@@ -18,6 +20,14 @@ class EncoderDefault(Enum):
     MISTRAL = {
         "embedding_model": os.getenv("MISTRAL_MODEL_NAME", "mistral-embed"),
         "language_model": os.getenv("MISTRALAI_CHAT_MODEL_NAME", "mistral-tiny"),
+    }
+    VOYAGE = {
+        "embedding_model": os.getenv("VOYAGE_MODEL_NAME", "voyage-3-lite"),
+        "language_model": os.getenv("VOYAGE_CHAT_MODEL_NAME", "voyage-3-lite"),
+    }
+    JINA = {
+        "embedding_model": os.getenv("JINA_MODEL_NAME", "jina-embeddings-v3"),
+        "language_model": os.getenv("JINA_CHAT_MODEL_NAME", "ReaderLM-v2"),
     }
     AZURE = {
         "embedding_model": os.getenv("AZURE_OPENAI_MODEL", "text-embedding-3-small"),

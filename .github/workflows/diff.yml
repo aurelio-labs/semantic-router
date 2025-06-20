@@ -1,0 +1,45 @@
+name: Diff
+on:
+  workflow_call:
+    inputs:
+      config:
+        type: string
+        required: true
+        description: 'YAML file containing modules to track'
+    outputs:
+      diff:
+        description: "diff"
+        value: "${{ jobs.diff.outputs.diff }}"
+      tags:
+        description: "tags"
+        value: "${{ jobs.diff.outputs.tags }}"
+      modules:
+        description: "modules"
+        value: "${{ jobs.diff.outputs.modules }}"
+      changed:
+        description: "changed"
+        value: "${{ jobs.diff.outputs.changed }}"
+
+jobs:
+  diff:
+    name: Compare
+    runs-on: ubuntu-latest
+    outputs:
+      diff: ${{ steps.run.outputs.diff }}
+      tags: ${{ steps.run.outputs.tags }}
+      modules: ${{ steps.run.outputs.modules }}
+      changed: ${{ steps.run.outputs.changed }}
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - id: run
+      name: Diff action
+      uses: aurelio-labs/diff-action@0.2.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        config: ${{ inputs.config }}
+
+    - name: Print output
+      run: echo '${{ toJSON(steps.run.outputs) }}' | jq .

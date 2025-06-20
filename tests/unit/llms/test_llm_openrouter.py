@@ -13,9 +13,9 @@ def openrouter_llm(mocker):
 class TestOpenRouterLLM:
     def test_openrouter_llm_init_with_api_key(self, openrouter_llm):
         assert openrouter_llm._client is not None, "Client should be initialized"
-        assert (
-            openrouter_llm.name == "mistralai/mistral-7b-instruct"
-        ), "Default name not set correctly"
+        assert openrouter_llm.name == "mistralai/mistral-7b-instruct", (
+            "Default name not set correctly"
+        )
 
     def test_openrouter_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")

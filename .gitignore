@@ -6,6 +6,7 @@ venv/
 /.vscode
 .vscode
 .idea
+.conda
 **/__pycache__
 **/*.py[cod]
 
@@ -13,6 +14,7 @@ venv/
 # local env files
 .env*.local
 .env
+my.secrets
 mac.env
 local.mac.env
 

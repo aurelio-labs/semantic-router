@@ -8,12 +8,12 @@
 <img alt="GitHub Issues" src="https://img.shields.io/github/issues/aurelio-labs/semantic-router" />
 <img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/aurelio-labs/semantic-router" />
 <img src="https://codecov.io/gh/aurelio-labs/semantic-router/graph/badge.svg?token=H8OOMV2TUF" />
-<img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+<a href="https://github.com/aurelio-labs/semantic-router/blob/main/LICENSE"><img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </p>
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
-#### [Read the Docs](https://docs.aurelio.ai/semantic-router/index.html)
+#### [Read the Docs](https://docs.aurelio.ai/semantic-router/get-started/introduction)
 
 ---
 
@@ -79,9 +79,9 @@ encoder = OpenAIEncoder()
 With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
 
 ```python
-from semantic_router.layer import RouteLayer
+from semantic_router.routers import SemanticRouter
 
-rl = RouteLayer(encoder=encoder, routes=routes)
+rl = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
 ```
 
 We can now use our route layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our route decisions:

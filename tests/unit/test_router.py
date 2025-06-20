@@ -1,22 +1,33 @@
 import importlib
 import os
-import tempfile
-from unittest.mock import mock_open, patch
 from datetime import datetime
+from platform import python_version
+from typing import Any, List, Optional
+from unittest.mock import mock_open, patch
+
+import numpy as np
 import pytest
-import time
-from typing import Optional
-from semantic_router.encoders import DenseEncoder, CohereEncoder, OpenAIEncoder
+
+from semantic_router.encoders import (
+    CohereEncoder,
+    DenseEncoder,
+    OpenAIEncoder,
+)
+from semantic_router.encoders.base import (
+    AsymmetricDenseMixin,
+    AsymmetricSparseMixin,
+    SparseEncoder,
+)
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.qdrant import QdrantIndex
-from semantic_router.routers import RouterConfig, SemanticRouter
-from semantic_router.llms.base import BaseLLM
+from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
-from platform import python_version
+from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
+from semantic_router.schema import RouteChoice, SparseEmbedding
 
-
-PINECONE_SLEEP = 6
+PINECONE_SLEEP = 8
+RETRY_COUNT = 10
 
 
 def mock_encoder_call(utterances):
@@ -41,13 +52,24 @@ def init_index(
     index_cls,
     dimensions: Optional[int] = None,
     namespace: Optional[str] = "",
+    index_name: Optional[str] = None,
 ):
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
     if index_cls is PineconeIndex:
+        if index_name:
+            if not dimensions and "OpenAIEncoder" in index_name:
+                dimensions = 1536
+
+            elif not dimensions and "CohereEncoder" in index_name:
+                dimensions = 1024
+
+        # we specify different index names to avoid dimensionality issues between different encoders
+        index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+
         index = index_cls(
-            index_name=TEST_ID, dimensions=dimensions, namespace=namespace
+            index_name=index_name, dimensions=dimensions, namespace=namespace
         )
     else:
         index = index_cls()
@@ -108,13 +130,48 @@ def base_encoder():
 @pytest.fixture
 def cohere_encoder(mocker):
     mocker.patch.object(CohereEncoder, "__call__", side_effect=mock_encoder_call)
+
+    # Mock async call
+    async def async_mock_encoder_call(docs=None, utterances=None):
+        # Handle either docs or utterances parameter
+        texts = docs if docs is not None else utterances
+        return mock_encoder_call(texts)
+
+    mocker.patch.object(CohereEncoder, "acall", side_effect=async_mock_encoder_call)
     return CohereEncoder(name="test-cohere-encoder", cohere_api_key="test_api_key")
 
 
 @pytest.fixture
 def openai_encoder(mocker):
+    # Mock the OpenAI client creation and API calls
+    mocker.patch("openai.OpenAI")
+    # Mock the __call__ method
     mocker.patch.object(OpenAIEncoder, "__call__", side_effect=mock_encoder_call)
-    return OpenAIEncoder(name="text-embedding-3-small", openai_api_key="test_api_key")
+
+    # Mock async call
+    async def async_mock_encoder_call(docs=None, utterances=None):
+        # Handle either docs or utterances parameter
+        texts = docs if docs is not None else utterances
+        return mock_encoder_call(texts)
+
+    mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
+    # Create and return the mocked encoder
+    encoder = OpenAIEncoder(name="text-embedding-3-small")
+    return encoder
+
+
+@pytest.fixture
+def mock_openai_llm(mocker):
+    # Mock the OpenAI LLM
+    mocker.patch.object(OpenAILLM, "__call__", return_value="mocked response")
+
+    # also async
+    async def async_mock_llm_call(messages=None, **kwargs):
+        return "mocked response"
+
+    mocker.patch.object(OpenAILLM, "acall", side_effect=async_mock_llm_call)
+
+    return OpenAILLM(name="fake-model-v1")
 
 
 @pytest.fixture
@@ -146,6 +203,23 @@ def routes_4():
     return [
         Route(name="Route 1", utterances=["Goodbye"], metadata={"type": "default"}),
         Route(name="Route 2", utterances=["Asparagus"]),
+    ]
+
+
+@pytest.fixture
+def routes_5():
+    return [
+        Route(name="Route 1", utterances=["Hello", "Hi"], metadata={"type": "default"}),
+        Route(name="Route 2", utterances=["Goodbye", "Bye", "Au revoir"]),
+        Route(name="Route 3", utterances=["Hello", "Hi"]),
+        Route(name="Route 4", utterances=["Goodbye", "Bye", "Au revoir"]),
+    ]
+
+
+@pytest.fixture
+def route_single_utterance():
+    return [
+        Route(name="Route 3", utterances=["Hello"]),
     ]
 
 
@@ -194,394 +268,13 @@ def get_test_encoders():
     return encoders
 
 
-@pytest.mark.parametrize(
-    "index_cls,encoder_cls",
-    [
-        (index, encoder)
-        for index in get_test_indexes()
-        for encoder in get_test_encoders()
-    ],
-)
-class TestIndexEncoders:
-    def test_initialization(self, routes, openai_encoder, index_cls, encoder_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=encoder_cls(),
-            routes=routes,
-            index=index,
-            auto_sync="local",
-            top_k=10,
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-
-        assert openai_encoder.score_threshold == 0.3
-        assert route_layer.score_threshold == 0.3
-        assert route_layer.top_k == 10
-        assert len(route_layer.index) == 5
-        assert (
-            len(set(route_layer._get_route_names()))
-            if route_layer._get_route_names() is not None
-            else 0 == 2
-        )
-
-    def test_initialization_different_encoders(self, encoder_cls, index_cls):
-        index = init_index(index_cls)
-        encoder = encoder_cls()
-        route_layer = SemanticRouter(encoder=encoder, index=index)
-        assert route_layer.score_threshold == encoder.score_threshold
-
-    def test_initialization_no_encoder(self, openai_encoder, index_cls, encoder_cls):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
-        route_layer_none = SemanticRouter(encoder=None)
-        assert route_layer_none.score_threshold == openai_encoder.score_threshold
+def get_test_routers():
+    routers = [SemanticRouter, HybridRouter]
+    return routers
 
 
-@pytest.mark.parametrize("index_cls", get_test_indexes())
-class TestSemanticRouter:
-    def test_initialization_dynamic_route(
-        self, dynamic_routes, openai_encoder, index_cls
-    ):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=dynamic_routes,
-            index=index,
-            auto_sync="local",
-        )
-        assert route_layer.score_threshold == openai_encoder.score_threshold
-
-    def test_delete_index(self, openai_encoder, routes, index_cls):
-        # TODO merge .delete_index() and .delete_all() and get working
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        route_layer.index.delete_index()
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
-        assert route_layer.index.get_utterances() == []
-
-    def test_add_route(self, routes, openai_encoder, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder, routes=[], index=index, auto_sync="local"
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be updated
-
-        # Initially, the local routes list should be empty
-        assert route_layer.routes == []
-        # same for the remote index
-        assert route_layer.index.get_utterances() == []
-
-        # Add route1 and check
-        route_layer.add(routes=routes[0])
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.routes == [routes[0]]
-        assert route_layer.index is not None
-        assert len(route_layer.index.get_utterances()) == 2
-
-        # Add route2 and check
-        route_layer.add(routes=routes[1])
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.routes == [routes[0], routes[1]]
-        assert len(route_layer.index.get_utterances()) == 5
-
-    def test_list_route_names(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        route_names = route_layer.list_route_names()
-        assert set(route_names) == {
-            route.name for route in routes
-        }, "The list of route names should match the names of the routes added."
-
-    def test_delete_route(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        # Delete a route by name
-        route_to_delete = routes[0].name
-        route_layer.delete(route_to_delete)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        # Ensure the route is no longer in the route layer
-        assert (
-            route_to_delete not in route_layer.list_route_names()
-        ), "The route should be deleted from the route layer."
-        # Ensure the route's utterances are no longer in the index
-        for utterance in routes[0].utterances:
-            assert (
-                utterance not in route_layer.index
-            ), "The route's utterances should be deleted from the index."
-
-    def test_remove_route_not_found(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
-        # Attempt to remove a route that does not exist
-        non_existent_route = "non-existent-route"
-        route_layer.delete(non_existent_route)
-        # we should see warning in logs only (ie no errors)
-
-    def test_add_multiple_routes(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
-        route_layer.add(routes=routes)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert route_layer.index is not None
-        assert len(route_layer.index.get_utterances()) == 5
-
-    def test_query_and_classification(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls, dimensions=3)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        query_result = route_layer(text="Hello").name
-        assert query_result in ["Route 1", "Route 2"]
-
-    def test_query_filter(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls, dimensions=3)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-
-        try:
-            route_layer(text="Hello", route_filter=["Route 8"]).name
-        except ValueError:
-            assert True
-
-        assert query_result in ["Route 1"]
-
-    @pytest.mark.skipif(
-        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
-    )
-    def test_query_filter_pinecone(self, openai_encoder, routes, index_cls):
-        if index_cls is PineconeIndex:
-            pineconeindex = init_index(index_cls, dimensions=3)
-            route_layer = SemanticRouter(
-                encoder=openai_encoder,
-                routes=routes,
-                index=pineconeindex,
-                auto_sync="local",
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-
-            try:
-                route_layer(text="Hello", route_filter=["Route 8"]).name
-            except ValueError:
-                assert True
-
-            assert query_result in ["Route 1"]
-
-    @pytest.mark.skipif(
-        os.environ.get("PINECONE_API_KEY") is None, reason="Pinecone API key required"
-    )
-    def test_namespace_pinecone_index(self, openai_encoder, routes, index_cls):
-        if index_cls is PineconeIndex:
-            pineconeindex = init_index(index_cls, namespace="test")
-            route_layer = SemanticRouter(
-                encoder=openai_encoder,
-                routes=routes,
-                index=pineconeindex,
-                auto_sync="local",
-            )
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            query_result = route_layer(text="Hello", route_filter=["Route 1"]).name
-
-            try:
-                route_layer(text="Hello", route_filter=["Route 8"]).name
-            except ValueError:
-                assert True
-
-            assert query_result in ["Route 1"]
-            route_layer.index.index.delete(namespace="test", delete_all=True)
-
-    def test_query_with_no_index(self, openai_encoder, index_cls):
-        route_layer = SemanticRouter(encoder=openai_encoder)
-        with pytest.raises(ValueError):
-            assert route_layer(text="Anything").name is None
-
-    def test_query_with_vector(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        vector = [0.1, 0.2, 0.3]
-        query_result = route_layer(vector=vector).name
-        assert query_result in ["Route 1", "Route 2"]
-
-    def test_query_with_no_text_or_vector(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        with pytest.raises(ValueError):
-            route_layer()
-
-    def test_semantic_classify(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        classification, score = route_layer._semantic_classify(
-            [
-                {"route": "Route 1", "score": 0.9},
-                {"route": "Route 2", "score": 0.1},
-            ]
-        )
-        assert classification == "Route 1"
-        assert score == [0.9]
-
-    def test_semantic_classify_multiple_routes(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        classification, score = route_layer._semantic_classify(
-            [
-                {"route": "Route 1", "score": 0.9},
-                {"route": "Route 2", "score": 0.1},
-                {"route": "Route 1", "score": 0.8},
-            ]
-        )
-        assert classification == "Route 1"
-        assert score == [0.9, 0.8]
-
-    def test_query_no_text_dynamic_route(
-        self, openai_encoder, dynamic_routes, index_cls
-    ):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder, routes=dynamic_routes, index=index
-        )
-        vector = [0.1, 0.2, 0.3]
-        with pytest.raises(ValueError):
-            route_layer(vector=vector)
-
-    def test_pass_threshold(self, openai_encoder, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            index=index,
-            auto_sync="local",
-        )
-        assert not route_layer._pass_threshold([], 0.3)
-        assert route_layer._pass_threshold([0.6, 0.7], 0.3)
-
-    def test_failover_score_threshold(self, openai_encoder, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            index=index,
-            auto_sync="local",
-        )
-        assert route_layer.score_threshold == 0.3
-
-    def test_json(self, openai_encoder, routes, index_cls):
-        temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
-        try:
-            temp_path = temp.name  # Save the temporary file's path
-            temp.close()  # Close the file to ensure it can be opened again on Windows
-            os.environ["OPENAI_API_KEY"] = "test_api_key"
-            index = init_index(index_cls)
-            route_layer = SemanticRouter(
-                encoder=openai_encoder,
-                routes=routes,
-                index=index,
-                auto_sync="local",
-            )
-            route_layer.to_json(temp_path)
-            assert os.path.exists(temp_path)
-            route_layer_from_file = SemanticRouter.from_json(temp_path)
-            if index_cls is PineconeIndex:
-                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert (
-                route_layer_from_file.index is not None
-                and route_layer_from_file._get_route_names() is not None
-            )
-        finally:
-            os.remove(temp_path)  # Ensure the file is deleted even if the test fails
-
-    def test_yaml(self, openai_encoder, routes, index_cls):
-        temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
-        try:
-            temp_path = temp.name  # Save the temporary file's path
-            temp.close()  # Close the file to ensure it can be opened again on Windows
-            os.environ["OPENAI_API_KEY"] = "test_api_key"
-            index = init_index(index_cls)
-            route_layer = SemanticRouter(
-                encoder=openai_encoder,
-                routes=routes,
-                index=index,
-                auto_sync="local",
-            )
-            route_layer.to_yaml(temp_path)
-            assert os.path.exists(temp_path)
-            route_layer_from_file = SemanticRouter.from_yaml(temp_path)
-            if index_cls is PineconeIndex:
-                time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-            assert (
-                route_layer_from_file.index is not None
-                and route_layer_from_file._get_route_names() is not None
-            )
-        finally:
-            os.remove(temp_path)  # Ensure the file is deleted even if the test fails
-
-    def test_from_file_json(openai_encoder, tmp_path, index_cls):
+class TestRouterConfig:
+    def test_from_file_json(self, tmp_path):
         # Create a temporary JSON file with layer configuration
         config_path = tmp_path / "config.json"
         config_path.write_text(
@@ -597,7 +290,7 @@ class TestSemanticRouter:
         assert len(layer_config.routes) == 2
         assert layer_config.routes[0].name == "politics"
 
-    def test_from_file_yaml(openai_encoder, tmp_path, index_cls):
+    def test_from_file_yaml(self, tmp_path):
         # Create a temporary YAML file with layer configuration
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
@@ -613,14 +306,14 @@ class TestSemanticRouter:
         assert len(layer_config.routes) == 2
         assert layer_config.routes[0].name == "politics"
 
-    def test_from_file_invalid_path(self, index_cls):
+    def test_from_file_invalid_path(self):
         with pytest.raises(FileNotFoundError) as excinfo:
             RouterConfig.from_file("nonexistent_path.json")
         assert "[Errno 2] No such file or directory: 'nonexistent_path.json'" in str(
             excinfo.value
         )
 
-    def test_from_file_unsupported_type(self, tmp_path, index_cls):
+    def test_from_file_unsupported_type(self, tmp_path):
         # Create a temporary unsupported file
         config_path = tmp_path / "config.unsupported"
         config_path.write_text(layer_json())
@@ -629,7 +322,7 @@ class TestSemanticRouter:
             RouterConfig.from_file(str(config_path))
         assert "Unsupported file type" in str(excinfo.value)
 
-    def test_from_file_invalid_config(self, tmp_path, index_cls):
+    def test_from_file_invalid_config(self, tmp_path):
         # Define an invalid configuration JSON
         invalid_config_json = """
         {
@@ -649,11 +342,11 @@ class TestSemanticRouter:
             # and assert that it raises an exception due to invalid configuration
             with pytest.raises(Exception) as excinfo:
                 RouterConfig.from_file(str(config_path))
-            assert "Invalid config JSON or YAML" in str(
-                excinfo.value
-            ), "Loading an invalid configuration should raise an exception."
+            assert "Invalid config JSON or YAML" in str(excinfo.value), (
+                "Loading an invalid configuration should raise an exception."
+            )
 
-    def test_from_file_with_llm(self, tmp_path, index_cls):
+    def test_from_file_with_llm(self, tmp_path):
         llm_config_json = """
         {
             "encoder_type": "cohere",
@@ -679,269 +372,14 @@ class TestSemanticRouter:
         layer_config = RouterConfig.from_file(str(config_path))
 
         # Using BaseLLM because trying to create a usable Mock LLM is a nightmare.
-        assert isinstance(
-            layer_config.routes[0].llm, BaseLLM
-        ), "LLM should be instantiated and associated with the route based on the "
+        assert isinstance(layer_config.routes[0].llm, BaseLLM), (
+            "LLM should be instantiated and associated with the route based on the "
+        )
         "config"
-        assert (
-            layer_config.routes[0].llm.name == "fake-model-v1"
-        ), "LLM instance should have the 'name' attribute set correctly"
-
-    def test_config(self, openai_encoder, routes, index_cls):
-        os.environ["OPENAI_API_KEY"] = "test_api_key"
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        # confirm route creation functions as expected
-        layer_config = route_layer.to_config()
-        assert layer_config.routes == route_layer.routes
-        # now load from config and confirm it's the same
-        route_layer_from_config = SemanticRouter.from_config(layer_config, index)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)  # allow for index to be populated
-        assert (
-            route_layer_from_config._get_route_names() == route_layer._get_route_names()
+        assert layer_config.routes[0].llm.name == "fake-model-v1", (
+            "LLM instance should have the 'name' attribute set correctly"
         )
-        assert route_layer_from_config.score_threshold == route_layer.score_threshold
 
-    def test_get_thresholds(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        assert route_layer.get_thresholds() == {"Route 1": 0.3, "Route 2": 0.3}
-
-    def test_with_multiple_routes_passing_threshold(
-        self, openai_encoder, routes, index_cls
-    ):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5  # Set the score_threshold if needed
-        # Assuming route_layer is already set up with routes "Route 1" and "Route 2"
-        query_results = [
-            {"route": "Route 1", "score": 0.6},
-            {"route": "Route 2", "score": 0.7},
-            {"route": "Route 1", "score": 0.8},
-        ]
-        expected = [("Route 1", 0.8), ("Route 2", 0.7)]
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert sorted(results) == sorted(
-            expected
-        ), "Should classify and return routes above their thresholds"
-
-    def test_with_no_routes_passing_threshold(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        # set threshold to 1.0 so that no routes pass
-        route_layer.score_threshold = 1.0
-        query_results = [
-            {"route": "Route 1", "score": 0.3},
-            {"route": "Route 2", "score": 0.2},
-        ]
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when no routes pass their thresholds"
-
-    def test_with_no_query_results(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
-        query_results = []
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert (
-            results == expected
-        ), "Should return an empty list when there are no query results"
-
-    def test_with_unrecognized_route(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        route_layer.score_threshold = 0.5
-        # Test with a route name that does not exist in the route_layer's routes
-        query_results = [{"route": "UnrecognizedRoute", "score": 0.9}]
-        expected = []
-        results = route_layer._semantic_classify_multiple_routes(query_results)
-        assert results == expected, "Should ignore and not return unrecognized routes"
-
-    def test_retrieve_with_text(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        text = "Hello"
-        results = route_layer.retrieve_multiple_routes(text=text)
-        assert len(results) >= 1, "Expected at least one result"
-        assert any(
-            result.name in ["Route 1", "Route 2"] for result in results
-        ), "Expected the result to be either 'Route 1' or 'Route 2'"
-
-    def test_retrieve_with_vector(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        vector = [0.1, 0.2, 0.3]
-        results = route_layer.retrieve_multiple_routes(vector=vector)
-        assert len(results) >= 1, "Expected at least one result"
-        assert any(
-            result.name in ["Route 1", "Route 2"] for result in results
-        ), "Expected the result to be either 'Route 1' or 'Route 2'"
-
-    def test_retrieve_without_text_or_vector(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        with pytest.raises(ValueError, match="Either text or vector must be provided"):
-            route_layer.retrieve_multiple_routes()
-
-    def test_retrieve_no_matches(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            index=index,
-            auto_sync="local",
-        )
-        text = "Asparagus"
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
-        results = route_layer.retrieve_multiple_routes(text=text)
-        assert len(results) == 0, f"Expected no results, but got {len(results)}"
-
-    def test_retrieve_one_match(self, openai_encoder, routes_3, index_cls):
-        index = init_index(index_cls, dimensions=3)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes_3,
-            index=index,
-            auto_sync="local",
-        )
-        text = "Hello"
-        # set low threshold
-        route_layer.set_threshold(threshold=0.1, route_name="Route 1")
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
-        results = route_layer.retrieve_multiple_routes(text=text)
-        assert len(results) == 1, f"Expected one result, and got {len(results)}"
-        matched_routes = [result.name for result in results]
-        assert "Route 1" in matched_routes, "Expected 'Route 1' to be a match"
-
-    def test_retrieve_with_text_for_multiple_matches(
-        self, openai_encoder, routes_2, index_cls
-    ):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes_2,
-            index=index,
-            auto_sync="local",
-        )
-        text = "Hello"
-        route_layer.set_threshold(threshold=0.01, route_name=None)
-        if index_cls is PineconeIndex:
-            time.sleep(PINECONE_SLEEP)
-        results = route_layer.retrieve_multiple_routes(text=text)
-        assert len(results) == 2, "Expected two results"
-        matched_routes = [result.name for result in results]
-        assert "Route 1" in matched_routes, "Expected 'Route 1' to be a match"
-        assert "Route 2" in matched_routes, "Expected 'Route 2' to be a match"
-
-    def test_set_aggregation_method_with_unsupported_value(
-        self, openai_encoder, routes, index_cls
-    ):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        unsupported_aggregation = "unsupported_aggregation_method"
-        with pytest.raises(
-            ValueError,
-            match=f"Unsupported aggregation method chosen: {unsupported_aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.",
-        ):
-            route_layer._set_aggregation_method(unsupported_aggregation)
-
-    def test_refresh_routes_not_implemented(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        with pytest.raises(
-            NotImplementedError, match="This method has not yet been implemented."
-        ):
-            route_layer._refresh_routes()
-
-    def test_update_threshold(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        route_name = "Route 1"
-        new_threshold = 0.8
-        route_layer.update(name=route_name, threshold=new_threshold)
-        updated_route = route_layer.get(route_name)
-        assert (
-            updated_route.score_threshold == new_threshold
-        ), f"Expected threshold to be updated to {new_threshold}, but got {updated_route.score_threshold}"
-
-    def test_update_non_existent_route(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        non_existent_route = "Non-existent Route"
-        with pytest.raises(
-            ValueError,
-            match=f"Route '{non_existent_route}' not found. Nothing updated.",
-        ):
-            route_layer.update(name=non_existent_route, threshold=0.7)
-
-    def test_update_without_parameters(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        with pytest.raises(
-            ValueError,
-            match="At least one of 'threshold' or 'utterances' must be provided.",
-        ):
-            route_layer.update(name="Route 1")
-
-    def test_update_utterances_not_implemented(self, openai_encoder, routes, index_cls):
-        index = init_index(index_cls)
-        route_layer = SemanticRouter(encoder=openai_encoder, routes=routes, index=index)
-        with pytest.raises(
-            NotImplementedError,
-            match="The update method cannot be used for updating utterances yet.",
-        ):
-            route_layer.update(name="Route 1", utterances=["New utterance"])
-
-
-class TestLayerFit:
-    def test_eval(self, openai_encoder, routes, test_data):
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            auto_sync="local",
-        )
-        # unpack test data
-        X, y = zip(*test_data)
-        # evaluate
-        route_layer.evaluate(X=X, y=y, batch_size=int(len(test_data) / 5))
-
-    def test_fit(self, openai_encoder, routes, test_data):
-        route_layer = SemanticRouter(
-            encoder=openai_encoder,
-            routes=routes,
-            auto_sync="local",
-        )
-        # unpack test data
-        X, y = zip(*test_data)
-        route_layer.fit(X=X, y=y, batch_size=int(len(test_data) / 5))
-
-
-# Add more tests for edge cases and error handling as needed.
-
-
-class TestRouterConfig:
     def test_init(self):
         layer_config = RouterConfig()
         assert layer_config.routes == []
@@ -965,20 +403,6 @@ class TestRouterConfig:
         layer_config = RouterConfig(routes=[route])
         with pytest.raises(ValueError):
             layer_config.to_file("test_output.txt")
-
-    def test_from_file_json(self):
-        mock_json_data = layer_json()
-        with patch("builtins.open", mock_open(read_data=mock_json_data)) as mocked_open:
-            layer_config = RouterConfig.from_file("data/test.json")
-            mocked_open.assert_called_once_with("data/test.json", "r")
-            assert isinstance(layer_config, RouterConfig)
-
-    def test_from_file_yaml(self):
-        mock_yaml_data = layer_yaml()
-        with patch("builtins.open", mock_open(read_data=mock_yaml_data)) as mocked_open:
-            layer_config = RouterConfig.from_file("data/test.yaml")
-            mocked_open.assert_called_once_with("data/test.yaml", "r")
-            assert isinstance(layer_config, RouterConfig)
 
     def test_from_file_invalid(self):
         with open("test.txt", "w") as f:
@@ -1059,3 +483,358 @@ class TestRouterConfig:
             elif agg == "max":
                 assert classification == "Route 3"
                 assert score == [0.1, 1.0]
+
+
+class MockSymmetricDenseEncoder(DenseEncoder):
+    def __call__(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+
+class MockSymmetricSparseEncoder(SparseEncoder):
+    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+
+class MockAsymmetricDenseEncoder(DenseEncoder, AsymmetricDenseMixin):
+    def __call__(self, docs: List[Any]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def acall(self, docs: List[Any]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    def encode_queries(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    def encode_documents(self, docs: List[str]) -> List[List[float]]:
+        return [[0.4, 0.5, 0.6] for _ in docs]
+
+    async def aencode_queries(self, docs: List[str]) -> List[List[float]]:
+        return [[0.1, 0.2, 0.3] for _ in docs]
+
+    async def aencode_documents(self, docs: List[str]) -> List[List[float]]:
+        return [[0.4, 0.5, 0.6] for _ in docs]
+
+
+class MockAsymmetricSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
+    def __call__(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    def encode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    def encode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def aencode_queries(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+    async def aencode_documents(self, docs: List[str]) -> List[SparseEmbedding]:
+        return [SparseEmbedding(embedding=np.array([[0, 0.1], [1, 0.2]])) for _ in docs]
+
+
+@pytest.mark.parametrize(
+    "dense_encoder_cls,sparse_encoder_cls,input_type",
+    [
+        (encoder, sparse_encoder, input_type)
+        for encoder in [MockSymmetricDenseEncoder, MockAsymmetricDenseEncoder]
+        for sparse_encoder in [MockSymmetricSparseEncoder, MockAsymmetricSparseEncoder]
+        for input_type in ["queries", "documents"]
+    ],
+)
+class TestHybridRouter:
+    def test_encode(
+        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+    ):
+        encoder = dense_encoder_cls(name="Dense Encoder")
+        sparse_encoder = sparse_encoder_cls(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Set up spies for symmetric methods
+        dense_call_spy = mocker.spy(dense_encoder_cls, "__call__")
+        sparse_call_spy = mocker.spy(sparse_encoder_cls, "__call__")
+
+        # Set up spies for asymmetric methods if applicable
+        if isinstance(encoder, AsymmetricDenseMixin):
+            dense_encode_queries_spy = mocker.spy(dense_encoder_cls, "encode_queries")
+            dense_encode_documents_spy = mocker.spy(
+                dense_encoder_cls, "encode_documents"
+            )
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            sparse_encode_queries_spy = mocker.spy(sparse_encoder_cls, "encode_queries")
+            sparse_encode_documents_spy = mocker.spy(
+                sparse_encoder_cls, "encode_documents"
+            )
+
+        test_query = ["test query"]
+
+        # Test synchronous encoding
+        router._encode(test_query, input_type=input_type)
+
+        # Verify correct methods were called based on encoder type and input_type
+        if isinstance(encoder, AsymmetricDenseMixin):
+            if input_type == "documents":
+                assert dense_encode_documents_spy.called
+            else:  # queries
+                assert dense_encode_queries_spy.called
+        else:
+            assert dense_call_spy.called
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            if input_type == "documents":
+                assert sparse_encode_documents_spy.called
+            else:  # queries
+                assert sparse_encode_queries_spy.called
+        else:
+            assert sparse_call_spy.called
+
+    @pytest.mark.asyncio
+    async def test_async_encode(
+        self, dense_encoder_cls, sparse_encoder_cls, input_type, routes, mocker
+    ):
+        encoder = dense_encoder_cls(name="Dense Encoder")
+        sparse_encoder = sparse_encoder_cls(name="Sparse Encoder")
+        router = HybridRouter(
+            encoder=encoder,
+            sparse_encoder=sparse_encoder,
+            routes=routes,
+        )
+
+        # Set up spies for symmetric methods
+        dense_call_spy = mocker.spy(dense_encoder_cls, "acall")
+        sparse_call_spy = mocker.spy(sparse_encoder_cls, "acall")
+
+        # Set up spies for asymmetric methods if applicable
+        if isinstance(encoder, AsymmetricDenseMixin):
+            dense_encode_queries_spy = mocker.spy(dense_encoder_cls, "aencode_queries")
+            dense_encode_documents_spy = mocker.spy(
+                dense_encoder_cls, "aencode_documents"
+            )
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            sparse_encode_queries_spy = mocker.spy(
+                sparse_encoder_cls, "aencode_queries"
+            )
+            sparse_encode_documents_spy = mocker.spy(
+                sparse_encoder_cls, "aencode_documents"
+            )
+
+        test_query = ["test query"]
+
+        # Test asynchronous encoding
+        await router._async_encode(test_query, input_type=input_type)
+
+        # Verify correct methods were called based on encoder type and input_type
+        if isinstance(encoder, AsymmetricDenseMixin):
+            if input_type == "documents":
+                assert dense_encode_documents_spy.called
+            else:  # queries
+                assert dense_encode_queries_spy.called
+        else:
+            assert dense_call_spy.called
+
+        if isinstance(sparse_encoder, AsymmetricSparseMixin):
+            if input_type == "documents":
+                assert sparse_encode_documents_spy.called
+            else:  # queries
+                assert sparse_encode_queries_spy.called
+        else:
+            assert sparse_call_spy.called
+
+
+@pytest.mark.parametrize(
+    "router_cls",
+    [
+        HybridRouter,
+        SemanticRouter,
+    ],
+)
+class TestRouter:
+    def test_query_parameter(self, router_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = router("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
+    @pytest.mark.asyncio
+    async def test_async_query_parameter(self, router_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
+    def test_limit_parameter(self, router_cls, routes_5, mocker):
+        """Test that the limit parameter works correctly for sync router calls."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = router("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Test with limit=2 (should return top 2 matches)
+        result = router("test query", limit=2)
+        assert result is not None
+        assert len(result) == 2
+
+        # Test with limit=None (should return all matches)
+        result = router("test query", limit=None)
+        assert result is not None
+        assert len(result) == 4  # Should return all matches
+
+    @pytest.mark.asyncio
+    async def test_async_limit_parameter(self, router_cls, routes_5, mocker):
+        """Test that the limit parameter works correctly for async router calls."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the async similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Test with limit=2 (should return top 2 matches)
+        result = await router.acall("test query", limit=2)
+        assert result is not None
+        assert len(result) == 2
+
+        # Test with limit=None (should return all matches)
+        result = await router.acall("test query", limit=None)
+        assert result is not None
+        assert len(result) == 4  # Should return all matches

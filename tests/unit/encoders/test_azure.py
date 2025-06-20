@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 from openai import OpenAIError
 from openai.types import CreateEmbeddingResponse, Embedding
 from openai.types.create_embedding_response import Usage
@@ -22,11 +23,12 @@ def mock_openai_async_client():
 @pytest.fixture
 def openai_encoder(mock_openai_client, mock_openai_async_client):
     return AzureOpenAIEncoder(
+        azure_endpoint="https://test-endpoint.openai.azure.com",
+        api_version="test-version",
         api_key="test_api_key",
+        http_client_options={"timeout": 10},
         deployment_name="test-deployment",
-        azure_endpoint="test_endpoint",
-        api_version="test_version",
-        model="test_model",
+        dimensions=1536,
         max_retries=2,
     )
 
@@ -83,7 +85,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch.object(
             openai_encoder.client.embeddings, "create", side_effect=responses
         )
-        with patch("semantic_router.encoders.zure.sleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.sleep", return_value=None):
             embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
 
@@ -95,7 +97,7 @@ class TestAzureOpenAIEncoder:
             "create",
             side_effect=Exception("Non-OpenAIError"),
         )
-        with patch("semantic_router.encoders.zure.sleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.sleep", return_value=None):
             with pytest.raises(ValueError) as e:
                 openai_encoder(["test document"])
 
@@ -123,7 +125,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch.object(
             openai_encoder.client.embeddings, "create", side_effect=responses
         )
-        with patch("semantic_router.encoders.zure.sleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.sleep", return_value=None):
             embeddings = openai_encoder(["test document"])
         assert embeddings == [[0.1, 0.2]]
 
@@ -149,7 +151,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
 
         # Patch the sleep function in the encoder module to avoid actual sleep
-        with patch("semantic_router.encoders.zure.sleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.sleep", return_value=None):
             result = openai_encoder(["test document"])
 
         assert result == [[0.1, 0.2, 0.3]]
@@ -175,7 +177,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch("time.sleep", return_value=None)  # To speed up the test
 
         # Patch the sleep function in the encoder module to avoid actual sleep
-        with patch("semantic_router.encoders.zure.sleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.sleep", return_value=None):
             with pytest.raises(OpenAIError):
                 openai_encoder(["test document"])
 
@@ -206,7 +208,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch("asyncio.sleep", return_value=None)  # To speed up the test
 
         # Patch the asleep function in the encoder module to avoid actual sleep
-        with patch("semantic_router.encoders.zure.asleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.asleep", return_value=None):
             result = await openai_encoder.acall(["test document"])
 
         assert result == [[0.1, 0.2, 0.3]]
@@ -225,7 +227,7 @@ class TestAzureOpenAIEncoder:
         mocker.patch("asyncio.sleep", return_value=None)  # To speed up the test
 
         # Patch the asleep function in the encoder module to avoid actual sleep
-        with patch("semantic_router.encoders.zure.asleep", return_value=None):
+        with patch("semantic_router.encoders.azure_openai.asleep", return_value=None):
             with pytest.raises(OpenAIError):
                 await openai_encoder.acall(["test document"])
 

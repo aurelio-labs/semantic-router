@@ -72,9 +72,9 @@ class TestOpenAILLM:
             max_tokens=test_max_tokens,
         )
 
-        assert (
-            azure_llm.temperature == test_temperature
-        ), "Temperature not set correctly"
+        assert azure_llm.temperature == test_temperature, (
+            "Temperature not set correctly"
+        )
         assert azure_llm.max_tokens == test_max_tokens, "Max tokens not set correctly"
 
     def test_azure_openai_llm_call_success(self, azure_openai_llm, mocker):

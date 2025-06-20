@@ -1,0 +1,34 @@
+name: PR Workflow
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, edited, synchronize ]
+
+jobs:
+
+  diff:
+    name: "Diff"
+    uses: ./.github/workflows/diff.yml
+    with:
+      config: diff-config.yaml
+
+  lint:
+    needs: [ diff ]
+    name: "Lint"
+    if: ${{ fromJson(needs.diff.outputs.tags).code.changed }}
+    uses: ./.github/workflows/lint.yml
+
+  tests:
+    needs: [ diff ]
+    name: "Tests"
+    if: ${{ fromJson(needs.diff.outputs.tags).code.changed }}
+    uses: ./.github/workflows/test.yml
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

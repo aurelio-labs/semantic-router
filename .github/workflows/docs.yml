@@ -1,8 +1,11 @@
 name: Release Docs
 
 on:
-  release:
-    types: [released]
+  workflow_call:
+    secrets:
+      PAT:
+        required: true
+        description: "Personal Access Token with access to the docs repository"
 
 jobs:
   build-docs:
@@ -14,44 +17,128 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.13"
-    env:
-      POETRY_VERSION: "1.8.4"
+        - "3.11"
     steps:
-      - uses: actions/checkout@v4
-      - name: Cache Poetry
-        uses: actions/cache@v4
-        with:
-          path: ~/.poetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-      - name: Install poetry
-        run: |
-          pipx install poetry==$POETRY_VERSION
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry install --all-extras
-      - name: Build docs
-        run: |
-          poetry run sphinx-build -M html docs/source docs/build
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
-      - name: Upload Docs
-        run: |
-          gcloud storage rsync docs/build/html gs://docs-bucket-production/semantic-router --recursive --delete-unmatched-destination-objects
-      # - name: Upload Docs
-      #   id: upload-directory
-      #   uses: google-github-actions/upload-cloud-storage@v2
-      #   with:
-      #     path: docs/build/html
-      #     destination: docs-bucket-production/semantic-router
-      #     parent: false
+    - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: uv sync --extra docs
+    - name: Build docs
+      run: |
+        mkdir -p docs/build
+        uv run pydoc-markdown .pydoc-markdown.yml
+
+    - name: Checkout docs repo
+      uses: actions/checkout@v4
+      with:
+        repository: aurelio-labs/docs
+        path: temp-docs
+        ref: main
+        token: ${{ secrets.PAT }}
+
+    - name: Process regular documentation
+      run: |
+        ROOT_DIR=$(pwd)
+
+        # Clean existing documentation in target repo
+        rm -rf temp-docs/semantic-router
+        mkdir -p temp-docs/semantic-router/
+
+        # Define directories to process (excluding client-reference which is auto-generated separately)
+        DOC_DIRS=("get-started" "user-guide")
+
+        # Process each documentation directory
+        for doc_dir in "${DOC_DIRS[@]}"; do
+          echo "Processing directory: $doc_dir"
+          
+          # Find all markdown files in the directory and its subdirectories
+          find "docs/$doc_dir" -type f -name "*.md" | while read file; do
+            # Get the relative path from the docs directory
+            rel_path=$(realpath --relative-to="docs/$doc_dir" "$(dirname "$file")")
+            file_name=$(basename "$file")
+            
+            # Create target directory if it doesn't exist
+            if [ "$rel_path" = "." ]; then
+              # File is directly in the doc_dir
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir"
+            else
+              # File is in a subdirectory
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir/$rel_path"
+            fi
+            
+            mkdir -p "$target_dir"
+            
+            # Copy and rename from .md to .mdx
+            cp "$file" "$target_dir/${file_name%.md}.mdx"
+            echo "Copied $file to $target_dir/${file_name%.md}.mdx"
+          done
+        done
+
+    - name: Process reference documentation
+      run: |
+        ROOT_DIR=$(pwd)
+        rm -rf temp-docs/semantic-router/client-reference
+        mkdir -p temp-docs/semantic-router/client-reference/
+
+        # Check if build directory exists
+        if [ -d "docs/build/semantic_router" ]; then
+          # Find and copy all md files from reference docs
+          cd docs/build/semantic_router
+          find . -type f -name "*.md" | while read file; do
+            dir=$(dirname "$file")
+            echo "Processing file: $file in directory: $dir"
+            mkdir -p "$ROOT_DIR/temp-docs/semantic-router/client-reference/$dir"
+            cp "$file" "$ROOT_DIR/temp-docs/semantic-router/client-reference/${file%.md}.mdx"
+          done
+        else
+          echo "Warning: Reference docs build directory does not exist. Skipping reference documentation processing."
+        fi
+
+    - name: Update frontmatter keys
+      run: |
+        find temp-docs/semantic-router/client-reference -type f -name "*.mdx" -exec sed -i 's/sidebar_label:/sidebarTitle:/g' {} +
+
+    - name: Install jq
+      run: sudo apt-get install -y jq
+
+    - name: Update mintlify docs.json navigation
+      run: |
+        # Get files and create grouped structure using jq
+        files=$(cd temp-docs/semantic-router/client-reference && find . -type f -name "*.mdx" | sed 's|^./||' | sed 's|.mdx$||' | sort | jq -R -s '
+          split("\n")[:-1] 
+          | map("semantic-router/client-reference/" + .) 
+          | reduce .[] as $path (
+              {"root": [], "groups": {}};
+              if ($path | split("/") | length) == 4 then
+                .groups[$path | split("/")[2]] += [$path]
+              else
+                .root += [$path]
+              end
+            )
+          | [.root[], (.groups | to_entries | map({
+              "group": .key,
+              "pages": .value
+            }))[]
+          ]
+        ')
+
+        # Update the docs.json file
+        jq --arg pages "$files" '
+          (.navigation.tabs[] | select(.tab == "Semantic Router") | 
+           .groups[] | select(.group == "Client Reference") | 
+           .pages) |= ($pages | fromjson)
+        ' temp-docs/docs.json > temp-docs/docs.json.tmp && mv temp-docs/docs.json.tmp temp-docs/docs.json
+
+    - name: Git commit and push
+      working-directory: temp-docs
+      run: |
+        git config --local user.email "admin@aurelio.ai"
+        git config --local user.name "aurelio-bot"
+        git remote set-url origin https://aurelio-bot:${{ secrets.PAT }}@github.com/aurelio-labs/docs.git
+        git add .
+        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update semantic router docs" && git push)

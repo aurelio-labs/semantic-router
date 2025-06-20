@@ -1,0 +1,26 @@
+name: Merge Workflow
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+
+  diff:
+    name: "Diff"
+    uses: ./.github/workflows/diff.yml
+    with:
+      config: diff-config.yaml
+
+  docs:
+    needs: [ diff ]
+    name: "Docs"
+    if: ${{ fromJson(needs.diff.outputs.tags).docs.changed }}
+    uses: ./.github/workflows/docs.yml
+    secrets:
+      PAT: ${{ secrets.PAT }}
