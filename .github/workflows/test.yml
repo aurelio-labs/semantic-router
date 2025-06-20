@@ -29,7 +29,7 @@ on:
       postgres_port:
         type: number
         required: false
-        default: 5433
+        default: 5432
 
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
           PORT: 5080
           PINECONE_HOST: localhost
         ports:
-        - "5080-6000:5080-6000"
+        - "5080-5430:5080-5430"
       postgres:
         image: postgres
         env:
