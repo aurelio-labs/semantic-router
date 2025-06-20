@@ -223,6 +223,7 @@ class PostgresIndex(BaseIndex):
             if self.conn is not None:
                 self.conn.rollback()
             raise
+        return self
 
 
     def _get_table_name(self) -> str:
@@ -578,6 +579,8 @@ class PostgresIndex(BaseIndex):
                         metadata.append({"sr_route": row[1], "sr_utterance": row[2]})
             return all_vector_ids, metadata
         except psycopg.errors.UndefinedTable:
+            if self.conn is not None:
+                self.conn.rollback()
             # Table does not exist, treat as empty
             return [], []
         except Exception:
