@@ -196,6 +196,18 @@ class PostgresIndex(BaseIndex):
         else:
             raise ValueError(f"Unsupported metric: {self.metric}")
 
+    def _get_vector_operator(self) -> str:
+        if self.metric == Metric.COSINE:
+            return "vector_cosine_ops"
+        elif self.metric == Metric.DOTPRODUCT:
+            return "vector_ip_ops"
+        elif self.metric == Metric.EUCLIDEAN:
+            return "vector_l2_ops"
+        elif self.metric == Metric.MANHATTAN:
+            return "vector_l1_ops"
+        else:
+            raise ValueError(f"Unsupported metric: {self.metric}")
+
     def setup_index(self) -> None:
         """Sets up the index by creating the table and vector extension if they do not exist.
 
@@ -248,44 +260,25 @@ class PostgresIndex(BaseIndex):
         table_name = self._get_table_name()
         if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
+        opclass = self._get_vector_operator()
         try:
             with self.conn.cursor() as cur:
                 if self.index_type == IndexType.HNSW:
-                    if self.metric == Metric.COSINE:
-                        cur.execute(
-                            f"""
-                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
-                            """
-                        )
-                    elif self.metric == Metric.DOTPRODUCT:
-                        cur.execute(
-                            f"""
-                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
-                            """
-                        )
-                    elif self.metric == Metric.EUCLIDEAN:
-                        cur.execute(
-                            f"""
-                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
-                            """
-                        )
-                    elif self.metric == Metric.MANHATTAN:
-                        cur.execute(
-                            f"""
-                            CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
-                            """
-                        )
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        """
+                    )
                 elif self.index_type == IndexType.IVFFLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector vector_cosine_ops) WITH (lists = 100);
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
                         """
                     )
                 elif self.index_type == IndexType.FLAT:
-                    # Create ivfflat with lists=1 for flat search
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector vector_cosine_ops) WITH (lists = 1);
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
                         """
                     )
                 self.conn.commit()
