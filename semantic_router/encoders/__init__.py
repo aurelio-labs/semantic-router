@@ -13,6 +13,7 @@ from semantic_router.encoders.huggingface import HFEndpointEncoder, HuggingFaceE
 from semantic_router.encoders.jina import JinaEncoder
 from semantic_router.encoders.litellm import LiteLLMEncoder
 from semantic_router.encoders.mistral import MistralEncoder
+from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
@@ -39,6 +40,7 @@ __all__ = [
     "LiteLLMEncoder",
     "VoyageEncoder",
     "JinaEncoder",
+    "NimEncoder",
 ]
 
 
@@ -76,6 +78,8 @@ class AutoEncoder:
             self.model = VoyageEncoder(name=name)
         elif self.type == EncoderType.JINA:
             self.model = JinaEncoder(name=name)
+        elif self.type == EncoderType.NIM:
+            self.model = NimEncoder(name=name)
         elif self.type == EncoderType.VIT:
             self.model = VitEncoder(name=name)
         elif self.type == EncoderType.CLIP:

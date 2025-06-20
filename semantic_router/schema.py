@@ -30,6 +30,7 @@ class EncoderType(Enum):
     LITELLM = "litellm"
     JINA = "jina_ai"
     VOYAGE = "voyage"
+    NIM = "nvidia_nim"
 
 
 class EncoderInfo(BaseModel):
