@@ -68,12 +68,12 @@ encoder = OpenAIEncoder()
 
 ## Creating a RouteLayer
 
-With our `routes` and `encoder` defined we now create a `RouteLayer`. The RouteLayer is the decision-making engine that compares incoming text against your routes to find the best semantic match.
+With our `routes` and `encoder` defined we now create a `SemanticRouter`. The SemanticRouter is the decision-making engine that compares incoming text against your routes to find the best semantic match.
 
 ```python
-from semantic_router.layer import RouteLayer
+from semantic_router.routers import SemanticRouter
 
-rl = RouteLayer(encoder=encoder, routes=routes)
+rl = SemanticRouter(encoder=encoder, routes=routes)
 ```
 
 ## Making Routing Decisions
