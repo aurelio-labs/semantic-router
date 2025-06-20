@@ -53,7 +53,7 @@ jobs:
         ports:
         - "5080-5430:5080-5430"
       postgres:
-        image: postgres
+        image: pgvector/pgvector:latest
         env:
           POSTGRES_USER: ${{ inputs.postgres_user }}
           POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
