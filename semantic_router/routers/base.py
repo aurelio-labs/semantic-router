@@ -489,7 +489,9 @@ class BaseRouter(BaseModel):
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex) or isinstance(self.index, PostgresIndex):
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
             # _init_index will not create index if already exists — it will also check
             # for required attributes like self.index.host and self.index.dimensions and
             # fetch them if not set

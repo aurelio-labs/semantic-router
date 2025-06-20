@@ -104,6 +104,7 @@ class PostgresIndexRecord(BaseModel):
             "utterance": self.utterance,
         }
 
+
 class PostgresIndex(BaseIndex):
     """Postgres implementation of Index."""
 
@@ -224,7 +225,6 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
         return self
-
 
     def _get_table_name(self) -> str:
         """
