@@ -21,6 +21,7 @@ from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.postgres import PostgresIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
@@ -421,7 +422,12 @@ class BaseRouter(BaseModel):
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
-        self.auto_sync = auto_sync
+        # to keep PostgresIndex backwards compatible we will default auto_sync to "local",
+        # this will be removed in 0.2.0
+        if isinstance(self.index, PostgresIndex):
+            self.auto_sync = "local"
+        else:
+            self.auto_sync = auto_sync
 
         # set route score thresholds if not already set
         for route in self.routes:
