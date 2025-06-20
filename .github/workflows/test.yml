@@ -21,7 +21,7 @@ on:
       postgres_db:
         type: string
         required: false
-        default: 'routes'
+        default: 'postgres'
       postgres_host:
         type: string
         required: false
