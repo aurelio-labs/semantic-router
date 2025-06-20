@@ -104,7 +104,6 @@ class PostgresIndexRecord(BaseModel):
             "utterance": self.utterance,
         }
 
-
 class PostgresIndex(BaseIndex):
     """Postgres implementation of Index."""
 
@@ -147,8 +146,6 @@ class PostgresIndex(BaseIndex):
                 "Please install psycopg to use PostgresIndex. "
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
-        if dimensions is None:
-            dimensions = 1536
         super().__init__()
         if connection_string or (
             connection_string := os.getenv("POSTGRES_CONNECTION_STRING")
@@ -181,7 +178,52 @@ class PostgresIndex(BaseIndex):
         self.conn = psycopg.connect(conninfo=self.connection_string)
         if not self.has_connection():
             raise ValueError("Index has not established a connection to Postgres")
-        self.setup_index()
+
+    def _init_index(self, force_create: bool = False) -> Union[Any, None]:
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        dimensions_given = self.dimensions is not None
+        if not dimensions_given:
+            raise ValueError("Dimensions are required for PostgresIndex")
+        table_name = self._get_table_name()
+        if not self._check_embeddings_dimensions():
+            raise ValueError(
+                f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
+            )
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    CREATE TABLE IF NOT EXISTS {table_name} (
+                        id VARCHAR(255) PRIMARY KEY,
+                        route VARCHAR(255),
+                        utterance TEXT,
+                        vector VECTOR({self.dimensions})
+                    );
+                    COMMENT ON COLUMN {table_name}.vector IS '{self.dimensions}';
+                    """
+                )
+                self.conn.commit()
+            self._create_route_index()
+            self._create_index()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
+
 
     def _get_table_name(self) -> str:
         """
@@ -231,41 +273,6 @@ class PostgresIndex(BaseIndex):
             return "vector_l1_ops"
         else:
             raise ValueError(f"Unsupported metric: {self.metric}")
-
-    def setup_index(self) -> None:
-        """Sets up the index by creating the table and vector extension if they do not exist.
-
-        :raises ValueError: If the existing table's vector dimensions do not match the expected dimensions.
-        :raises TypeError: If the database connection is not established.
-        """
-        table_name = self._get_table_name()
-        if not self._check_embeddings_dimensions():
-            raise ValueError(
-                f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
-            )
-        if not isinstance(self.conn, psycopg.Connection):
-            raise TypeError("Index has not established a connection to Postgres")
-        try:
-            with self.conn.cursor() as cur:
-                cur.execute(
-                    f"""
-                    CREATE EXTENSION IF NOT EXISTS vector;
-                    CREATE TABLE IF NOT EXISTS {table_name} (
-                        id VARCHAR(255) PRIMARY KEY,
-                        route VARCHAR(255),
-                        utterance TEXT,
-                        vector VECTOR({self.dimensions})
-                    );
-                    COMMENT ON COLUMN {table_name}.vector IS '{self.dimensions}';
-                    """
-                )
-                self.conn.commit()
-            self._create_route_index()
-            self._create_index()
-        except Exception:
-            if self.conn is not None:
-                self.conn.rollback()
-            raise
 
     def _create_route_index(self) -> None:
         """Creates a index on the route column."""
