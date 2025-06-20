@@ -31,7 +31,7 @@ class EncoderDefault(Enum):
     }
     NVIDIA_NIM = {
         "embedding_model": os.getenv(
-            "NVIDIA_NIM_MODEL_NAME", "meta/llama3-70b-instruct"
+            "NVIDIA_NIM_MODEL_NAME", "nvidia/nv-embedqa-e5-v5"
         ),
         "language_model": os.getenv(
             "NVIDIA_NIM_CHAT_MODEL_NAME", "meta/llama3-70b-instruct"
