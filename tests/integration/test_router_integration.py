@@ -84,6 +84,8 @@ def init_index(
         index = index_cls(
             index_name=index_name, dimensions=dimensions, namespace=namespace
         )
+    elif index_cls is PostgresIndex:
+        index = index_cls(index_name=index_name, index_prefix="", namespace=namespace)
     else:
         index = index_cls()
     return index

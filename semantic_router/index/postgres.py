@@ -4,7 +4,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import deprecated
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
@@ -115,7 +116,6 @@ class PostgresIndex(BaseIndex):
     namespace: Optional[str] = ""
     conn: Optional["psycopg.Connection"] = None
     type: str = "postgres"
-    pg2: Any = Field(default=None, exclude=True)
     index_type: IndexType = IndexType.FLAT
 
     def __init__(
@@ -148,6 +148,8 @@ class PostgresIndex(BaseIndex):
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
         super().__init__()
+        if index_prefix:
+            logger.warning("`index_prefix` is deprecated and will be removed in 0.2.0")
         if connection_string or (
             connection_string := os.getenv("POSTGRES_CONNECTION_STRING")
         ):
@@ -330,6 +332,41 @@ class PostgresIndex(BaseIndex):
             if self.conn is not None:
                 self.conn.rollback()
             raise
+
+    @deprecated(
+        "Use _init_index or sync methods such as `auto_sync` (read more "
+        "https://docs.aurelio.ai/semantic-router/user-guide/features/sync). "
+        "This method will be removed in 0.2.0"
+    )
+    def setup_index(self) -> None:
+        """Sets up the index by creating the table and vector extension if they do not exist.
+
+        :raises ValueError: If the existing table's vector dimensions do not match the expected dimensions.
+        :raises TypeError: If the database connection is not established.
+        """
+        table_name = self._get_table_name()
+        if not self._check_embeddings_dimensions():
+            raise ValueError(
+                f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
+            )
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        with self.conn.cursor() as cur:
+            cur.execute(
+                f"""
+                CREATE EXTENSION IF NOT EXISTS vector;
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    id VARCHAR(255) PRIMARY KEY,
+                    route VARCHAR(255),
+                    utterance TEXT,
+                    vector VECTOR({self.dimensions})
+                );
+                COMMENT ON COLUMN {table_name}.vector IS '{self.dimensions}';
+                """
+            )
+            self.conn.commit()
+        self._create_route_index()
+        self._create_index()
 
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
