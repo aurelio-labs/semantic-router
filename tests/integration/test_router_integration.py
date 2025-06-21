@@ -15,6 +15,7 @@ from semantic_router.encoders import (
 )
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.postgres import PostgresIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, SemanticRouter
@@ -83,6 +84,8 @@ def init_index(
         index = index_cls(
             index_name=index_name, dimensions=dimensions, namespace=namespace
         )
+    elif index_cls is PostgresIndex:
+        index = index_cls(index_name=index_name, index_prefix="", namespace=namespace)
     else:
         index = index_cls()
     return index
@@ -206,6 +209,8 @@ def get_test_indexes():
         indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
+    if importlib.util.find_spec("psycopg") is not None:
+        indexes.append(PostgresIndex)
     return indexes
 
 

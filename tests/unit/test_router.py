@@ -2,25 +2,18 @@ import importlib
 import os
 from datetime import datetime
 from platform import python_version
-from typing import Any, List, Optional
+from typing import Any, List
 from unittest.mock import mock_open, patch
 
 import numpy as np
 import pytest
 
-from semantic_router.encoders import (
-    CohereEncoder,
-    DenseEncoder,
-    OpenAIEncoder,
-)
+from semantic_router.encoders import CohereEncoder, DenseEncoder, OpenAIEncoder
 from semantic_router.encoders.base import (
     AsymmetricDenseMixin,
     AsymmetricSparseMixin,
     SparseEncoder,
 )
-from semantic_router.index.local import LocalIndex
-from semantic_router.index.pinecone import PineconeIndex
-from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
@@ -46,34 +39,6 @@ def mock_encoder_call(utterances):
 TEST_ID = (
     f"{python_version().replace('.', '')}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 )
-
-
-def init_index(
-    index_cls,
-    dimensions: Optional[int] = None,
-    namespace: Optional[str] = "",
-    index_name: Optional[str] = None,
-):
-    """We use this function to initialize indexes with different names to avoid
-    issues during testing.
-    """
-    if index_cls is PineconeIndex:
-        if index_name:
-            if not dimensions and "OpenAIEncoder" in index_name:
-                dimensions = 1536
-
-            elif not dimensions and "CohereEncoder" in index_name:
-                dimensions = 1024
-
-        # we specify different index names to avoid dimensionality issues between different encoders
-        index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
-
-        index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
-        )
-    else:
-        index = index_cls()
-    return index
 
 
 def layer_json():
@@ -248,17 +213,6 @@ def test_data():
         ("what is photosynthesis?", "biology"),
         ("tell me an interesting fact", None),
     ]
-
-
-def get_test_indexes():
-    indexes = [LocalIndex]
-
-    if importlib.util.find_spec("qdrant_client") is not None:
-        indexes.append(QdrantIndex)
-    if importlib.util.find_spec("pinecone") is not None:
-        indexes.append(PineconeIndex)
-
-    return indexes
 
 
 def get_test_encoders():

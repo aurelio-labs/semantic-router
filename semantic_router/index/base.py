@@ -517,6 +517,42 @@ class BaseIndex(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
+    def _init_index(self, force_create: bool = False) -> Union[Any, None]:
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        This method must be implemented by subclasses.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def _init_async_index(self, force_create: bool = False):
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        This method is used to initialize the index asynchronously.
+
+        This method must be implemented by subclasses.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
 
 def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
     """Parses metadata from index to extract route, utterance, function
