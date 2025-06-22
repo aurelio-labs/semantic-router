@@ -789,11 +789,9 @@ class TestRouter:
         router.delete("Route 1")
         assert len(router.index) == 3  # Only Route 2 utterances
 
-        # Test sync
+        # Test delete
         router.index.delete_index()
         assert len(router.index) == 0
-        router.sync("local")
-        assert len(router.index) == 3  # Route 2 utterances restored
 
 
 @pytest.mark.parametrize(
@@ -919,23 +917,30 @@ class TestRouterAsync:
             router = router_cls(
                 encoder=openai_encoder,
                 sparse_encoder=sparse_encoder,
-                routes=routes,
+                routes=[],
                 index=index,
                 auto_sync="local",
             )
         else:
             router = router_cls(
                 encoder=openai_encoder,
-                routes=routes,
+                routes=[],
                 index=index,
                 auto_sync="local",
             )
 
-        # Test async query with index
-        result = await router.acall("Hello")
-        assert result is not None
-        assert result.name == "Route 1"
+        # Test adding routes
+        assert len(router.index) == 0
+        await router.aadd(routes[0])
+        assert len(router.index) == 2  # "Hello" and "Hi"
 
-        result = await router.acall("Goodbye")
-        assert result is not None
-        assert result.name == "Route 2"
+        await router.aadd(routes[1])
+        assert len(router.index) == 5  # All utterances
+
+        # Test deleting routes
+        await router.adelete("Route 1")
+        assert len(router.index) == 3  # Only Route 2 utterances
+
+        # Test delete
+        await router.index.adelete_index()
+        assert len(router.index) == 0

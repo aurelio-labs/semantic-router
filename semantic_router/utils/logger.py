@@ -39,9 +39,7 @@ def setup_custom_logger(name):
     # get log level from environment vars
     # first check for semantic_router_log_level, then log_level, then default to INFO
     log_level = (
-        os.getenv("SEMANTIC_ROUTER_LOG_LEVEL")
-        or os.getenv("LOG_LEVEL")
-        or "INFO"
+        os.getenv("SEMANTIC_ROUTER_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
     )
     log_level = log_level.upper()
 

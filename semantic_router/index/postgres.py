@@ -719,7 +719,9 @@ class PostgresIndex(BaseIndex):
         """
         table_name = self._get_table_name()
         if not isinstance(self.conn, psycopg.Connection):
-            logger.warning("Index has not established a connection to Postgres, returning 0")
+            logger.warning(
+                "Index has not established a connection to Postgres, returning 0"
+            )
             return 0
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
