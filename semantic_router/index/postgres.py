@@ -4,21 +4,22 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import deprecated
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 if TYPE_CHECKING:
-    import psycopg2
+    import psycopg
 
 try:
-    import psycopg2
+    import psycopg
 
-    _psycopg2_installed = True
+    _psycopg_installed = True
 except ImportError:
-    _psycopg2_installed = False
+    _psycopg_installed = False
 
 
 class MetricPgVecOperatorMap(Enum):
@@ -28,6 +29,12 @@ class MetricPgVecOperatorMap(Enum):
     dotproduct = "<#>"  # inner product
     euclidean = "<->"  # L2 distance
     manhattan = "<+>"  # L1 distance
+
+
+class IndexType(str, Enum):
+    FLAT = "flat"
+    HNSW = "hnsw"
+    IVFFLAT = "ivfflat"
 
 
 def parse_vector(vector_str: Union[str, Any]) -> List[float]:
@@ -70,9 +77,9 @@ class PostgresIndexRecord(BaseModel):
         :param data: Field values for the record.
         :type data: dict
         """
-        if not _psycopg2_installed:
+        if not _psycopg_installed:
             raise ImportError(
-                "Please install psycopg2 to use PostgresIndex. "
+                "Please install psycopg to use PostgresIndex. "
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
         super().__init__(**data)
@@ -107,9 +114,9 @@ class PostgresIndex(BaseIndex):
     index_name: str = "index"
     metric: Metric = Metric.COSINE
     namespace: Optional[str] = ""
-    conn: Optional["psycopg2.extensions.connection"] = None
+    conn: Optional["psycopg.Connection"] = None
     type: str = "postgres"
-    pg2: Any = Field(default=None, exclude=True)
+    index_type: IndexType = IndexType.FLAT
 
     def __init__(
         self,
@@ -135,24 +142,91 @@ class PostgresIndex(BaseIndex):
         :param namespace: An optional namespace for the index.
         :type namespace: Optional[str]
         """
-        if dimensions is None:
-            dimensions = 1536
+        if not _psycopg_installed:
+            raise ImportError(
+                "Please install psycopg to use PostgresIndex. "
+                "You can install it with: `pip install 'semantic-router[postgres]'`"
+            )
         super().__init__()
-        if connection_string:
-            self.connection_string = connection_string
+        if index_prefix:
+            logger.warning("`index_prefix` is deprecated and will be removed in 0.2.0")
+        if connection_string or (
+            connection_string := os.getenv("POSTGRES_CONNECTION_STRING")
+        ):
+            pass
         else:
-            connection_string = os.environ.get("POSTGRES_CONNECTION_STRING")
-            if not connection_string:
-                raise ValueError("No connection string provided")
-            self.connection_string = connection_string
+            required_env_vars = [
+                "POSTGRES_USER",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_HOST",
+                "POSTGRES_PORT",
+                "POSTGRES_DB",
+            ]
+            missing = [var for var in required_env_vars if not os.getenv(var)]
+            if missing:
+                raise ValueError(
+                    f"Missing required environment variables for Postgres connection: {', '.join(missing)}"
+                )
+            connection_string = (
+                f"postgresql://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}"
+                f"@{os.environ['POSTGRES_HOST']}:{os.environ['POSTGRES_PORT']}/{os.environ['POSTGRES_DB']}"
+            )
+        self.connection_string = connection_string
         self.index = self
         self.index_prefix = index_prefix
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
         self.namespace = namespace
-        self.conn = psycopg2.connect(dsn=self.connection_string)
-        self.setup_index()
+        self.conn = psycopg.connect(conninfo=self.connection_string)
+        if not self.has_connection():
+            raise ValueError("Index has not established a connection to Postgres")
+
+    def _init_index(self, force_create: bool = False) -> Union[Any, None]:
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        dimensions_given = self.dimensions is not None
+        if not dimensions_given:
+            raise ValueError("Dimensions are required for PostgresIndex")
+        table_name = self._get_table_name()
+        if not self._check_embeddings_dimensions():
+            raise ValueError(
+                f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
+            )
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    CREATE TABLE IF NOT EXISTS {table_name} (
+                        id VARCHAR(255) PRIMARY KEY,
+                        route VARCHAR(255),
+                        utterance TEXT,
+                        vector VECTOR({self.dimensions})
+                    );
+                    COMMENT ON COLUMN {table_name}.vector IS '{self.dimensions}';
+                    """
+                )
+                self.conn.commit()
+            self._create_route_index()
+            self._create_index()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
+        return self
 
     def _get_table_name(self) -> str:
         """
@@ -191,6 +265,79 @@ class PostgresIndex(BaseIndex):
         else:
             raise ValueError(f"Unsupported metric: {self.metric}")
 
+    def _get_vector_operator(self) -> str:
+        if self.metric == Metric.COSINE:
+            return "vector_cosine_ops"
+        elif self.metric == Metric.DOTPRODUCT:
+            return "vector_ip_ops"
+        elif self.metric == Metric.EUCLIDEAN:
+            return "vector_l2_ops"
+        elif self.metric == Metric.MANHATTAN:
+            return "vector_l1_ops"
+        else:
+            raise ValueError(f"Unsupported metric: {self.metric}")
+
+    def _create_route_index(self) -> None:
+        """Creates a index on the route column."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                )
+                self.conn.commit()
+        except psycopg.errors.DuplicateTable:
+            if self.conn is not None:
+                self.conn.rollback()
+            pass
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
+
+    def _create_index(self) -> None:
+        """Creates an index on the vector column based on index_type."""
+        table_name = self._get_table_name()
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        opclass = self._get_vector_operator()
+        try:
+            with self.conn.cursor() as cur:
+                if self.index_type == IndexType.HNSW:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        """
+                    )
+                elif self.index_type == IndexType.IVFFLAT:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
+                        """
+                    )
+                elif self.index_type == IndexType.FLAT:
+                    cur.execute(
+                        f"""
+                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
+                        """
+                    )
+                self.conn.commit()
+        except psycopg.errors.DuplicateTable:
+            if self.conn is not None:
+                self.conn.rollback()
+            pass
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
+
+    @deprecated(
+        "Use _init_index or sync methods such as `auto_sync` (read more "
+        "https://docs.aurelio.ai/semantic-router/user-guide/features/sync). "
+        "This method will be removed in 0.2.0"
+    )
     def setup_index(self) -> None:
         """Sets up the index by creating the table and vector extension if they do not exist.
 
@@ -202,7 +349,7 @@ class PostgresIndex(BaseIndex):
             raise ValueError(
                 f"The length of the vector embeddings in the existing table {table_name} does not match the expected dimensions of {self.dimensions}."
             )
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(
@@ -221,55 +368,6 @@ class PostgresIndex(BaseIndex):
         self._create_route_index()
         self._create_index()
 
-    def _create_route_index(self) -> None:
-        """Creates a index on the route column."""
-        table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
-            raise TypeError("Index has not established a connection to Postgres")
-        try:
-            with self.conn.cursor() as cur:
-                cur.execute(
-                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
-                )
-                self.conn.commit()
-        except psycopg2.errors.DuplicateTable:
-            pass
-
-    def _create_index(self) -> None:
-        """Creates an HNSW index on the vector column."""
-        table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
-            raise TypeError("Index has not established a connection to Postgres")
-        try:
-            with self.conn.cursor() as cur:
-                if self.metric == Metric.COSINE:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_cosine_ops);
-                        """
-                    )
-                elif self.metric == Metric.DOTPRODUCT:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_ip_ops);
-                        """
-                    )
-                elif self.metric == Metric.EUCLIDEAN:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l2_ops);
-                        """
-                    )
-                elif self.metric == Metric.MANHATTAN:
-                    cur.execute(
-                        f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector vector_l1_ops);
-                        """
-                    )
-                self.conn.commit()
-        except psycopg2.errors.DuplicateTable:
-            pass
-
     def _check_embeddings_dimensions(self) -> bool:
         """Checks if the length of the vector embeddings in the table matches the expected
         dimensions, or if no table exists.
@@ -279,34 +377,39 @@ class PostgresIndex(BaseIndex):
         :raises ValueError: If the vector column comment does not contain a valid integer.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            cur.execute(
-                f"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='{table_name}');"
-            )
-            fetch_result = cur.fetchone()
-            exists = fetch_result[0] if fetch_result else None
-            if not exists:
-                return True
-            cur.execute(
-                f"""SELECT col_description('{table_name}'::regclass, attnum) AS column_comment
-                    FROM pg_attribute
-                    WHERE attrelid = '{table_name}'::regclass
-                    AND attname='vector'"""
-            )
-            result = cur.fetchone()
-            dimension_comment = result[0] if result else None
-            if dimension_comment:
-                try:
-                    vector_length = int(dimension_comment.split()[-1])
-                    return vector_length == self.dimensions
-                except ValueError:
-                    raise ValueError(
-                        "The 'vector' column comment does not contain a valid integer."
-                    )
-            else:
-                raise ValueError("No comment found for the 'vector' column.")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='{table_name}');"
+                )
+                fetch_result = cur.fetchone()
+                exists = fetch_result[0] if fetch_result else None
+                if not exists:
+                    return True
+                cur.execute(
+                    f"""SELECT col_description('{table_name}'::regclass, attnum) AS column_comment
+                        FROM pg_attribute
+                        WHERE attrelid = '{table_name}'::regclass
+                        AND attname='vector'"""
+                )
+                result = cur.fetchone()
+                dimension_comment = result[0] if result else None
+                if dimension_comment:
+                    try:
+                        vector_length = int(dimension_comment.split()[-1])
+                        return vector_length == self.dimensions
+                    except ValueError:
+                        raise ValueError(
+                            "The 'vector' column comment does not contain a valid integer."
+                        )
+                else:
+                    raise ValueError("No comment found for the 'vector' column.")
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def add(
         self,
@@ -342,17 +445,22 @@ class PostgresIndex(BaseIndex):
             PostgresIndexRecord(vector=vector, route=route, utterance=utterance)
             for vector, route, utterance in zip(embeddings, routes, utterances)
         ]
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            cur.executemany(
-                f"INSERT INTO {table_name} (id, route, utterance, vector) VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",  # if matching hash exists do nothing.
-                [
-                    (record.id, record.route, record.utterance, record.vector)
-                    for record in records
-                ],
-            )
-            self.conn.commit()
+        try:
+            with self.conn.cursor() as cur:
+                cur.executemany(
+                    f"INSERT INTO {table_name} (id, route, utterance, vector) VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                    [
+                        (record.id, record.route, record.utterance, record.vector)
+                        for record in records
+                    ],
+                )
+                self.conn.commit()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def delete(self, route_name: str) -> None:
         """Deletes records with the specified route name.
@@ -362,11 +470,16 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            cur.execute(f"DELETE FROM {table_name} WHERE route = '{route_name}'")
-            self.conn.commit()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"DELETE FROM {table_name} WHERE route = '{route_name}'")
+                self.conn.commit()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def describe(self) -> IndexConfig:
         """Describes the index by returning its type, dimensions, and total vector count.
@@ -375,25 +488,27 @@ class PostgresIndex(BaseIndex):
         :rtype: IndexConfig
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             logger.warning("Index has not established a connection to Postgres")
             return IndexConfig(
                 type=self.type,
                 dimensions=self.dimensions or 0,
                 vectors=0,
             )
-        with self.conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cur.fetchone()
-            if count is None:
-                count = 0
-            else:
-                count = count[0]  # Extract the actual count from the tuple
-            return IndexConfig(
-                type=self.type,
-                dimensions=self.dimensions or 0,
-                vectors=count,
-            )
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+                result = cur.fetchone()
+                count = result[0] if result is not None else 0
+                return IndexConfig(
+                    type=self.type,
+                    dimensions=self.dimensions or 0,
+                    vectors=count,
+                )
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def is_ready(self) -> bool:
         """Checks if the index is ready to be used.
@@ -401,7 +516,7 @@ class PostgresIndex(BaseIndex):
         :return: True if the index is ready, False otherwise.
         :rtype: bool
         """
-        return isinstance(self.conn, psycopg2.extensions.connection)
+        return isinstance(self.conn, psycopg.Connection)
 
     def query(
         self,
@@ -425,21 +540,30 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            filter_query = f" AND route = ANY({route_filter})" if route_filter else ""
-            # Create the string representation of vector
-            vector_str = f"'[{','.join(map(str, vector.tolist()))}]'"
-            score_query = self._get_score_query(vector_str)
-            operator = self._get_metric_operator()
-            cur.execute(
-                f"SELECT route, {score_query} FROM {table_name} WHERE true{filter_query} ORDER BY vector {operator} {vector_str} LIMIT {top_k}"
-            )
-            results = cur.fetchall()
-            return np.array([result[1] for result in results]), [
-                result[0] for result in results
-            ]
+        try:
+            with self.conn.cursor() as cur:
+                filter_query = (
+                    f" AND route = ANY(ARRAY{route_filter})" if route_filter else ""
+                )
+                vector_str = f"'[{','.join(map(str, vector.tolist()))}]'"
+                score_query = self._get_score_query(vector_str)
+                operator = self._get_metric_operator()
+                query = (
+                    f"SELECT route, {score_query} FROM {table_name} "
+                    f"WHERE true{filter_query} "
+                    f"ORDER BY vector {operator} {vector_str} LIMIT {top_k}"
+                )
+                cur.execute(query)
+                results = cur.fetchall()
+                return np.array([result[1] for result in results]), [
+                    result[0] for result in results
+                ]
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def _get_route_ids(self, route_name: str):
         """Retrieves all vector IDs for a specific route.
@@ -450,8 +574,13 @@ class PostgresIndex(BaseIndex):
         :rtype: List[str]
         """
         clean_route = clean_route_name(route_name)
-        ids, _ = self._get_all(route_name=f"{clean_route}")
-        return ids
+        try:
+            ids, _ = self._get_all(route_name=f"{clean_route}")
+            return ids
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def _get_all(
         self, route_name: Optional[str] = None, include_metadata: bool = False
@@ -467,29 +596,68 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
+        try:
+            query = "SELECT id"
+            if include_metadata:
+                query += ", route, utterance"
+            query += f" FROM {table_name}"
+            if route_name:
+                query += f" WHERE route LIKE '{route_name}%'"
+            all_vector_ids = []
+            metadata = []
+            with self.conn.cursor() as cur:
+                cur.execute(query)
+                results = cur.fetchall()
+                for row in results:
+                    all_vector_ids.append(row[0])
+                    if include_metadata:
+                        metadata.append({"sr_route": row[1], "sr_utterance": row[2]})
+            return all_vector_ids, metadata
+        except psycopg.errors.UndefinedTable:
+            if self.conn is not None:
+                self.conn.rollback()
+            # Table does not exist, treat as empty
+            return [], []
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
-        query = "SELECT id"
-        if include_metadata:
-            query += ", route, utterance"
-        query += f" FROM {table_name}"
+    def _remove_and_sync(self, routes_to_delete: dict):
+        """
+        Remove embeddings in a routes syncing process from the Postgres index.
 
-        if route_name:
-            query += f" WHERE route LIKE '{route_name}%'"
-
-        all_vector_ids = []
-        metadata = []
-
-        with self.conn.cursor() as cur:
-            cur.execute(query)
-            results = cur.fetchall()
-            for row in results:
-                all_vector_ids.append(row[0])
-                if include_metadata:
-                    metadata.append({"sr_route": row[1], "sr_utterance": row[2]})
-
-        return all_vector_ids, metadata
+        :param routes_to_delete: Dictionary of routes to delete.
+        :type routes_to_delete: dict
+        :return: List of (route, utterance) tuples that were removed.
+        """
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        table_name = self._get_table_name()
+        removed = []
+        try:
+            with self.conn.cursor() as cur:
+                for route, utterances in routes_to_delete.items():
+                    for utterance in utterances:
+                        cur.execute(
+                            f"SELECT route, utterance FROM {table_name} WHERE route = %s AND utterance = %s",
+                            (route, utterance),
+                        )
+                        result = cur.fetchone()
+                        if result:
+                            removed.append(result)
+                        cur.execute(
+                            f"DELETE FROM {table_name} WHERE route = %s AND utterance = %s",
+                            (route, utterance),
+                        )
+            self.conn.commit()
+            return removed
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def delete_all(self):
         """Deletes all records from the Postgres index.
@@ -497,11 +665,16 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            cur.execute(f"DELETE FROM {table_name}")
-            self.conn.commit()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"DELETE FROM {table_name}")
+                self.conn.commit()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def delete_index(self) -> None:
         """Deletes the entire table for the index.
@@ -509,11 +682,16 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
-        with self.conn.cursor() as cur:
-            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-            self.conn.commit()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+                self.conn.commit()
+        except Exception:
+            if self.conn is not None:
+                self.conn.rollback()
+            raise
 
     def aget_routes(self):
         """Asynchronously get all routes from the index.
@@ -541,7 +719,7 @@ class PostgresIndex(BaseIndex):
         :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg2.extensions.connection):
+        if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
@@ -549,6 +727,30 @@ class PostgresIndex(BaseIndex):
             if count is None:
                 return 0
             return count[0]
+
+    def close(self):
+        """Closes the psycopg connection if it exists."""
+        if self.conn is not None:
+            try:
+                self.conn.close()
+            except Exception as e:
+                logger.warning(f"Error closing Postgres connection: {e}")
+            self.conn = None
+
+    def __del__(self):
+        self.close()
+
+    def has_connection(self) -> bool:
+        """Returns True if there is an active and valid psycopg connection, otherwise False."""
+        if self.conn is None or self.conn.closed:
+            return False
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT 1;")
+                cur.fetchone()
+            return True
+        except Exception:
+            return False
 
     """Configuration for the Pydantic BaseModel."""
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
