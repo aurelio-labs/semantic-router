@@ -1333,6 +1333,15 @@ class PineconeIndex(BaseIndex):
                 )
 
     def __len__(self):
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        if self.index is None:
+            logger.warning("Index is not initialized, returning 0")
+            return 0
         namespace_stats = self.index.describe_index_stats()["namespaces"].get(
             self.namespace
         )

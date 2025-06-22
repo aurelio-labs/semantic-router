@@ -583,3 +583,12 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
             (sr_route, sr_utterance, sr_function_schema, additional_metadata)
         )
     return route_info
+
+    def __len__(self):
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")

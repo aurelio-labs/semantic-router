@@ -455,4 +455,14 @@ class QdrantIndex(BaseIndex):
         logger.warning("No config is written for QdrantIndex.")
 
     def __len__(self):
-        return self.client.get_collection(self.index_name).points_count
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        try:
+            return self.client.get_collection(self.index_name).points_count
+        except ValueError as e:
+            logger.warning(f"No collection found, {e}")
+            return 0

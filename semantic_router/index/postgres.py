@@ -712,15 +712,15 @@ class PostgresIndex(BaseIndex):
         logger.warning("No config is written for PostgresIndex.")
 
     def __len__(self):
-        """Returns the total number of vectors in the index.
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
 
         :return: The total number of vectors.
-        :rtype: int
-        :raises TypeError: If the database connection is not established.
         """
         table_name = self._get_table_name()
         if not isinstance(self.conn, psycopg.Connection):
-            raise TypeError("Index has not established a connection to Postgres")
+            logger.warning("Index has not established a connection to Postgres, returning 0")
+            return 0
         with self.conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) FROM {table_name}")
             count = cur.fetchone()
