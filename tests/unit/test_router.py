@@ -697,52 +697,6 @@ class TestRouter:
         assert result.similarity_score == 0.9
         assert result.function_call is None
 
-    @pytest.mark.asyncio
-    async def test_async_query_parameter(self, router_cls, index_cls, routes_5, mocker):
-        """Test that we return expected values in RouteChoice objects."""
-        # Create router with mock encoders
-        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        index = init_index(index_cls) if index_cls else None
-        
-        if router_cls == HybridRouter:
-            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            router = router_cls(
-                encoder=dense_encoder,
-                sparse_encoder=sparse_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-        else:
-            router = router_cls(
-                encoder=dense_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-
-        # Setup a mock for the similarity calculation method
-        _ = mocker.patch.object(
-            router,
-            "_score_routes",
-            return_value=[
-                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
-                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
-                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
-                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
-            ],
-        )
-
-        # Test without limit (should return only the top match)
-        result = await router.acall("test query")
-        assert result is not None
-        assert isinstance(result, RouteChoice)
-
-        # Confirm we have Route 1 and sim score
-        assert result.name == "Route 1"
-        assert result.similarity_score == 0.9
-        assert result.function_call is None
-
     def test_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
         """Test that the limit parameter works correctly for sync router calls."""
         # Create router with mock encoders
@@ -792,6 +746,106 @@ class TestRouter:
         result = router("test query", limit=None)
         assert result is not None
         assert len(result) == 4  # Should return all matches
+
+    def test_index_operations(self, router_cls, index_cls, routes, openai_encoder):
+        """Test index-specific operations like add, delete, and sync."""
+        if index_cls is None:
+            pytest.skip("Test only for specific index implementations")
+        
+        index = init_index(index_cls)
+        
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=openai_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=[],
+                index=index,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=openai_encoder,
+                routes=[],
+                index=index,
+                auto_sync="local",
+            )
+        
+        # Test adding routes
+        assert len(router.index) == 0
+        router.add(routes[0])
+        assert len(router.index) == 2  # "Hello" and "Hi"
+        
+        router.add(routes[1])
+        assert len(router.index) == 5  # All utterances
+        
+        # Test deleting routes
+        router.delete("Route 1")
+        assert len(router.index) == 3  # Only Route 2 utterances
+        
+        # Test sync
+        router.index.delete_index()
+        assert len(router.index) == 0
+        router.sync("local")
+        assert len(router.index) == 3  # Route 2 utterances restored
+
+
+@pytest.mark.parametrize(
+    "router_cls,index_cls",
+    [
+        (router, index)
+        for router in [HybridRouter, SemanticRouter]
+        # None for default LocalIndex behavior, and PostgresIndex is not supported for async tests
+        for index in [None] + get_test_indexes() if not isinstance(index, PostgresIndex)
+    ],
+)
+class TestRouterAsync:
+    @pytest.mark.asyncio
+    async def test_async_query_parameter(self, router_cls, index_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        index = init_index(index_cls) if index_cls else None
+        
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
 
     @pytest.mark.asyncio
     async def test_async_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
@@ -843,48 +897,6 @@ class TestRouter:
         result = await router.acall("test query", limit=None)
         assert result is not None
         assert len(result) == 4  # Should return all matches
-
-    def test_index_operations(self, router_cls, index_cls, routes, openai_encoder):
-        """Test index-specific operations like add, delete, and sync."""
-        if index_cls is None:
-            pytest.skip("Test only for specific index implementations")
-        
-        index = init_index(index_cls)
-        
-        if router_cls == HybridRouter:
-            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            router = router_cls(
-                encoder=openai_encoder,
-                sparse_encoder=sparse_encoder,
-                routes=[],
-                index=index,
-                auto_sync="local",
-            )
-        else:
-            router = router_cls(
-                encoder=openai_encoder,
-                routes=[],
-                index=index,
-                auto_sync="local",
-            )
-        
-        # Test adding routes
-        assert len(router.index) == 0
-        router.add(routes[0])
-        assert len(router.index) == 2  # "Hello" and "Hi"
-        
-        router.add(routes[1])
-        assert len(router.index) == 5  # All utterances
-        
-        # Test deleting routes
-        router.delete("Route 1")
-        assert len(router.index) == 3  # Only Route 2 utterances
-        
-        # Test sync
-        router.index.delete_index()
-        assert len(router.index) == 0
-        router.sync("local")
-        assert len(router.index) == 3  # Route 2 utterances restored
 
     @pytest.mark.asyncio
     async def test_async_index_operations(self, router_cls, index_cls, routes, openai_encoder):
