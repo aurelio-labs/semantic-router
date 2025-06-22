@@ -724,11 +724,15 @@ class PostgresIndex(BaseIndex):
             )
             return 0
         with self.conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cur.fetchone()
-            if count is None:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+                count = cur.fetchone()
+                if count is None:
+                    return 0
+                return count[0]
+            except psycopg.errors.UndefinedTable:
+                logger.warning("Table does not exist, returning 0")
                 return 0
-            return count[0]
 
     def close(self):
         """Closes the psycopg connection if it exists."""
