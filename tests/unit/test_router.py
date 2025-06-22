@@ -239,6 +239,15 @@ def get_test_indexes():
     return indexes
 
 
+def get_test_async_indexes():
+    indexes = [LocalIndex]
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
+    if importlib.util.find_spec("pinecone") is not None:
+        indexes.append(PineconeIndex)
+    return indexes
+
+
 def init_index(
     index_cls,
     dimensions: int = 3,  # Default to 3 for our mock encoder
@@ -800,8 +809,7 @@ class TestRouter:
         (router, index)
         for router in [HybridRouter, SemanticRouter]
         # None for default LocalIndex behavior, and PostgresIndex is not supported for async tests
-        for index in [None] + get_test_indexes()
-        if not isinstance(index, PostgresIndex)
+        for index in [None] + get_test_async_indexes()
     ],
 )
 class TestRouterAsync:
