@@ -299,6 +299,13 @@ class BaseIndex(BaseModel):
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
 
+    async def adelete_index(self):
+        """Deletes or resets the index asynchronously.
+        This method should be implemented by subclasses.
+        """
+        logger.warning("This method should be implemented by subclasses.")
+        self.index = None
+
     # ___________________________ CONFIG ___________________________
     # When implementing a new index, the following methods should be implemented
     # to enable synchronization of remote indexes.
@@ -583,3 +590,12 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
             (sr_route, sr_utterance, sr_function_schema, additional_metadata)
         )
     return route_info
+
+    def __len__(self):
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")

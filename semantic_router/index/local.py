@@ -233,8 +233,30 @@ class LocalIndex(BaseIndex):
                 "utterances is None."
             )
 
+    async def adelete(self, route_name: str):
+        """Delete all records of a specific route from the index. Note that this just points
+        to the sync delete method as async makes no difference for the local computations
+        of the LocalIndex.
+
+        :param route_name: The name of the route to delete.
+        :type route_name: str
+        """
+        self.delete(route_name)
+
     def delete_index(self):
         """Deletes the index, effectively clearing it and setting it to None.
+
+        :return: None
+        :rtype: None
+        """
+        self.index = None
+        self.routes = None
+        self.utterances = None
+
+    async def adelete_index(self):
+        """Deletes the index, effectively clearing it and setting it to None. Note that this just points
+        to the sync delete_index method as async makes no difference for the local computations
+        of the LocalIndex.
 
         :return: None
         :rtype: None
