@@ -299,6 +299,13 @@ class BaseIndex(BaseModel):
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
 
+    async def adelete_index(self):
+        """Deletes or resets the index asynchronously.
+        This method should be implemented by subclasses.
+        """
+        logger.warning("This method should be implemented by subclasses.")
+        self.index = None
+
     # ___________________________ CONFIG ___________________________
     # When implementing a new index, the following methods should be implemented
     # to enable synchronization of remote indexes.
