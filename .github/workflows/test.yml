@@ -10,6 +10,11 @@ on:
       CODECOV_TOKEN:
         required: false
     inputs:
+      test_scope:
+        type: string
+        required: false
+        default: 'all'
+        description: 'Scope of tests to run: all, unit-functional, or specific test type'
       postgres_user:
         type: string
         required: false
@@ -96,11 +101,19 @@ jobs:
         uv run python -m nltk.downloader punkt stopwords wordnet punkt_tab
 
     - name: Pytest All
+      if: ${{ inputs.test_scope == 'all' }}
       env:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
       run: |
         make test
+    - name: Pytest Unit and Functional Only
+      if: ${{ inputs.test_scope == 'unit-functional' }}
+      env:
+        PINECONE_API_KEY: pclocal
+        PINECONE_API_BASE_URL: http://localhost:5080
+      run: |
+        make test_unit test_functional
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
