@@ -1009,7 +1009,9 @@ class PineconeIndex(BaseIndex):
             async with session.delete(url, headers=self.headers) as response:
                 if response.status not in (200, 202):
                     error_text = await response.text()
-                    logger.error(f"Failed to delete index: {response.status} : {error_text}")
+                    logger.error(
+                        f"Failed to delete index: {response.status} : {error_text}"
+                    )
                 res = await response.json(content_type=None)
         self.index = None
         return res
