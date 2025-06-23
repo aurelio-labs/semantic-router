@@ -954,12 +954,10 @@ class TestRouterAsync:
 
 # Add as a standalone test at the module level
 @pytest.mark.asyncio
-async def test_adelete_index_logs_error_and_raises_on_non_200_202_status(
-    mocker, caplog
-):
-    index = PineconeIndex(
-        api_key="test", index_name="test-index", base_url="http://fake-url"
-    )
+async def test_adelete_index_logs_error_and_raises_on_non_200_202_status(mocker, caplog):
+    # Mock _init_index to prevent real network calls
+    mocker.patch("semantic_router.index.pinecone.PineconeIndex._init_index", return_value=None)
+    index = PineconeIndex(api_key="test", index_name="test-index", base_url="http://fake-url")
 
     # Patch aiohttp.ClientSession to simulate a non-200/202 response
     class FakeResponse:
