@@ -954,7 +954,7 @@ class TestRouterAsync:
 
 # Add as a standalone test at the module level
 @pytest.mark.asyncio
-async def test_adelete_index_logs_error_and_returns_json_on_non_200_202_status(
+async def test_adelete_index_logs_error_and_raises_on_non_200_202_status(
     mocker, caplog
 ):
     index = PineconeIndex(
@@ -967,9 +967,6 @@ async def test_adelete_index_logs_error_and_returns_json_on_non_200_202_status(
 
         async def text(self):
             return "error"
-
-        async def json(self, content_type=None):
-            return {"error": "something went wrong"}
 
         async def __aenter__(self):
             return self
@@ -989,6 +986,8 @@ async def test_adelete_index_logs_error_and_returns_json_on_non_200_202_status(
 
     mocker.patch("aiohttp.ClientSession", return_value=FakeSession())
     with caplog.at_level("ERROR"):
-        result = await index.adelete_index()
-        assert result == {"error": "something went wrong"}
+        with pytest.raises(Exception) as excinfo:
+            await index.adelete_index()
         assert "Failed to delete index: 500 : error" in caplog.text
+        assert excinfo.value.args[0] == "Failed to delete index: 500"
+        assert excinfo.value.args[1] == {"error": "error"}

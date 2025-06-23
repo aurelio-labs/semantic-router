@@ -1007,14 +1007,21 @@ class PineconeIndex(BaseIndex):
         url = f"{self.base_url}/indexes/{self.index_name}"
         async with aiohttp.ClientSession() as session:
             async with session.delete(url, headers=self.headers) as response:
+                body = await response.text()
                 if response.status not in (200, 202):
-                    error_text = await response.text()
-                    logger.error(
-                        f"Failed to delete index: {response.status} : {error_text}"
+                    logger.error(f"Failed to delete index: {response.status} : {body}")
+                    try:
+                        error_json = json.loads(body)
+                    except Exception:
+                        error_json = {"error": body}
+                    raise Exception(
+                        f"Failed to delete index: {response.status}", error_json
                     )
-                res = await response.json(content_type=None)
-        self.index = None
-        return res
+                self.index = None
+                try:
+                    return json.loads(body)
+                except Exception:
+                    return {"result": body}
 
     async def _async_query(
         self,
