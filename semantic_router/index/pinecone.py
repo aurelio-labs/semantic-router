@@ -164,7 +164,7 @@ class PineconeIndex(BaseIndex):
         region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
-        base_url: Optional[str] = "https://api.pinecone.io",
+        base_url: Optional[str] = None,
         init_async_index: bool = False,
     ):
         """Initialize PineconeIndex.
@@ -201,12 +201,12 @@ class PineconeIndex(BaseIndex):
             "User-Agent": "source_tag=semanticrouter",
         }
 
-        if base_url is not None or os.getenv("PINECONE_API_BASE_URL"):
-            logger.info("Using pinecone remote API.")
-            if os.getenv("PINECONE_API_BASE_URL"):
-                self.base_url = os.getenv("PINECONE_API_BASE_URL")
-            else:
-                self.base_url = base_url
+        if base_url is not None:
+            self.base_url = base_url
+        elif os.getenv("PINECONE_API_BASE_URL"):
+            self.base_url = os.getenv("PINECONE_API_BASE_URL")
+        else:
+            self.base_url = None
 
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
@@ -1003,6 +1003,8 @@ class PineconeIndex(BaseIndex):
     async def adelete_index(self):
         """Asynchronously delete the index."""
         if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
             raise ValueError("base_url is not set for PineconeIndex.")
         url = f"{self.base_url}/indexes/{self.index_name}"
         async with aiohttp.ClientSession() as session:
