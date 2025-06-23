@@ -1002,8 +1002,6 @@ class PineconeIndex(BaseIndex):
     # __ASYNC CLIENT METHODS__
     async def adelete_index(self):
         """Asynchronously delete the index."""
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
         await asyncio.to_thread(self.client.delete_index, self.index_name)
         self.index = None
 
