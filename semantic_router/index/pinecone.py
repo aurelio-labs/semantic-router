@@ -150,7 +150,7 @@ class PineconeIndex(BaseIndex):
     index: Optional[Any] = Field(default=None, exclude=True)
     ServerlessSpec: Any = Field(default=None, exclude=True)
     namespace: Optional[str] = ""
-    base_url: Optional[str] = None
+    base_url: Optional[str] = "https://api.pinecone.io"
     headers: dict[str, str] = {}
     index_host: Optional[str] = "http://localhost:5080"
 
@@ -164,7 +164,7 @@ class PineconeIndex(BaseIndex):
         region: str = "us-east-1",
         host: str = "",
         namespace: Optional[str] = "",
-        base_url: Optional[str] = None,
+        base_url: Optional[str] = "https://api.pinecone.io",
         init_async_index: bool = False,
     ):
         """Initialize PineconeIndex.
@@ -206,7 +206,7 @@ class PineconeIndex(BaseIndex):
         elif os.getenv("PINECONE_API_BASE_URL"):
             self.base_url = os.getenv("PINECONE_API_BASE_URL")
         else:
-            self.base_url = None
+            self.base_url = "https://api.pinecone.io"
 
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
@@ -1049,6 +1049,10 @@ class PineconeIndex(BaseIndex):
         :param include_metadata: Whether to include metadata in the results, defaults to False.
         :type include_metadata: bool, optional
         """
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
+            raise ValueError("base_url is not set for PineconeIndex.")
         params = {
             "vector": vector,
             "sparse_vector": sparse_vector,
@@ -1111,6 +1115,10 @@ class PineconeIndex(BaseIndex):
         :return: List of indexes.
         :rtype: list[dict]
         """
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
+            raise ValueError("base_url is not set for PineconeIndex.")
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{self.base_url}/indexes",
@@ -1130,6 +1138,10 @@ class PineconeIndex(BaseIndex):
         :param namespace: The namespace to upsert the vectors into.
         :type namespace: str
         """
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
+            raise ValueError("base_url is not set for PineconeIndex.")
         params = {
             "vectors": vectors,
             "namespace": namespace,
@@ -1172,6 +1184,10 @@ class PineconeIndex(BaseIndex):
         :param metric: The metric to use for the index, defaults to "dotproduct".
         :type metric: str, optional
         """
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
+            raise ValueError("base_url is not set for PineconeIndex.")
         params = {
             "name": name,
             "dimension": dimension,
@@ -1239,6 +1255,10 @@ class PineconeIndex(BaseIndex):
         :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
         :rtype: tuple[list[str], list[dict]]
         """
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+        if self.base_url == "":
+            raise ValueError("base_url is not set for PineconeIndex.")
         if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
         if self.host == "":
