@@ -1016,9 +1016,7 @@ class PineconeIndex(BaseIndex):
                         error_json = json.loads(body)
                     except Exception:
                         error_json = {"error": body}
-                    raise Exception(
-                        f"Failed to delete index: {response.status}", error_json
-                    )
+                    return {"error": f"Failed to delete index: {response.status}", "details": error_json}
                 self.index = None
                 try:
                     return json.loads(body)
