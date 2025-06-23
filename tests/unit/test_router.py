@@ -950,3 +950,43 @@ class TestRouterAsync:
         # Test delete
         await router.index.adelete_index()
         assert len(router.index) == 0
+
+    @pytest.mark.asyncio
+    async def test_adelete_index_logs_error_and_returns_json_on_non_200_202_status(
+        mocker, caplog
+    ):
+        index = PineconeIndex(
+            api_key="test", index_name="test-index", base_url="http://fake-url"
+        )
+
+        # Patch aiohttp.ClientSession to simulate a non-200/202 response
+        class FakeResponse:
+            status = 500
+
+            async def text(self):
+                return "error"
+
+            async def json(self, content_type=None):
+                return {"error": "something went wrong"}
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                pass
+
+        class FakeSession:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                pass
+
+            def delete(self, *args, **kwargs):
+                return FakeResponse()
+
+        mocker.patch("aiohttp.ClientSession", return_value=FakeSession())
+        with caplog.at_level("ERROR"):
+            result = await index.adelete_index()
+            assert result == {"error": "something went wrong"}
+            assert "Failed to delete index: 500 : error" in caplog.text
