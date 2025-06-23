@@ -991,3 +991,10 @@ async def test_adelete_index_logs_error_and_raises_on_non_200_202_status(
         assert "Failed to delete index: 500 : error" in caplog.text
         assert excinfo.value.args[0] == "Failed to delete index: 500"
         assert excinfo.value.args[1] == {"error": "error"}
+
+
+@pytest.mark.asyncio
+async def test_adelete_index_raises_value_error_when_base_url_none():
+    index = PineconeIndex(api_key="test", index_name="test-index", base_url=None)
+    with pytest.raises(ValueError, match="base_url is not set for PineconeIndex."):
+        await index.adelete_index()
