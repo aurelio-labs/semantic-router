@@ -1000,6 +1000,11 @@ class PineconeIndex(BaseIndex):
         self.index = None
 
     # __ASYNC CLIENT METHODS__
+    async def adelete_index(self):
+        """Asynchronously delete the index."""
+        await asyncio.to_thread(self.client.delete_index, self.index_name)
+        self.index = None
+
     async def _async_query(
         self,
         vector: list[float],
