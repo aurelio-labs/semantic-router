@@ -240,7 +240,7 @@ def get_test_indexes():
 
 
 def get_test_async_indexes():
-    indexes = [LocalIndex]
+    indexes = [LocalIndex, PineconeIndex]
     return indexes
 
 
