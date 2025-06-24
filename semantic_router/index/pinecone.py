@@ -1002,8 +1002,19 @@ class PineconeIndex(BaseIndex):
     # __ASYNC CLIENT METHODS__
     async def adelete_index(self):
         """Asynchronously delete the index."""
-        await asyncio.to_thread(self.client.delete_index, self.index_name)
+        if not self.base_url:
+            raise ValueError("base_url is not set for PineconeIndex.")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(
+                f"{self.base_url}/indexes/{self.index_name}",
+                headers=self.headers,
+            ) as response:
+                res = await response.json(content_type=None)
+                if response.status != 202:
+                    raise Exception(f"Failed to delete index: {response.status}", res)
         self.index = None
+        return res
 
     async def _async_query(
         self,
