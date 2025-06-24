@@ -406,7 +406,6 @@ class PineconeIndex(BaseIndex):
                 index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
                 if index_ready == "true" or index_ready == True:
                     # if the index is ready, we return it
-                    self.index = index_stats
                     self.host = index_stats["host"]
                     return index_stats
                 else:
@@ -425,13 +424,11 @@ class PineconeIndex(BaseIndex):
                         index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
                         await asyncio.sleep(0.1)
 
-                    self.index = index_stats
                     self.host = index_stats["host"]
                     return index_stats
             else:
                 # if the index exists, we return it
                 index_stats = await self._async_describe_index(self.index_name)
-                self.index = index_stats
                 self.host = index_stats["host"]
                 return index_stats
         self.host = index_stats["host"] if index_stats else ""
@@ -518,9 +515,6 @@ class PineconeIndex(BaseIndex):
         :param sparse_embeddings: List of sparse embeddings to upsert.
         :type sparse_embeddings: Optional[List[SparseEmbedding]]
         """
-        if self.index is None:
-            self.dimensions = self.dimensions or len(embeddings[0])
-            self.index = await self._init_async_index(force_create=True)
         vectors_to_upsert = build_records(
             embeddings=embeddings,
             routes=routes,
@@ -928,8 +922,6 @@ class PineconeIndex(BaseIndex):
         :type config: ConfigParameter
         """
         config.scope = config.scope or self.namespace
-        if self.index is None:
-            raise ValueError("Index has not been initialized.")
         if self.dimensions is None:
             raise ValueError("Must set PineconeIndex.dimensions before writing config.")
         pinecone_config = config.to_pinecone(dimensions=self.dimensions)
@@ -1230,8 +1222,6 @@ class PineconeIndex(BaseIndex):
         :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
         :rtype: tuple[list[str], list[dict]]
         """
-        if self.index is None:
-            raise ValueError("Index is None, could not retrieve vector IDs.")
         if self.host == "":
             raise ValueError("self.host is not initialized.")
 
