@@ -405,8 +405,16 @@ class PineconeIndex(BaseIndex):
                 index_stats = await self._async_describe_index(self.index_name)
                 # index_stats["status"] can be either a dict or an int (e.g. 404)
                 index_status = index_stats.get("status", {})
-                index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
-                if index_ready == "true" or index_ready == True:
+                index_ready = (
+                    index_status.get("ready", False)
+                    if isinstance(index_status, dict)
+                    else False
+                )
+                if (
+                    index_ready == "true"
+                    or isinstance(index_ready, bool)
+                    and index_ready
+                ):
                     # if the index is ready, we return it
                     self.host = index_stats["host"]
                     return index_stats
@@ -420,10 +428,16 @@ class PineconeIndex(BaseIndex):
                         region=self.region,
                     )
                     index_ready = "false"
-                    while index_ready != "true" and index_ready != True:
+                    while index_ready != "true" and (
+                        isinstance(index_ready, bool) and not index_ready
+                    ):
                         index_stats = await self._async_describe_index(self.index_name)
                         index_status = index_stats.get("status", {})
-                        index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
+                        index_ready = (
+                            index_status.get("ready", False)
+                            if isinstance(index_status, dict)
+                            else False
+                        )
                         await asyncio.sleep(0.1)
 
                     self.host = index_stats["host"]

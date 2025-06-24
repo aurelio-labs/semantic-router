@@ -814,10 +814,7 @@ class BaseRouter(BaseModel):
         """
         if not (
             self.index.is_ready()
-            or (
-                isinstance(self.index, PineconeIndex)
-                and self.index._is_async_ready()
-            )
+            or (isinstance(self.index, PineconeIndex) and self.index._is_async_ready())
         ):
             # TODO: need async version for qdrant
             raise ValueError("Index is not ready.")
