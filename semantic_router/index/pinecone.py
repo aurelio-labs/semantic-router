@@ -401,9 +401,13 @@ class PineconeIndex(BaseIndex):
             if not index_exists:
                 # confirm if the index exists
                 index_stats = await self._async_describe_index(self.index_name)
-                index_ready = index_stats["status"]["ready"]
-                if index_ready == "true":
+                # index_stats["status"] can be either a dict or an int (e.g. 404)
+                index_status = index_stats.get("status", {})
+                index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
+                if index_ready == "true" or index_ready == True:
                     # if the index is ready, we return it
+                    self.index = index_stats
+                    self.host = index_stats["host"]
                     return index_stats
                 else:
                     # if the index is not ready, we create it
@@ -415,13 +419,20 @@ class PineconeIndex(BaseIndex):
                         region=self.region,
                     )
                     index_ready = "false"
-                    while index_ready != "true":
+                    while index_ready != "true" and index_ready != True:
                         index_stats = await self._async_describe_index(self.index_name)
-                        index_ready = index_stats["status"]["ready"]
+                        index_status = index_stats.get("status", {})
+                        index_ready = index_status.get("ready", False) if isinstance(index_status, dict) else False
                         await asyncio.sleep(0.1)
+
+                    self.index = index_stats
+                    self.host = index_stats["host"]
                     return index_stats
             else:
                 # if the index exists, we return it
+                index_stats = await self._async_describe_index(self.index_name)
+                self.index = index_stats
+                self.host = index_stats["host"]
                 return index_stats
         self.host = index_stats["host"] if index_stats else ""
 
