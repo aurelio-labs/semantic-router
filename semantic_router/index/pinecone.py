@@ -1011,7 +1011,7 @@ class PineconeIndex(BaseIndex):
                 headers=self.headers,
             ) as response:
                 res = await response.json(content_type=None)
-                if response.status != 200:
+                if response.status != 202:
                     raise Exception(f"Failed to delete index: {response.status}", res)
         self.index = None
         return res
