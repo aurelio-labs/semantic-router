@@ -785,7 +785,13 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not self.index.is_ready():
+        if not (
+            self.index.is_ready()
+            or (
+                isinstance(self.index, PineconeIndex)
+                and self.index._is_async_ready()
+            )
+        ):
             # TODO: need async version for qdrant
             raise ValueError("Index is not ready.")
         # if no vector provided, encode text to get vector
