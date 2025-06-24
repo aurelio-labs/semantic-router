@@ -428,8 +428,10 @@ class PineconeIndex(BaseIndex):
                         region=self.region,
                     )
                     index_ready = "false"
-                    while index_ready != "true" and (
-                        isinstance(index_ready, bool) and not index_ready
+                    while not (
+                        index_ready == "true"
+                        or isinstance(index_ready, bool)
+                        and index_ready
                     ):
                         index_stats = await self._async_describe_index(self.index_name)
                         index_status = index_stats.get("status", {})
