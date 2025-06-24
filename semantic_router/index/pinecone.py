@@ -153,6 +153,7 @@ class PineconeIndex(BaseIndex):
     base_url: Optional[str] = None
     headers: dict[str, str] = {}
     index_host: Optional[str] = "http://localhost:5080"
+    init_async_index: bool = False
 
     def __init__(
         self,
@@ -229,7 +230,8 @@ class PineconeIndex(BaseIndex):
         self.client = self._initialize_client(api_key=self.api_key)
 
         # try initializing index
-        self.index = self._init_index()
+        if not init_async_index:
+            self.index = self._init_index()
 
     def _initialize_client(self, api_key: Optional[str] = None):
         """Initialize the Pinecone client.
