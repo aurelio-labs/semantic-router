@@ -520,9 +520,8 @@ class BaseRouter(BaseModel):
         # now init index
         if isinstance(self.index, PineconeIndex):
             await self.index._init_async_index(force_create=True)
-        # TODO: convert the following to async where applicable.
         elif isinstance(self.index, PostgresIndex):
-            self._init_index_state()
+            await self.index._init_async_index(force_create=True)
 
         # run auto sync if active
         if self.auto_sync:

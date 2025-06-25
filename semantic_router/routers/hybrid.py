@@ -388,8 +388,10 @@ class HybridRouter(BaseRouter):
         if not self.index.is_ready():
             # TODO: need async version for qdrant
             raise ValueError("Index is not ready.")
+        print("//////////"+"1")
         if self.sparse_encoder is None:
             raise ValueError("Sparse encoder is not set.")
+        print("//////////"+"2")
         potential_sparse_vector: List[SparseEmbedding] | None = None
         # if no vector provided, encode text to get vector
         if vector is None:
@@ -398,14 +400,17 @@ class HybridRouter(BaseRouter):
             vector, potential_sparse_vector = await self._async_encode(
                 text=[text], input_type="queries"
             )
+        print("//////////"+"3")
         # convert to numpy array if not already
         vector = xq_reshape(xq=vector)
+        print("//////////"+"4")   
         if sparse_vector is None:
             if text is None:
                 raise ValueError("Either text or sparse_vector must be provided")
             sparse_vector = (
                 potential_sparse_vector[0] if potential_sparse_vector else None
             )
+        print("//////////"+"5")
         # get scores and routes
         scores, routes = await self.index.aquery(
             vector=vector[0],
@@ -413,9 +418,11 @@ class HybridRouter(BaseRouter):
             route_filter=route_filter,
             sparse_vector=sparse_vector,
         )
+        print("//////////"+"6")
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(routes, scores)
         ]
+        print("//////////"+"7")
         scored_routes = self._score_routes(query_results=query_results)
         return await self._async_pass_routes(
             scored_routes=scored_routes,
@@ -423,6 +430,7 @@ class HybridRouter(BaseRouter):
             text=text,
             limit=limit,
         )
+    
 
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
