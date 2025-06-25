@@ -95,10 +95,14 @@ class Route(BaseModel):
                     "argument is passed."
                 )
             # if a function schema is provided we generate the inputs
-            extracted_inputs = self.llm.extract_function_inputs(
-                query=query, function_schemas=self.function_schemas
-            )
-            func_call = extracted_inputs
+            try:
+                extracted_inputs = self.llm.extract_function_inputs(
+                    query=query, function_schemas=self.function_schemas
+                )
+                func_call = extracted_inputs
+            except Exception:
+                logger.error("Error extracting function inputs", exc_info=True)
+                func_call = None
         else:
             # otherwise we just pass None for the call
             func_call = None
@@ -125,10 +129,14 @@ class Route(BaseModel):
                     "argument is passed."
                 )
             # if a function schema is provided we generate the inputs
-            extracted_inputs = await self.llm.async_extract_function_inputs(  # type: ignore # openai-llm
-                query=query, function_schemas=self.function_schemas
-            )
-            func_call = extracted_inputs
+            try:
+                extracted_inputs = await self.llm.async_extract_function_inputs(  # type: ignore # openai-llm
+                    query=query, function_schemas=self.function_schemas
+                )
+                func_call = extracted_inputs
+            except Exception:
+                logger.error("Error extracting function inputs", exc_info=True)
+                func_call = None
         else:
             # otherwise we just pass None for the call
             func_call = None
