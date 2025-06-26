@@ -222,6 +222,15 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    async def ais_ready(self) -> bool:
+        """Checks if the index is ready to be used asynchronously.
+        This method should be implemented by subclasses.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def query(
         self,
         vector: np.ndarray,

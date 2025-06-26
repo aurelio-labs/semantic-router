@@ -253,7 +253,7 @@ def init_index(
     dimensions: int = 3,  # Default to 3 for our mock encoder
     namespace: str = "",
     index_name: str | None = None,
-    async_init_index: bool = False,
+    init_async_index: bool = False,
 ):
     """Initialize indexes for unit testing."""
     if index_cls is PineconeIndex:
@@ -271,7 +271,7 @@ def init_index(
     elif index_cls is PostgresIndex:
         print("Creating Postgres index")
         index = index_cls(
-            index_name=index_name or "test_index", index_prefix="", namespace=namespace, async_init_index=async_init_index
+            index_name=index_name or "test_index", index_prefix="", namespace=namespace, init_async_index=init_async_index
         )
     else:
         print("Creating Local index")
@@ -676,7 +676,7 @@ class TestRouterAsync:
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
         if index_cls is PostgresIndex:
-            index = init_index(index_cls, async_init_index=True)
+            index = init_index(index_cls, init_async_index=True)
         else:
             index = init_index(index_cls) if index_cls else None
         print(f"1. Index: {index}")
@@ -688,6 +688,7 @@ class TestRouterAsync:
                 routes=routes_5,
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
         else:
             router = router_cls(
@@ -695,6 +696,7 @@ class TestRouterAsync:
                 routes=routes_5,
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
         print(f"2. Router: {router}")
 
@@ -726,7 +728,7 @@ class TestRouterAsync:
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
         if index_cls is PostgresIndex:
-            index = init_index(index_cls, async_init_index=True)
+            index = init_index(index_cls, init_async_index=True)
         else:
             index = init_index(index_cls) if index_cls else None
 

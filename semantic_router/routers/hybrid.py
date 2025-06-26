@@ -42,6 +42,7 @@ class HybridRouter(BaseRouter):
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
+        init_async_index: bool = False,
     ):
         """Initialize the HybridRouter.
 
@@ -68,6 +69,7 @@ class HybridRouter(BaseRouter):
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
+            init_async_index=init_async_index,
         )
         # set alpha
         self.alpha = alpha
@@ -385,9 +387,10 @@ class HybridRouter(BaseRouter):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not self.index.is_ready():
+        print("ACALL HYBRID -> THIS FUNCTION IS BEING CALLED")
+        if not (await self.index.ais_ready()):
             # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+            await self._async_init_index_state()
         print("//////////"+"1")
         if self.sparse_encoder is None:
             raise ValueError("Sparse encoder is not set.")

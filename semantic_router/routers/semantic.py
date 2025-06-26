@@ -24,6 +24,7 @@ class SemanticRouter(BaseRouter):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
+        init_async_index: bool = False,
     ):
         index = self._get_index(index=index)
         encoder = self._get_encoder(encoder=encoder)
@@ -35,6 +36,7 @@ class SemanticRouter(BaseRouter):
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
+            init_async_index=init_async_index,
         )
 
     def _encode(self, text: list[str], input_type: EncodeInputType) -> Any:

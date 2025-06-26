@@ -360,7 +360,7 @@ class BaseRouter(BaseModel):
     aggregation: str = "mean"
     aggregation_method: Optional[Callable] = None
     auto_sync: Optional[str] = None
-    async_init_index: bool = False
+    init_async_index: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
@@ -374,7 +374,7 @@ class BaseRouter(BaseModel):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
-        async_init_index: bool = False,
+        init_async_index: bool = False,
     ):
         """Initialize a BaseRouter object. Expected to be used as a base class only,
         not directly instantiated.
@@ -436,7 +436,8 @@ class BaseRouter(BaseModel):
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # initialize index
-        if not async_init_index:
+        print("INIT ASYNC INDEX", init_async_index)
+        if not init_async_index:
             self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
@@ -514,13 +515,11 @@ class BaseRouter(BaseModel):
     async def _async_init_index_state(self):
         """Asynchronously initializes an index (where required) and runs auto_sync if active."""
         # initialize index now, check if we need dimensions
-        if self.index.dimensions is None:
+        if self.index is None or self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex):
-            await self.index._init_async_index(force_create=True)
-        elif isinstance(self.index, PostgresIndex):
+        if isinstance(self.index, PineconeIndex) or isinstance(self.index, PostgresIndex):
             await self.index._init_async_index(force_create=True)
 
         # run auto sync if active
@@ -811,27 +810,30 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not (
-            self.index.is_ready()
-            or (isinstance(self.index, PineconeIndex) and self.index._is_async_ready())
-        ):
-            # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+        print("ACALL BASE -> THIS FUNCTION IS BEING CALLED")
+        if not (await self.index.ais_ready()):
+            await self._async_init_index_state()
+        print("ACALL BASE -> INDEX IS READY")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = await self._async_encode(text=[text], input_type="queries")
+        print("ACALL BASE -> VECTOR IS ENCODED")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
+        print("ACALL BASE -> VECTOR IS RESHAPED")
         # get scores and routes
         scores, routes = await self.index.aquery(
             vector=vector[0], top_k=self.top_k, route_filter=route_filter
         )
+        print("ACALL BASE -> VECTOR IS QUERIED")
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(routes, scores)
         ]
+        print("ACALL BASE -> QUERY RESULTS ARE SCORED")
         scored_routes = self._score_routes(query_results=query_results)
+        print("ACALL BASE -> SCORED ROUTES ARE OBTAINED")
         return await self._async_pass_routes(
             scored_routes=scored_routes,
             simulate_static=simulate_static,

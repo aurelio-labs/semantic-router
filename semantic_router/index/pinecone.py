@@ -1098,7 +1098,7 @@ class PineconeIndex(BaseIndex):
                     logger.error(f"JSON decode error: {e}")
                     return {}
 
-    async def _is_async_ready(self, client_only: bool = False) -> bool:
+    async def ais_ready(self, client_only: bool = False) -> bool:
         """Checks if class attributes exist to be used for async operations.
 
         :param client_only: Whether to check only the client attributes. If False
