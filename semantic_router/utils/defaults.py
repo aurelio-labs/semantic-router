@@ -49,6 +49,11 @@ class EncoderDefault(Enum):
             "GOOGLE_EMBEDDING_MODEL", "textembedding-gecko@003"
         ),
     }
+    OLLAMA = {
+        "embedding_model": os.getenv(
+            "OLLAMA_EMBEDDING_MODEL", "hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:F16"
+        )
+    }
     BEDROCK = {
         "embedding_model": os.environ.get(
             "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"

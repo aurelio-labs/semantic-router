@@ -20,6 +20,7 @@ dependencies = [
     "urllib3>=1.25.4,<1.27",
     "litellm>=1.61.3",
     "openai>=1.10.0,<2.0.0",
+    "ollama>=0.1.7",
 ]
 
 [project.optional-dependencies]
