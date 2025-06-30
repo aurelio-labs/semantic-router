@@ -1427,7 +1427,7 @@ class PineconeIndex(BaseIndex):
         :return: Index statistics.
         :rtype: dict
         """
-        url = f"{self.index_host}/describe_stats"
+        url = f"{self.index_host}/describe_index_stats"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
