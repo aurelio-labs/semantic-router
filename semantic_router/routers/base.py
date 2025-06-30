@@ -436,7 +436,6 @@ class BaseRouter(BaseModel):
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # initialize index
-        print("INIT ASYNC INDEX", init_async_index)
         if not init_async_index:
             self._init_index_state()
 
@@ -519,7 +518,9 @@ class BaseRouter(BaseModel):
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex) or isinstance(self.index, PostgresIndex):
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
             await self.index._init_async_index(force_create=True)
 
         # run auto sync if active
@@ -810,30 +811,23 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        print("ACALL BASE -> THIS FUNCTION IS BEING CALLED")
         if not (await self.index.ais_ready()):
             await self._async_init_index_state()
-        print("ACALL BASE -> INDEX IS READY")
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
                 raise ValueError("Either text or vector must be provided")
             vector = await self._async_encode(text=[text], input_type="queries")
-        print("ACALL BASE -> VECTOR IS ENCODED")
         # convert to numpy array if not already
         vector = xq_reshape(vector)
-        print("ACALL BASE -> VECTOR IS RESHAPED")
         # get scores and routes
         scores, routes = await self.index.aquery(
             vector=vector[0], top_k=self.top_k, route_filter=route_filter
         )
-        print("ACALL BASE -> VECTOR IS QUERIED")
         query_results = [
             {"route": d, "score": s.item()} for d, s in zip(routes, scores)
         ]
-        print("ACALL BASE -> QUERY RESULTS ARE SCORED")
         scored_routes = self._score_routes(query_results=query_results)
-        print("ACALL BASE -> SCORED ROUTES ARE OBTAINED")
         return await self._async_pass_routes(
             scored_routes=scored_routes,
             simulate_static=simulate_static,

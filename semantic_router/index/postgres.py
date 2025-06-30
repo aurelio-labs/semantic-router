@@ -200,7 +200,8 @@ class PostgresIndex(BaseIndex):
             dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
-
+        if not self.connection_string:
+            raise ValueError("No `self.connection_string` attribute set")
         self.conn = psycopg.connect(conninfo=self.connection_string)
         if not self.has_connection():
             raise ValueError("Index has not established a connection to Postgres")
@@ -237,7 +238,7 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
         return self
-    
+
     async def _init_async_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index asynchronously after the object is created.
 
@@ -250,11 +251,12 @@ class PostgresIndex(BaseIndex):
         dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
-
-        print("INIT ASYNC INDEX ACTUALLY BEING CALLED")
-
         if self.async_conn is None:
-            self.async_conn = await psycopg.AsyncConnection.connect(self.connection_string)
+            if not self.connection_string:
+                raise ValueError("No `self.connection_string` attribute set")
+            self.async_conn = await psycopg.AsyncConnection.connect(
+                self.connection_string
+            )
 
         if self.dimensions is None and not force_create:
             return None
@@ -588,7 +590,6 @@ class PostgresIndex(BaseIndex):
                 await self.async_conn.rollback()
             raise
 
-
     def add(
         self,
         embeddings: List[List[float]],
@@ -676,18 +677,15 @@ class PostgresIndex(BaseIndex):
         try:
             async with self.async_conn.cursor() as cur:
                 for i in range(0, len(embeddings), batch_size):
-                    batch_embeddings = embeddings[i:i + batch_size]
-                    batch_routes = routes[i:i + batch_size]
-                    batch_utterances = utterances[i:i + batch_size]
+                    batch_embeddings = embeddings[i : i + batch_size]
+                    batch_routes = routes[i : i + batch_size]
+                    batch_utterances = utterances[i : i + batch_size]
 
                     values = [
-                        (
-                            str(uuid.uuid4()),
-                            route,
-                            utterance,
-                            vector
+                        (str(uuid.uuid4()), route, utterance, vector)
+                        for route, utterance, vector in zip(
+                            batch_routes, batch_utterances, batch_embeddings
                         )
-                        for route, utterance, vector in zip(batch_routes, batch_utterances, batch_embeddings)
                     ]
 
                     await cur.executemany(
@@ -700,7 +698,6 @@ class PostgresIndex(BaseIndex):
         except Exception:
             await self.async_conn.rollback()
             raise
-
 
     def delete(self, route_name: str) -> None:
         """Deletes records with the specified route name.
@@ -969,9 +966,7 @@ class PostgresIndex(BaseIndex):
             raise
 
     async def _async_get_all(
-        self,
-        route_name: Optional[str] = None,
-        include_metadata: bool = False
+        self, route_name: Optional[str] = None, include_metadata: bool = False
     ) -> Tuple[List[str], List[Dict]]:
         """Retrieves all vector IDs and optionally metadata from the Postgres index asynchronously.
 
@@ -1005,10 +1000,7 @@ class PostgresIndex(BaseIndex):
                 for row in results:
                     all_vector_ids.append(row[0])
                     if include_metadata:
-                        metadata.append({
-                            "sr_route": row[1],
-                            "sr_utterance": row[2]
-                        })
+                        metadata.append({"sr_route": row[1], "sr_utterance": row[2]})
 
             return all_vector_ids, metadata
 
@@ -1057,7 +1049,9 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
-    async def _async_remove_and_sync(self, routes_to_delete: dict) -> list[tuple[str, str]]:
+    async def _async_remove_and_sync(
+        self, routes_to_delete: dict
+    ) -> list[tuple[str, str]]:
         """Remove specified routes from index if they exist.
 
         This method is asynchronous.

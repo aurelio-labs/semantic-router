@@ -267,12 +267,13 @@ def init_index(
             index_name=index_name, dimensions=dimensions, namespace=namespace
         )
     elif index_cls is PostgresIndex:
-        print("Creating Postgres index")
         index = index_cls(
-            index_name=index_name or "test_index", index_prefix="", namespace=namespace, init_async_index=init_async_index
+            index_name=index_name or "test_index",
+            index_prefix="",
+            namespace=namespace,
+            init_async_index=init_async_index,
         )
     else:
-        print("Creating Local index")
         index = index_cls()
     return index
 
@@ -658,6 +659,7 @@ class TestHybridRouter:
         else:
             assert sparse_call_spy.called
 
+
 @pytest.mark.parametrize(
     "router_cls,index_cls",
     [
@@ -677,7 +679,6 @@ class TestRouterAsync:
             index = init_index(index_cls, init_async_index=True)
         else:
             index = init_index(index_cls) if index_cls else None
-        print(f"1. Index: {index}")
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
             router = router_cls(
@@ -696,7 +697,6 @@ class TestRouterAsync:
                 auto_sync="local",
                 init_async_index=True,
             )
-        print(f"2. Router: {router}")
 
         # Setup a mock for the similarity calculation method
         _ = mocker.patch.object(
@@ -709,7 +709,6 @@ class TestRouterAsync:
                 ("Route 4", 0.6, [1.0, 1.1, 1.2]),
             ],
         )
-        print(f"3. Router: {router}")
         # Test without limit (should return only the top match)
         result = await router.acall("test query")
         assert result is not None
@@ -816,6 +815,7 @@ class TestRouterAsync:
         # Test delete
         await router.index.adelete_index()
         assert len(router.index) == 0
+
 
 @pytest.mark.parametrize(
     "router_cls,index_cls",

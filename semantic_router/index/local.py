@@ -115,7 +115,7 @@ class LocalIndex(BaseIndex):
         :rtype: bool
         """
         return self.index is not None and self.routes is not None
-    
+
     async def ais_ready(self) -> bool:
         """Checks if the index is ready to be used asynchronously.
 
