@@ -62,7 +62,19 @@ dev = [
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
 ]
-all = []
+all = [
+    "semantic-router[local]",
+    "semantic-router[pinecone]",
+    "semantic-router[vision]",
+    "semantic-router[mistralai]",
+    "semantic-router[qdrant]",
+    "semantic-router[google]",
+    "semantic-router[bedrock]",
+    "semantic-router[postgres]",
+    "semantic-router[fastembed]",
+    "semantic-router[cohere]",
+    "semantic-router[dev]",
+]
 
 [tool.uv.sources]
 torch = [
