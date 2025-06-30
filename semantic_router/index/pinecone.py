@@ -1007,7 +1007,7 @@ class PineconeIndex(BaseIndex):
         url = f"{self.base_url}/indexes/{self.index_name}"
         async with aiohttp.ClientSession() as session:
             async with session.delete(url, headers=self.headers) as response:
-                if response.status != 200:
+                if response.status != 202:
                     error_text = await response.text()
                     raise Exception(f"Failed to delete index: {response.status} : {error_text}")
         self.index = None
