@@ -138,6 +138,61 @@ class HybridRouter(BaseRouter):
                 "to see details."
             )
 
+    async def aadd(self, routes: List[Route] | Route):
+        """Add a route to the local HybridRouter and index asynchronously.
+
+        :param routes: The route(s) to add.
+        :type routes: List[Route] | Route
+        """
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse Encoder not initialised.")
+
+        # TODO: merge into single method within BaseRouter
+        current_local_hash = self._get_hash()
+        current_remote_hash = await self.index._async_read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
+        if isinstance(routes, Route):
+            routes = [routes]
+
+        self.routes.extend(routes)
+        if isinstance(self.sparse_encoder, FittableMixin) and self.routes:
+            self.sparse_encoder.fit(self.routes)
+
+        # create embeddings for all routes
+        (
+            route_names,
+            all_utterances,
+            all_function_schemas,
+            all_metadata,
+        ) = self._extract_routes_details(routes, include_metadata=True)
+
+        # TODO: to merge, self._encode should probably output a special
+        # TODO Embedding type that can be either dense or hybrid
+        dense_emb, sparse_emb = await self._async_encode(
+            all_utterances, input_type="documents"
+        )
+
+        await self.index.aadd(
+            embeddings=dense_emb.tolist(),
+            routes=route_names,
+            utterances=all_utterances,
+            function_schemas=all_function_schemas,
+            metadata_list=all_metadata,
+            sparse_embeddings=sparse_emb,
+        )
+
+        if current_local_hash.value == current_remote_hash.value:
+            await self._async_write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
+
     def _execute_sync_strategy(self, strategy: Dict[str, Dict[str, List[Utterance]]]):
         """Executes the provided sync strategy, either deleting or upserting
         routes from the local and remote instances as defined in the strategy.
