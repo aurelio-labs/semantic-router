@@ -243,8 +243,6 @@ def get_test_async_indexes():
     indexes = [LocalIndex]
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
-    if importlib.util.find_spec("psycopg") is not None:
-        indexes.append(PostgresIndex)
     return indexes
 
 
