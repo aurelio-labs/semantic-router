@@ -972,8 +972,8 @@ class PineconeIndex(BaseIndex):
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
         """
-        if self.host == "":
-            raise ValueError("Host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         query_vector_list = vector.tolist()
         if route_filter is not None:
             filter_query = {"sr_route": {"$in": route_filter}}
@@ -1006,8 +1006,8 @@ class PineconeIndex(BaseIndex):
         :return: A list of (route_name, utterance) objects.
         :rtype: List[Tuple]
         """
-        if self.host == "":
-            raise ValueError("Host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
 
         return await self._async_get_routes()
 
@@ -1071,8 +1071,8 @@ class PineconeIndex(BaseIndex):
             "topK": top_k,
             "includeMetadata": include_metadata,
         }
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         elif self.base_url and "api.pinecone.io" in self.base_url:
             if not self.host.startswith("http"):
                 logger.error(f"host exists:{self.host}")
@@ -1113,8 +1113,11 @@ class PineconeIndex(BaseIndex):
             return False
         if not client_only:
             # now check index attributes
-            if not (self.index_name or self.dimensions or self.metric or self.host):
-                return False
+            if not (self.index_name and self.dimensions and self.metric and self.host and self.host != ""):
+                # try to create index
+                await self._init_async_index()
+                if not (self.index_name and self.dimensions and self.metric and self.host and self.host != ""):
+                    return False
         return True
 
     async def _async_list_indexes(self):
@@ -1142,6 +1145,9 @@ class PineconeIndex(BaseIndex):
         :param namespace: The namespace to upsert the vectors into.
         :type namespace: str
         """
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
+
         params = {
             "vectors": vectors,
             "namespace": namespace,
@@ -1251,8 +1257,8 @@ class PineconeIndex(BaseIndex):
         :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
         :rtype: tuple[list[str], list[dict]]
         """
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
 
         all_vector_ids = []
         next_page_token = None
@@ -1326,8 +1332,8 @@ class PineconeIndex(BaseIndex):
         :return: A dictionary containing the metadata for the vector.
         :rtype: dict
         """
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         if self.base_url and "api.pinecone.io" in self.base_url:
             if not self.host.startswith("http"):
                 logger.error(f"host exists:{self.host}")

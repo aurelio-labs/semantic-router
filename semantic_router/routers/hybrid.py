@@ -435,6 +435,8 @@ class HybridRouter(BaseRouter):
         :param strategy: The sync strategy to execute.
         :type strategy: Dict[str, Dict[str, List[Utterance]]]
         """
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse encoder is not set.")
         if strategy["remote"]["delete"]:
             data_to_delete = {}  # type: ignore
             for utt_obj in strategy["remote"]["delete"]:
