@@ -741,6 +741,7 @@ class TestRouterAsync:
                 routes=routes_5,
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
         else:
             router = router_cls(
@@ -748,6 +749,7 @@ class TestRouterAsync:
                 routes=routes_5,
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
 
         # Setup a mock for the async similarity calculation method
@@ -798,6 +800,7 @@ class TestRouterAsync:
                 routes=[],
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
         else:
             router = router_cls(
@@ -805,6 +808,7 @@ class TestRouterAsync:
                 routes=[],
                 index=index,
                 auto_sync="local",
+                init_async_index=True,
             )
 
         # Test adding routes
