@@ -416,7 +416,9 @@ class PineconeIndex(BaseIndex):
                     and index_ready
                 ):
                     # if the index is ready, we return it
-                    self.host = index_stats["host"]
+                    self.index_host = index_stats["host"]
+                    self._calculate_index_host()
+                    self.host = self.index_host
                     return index_stats
                 else:
                     # if the index is not ready, we create it
@@ -442,14 +444,23 @@ class PineconeIndex(BaseIndex):
                         )
                         await asyncio.sleep(0.1)
 
-                    self.host = index_stats["host"]
+                    self.index_host = index_stats["host"]
+                    self._calculate_index_host()
+                    self.host = self.index_host
                     return index_stats
             else:
                 # if the index exists, we return it
                 index_stats = await self._async_describe_index(self.index_name)
-                self.host = index_stats["host"]
+                self.index_host = index_stats["host"]
+                self._calculate_index_host()
+                self.host = self.index_host
                 return index_stats
-        self.host = index_stats["host"] if index_stats else ""
+        if index_stats:
+            self.index_host = index_stats["host"]
+            self._calculate_index_host()
+            self.host = self.index_host
+        else:
+            self.host = ""
 
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records.
