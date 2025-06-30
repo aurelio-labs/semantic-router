@@ -681,7 +681,6 @@ class TestRouterAsync:
         index = init_index(index_cls, init_async_index=True)
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            print("HERE")
             router = router_cls(
                 encoder=dense_encoder,
                 sparse_encoder=sparse_encoder,
