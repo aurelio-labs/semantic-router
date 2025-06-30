@@ -1219,6 +1219,7 @@ class PineconeIndex(BaseIndex):
             "dimension": dimension,
             "metric": metric,
             "spec": {"serverless": {"cloud": cloud, "region": region}},
+            "deletion_protection": "disabled",
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(
