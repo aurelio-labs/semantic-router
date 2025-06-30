@@ -725,11 +725,7 @@ class TestRouterAsync:
         """Test that the limit parameter works correctly for async router calls."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        if index_cls is PostgresIndex:
-            index = init_index(index_cls, init_async_index=True)
-        else:
-            index = init_index(index_cls) if index_cls else None
-
+        index = init_index(index_cls, init_async_index=True)
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
             router = router_cls(
@@ -782,7 +778,7 @@ class TestRouterAsync:
         if index_cls is None:
             pytest.skip("Test only for specific index implementations")
 
-        index = init_index(index_cls)
+        index = init_index(index_cls, init_async_index=True)
 
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
