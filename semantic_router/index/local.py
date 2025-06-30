@@ -12,8 +12,8 @@ from semantic_router.utils.logger import logger
 class LocalIndex(BaseIndex):
     type: str = "local"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **data):
+        super().__init__(**data)
 
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)

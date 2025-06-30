@@ -13,8 +13,8 @@ class HybridLocalIndex(LocalIndex):
     sparse_index: Optional[list[dict]] = None
     route_names: Optional[np.ndarray] = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **data):
+        super().__init__(**data)
 
     def add(
         self,
@@ -71,6 +71,42 @@ class HybridLocalIndex(LocalIndex):
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
 
+    async def aadd(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
+        **kwargs,
+    ):
+        """Add embeddings to the index - note that this is not truly async as it is a
+        local index and there is no sense to make this method async. Instead, it will
+        call the sync `add` method.
+
+        :param embeddings: List of embeddings to add to the index.
+        :type embeddings: List[List[float]]
+        :param routes: List of routes to add to the index.
+        :type routes: List[str]
+        :param utterances: List of utterances to add to the index.
+        :type utterances: List[str]
+        :param function_schemas: List of function schemas to add to the index.
+        :type function_schemas: Optional[List[Dict[str, Any]]]
+        :param metadata_list: List of metadata to add to the index.
+        :type metadata_list: List[Dict[str, Any]]
+        :param sparse_embeddings: List of sparse embeddings to add to the index.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
+        """
+        self.add(
+            embeddings=embeddings,
+            routes=routes,
+            utterances=utterances,
+            function_schemas=function_schemas,
+            metadata_list=metadata_list,
+            sparse_embeddings=sparse_embeddings,
+        )
+
     def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
         """Gets a list of route and utterance objects currently stored in the index.
 
@@ -116,7 +152,7 @@ class HybridLocalIndex(LocalIndex):
             self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index
         ]
         return dot_products
-
+    
     def query(
         self,
         vector: np.ndarray,

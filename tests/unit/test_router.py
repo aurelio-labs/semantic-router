@@ -264,7 +264,8 @@ def init_index(
         os.environ["PINECONE_API_KEY"] = "pclocal"
         os.environ["PINECONE_API_BASE_URL"] = "http://localhost:5080"
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
+            index_name=index_name, dimensions=dimensions, namespace=namespace,
+            init_async_index=init_async_index
         )
     elif index_cls is PostgresIndex:
         index = index_cls(
@@ -273,8 +274,10 @@ def init_index(
             namespace=namespace,
             init_async_index=init_async_index,
         )
+    elif index_cls is None:
+        return None
     else:
-        index = index_cls()
+        index = index_cls(init_async_index=init_async_index)
     return index
 
 
@@ -675,12 +678,10 @@ class TestRouterAsync:
         """Test that we return expected values in RouteChoice objects."""
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        if index_cls is PostgresIndex:
-            index = init_index(index_cls, init_async_index=True)
-        else:
-            index = init_index(index_cls) if index_cls else None
+        index = init_index(index_cls, init_async_index=True)
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            print("HERE")
             router = router_cls(
                 encoder=dense_encoder,
                 sparse_encoder=sparse_encoder,

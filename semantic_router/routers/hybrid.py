@@ -425,6 +425,43 @@ class HybridRouter(BaseRouter):
             text=text,
             limit=limit,
         )
+    
+    async def _async_execute_sync_strategy(
+        self, strategy: Dict[str, Dict[str, List[Utterance]]]
+    ):
+        """Executes the provided sync strategy, either deleting or upserting
+        routes from the local and remote instances as defined in the strategy.
+
+        :param strategy: The sync strategy to execute.
+        :type strategy: Dict[str, Dict[str, List[Utterance]]]
+        """
+        if strategy["remote"]["delete"]:
+            data_to_delete = {}  # type: ignore
+            for utt_obj in strategy["remote"]["delete"]:
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
+            await self.index._async_remove_and_sync(data_to_delete)
+        if strategy["remote"]["upsert"]:
+            utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
+            await self.index.aadd(
+                embeddings=await self.encoder.acall(docs=utterances_text),
+                sparse_embeddings=await self.sparse_encoder.acall(docs=utterances_text),
+                routes=[utt.route for utt in strategy["remote"]["upsert"]],
+                utterances=utterances_text,
+                function_schemas=[
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
+                ],
+                metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
+            )
+        if strategy["local"]["delete"]:
+            # assumption is that with simple local delete we don't benefit from async
+            self._local_delete(utterances=strategy["local"]["delete"])
+        if strategy["local"]["upsert"]:
+            # same assumption as with local delete above
+            self._local_upsert(utterances=strategy["local"]["upsert"])
+        # update hash
+        await self._async_write_hash()
 
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
