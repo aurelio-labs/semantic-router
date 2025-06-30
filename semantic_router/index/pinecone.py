@@ -296,7 +296,7 @@ class PineconeIndex(BaseIndex):
         """
         dimensions_given = self.dimensions is not None
         if self.index is None:
-            index_exists = self.index_name in self.client.list_indexes().names()
+            index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
                 # if the index doesn't exist and we have dimension value
                 # we create the index
@@ -416,7 +416,9 @@ class PineconeIndex(BaseIndex):
                     and index_ready
                 ):
                     # if the index is ready, we return it
-                    self.host = index_stats["host"]
+                    self.index_host = index_stats["host"]
+                    self._calculate_index_host()
+                    self.host = self.index_host
                     return index_stats
                 else:
                     # if the index is not ready, we create it
@@ -442,14 +444,23 @@ class PineconeIndex(BaseIndex):
                         )
                         await asyncio.sleep(0.1)
 
-                    self.host = index_stats["host"]
+                    self.index_host = index_stats["host"]
+                    self._calculate_index_host()
+                    self.host = self.index_host
                     return index_stats
             else:
                 # if the index exists, we return it
                 index_stats = await self._async_describe_index(self.index_name)
-                self.host = index_stats["host"]
+                self.index_host = index_stats["host"]
+                self._calculate_index_host()
+                self.host = self.index_host
                 return index_stats
-        self.host = index_stats["host"] if index_stats else ""
+        if index_stats:
+            self.index_host = index_stats["host"]
+            self._calculate_index_host()
+            self.host = self.index_host
+        else:
+            self.host = ""
 
     def _batch_upsert(self, batch: List[Dict]):
         """Helper method for upserting a single batch of records.
@@ -728,12 +739,11 @@ class PineconeIndex(BaseIndex):
         :return: List of IDs of the vectors deleted.
         :rtype: list[str]
         """
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         route_vec_ids = await self._async_get_route_ids(route_name=route_name)
-        if self.index is not None:
-            await self._async_delete(ids=route_vec_ids, namespace=self.namespace or "")
-            return route_vec_ids
-        else:
-            raise ValueError("Index is None, could not delete.")
+        await self._async_delete(ids=route_vec_ids, namespace=self.namespace or "")
+        return route_vec_ids
 
     def delete_all(self):
         """Delete all routes from index if it exists.
@@ -972,8 +982,8 @@ class PineconeIndex(BaseIndex):
         :rtype: Tuple[np.ndarray, List[str]]
         :raises ValueError: If the index is not populated.
         """
-        if self.host == "":
-            raise ValueError("Host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         query_vector_list = vector.tolist()
         if route_filter is not None:
             filter_query = {"sr_route": {"$in": route_filter}}
@@ -1006,8 +1016,8 @@ class PineconeIndex(BaseIndex):
         :return: A list of (route_name, utterance) objects.
         :rtype: List[Tuple]
         """
-        if self.host == "":
-            raise ValueError("Host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
 
         return await self._async_get_routes()
 
@@ -1023,6 +1033,8 @@ class PineconeIndex(BaseIndex):
     # __ASYNC CLIENT METHODS__
     async def adelete_index(self):
         """Asynchronously delete the index."""
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         if not self.base_url:
             raise ValueError("base_url is not set for PineconeIndex.")
 
@@ -1034,7 +1046,7 @@ class PineconeIndex(BaseIndex):
                 res = await response.json(content_type=None)
                 if response.status != 202:
                     raise Exception(f"Failed to delete index: {response.status}", res)
-        self.index = None
+        self.host = ""
         return res
 
     async def _async_query(
@@ -1071,8 +1083,8 @@ class PineconeIndex(BaseIndex):
             "topK": top_k,
             "includeMetadata": include_metadata,
         }
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         elif self.base_url and "api.pinecone.io" in self.base_url:
             if not self.host.startswith("http"):
                 logger.error(f"host exists:{self.host}")
@@ -1098,7 +1110,7 @@ class PineconeIndex(BaseIndex):
                     logger.error(f"JSON decode error: {e}")
                     return {}
 
-    async def _is_async_ready(self, client_only: bool = False) -> bool:
+    async def ais_ready(self, client_only: bool = False) -> bool:
         """Checks if class attributes exist to be used for async operations.
 
         :param client_only: Whether to check only the client attributes. If False
@@ -1113,8 +1125,23 @@ class PineconeIndex(BaseIndex):
             return False
         if not client_only:
             # now check index attributes
-            if not (self.index_name or self.dimensions or self.metric or self.host):
-                return False
+            if not (
+                self.index_name
+                and self.dimensions
+                and self.metric
+                and self.host
+                and self.host != ""
+            ):
+                # try to create index
+                await self._init_async_index()
+                if not (
+                    self.index_name
+                    and self.dimensions
+                    and self.metric
+                    and self.host
+                    and self.host != ""
+                ):
+                    return False
         return True
 
     async def _async_list_indexes(self):
@@ -1142,6 +1169,9 @@ class PineconeIndex(BaseIndex):
         :param namespace: The namespace to upsert the vectors into.
         :type namespace: str
         """
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
+
         params = {
             "vectors": vectors,
             "namespace": namespace,
@@ -1189,6 +1219,7 @@ class PineconeIndex(BaseIndex):
             "dimension": dimension,
             "metric": metric,
             "spec": {"serverless": {"cloud": cloud, "region": region}},
+            "deletion_protection": "disabled",
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -1251,8 +1282,8 @@ class PineconeIndex(BaseIndex):
         :return: A tuple containing a list of vector IDs and a list of metadata dictionaries.
         :rtype: tuple[list[str], list[dict]]
         """
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
 
         all_vector_ids = []
         next_page_token = None
@@ -1326,8 +1357,8 @@ class PineconeIndex(BaseIndex):
         :return: A dictionary containing the metadata for the vector.
         :rtype: dict
         """
-        if self.host == "":
-            raise ValueError("self.host is not initialized.")
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         if self.base_url and "api.pinecone.io" in self.base_url:
             if not self.host.startswith("http"):
                 logger.error(f"host exists:{self.host}")
@@ -1384,3 +1415,39 @@ class PineconeIndex(BaseIndex):
             return namespace_stats["vector_count"]
         else:
             return 0
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+        If the index is not initialized, initializes it first or returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        if not await self.ais_ready():
+            logger.warning("Index is not ready, returning 0")
+            return 0
+
+        namespace_stats = await self._async_describe_index_stats()
+        if namespace_stats and "namespaces" in namespace_stats:
+            ns_stats = namespace_stats["namespaces"].get(self.namespace)
+            if ns_stats:
+                return ns_stats["vectorCount"]
+        return 0
+
+    async def _async_describe_index_stats(self):
+        """Async version of describe_index_stats.
+
+        :return: Index statistics.
+        :rtype: dict
+        """
+        url = f"{self.index_host}/describe_index_stats"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url,
+                headers=self.headers,
+                json={"namespace": self.namespace},
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as response:
+                response.raise_for_status()
+                return await response.json()

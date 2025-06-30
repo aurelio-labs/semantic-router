@@ -12,8 +12,8 @@ from semantic_router.utils.logger import logger
 class LocalIndex(BaseIndex):
     type: str = "local"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **data):
+        super().__init__(**data)
 
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
@@ -110,6 +110,14 @@ class LocalIndex(BaseIndex):
 
     def is_ready(self) -> bool:
         """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        return self.index is not None and self.routes is not None
+
+    async def ais_ready(self) -> bool:
+        """Checks if the index is ready to be used asynchronously.
 
         :return: True if the index is ready, False otherwise.
         :rtype: bool

@@ -42,6 +42,7 @@ class HybridRouter(BaseRouter):
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
         alpha: float = 0.3,
+        init_async_index: bool = False,
     ):
         """Initialize the HybridRouter.
 
@@ -68,6 +69,7 @@ class HybridRouter(BaseRouter):
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
+            init_async_index=init_async_index,
         )
         # set alpha
         self.alpha = alpha
@@ -129,6 +131,61 @@ class HybridRouter(BaseRouter):
 
         if current_local_hash.value == current_remote_hash.value:
             self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
+
+    async def aadd(self, routes: List[Route] | Route):
+        """Add a route to the local HybridRouter and index asynchronously.
+
+        :param routes: The route(s) to add.
+        :type routes: List[Route] | Route
+        """
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse Encoder not initialised.")
+
+        # TODO: merge into single method within BaseRouter
+        current_local_hash = self._get_hash()
+        current_remote_hash = await self.index._async_read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+
+        if isinstance(routes, Route):
+            routes = [routes]
+
+        self.routes.extend(routes)
+        if isinstance(self.sparse_encoder, FittableMixin) and self.routes:
+            self.sparse_encoder.fit(self.routes)
+
+        # create embeddings for all routes
+        (
+            route_names,
+            all_utterances,
+            all_function_schemas,
+            all_metadata,
+        ) = self._extract_routes_details(routes, include_metadata=True)
+
+        # TODO: to merge, self._encode should probably output a special
+        # TODO Embedding type that can be either dense or hybrid
+        dense_emb, sparse_emb = await self._async_encode(
+            all_utterances, input_type="documents"
+        )
+
+        await self.index.aadd(
+            embeddings=dense_emb.tolist(),
+            routes=route_names,
+            utterances=all_utterances,
+            function_schemas=all_function_schemas,
+            metadata_list=all_metadata,
+            sparse_embeddings=sparse_emb,
+        )
+
+        if current_local_hash.value == current_remote_hash.value:
+            await self._async_write_hash()  # update current hash in index
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "
@@ -385,9 +442,9 @@ class HybridRouter(BaseRouter):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not self.index.is_ready():
+        if not (await self.index.ais_ready()):
             # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+            await self._async_init_index_state()
         if self.sparse_encoder is None:
             raise ValueError("Sparse encoder is not set.")
         potential_sparse_vector: List[SparseEmbedding] | None = None
@@ -423,6 +480,45 @@ class HybridRouter(BaseRouter):
             text=text,
             limit=limit,
         )
+
+    async def _async_execute_sync_strategy(
+        self, strategy: Dict[str, Dict[str, List[Utterance]]]
+    ):
+        """Executes the provided sync strategy, either deleting or upserting
+        routes from the local and remote instances as defined in the strategy.
+
+        :param strategy: The sync strategy to execute.
+        :type strategy: Dict[str, Dict[str, List[Utterance]]]
+        """
+        if self.sparse_encoder is None:
+            raise ValueError("Sparse encoder is not set.")
+        if strategy["remote"]["delete"]:
+            data_to_delete = {}  # type: ignore
+            for utt_obj in strategy["remote"]["delete"]:
+                data_to_delete.setdefault(utt_obj.route, []).append(utt_obj.utterance)
+            # TODO: switch to remove without sync??
+            await self.index._async_remove_and_sync(data_to_delete)
+        if strategy["remote"]["upsert"]:
+            utterances_text = [utt.utterance for utt in strategy["remote"]["upsert"]]
+            await self.index.aadd(
+                embeddings=await self.encoder.acall(docs=utterances_text),
+                sparse_embeddings=await self.sparse_encoder.acall(docs=utterances_text),
+                routes=[utt.route for utt in strategy["remote"]["upsert"]],
+                utterances=utterances_text,
+                function_schemas=[
+                    utt.function_schemas  # type: ignore
+                    for utt in strategy["remote"]["upsert"]
+                ],
+                metadata_list=[utt.metadata for utt in strategy["remote"]["upsert"]],
+            )
+        if strategy["local"]["delete"]:
+            # assumption is that with simple local delete we don't benefit from async
+            self._local_delete(utterances=strategy["local"]["delete"])
+        if strategy["local"]["upsert"]:
+            # same assumption as with local delete above
+            self._local_upsert(utterances=strategy["local"]["upsert"])
+        # update hash
+        await self._async_write_hash()
 
     def _convex_scaling(
         self, dense: np.ndarray, sparse: list[SparseEmbedding]
