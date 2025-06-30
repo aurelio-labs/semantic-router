@@ -608,3 +608,12 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
         :rtype: int
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+        Default implementation just calls the sync version.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        return len(self)

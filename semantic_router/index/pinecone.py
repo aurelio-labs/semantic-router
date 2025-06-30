@@ -1402,3 +1402,39 @@ class PineconeIndex(BaseIndex):
             return namespace_stats["vector_count"]
         else:
             return 0
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+        If the index is not initialized, initializes it first or returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        if not await self.ais_ready():
+            logger.warning("Index is not ready, returning 0")
+            return 0
+
+        namespace_stats = await self._async_describe_index_stats()
+        if namespace_stats and "namespaces" in namespace_stats:
+            ns_stats = namespace_stats["namespaces"].get(self.namespace)
+            if ns_stats:
+                return ns_stats["vector_count"]
+        return 0
+
+    async def _async_describe_index_stats(self):
+        """Async version of describe_index_stats.
+
+        :return: Index statistics.
+        :rtype: dict
+        """
+        url = f"{self.index_host}/describe_stats"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url,
+                headers=self.headers,
+                json={"namespace": self.namespace},
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as response:
+                response.raise_for_status()
+                return await response.json()

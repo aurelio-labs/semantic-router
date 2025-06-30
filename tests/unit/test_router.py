@@ -814,20 +814,20 @@ class TestRouterAsync:
             )
 
         # Test adding routes
-        assert len(router.index) == 0
+        assert await router.index.alen() == 0
         await router.aadd(routes[0])
-        assert len(router.index) == 2  # "Hello" and "Hi"
+        assert await router.index.alen() == 2  # "Hello" and "Hi"
 
         await router.aadd(routes[1])
-        assert len(router.index) == 5  # All utterances
+        assert await router.index.alen() == 5  # All utterances
 
         # Test deleting routes
         await router.adelete("Route 1")
-        assert len(router.index) == 3  # Only Route 2 utterances
+        assert await router.index.alen() == 3  # Only Route 2 utterances
 
         # Test delete
         await router.index.adelete_index()
-        assert len(router.index) == 0
+        assert await router.index.alen() == 0
 
 
 @pytest.mark.parametrize(

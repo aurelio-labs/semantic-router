@@ -1184,6 +1184,29 @@ class PostgresIndex(BaseIndex):
                 logger.warning("Table does not exist, returning 0")
                 return 0
 
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        table_name = self._get_table_name()
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            logger.warning(
+                "Index has not established an async connection to Postgres, returning 0"
+            )
+            return 0
+        async with self.async_conn.cursor() as cur:
+            try:
+                await cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+                count = await cur.fetchone()
+                if count is None:
+                    return 0
+                return count[0]
+            except psycopg.errors.UndefinedTable:
+                logger.warning("Table does not exist, returning 0")
+                return 0
+
     def close(self):
         """Closes the psycopg connection if it exists."""
         if self.conn is not None:
