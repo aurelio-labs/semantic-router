@@ -681,6 +681,9 @@ class TestRouterAsync:
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
         index = init_index(index_cls, init_async_index=True)
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
         if router_cls == HybridRouter:
             sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
             router = router_cls(
@@ -724,6 +727,9 @@ class TestRouterAsync:
     @pytest.mark.asyncio
     async def test_async_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
         """Test that the limit parameter works correctly for async router calls."""
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
         # Create router with mock encoders
         dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
         index = init_index(index_cls, init_async_index=True)
@@ -776,6 +782,9 @@ class TestRouterAsync:
         self, router_cls, index_cls, routes, openai_encoder
     ):
         """Test async index operations."""
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
         if index_cls is None:
             pytest.skip("Test only for specific index implementations")
 
