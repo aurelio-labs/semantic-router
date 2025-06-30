@@ -1429,7 +1429,7 @@ class PineconeIndex(BaseIndex):
         if namespace_stats and "namespaces" in namespace_stats:
             ns_stats = namespace_stats["namespaces"].get(self.namespace)
             if ns_stats:
-                return ns_stats["vector_count"]
+                return ns_stats["vectorCount"]
         return 0
 
     async def _async_describe_index_stats(self):
