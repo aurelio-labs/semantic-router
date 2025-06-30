@@ -296,7 +296,7 @@ class PineconeIndex(BaseIndex):
         """
         dimensions_given = self.dimensions is not None
         if self.index is None:
-            index_exists = self.index_name in self.client.list_indexes().names()
+            index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
                 # if the index doesn't exist and we have dimension value
                 # we create the index
