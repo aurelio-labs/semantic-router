@@ -569,6 +569,24 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    def __len__(self):
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+        Default implementation just calls the sync version.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        return len(self)
+
 
 def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
     """Parses metadata from index to extract route, utterance, function
@@ -599,21 +617,3 @@ def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:
             (sr_route, sr_utterance, sr_function_schema, additional_metadata)
         )
     return route_info
-
-    def __len__(self):
-        """Returns the total number of vectors in the index. If the index is not initialized
-        returns 0.
-
-        :return: The total number of vectors.
-        :rtype: int
-        """
-        raise NotImplementedError("This method should be implemented by subclasses.")
-
-    async def alen(self):
-        """Async version of __len__. Returns the total number of vectors in the index.
-        Default implementation just calls the sync version.
-
-        :return: The total number of vectors.
-        :rtype: int
-        """
-        return len(self)

@@ -18,9 +18,6 @@ class LocalIndex(BaseIndex):
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
-    async def alen(self):
-        return len(self)
-
     def add(
         self,
         embeddings: List[List[float]],
