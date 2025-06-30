@@ -2671,32 +2671,32 @@ wheels = [
 
 [[package]]
 name = "pinecone"
-version = "7.3.0"
+version = "5.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
-    { name = "pinecone-plugin-assistant" },
+    { name = "pinecone-plugin-inference" },
     { name = "pinecone-plugin-interface" },
     { name = "python-dateutil" },
+    { name = "tqdm" },
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/38/12731d4af470851b4963eba616605868a8599ef4df51c7b6c928e5f3166d/pinecone-7.3.0.tar.gz", hash = "sha256:307edc155621d487c20dc71b76c3ad5d6f799569ba42064190d03917954f9a7b", size = 235256 }
+sdist = { url = "https://files.pythonhosted.org/packages/df/4e/3376f99662f56e7462a4c444edc19e0cbb20676f03b8f70f56a964f34de4/pinecone-5.4.2.tar.gz", hash = "sha256:23e8aaa73b400bb11a3b626c4129284fb170f19025b82f65bd89cbb0dab2b873", size = 191780 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/a6/c5d54a5fb1de3983a8739c1a1660e7a7074db2cbadfa875b823fcf29b629/pinecone-7.3.0-py3-none-any.whl", hash = "sha256:315b8fef20320bef723ecbb695dec0aafa75d8434d86e01e5a0e85933e1009a8", size = 587563 },
+    { url = "https://files.pythonhosted.org/packages/2f/a4/f7214bf02bb2edb29778e35fa6e73e2d188c403e6d9c2b6945f660a776b3/pinecone-5.4.2-py3-none-any.whl", hash = "sha256:1fad082c66a50a229b58cda0c3a1fa0083532dc9de8303015fe4071cb25c19a8", size = 427295 },
 ]
 
 [[package]]
-name = "pinecone-plugin-assistant"
-version = "1.7.0"
+name = "pinecone-plugin-inference"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "packaging" },
-    { name = "requests" },
+    { name = "pinecone-plugin-interface" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/8c/2db25e4d88ec31cc096b71473938e9269459eb567b50ea49dbea9a88f3ab/pinecone_plugin_assistant-1.7.0.tar.gz", hash = "sha256:e26e3ba10a8b71c3da0d777cff407668022e82963c4913d0ffeb6c552721e482", size = 145608 }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/82/09f6fb3c9d3b005c5b110d323a98f848f57babb1394ebea9f72e26f68242/pinecone_plugin_inference-3.1.0.tar.gz", hash = "sha256:eff826178e1fe448577be2ff3d8dbb072befbbdc2d888e214624523a1c37cd8d", size = 49315 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/29/9aab5e3e22086da8ba40fa9cd34bfefffd9cdf3f43f237fd7c9969568f20/pinecone_plugin_assistant-1.7.0-py3-none-any.whl", hash = "sha256:864cb8e7930588e6c2da97c6d44f0240969195f43fa303c5db76cbc12bf903a5", size = 239972 },
+    { url = "https://files.pythonhosted.org/packages/89/45/4ae4e38439919584c2d34b6bef5d0ef8d068030871dd4da911d174840ee6/pinecone_plugin_inference-3.1.0-py3-none-any.whl", hash = "sha256:96e861527bd41e90d58b7e76abd4e713d9af28f63e76a51864dfb9cf7180e3df", size = 87477 },
 ]
 
 [[package]]
@@ -4002,7 +4002,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.25.2" },
     { name = "openai", specifier = ">=1.10.0,<2.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
-    { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=6.0.0" },
+    { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=5.0.0,<6.0.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1.0,<4" },
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pydoc-markdown", marker = "python_full_version < '3.12' and extra == 'docs'", specifier = ">=4.8.2" },
