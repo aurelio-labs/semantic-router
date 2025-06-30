@@ -739,12 +739,11 @@ class PineconeIndex(BaseIndex):
         :return: List of IDs of the vectors deleted.
         :rtype: list[str]
         """
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         route_vec_ids = await self._async_get_route_ids(route_name=route_name)
-        if self.index is not None:
-            await self._async_delete(ids=route_vec_ids, namespace=self.namespace or "")
-            return route_vec_ids
-        else:
-            raise ValueError("Index is None, could not delete.")
+        await self._async_delete(ids=route_vec_ids, namespace=self.namespace or "")
+        return route_vec_ids
 
     def delete_all(self):
         """Delete all routes from index if it exists.
@@ -1034,6 +1033,8 @@ class PineconeIndex(BaseIndex):
     # __ASYNC CLIENT METHODS__
     async def adelete_index(self):
         """Asynchronously delete the index."""
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
         if not self.base_url:
             raise ValueError("base_url is not set for PineconeIndex.")
 
@@ -1045,7 +1046,7 @@ class PineconeIndex(BaseIndex):
                 res = await response.json(content_type=None)
                 if response.status != 202:
                     raise Exception(f"Failed to delete index: {response.status}", res)
-        self.index = None
+        self.host = ""
         return res
 
     async def _async_query(
