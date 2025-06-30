@@ -152,7 +152,7 @@ class HybridLocalIndex(LocalIndex):
             self._sparse_dot_product(vec_a, vec_b) for vec_b in self.sparse_index
         ]
         return dot_products
-    
+
     def query(
         self,
         vector: np.ndarray,

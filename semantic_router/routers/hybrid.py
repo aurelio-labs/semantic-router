@@ -425,7 +425,7 @@ class HybridRouter(BaseRouter):
             text=text,
             limit=limit,
         )
-    
+
     async def _async_execute_sync_strategy(
         self, strategy: Dict[str, Dict[str, List[Utterance]]]
     ):

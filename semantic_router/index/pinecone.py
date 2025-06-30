@@ -1113,10 +1113,22 @@ class PineconeIndex(BaseIndex):
             return False
         if not client_only:
             # now check index attributes
-            if not (self.index_name and self.dimensions and self.metric and self.host and self.host != ""):
+            if not (
+                self.index_name
+                and self.dimensions
+                and self.metric
+                and self.host
+                and self.host != ""
+            ):
                 # try to create index
                 await self._init_async_index()
-                if not (self.index_name and self.dimensions and self.metric and self.host and self.host != ""):
+                if not (
+                    self.index_name
+                    and self.dimensions
+                    and self.metric
+                    and self.host
+                    and self.host != ""
+                ):
                     return False
         return True
 

@@ -266,8 +266,10 @@ def init_index(
         os.environ["PINECONE_API_KEY"] = "pclocal"
         os.environ["PINECONE_API_BASE_URL"] = "http://localhost:5080"
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace,
-            init_async_index=init_async_index
+            index_name=index_name,
+            dimensions=dimensions,
+            namespace=namespace,
+            init_async_index=init_async_index,
         )
     elif index_cls is PostgresIndex:
         index = index_cls(
