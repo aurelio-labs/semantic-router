@@ -276,6 +276,7 @@ def init_index(
             index_name=index_name or "test_index",
             index_prefix="",
             namespace=namespace,
+            dimensions=dimensions,
             init_async_index=init_async_index,
         )
     elif index_cls is None:
