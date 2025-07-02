@@ -4,6 +4,7 @@ from datetime import datetime
 from platform import python_version
 from typing import Any, List
 from unittest.mock import mock_open, patch
+import uuid
 
 import numpy as np
 import pytest
@@ -241,6 +242,8 @@ def get_test_indexes():
 
 def get_test_async_indexes():
     indexes = [LocalIndex]
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
     if importlib.util.find_spec("psycopg") is not None:
@@ -256,6 +259,9 @@ def init_index(
     init_async_index: bool = False,
 ):
     """Initialize indexes for unit testing."""
+    if index_cls is QdrantIndex:
+        index_name = index_name or f"test_{uuid.uuid4().hex}"
+        return QdrantIndex(index_name=index_name, init_async_index=init_async_index)
     if index_cls is PineconeIndex:
         # Use local Pinecone instance
         index_name = (
