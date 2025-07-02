@@ -1,10 +1,10 @@
 import importlib
 import os
+import uuid
 from datetime import datetime
 from platform import python_version
 from typing import Any, List
 from unittest.mock import mock_open, patch
-import uuid
 
 import numpy as np
 import pytest
