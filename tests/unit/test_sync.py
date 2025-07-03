@@ -26,7 +26,7 @@ PINECONE_SLEEP = 6
 RETRY_COUNT = 5
 
 
-# retry decorator for PineconeIndex cases (which need delay)
+# retry decorator for PineconeIndex cases - which need delay
 def retry(max_retries: int = 5, delay: int = 8):
     """Retry decorator, currently used for PineconeIndex which often needs some time
     to be populated and have all correct data. Once full Pinecone mock is built we
@@ -309,8 +309,8 @@ def test_data():
 def get_test_indexes():
     indexes = []
 
-    # if importlib.util.find_spec("qdrant_client") is not None:
-    #    indexes.append(QdrantIndex)
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
 
