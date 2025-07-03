@@ -309,8 +309,8 @@ def test_data():
 def get_test_indexes():
     indexes = []
 
-    # if importlib.util.find_spec("qdrant_client") is not None:
-    #    indexes.append(QdrantIndex)
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
 
