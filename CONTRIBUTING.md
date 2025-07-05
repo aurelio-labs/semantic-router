@@ -38,7 +38,11 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
 
 3. Ensure you have [`uv` installed](https://docs.astral.sh/uv/getting-started/installation/), for macos and linux use `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
-4. Then navigate to the cloned folder, create a virtualenv, and install via `uv`:
+4. Install Dagger CLI for running CI/CD pipelines locally:
+    - macOS: `brew install dagger/tap/dagger`
+    - Linux: `curl -L https://dl.dagger.io/dagger/install.sh | sh`
+
+5. Then navigate to the cloned folder, create a virtualenv, and install via `uv`:
     ```
     # Move into the cloned folder
     cd semantic-router/

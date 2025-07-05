@@ -1,0 +1,7 @@
+{
+  "name": "hello-dagger",
+  "engineVersion": "v0.18.12",
+  "sdk": {
+    "source": "python"
+  }
+}
