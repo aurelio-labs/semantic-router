@@ -61,6 +61,7 @@ dev = [
     "types-pyyaml>=6.0.12.12,<7",
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
+    "dagger-io>=0.1.1 ; python_version >= '3.11'"
 ]
 all = [
     "semantic-router[local]",

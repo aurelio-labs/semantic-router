@@ -62,6 +62,7 @@ jobs:
         env:
           POSTGRES_USER: ${{ inputs.postgres_user }}
           POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
+          
           POSTGRES_DB: ${{ inputs.postgres_db }}
           POSTGRES_HOST: ${{ inputs.postgres_host }}
         options: >-
