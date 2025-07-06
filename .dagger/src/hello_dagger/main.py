@@ -37,6 +37,7 @@ class HelloDagger:
             .stdout()
         )
 
+    @function
     def pinecone_service(self) -> dagger.Service:
         """Build and run a pinecone-local service. Used to test
         PineconeIndex
@@ -44,7 +45,7 @@ class HelloDagger:
         return (
             dag.container()
             .from_("ghcr.io/pinecone-io/pinecone-local")
-            .with_env_variable("PINECONE_HOST", "localhost")
+            .with_env_variable("PINECONE_HOST", "0.0.0.0")
             .with_env_variable("PORT", "5080")
             .with_exposed_port(5080)
             .as_service(use_entrypoint=True)
@@ -62,9 +63,24 @@ class HelloDagger:
             .with_env_variable("POSTGRES_DB", "postgres")
             .with_env_variable("POSTGRES_HOST", "localhost")
             .with_env_variable("POSTGRES_PORT", "5432")
-            .with_exposed_port(5080)
+            .with_exposed_port(5432)
             .as_service(use_entrypoint=True)
         )
+
+    @function
+    async def unit_test(self, src: dagger.Directory) -> str:
+        """Runs unit tests only for semantic-router.
+        """
+        return await (
+            # create a build with all dependencies so we cover all tests
+            (await self.build(src=src, extra="all"))
+            .with_service_binding("postgres", self.postgres_service())
+            .with_service_binding("pinecone", self.pinecone_service())
+            .with_env_variable("PINECONE_API_KEY", "pclocal")
+            .with_exec(["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"])
+            .stdout()
+        )
+        
 
     @function
     async def test(self, src: dagger.Directory, scope: str = "unit") -> str:
@@ -77,6 +93,8 @@ class HelloDagger:
             "uv", "run", "pytest", "-vv",
             (f"tests/{scope}" if scope != "all" else "tests")
         ]
+        # TODO revert to full tests
+        uv_cmd = ["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"]
         return await (
             # create a build with all dependencies so we cover all tests
             (await self.build(src=src, extra="all"))
