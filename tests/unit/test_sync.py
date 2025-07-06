@@ -22,68 +22,6 @@ from semantic_router.routers import HybridRouter, SemanticRouter
 from semantic_router.schema import Utterance
 from semantic_router.utils.logger import logger
 
-RETRY_COUNT = 5
-
-
-# retry decorator for PineconeIndex cases - which need delay
-def retry(max_retries: int = 5, delay: int = 8):
-    """Retry decorator, currently used for PineconeIndex which often needs some time
-    to be populated and have all correct data. Once full Pinecone mock is built we
-    should remove this decorator.
-
-    :param max_retries: Maximum number of retries.
-    :param delay: Delay between retries in seconds.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            count = 0
-            last_exception = None
-            while count < max_retries:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    logger.warning(f"Attempt {count} | Error in {func.__name__}: {e}")
-                    last_exception = e
-                    count += 1
-                    time.sleep(delay)
-            raise last_exception
-
-        return wrapper
-
-    return decorator
-
-
-# retry decorator for PineconeIndex cases (which need delay)
-def async_retry(max_retries: int = 5, delay: int = 8):
-    """Retry decorator, currently used for PineconeIndex which often needs some time
-    to be populated and have all correct data. Once full Pinecone mock is built we
-    should remove this decorator.
-
-    :param max_retries: Maximum number of retries.
-    :param delay: Delay between retries in seconds.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            count = 0
-            last_exception = None
-            while count < max_retries:
-                try:
-                    return await func(*args, **kwargs)
-                except Exception as e:
-                    logger.warning(f"Attempt {count} | Error in {func.__name__}: {e}")
-                    last_exception = e
-                    count += 1
-                    await asyncio.sleep(delay)
-            raise last_exception
-
-        return wrapper
-
-    return decorator
-
 
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
