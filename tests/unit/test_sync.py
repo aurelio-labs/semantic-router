@@ -19,6 +19,8 @@ from semantic_router.routers import HybridRouter, SemanticRouter
 from semantic_router.schema import Utterance
 
 
+PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
+
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
     mock_responses = {
@@ -61,7 +63,7 @@ def init_index(
             dimensions=dimensions,
             namespace=namespace,
             init_async_index=init_async_index,
-            base_url="http://localhost:5080",
+            base_url=PINECONE_BASE_URL,
         )
     else:
         index = index_cls()

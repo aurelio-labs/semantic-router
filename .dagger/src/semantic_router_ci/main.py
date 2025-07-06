@@ -1,10 +1,9 @@
-from dataclasses import dataclass
 import dagger
 from dagger import dag, function, object_type, Container
 
 
 @object_type
-class HelloDagger:
+class SemanticRouter:
     async def build(
         self, src: dagger.Directory, extra: str | None
     ) -> Container:
@@ -77,7 +76,8 @@ class HelloDagger:
             .with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
             .with_env_variable("PINECONE_API_KEY", "pclocal")
-            .with_exec(["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"])
+            .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
+            .with_exec(["uv", "run", "pytest", "-vv", "tests/unit"])
             .stdout()
         )
         

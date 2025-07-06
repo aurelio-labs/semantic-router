@@ -193,17 +193,6 @@ wheels = [
 ]
 
 [[package]]
-name = "hello-dagger"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "dagger-io" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "dagger-io", editable = "sdk" }]
-
-[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -534,6 +523,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/a1/53/830aa4c3066a8ab0a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0d/9b/63f4c7ebc259242c89b3acafdb37b41d1185c07ff0011164674e9076b491/rich-14.0.0-py3-none-any.whl", hash = "sha256:1c9491e1951aac09caffd42f448ee3d04e58923ffe14993f6e83068dc395d7e0", size = 243229, upload-time = "2025-03-30T14:15:12.283Z" },
 ]
+
+[[package]]
+name = "semantic-router-ci"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "dagger-io" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dagger-io", editable = "sdk" }]
 
 [[package]]
 name = "sniffio"

@@ -1,8 +1,11 @@
 [project]
-name = "hello-dagger"
+name = "semantic-router-ci"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["dagger-io"]
+
+[project.entry-points."dagger.mod"]
+main_object = 'semantic_router_ci:SemanticRouter'
 
 [build-system]
 requires = ["hatchling==1.25.0"]

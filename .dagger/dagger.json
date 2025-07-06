@@ -1,5 +1,5 @@
 {
-  "name": "hello-dagger",
+  "name": "semantic-router",
   "engineVersion": "v0.18.12",
   "sdk": {
     "source": "python"
