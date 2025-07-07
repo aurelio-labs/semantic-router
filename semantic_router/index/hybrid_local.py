@@ -15,6 +15,7 @@ class HybridLocalIndex(LocalIndex):
 
     def __init__(self, **data):
         super().__init__(**data)
+        self.metadata = None
 
     def add(
         self,
@@ -64,12 +65,20 @@ class HybridLocalIndex(LocalIndex):
             ]  # TODO: switch back to using SparseEmbedding later
             self.routes = routes_arr
             self.utterances = utterances_arr
+            self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
         else:
             # TODO: we should probably switch to an `upsert` method and standardize elsewhere
             self.index = np.concatenate([self.index, embeds])
             self.sparse_index.extend([x.to_dict() for x in sparse_embeddings])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
+            if self.metadata is not None:
+                self.metadata = np.concatenate([
+                    self.metadata,
+                    np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
+                ])
+            else:
+                self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
 
     async def aadd(
         self,
@@ -119,7 +128,11 @@ class HybridLocalIndex(LocalIndex):
         """
         if self.routes is None or self.utterances is None:
             return []
-        return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
+        if include_metadata and self.metadata is not None:
+            return [Utterance(route, utterance, None, metadata)
+                    for route, utterance, metadata in zip(self.routes, self.utterances, self.metadata)]
+        else:
+            return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
     def _sparse_dot_product(
         self, vec_a: dict[int, float], vec_b: dict[int, float]
@@ -260,6 +273,8 @@ class HybridLocalIndex(LocalIndex):
             self.index = np.delete(self.index, delete_idx, axis=0)
             self.routes = np.delete(self.routes, delete_idx, axis=0)
             self.utterances = np.delete(self.utterances, delete_idx, axis=0)
+            if self.metadata is not None:
+                self.metadata = np.delete(self.metadata, delete_idx, axis=0)
         else:
             raise ValueError(
                 "Attempted to delete route records but either index, routes or "
@@ -275,6 +290,7 @@ class HybridLocalIndex(LocalIndex):
         self.index = None
         self.routes = None
         self.utterances = None
+        self.metadata = None
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route.

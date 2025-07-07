@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 import numpy as np
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
@@ -11,10 +11,12 @@ from semantic_router.utils.logger import logger
 
 class LocalIndex(BaseIndex):
     type: str = "local"
+    metadata: Optional[np.ndarray] = Field(default=None, exclude=True)
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.metadata = None
+        if self.metadata is None:
+            self.metadata = None
 
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
