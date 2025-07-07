@@ -53,18 +53,30 @@ class LocalIndex(BaseIndex):
             self.index = embeds  # type: ignore
             self.routes = routes_arr
             self.utterances = utterances_arr
-            self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
+            self.metadata = (
+                np.array(metadata_list, dtype=object)
+                if metadata_list
+                else np.array([{} for _ in utterances], dtype=object)
+            )
         else:
             self.index = np.concatenate([self.index, embeds])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
             if self.metadata is not None:
-                self.metadata = np.concatenate([
-                    self.metadata,
-                    np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
-                ])
+                self.metadata = np.concatenate(
+                    [
+                        self.metadata,
+                        np.array(metadata_list, dtype=object)
+                        if metadata_list
+                        else np.array([{} for _ in utterances], dtype=object),
+                    ]
+                )
             else:
-                self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
+                self.metadata = (
+                    np.array(metadata_list, dtype=object)
+                    if metadata_list
+                    else np.array([{} for _ in utterances], dtype=object)
+                )
 
     def _remove_and_sync(self, routes_to_delete: dict) -> np.ndarray:
         """Remove and sync the index.
@@ -107,8 +119,17 @@ class LocalIndex(BaseIndex):
         if self.routes is None or self.utterances is None:
             return []
         if include_metadata and self.metadata is not None:
-            return [Utterance(route, utterance, None, metadata)
-                    for route, utterance, metadata in zip(self.routes, self.utterances, self.metadata)]
+            return [
+                Utterance(
+                    route=route,
+                    utterance=utterance,
+                    function_schemas=None,
+                    metadata=metadata,
+                )
+                for route, utterance, metadata in zip(
+                    self.routes, self.utterances, self.metadata
+                )
+            ]
         else:
             return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 

@@ -65,7 +65,11 @@ class HybridLocalIndex(LocalIndex):
             ]  # TODO: switch back to using SparseEmbedding later
             self.routes = routes_arr
             self.utterances = utterances_arr
-            self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
+            self.metadata = (
+                np.array(metadata_list, dtype=object)
+                if metadata_list
+                else np.array([{} for _ in utterances], dtype=object)
+            )
         else:
             # TODO: we should probably switch to an `upsert` method and standardize elsewhere
             self.index = np.concatenate([self.index, embeds])
@@ -73,12 +77,20 @@ class HybridLocalIndex(LocalIndex):
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
             if self.metadata is not None:
-                self.metadata = np.concatenate([
-                    self.metadata,
-                    np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
-                ])
+                self.metadata = np.concatenate(
+                    [
+                        self.metadata,
+                        np.array(metadata_list, dtype=object)
+                        if metadata_list
+                        else np.array([{} for _ in utterances], dtype=object),
+                    ]
+                )
             else:
-                self.metadata = np.array(metadata_list, dtype=object) if metadata_list else np.array([{} for _ in utterances], dtype=object)
+                self.metadata = (
+                    np.array(metadata_list, dtype=object)
+                    if metadata_list
+                    else np.array([{} for _ in utterances], dtype=object)
+                )
 
     async def aadd(
         self,
@@ -129,8 +141,17 @@ class HybridLocalIndex(LocalIndex):
         if self.routes is None or self.utterances is None:
             return []
         if include_metadata and self.metadata is not None:
-            return [Utterance(route, utterance, None, metadata)
-                    for route, utterance, metadata in zip(self.routes, self.utterances, self.metadata)]
+            return [
+                Utterance(
+                    route=route,
+                    utterance=utterance,
+                    function_schemas=None,
+                    metadata=metadata,
+                )
+                for route, utterance, metadata in zip(
+                    self.routes, self.utterances, self.metadata
+                )
+            ]
         else:
             return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
