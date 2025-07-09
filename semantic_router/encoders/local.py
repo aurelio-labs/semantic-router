@@ -1,15 +1,19 @@
-from typing import List, Optional
+from typing import Any, List, Optional
+
 from pydantic import PrivateAttr
+
 from semantic_router.encoders.base import DenseEncoder
+
 
 class LocalEncoder(DenseEncoder):
     """Local encoder using sentence-transformers for efficient local embeddings."""
+
     name: str = "all-MiniLM-L6-v2"
     type: str = "local"
     device: Optional[str] = None
     normalize_embeddings: bool = True
     batch_size: int = 32
-    _model: any = PrivateAttr()
+    _model: Any = PrivateAttr()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -26,6 +30,7 @@ class LocalEncoder(DenseEncoder):
         else:
             # Auto-detect device
             import torch
+
             if torch.cuda.is_available():
                 self.device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -35,9 +40,10 @@ class LocalEncoder(DenseEncoder):
             self._model.to(self.device)
 
     def __call__(self, docs: List[str]) -> List[List[float]]:
-        return self._model.encode(
+        result = self._model.encode(
             docs,
             batch_size=self.batch_size,
             normalize_embeddings=self.normalize_embeddings,
             device=self.device,
-        ).tolist() 
+        )
+        return result.tolist()  # type: ignore[attr-defined]

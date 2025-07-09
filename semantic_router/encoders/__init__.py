@@ -12,6 +12,7 @@ from semantic_router.encoders.google import GoogleEncoder
 from semantic_router.encoders.huggingface import HFEndpointEncoder, HuggingFaceEncoder
 from semantic_router.encoders.jina import JinaEncoder
 from semantic_router.encoders.litellm import LiteLLMEncoder
+from semantic_router.encoders.local import LocalEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
@@ -19,7 +20,6 @@ from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
-from semantic_router.encoders.local import LocalEncoder
 
 __all__ = [
     "AurelioSparseEncoder",
