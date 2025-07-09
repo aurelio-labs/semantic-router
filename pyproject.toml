@@ -75,6 +75,10 @@ all = [
     "semantic-router[cohere]",
     "semantic-router[dev]",
 ]
+local-sentence-transformers = [
+    "sentence-transformers>=2.6.1,<3.0.0 ; python_version < '3.13'",
+    "torch>=2.1.0,<2.6.0 ; python_version < '3.13'"
+]
 
 [tool.uv.sources]
 torch = [

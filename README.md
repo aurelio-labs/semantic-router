@@ -152,3 +152,17 @@ Our utterance vector space also integrates with [Pinecone](https://github.com/au
 - Aniket Hingane, [LLM Apps: Why you Must Know Semantic Router in 2024: Part 1](https://medium.com/@learn-simplified/llm-apps-why-you-must-know-semantic-router-in-2024-part-1-bfbda81374c5), Medium
 - Adrien Sales, [🔀 Semantic Router w. ollama/gemma2 : real life 10ms hotline challenge 🤯](https://dev.to/adriens/semantic-router-w-ollamagemma2-real-life-10ms-hotline-challenge-1i3f)
 - Adrien Sales, [Kaggle Notebook 🔀 Semantic Router: `ollama`/ `gemma2:9b` hotline](https://www.kaggle.com/code/adriensales/semantic-router-ollama-gemma2-hotline/notebook)
+
+To use a minimal local encoder with sentence-transformers:
+
+```bash
+pip install -qU "semantic-router[local-sentence-transformers]"
+```
+
+Example usage:
+
+```python
+from semantic_router.encoders import LocalEncoder
+encoder = LocalEncoder(name="all-MiniLM-L6-v2")
+embeddings = encoder(["How's the weather today?", "Tell me about politics"])
+```

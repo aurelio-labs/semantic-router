@@ -19,6 +19,7 @@ from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
+from semantic_router.encoders.local import LocalEncoder
 
 __all__ = [
     "AurelioSparseEncoder",
@@ -41,6 +42,7 @@ __all__ = [
     "VoyageEncoder",
     "JinaEncoder",
     "NimEncoder",
+    "LocalEncoder",
 ]
 
 
@@ -90,6 +92,8 @@ class AutoEncoder:
             self.model = BedrockEncoder(name=name)  # type: ignore
         elif self.type == EncoderType.LITELLM:
             self.model = LiteLLMEncoder(name=name)
+        elif self.type == EncoderType.LOCAL:
+            self.model = LocalEncoder(name=name)
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
