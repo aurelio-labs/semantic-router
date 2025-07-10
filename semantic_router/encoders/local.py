@@ -8,7 +8,7 @@ from semantic_router.encoders.base import DenseEncoder
 class LocalEncoder(DenseEncoder):
     """Local encoder using sentence-transformers for efficient local embeddings."""
 
-    name: str = "all-MiniLM-L6-v2"
+    name: str = "BAAI/bge-small-en-v1.5"
     type: str = "local"
     device: Optional[str] = None
     normalize_embeddings: bool = True
@@ -22,7 +22,7 @@ class LocalEncoder(DenseEncoder):
         except ImportError:
             raise ImportError(
                 "Please install sentence-transformers to use LocalEncoder. "
-                "You can install it with: `pip install semantic-router[local-sentence-transformers]`"
+                "You can install it with: `pip install semantic-router[local]`"
             )
         self._model = SentenceTransformer(self.name)
         if self.device:
