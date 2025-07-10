@@ -69,8 +69,8 @@ class HuggingFaceEncoder(DenseEncoder):
 
     def _initialize_hf_model(self):
         try:
-            from transformers import AutoModel, AutoTokenizer
             import torch
+            from transformers import AutoModel, AutoTokenizer
         except (ImportError, RuntimeError, ModuleNotFoundError):
             raise ImportError(
                 "Please install transformers to use HuggingFaceEncoder. "
