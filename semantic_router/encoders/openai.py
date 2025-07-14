@@ -137,6 +137,7 @@ class OpenAIEncoder(DenseEncoder):
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:
+                logger.debug(f"Creating embeddings for {len(docs)} docs")
                 embeds = self._client.embeddings.create(
                     input=docs,
                     model=self.name,
