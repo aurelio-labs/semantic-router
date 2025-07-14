@@ -4295,7 +4295,7 @@ requires-dist = [
     { name = "transformers", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=4.36.2" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.12,<7" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0,<3" },
-    { name = "urllib3", specifier = ">=1.25.4,<1.27" },
+    { name = "urllib3", specifier = ">=1.26,<3" },
 ]
 provides-extras = ["local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
 

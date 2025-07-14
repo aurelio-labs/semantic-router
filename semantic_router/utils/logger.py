@@ -43,12 +43,11 @@ def setup_custom_logger(name):
     )
     log_level = log_level.upper()
 
-    if not logger.hasHandlers():
-        add_coloured_handler(logger)
-        logger.setLevel(log_level)
-        logger.propagate = False
+    add_coloured_handler(logger)
+    logger.setLevel(log_level)
+    logger.propagate = False
 
     return logger
 
 
-logger: logging.Logger = setup_custom_logger(__name__)
+logger: logging.Logger = setup_custom_logger("semantic_router")
