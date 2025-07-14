@@ -321,7 +321,7 @@ class PostgresIndex(BaseIndex):
         :param embeddings_str: The string representation of the embeddings.
         :type embeddings_str: str
         :return: The SQL query part for scoring.
-        :rtype: str type that will be returned by the query
+        :rtype: str
         """
         operator = self._get_metric_operator()
         if self.metric == Metric.COSINE:
