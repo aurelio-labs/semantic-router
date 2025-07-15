@@ -38,7 +38,8 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
 
 3. Ensure you have [`uv` installed](https://docs.astral.sh/uv/getting-started/installation/), for macos and linux use `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
-4. Then navigate to the cloned folder, create a virtualenv, and install via `uv`:
+
+5. Then navigate to the cloned folder, create a virtualenv, and install via `uv`:
     ```
     # Move into the cloned folder
     cd semantic-router/
@@ -51,4 +52,28 @@ While we encourage you to initiate a draft Pull Request early to get feedback on
 
     # Install via uv with all extras relevant to perform unit tests
     uv sync --extra all
+    ```
+
+## Developing the CI Pipeline with Dagger
+
+We use [Dagger](https://dagger.io) for our CI pipeline. This allows us to fully reproduce everything that is run in Github Actions locally. To develop the CI pipeline the following is recommended:
+
+1. Install Dagger CLI for running CI/CD pipelines locally:
+    - macOS: `brew install dagger/tap/dagger`
+    - Linux: `curl -L https://dl.dagger.io/dagger/install.sh | sh`
+
+2. Run unit test pipeline:
+
+    ```
+    dagger call --mod ./.dagger unit-test --src .
+    # `--mod ./.dagger` tells dagger to run from the ./.dagger directory
+    # `--src .` runs the underlying pytest commands from the current directory (which should be the root SR folder)
+    ```
+
+3. _(Optional)_ If you are modifying the CI pipeline itself and see issues that _may_ be due to caching of the pipeline, you can clear the cache like so:
+
+    ```
+    docker stop $(docker ps -a -q -f 'name=dagger-engine')
+    docker rm $(docker ps -a -q -f 'name=dagger-engine')
+    docker system prune -f -a --volumes
     ```
