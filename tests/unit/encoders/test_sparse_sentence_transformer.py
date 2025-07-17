@@ -8,7 +8,8 @@ _ = pytest.importorskip("sentence_transformers")
 
 class TestSparseSentenceTransformerEncoder:
     def test_sparse_sentence_transformer_encoder(self):
-        encoder = SparseSentenceTransformerEncoder()
+        # Use a public SPLADE model for testing
+        encoder = SparseSentenceTransformerEncoder(name="naver/splade-cocondenser-ensembledistil")
         test_docs = ["This is a test", "This is another test"]
         embeddings = encoder(test_docs)
         assert isinstance(embeddings, list)
