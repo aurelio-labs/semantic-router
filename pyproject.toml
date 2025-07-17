@@ -20,11 +20,11 @@ dependencies = [
     "urllib3>=1.26,<3",
     "litellm>=1.61.3",
     "openai>=1.10.0,<2.0.0",
+    "torch>=2.6.0 ; python_version < '3.13'",
 ]
 
 [project.optional-dependencies]
 local = [
-    "torch>=2.6.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
     "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
@@ -32,7 +32,6 @@ local = [
 ]
 pinecone = ["pinecone>=5.0.0,<6.0.0"]
 vision = [
-    "torch>=2.6.0 ; python_version < '3.13'",
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
