@@ -1,7 +1,10 @@
 from typing import Any, List, Optional
+
 from pydantic import PrivateAttr
+
 from semantic_router.encoders.base import SparseEncoder
 from semantic_router.schema import SparseEmbedding
+
 
 class SparseSentenceTransformerEncoder(SparseEncoder):
     """Local sparse encoder using sentence-transformers' SparseEncoder (e.g., SPLADE, CSR) for efficient local sparse embeddings."""
@@ -27,6 +30,7 @@ class SparseSentenceTransformerEncoder(SparseEncoder):
         else:
             # Auto-detect device
             import torch
+
             if torch.cuda.is_available():
                 self.device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -39,4 +43,4 @@ class SparseSentenceTransformerEncoder(SparseEncoder):
         # The model.encode returns a numpy array (batch, vocab_size) sparse matrix
         sparse_embeddings = self._model.encode(docs, batch_size=self.batch_size)
         # Convert to List[SparseEmbedding] using the helper from base.py
-        return self._array_to_sparse_embeddings(sparse_embeddings) 
+        return self._array_to_sparse_embeddings(sparse_embeddings)

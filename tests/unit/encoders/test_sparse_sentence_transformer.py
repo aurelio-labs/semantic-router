@@ -5,6 +5,7 @@ from semantic_router.schema import SparseEmbedding
 
 _ = pytest.importorskip("sentence_transformers")
 
+
 class TestSparseSentenceTransformerEncoder:
     def test_sparse_sentence_transformer_encoder(self):
         encoder = SparseSentenceTransformerEncoder()
@@ -12,4 +13,4 @@ class TestSparseSentenceTransformerEncoder:
         embeddings = encoder(test_docs)
         assert isinstance(embeddings, list)
         assert len(embeddings) == len(test_docs)
-        assert all(isinstance(embedding, SparseEmbedding) for embedding in embeddings) 
+        assert all(isinstance(embedding, SparseEmbedding) for embedding in embeddings)

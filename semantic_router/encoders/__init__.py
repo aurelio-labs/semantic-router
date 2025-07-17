@@ -16,10 +16,12 @@ from semantic_router.encoders.local import LocalEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
+from semantic_router.encoders.sparse_sentence_transformer import (
+    SparseSentenceTransformerEncoder,
+)
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
-from semantic_router.encoders.sparse_sentence_transformer import SparseSentenceTransformerEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
 
 __all__ = [
