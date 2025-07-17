@@ -77,9 +77,6 @@ all = [
     "semantic-router[dev]",
 ]
 
-[project.dependencies]
-torch = ">=2.6.0"
-
 [tool.uv.sources]
 torch = [
     { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
