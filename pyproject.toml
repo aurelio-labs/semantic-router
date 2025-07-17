@@ -77,16 +77,6 @@ all = [
     "semantic-router[dev]",
 ]
 
-[tool.uv.sources]
-torch = [
-    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
-    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
-]
-torchvision = [
-    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
-    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
-]
-
 [tool.hatch.build.targets.sdist]
 include = ["semantic_router"]
 
