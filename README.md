@@ -59,16 +59,26 @@ chitchat = Route(
 
 # we place both of our decisions together into single list
 routes = [politics, chitchat]
+```
 
-# Example: Using a local encoder (no API key required)
-from semantic_router.encoders import LocalEncoder
-encoder = LocalEncoder()  # Uses 'BAAI/bge-small-en-v1.5' by default
+We have our routes ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
 
-# If you want to use a different model:
-# encoder = LocalEncoder(name="BAAI/bge-base-en-v1.5")
+```python
+import os
+from semantic_router.encoders import CohereEncoder, OpenAIEncoder
 
-# With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
+# for Cohere
+os.environ["COHERE_API_KEY"] = "<YOUR_API_KEY>"
+encoder = CohereEncoder()
 
+# or for OpenAI
+os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
+encoder = OpenAIEncoder()
+```
+
+With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
+
+```python
 from semantic_router.routers import SemanticRouter
 
 rl = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
