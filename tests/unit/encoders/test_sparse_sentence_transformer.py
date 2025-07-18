@@ -6,10 +6,10 @@ from semantic_router.schema import SparseEmbedding
 _ = pytest.importorskip("sentence_transformers")
 
 
-class TestSparseSentenceTransformerEncoder:
-    def test_sparse_sentence_transformer_encoder(self):
+class TestLocalSparseEncoder:
+    def test_sparse_local_encoder(self):
         # Use a public SPLADE model for testing
-        encoder = SparseSentenceTransformerEncoder(name="naver/splade-cocondenser-ensembledistil")
+        encoder = LocalSparseEncoder(name="naver/splade-cocondenser-ensembledistil")
         test_docs = ["This is a test", "This is another test"]
         embeddings = encoder(test_docs)
         assert isinstance(embeddings, list)

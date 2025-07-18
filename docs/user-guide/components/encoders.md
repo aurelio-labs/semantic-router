@@ -119,14 +119,14 @@ router = HybridRouter(
 | [BM25Encoder](https://semantic-router.aurelio.ai/api/encoders/bm25) | Implements BM25 algorithm for sparse embeddings | `pip install -qU semantic-router` |
 | [TfidfEncoder](https://semantic-router.aurelio.ai/api/encoders/tfidf) | Implements TF-IDF for sparse embeddings | `pip install -qU semantic-router` |
 | [AurelioSparseEncoder](https://semantic-router.aurelio.ai/api/encoders/aurelio) | Uses Aurelio's API for BM25 sparse embeddings | `pip install -qU semantic-router` |
-| **SparseSentenceTransformerEncoder** | Uses local sentence-transformers SPLADE/CSR models for neural sparse embeddings | `pip install -qU "semantic-router[local]"` |
+| **LocalSparseEncoder** | Uses local sentence-transformers SPLADE/CSR models for neural sparse embeddings | `pip install -qU "semantic-router[local]"` |
 
 **Example usage:**
 
 ```python
-from semantic_router.encoders import SparseSentenceTransformerEncoder
+from semantic_router.encoders import LocalSparseEncoder
 
-encoder = SparseSentenceTransformerEncoder(name="naver/splade-v3")
+encoder = LocalSparseEncoder(name="naver/splade-v3")
 embeddings = encoder(["How's the weather today?", "Tell me about politics"])
 ```
 

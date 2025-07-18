@@ -6,11 +6,11 @@ from semantic_router.encoders.base import SparseEncoder
 from semantic_router.schema import SparseEmbedding
 
 
-class SparseSentenceTransformerEncoder(SparseEncoder):
+class LocalSparseEncoder(SparseEncoder):
     """Local sparse encoder using sentence-transformers' SparseEncoder (e.g., SPLADE, CSR) for efficient local sparse embeddings."""
 
     name: str = "naver/splade-v3"
-    type: str = "sparse_sentence_transformer"
+    type: str = "sparse_local"
     device: Optional[str] = None
     batch_size: int = 32
     _model: Any = PrivateAttr()
