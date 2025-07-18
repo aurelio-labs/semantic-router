@@ -12,9 +12,11 @@ from semantic_router.encoders.google import GoogleEncoder
 from semantic_router.encoders.huggingface import HFEndpointEncoder, HuggingFaceEncoder
 from semantic_router.encoders.jina import JinaEncoder
 from semantic_router.encoders.litellm import LiteLLMEncoder
+from semantic_router.encoders.local import LocalEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
+from semantic_router.encoders.sparse_sentence_transformer import LocalSparseEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
@@ -41,6 +43,8 @@ __all__ = [
     "VoyageEncoder",
     "JinaEncoder",
     "NimEncoder",
+    "LocalEncoder",
+    "LocalSparseEncoder",
 ]
 
 
@@ -90,6 +94,8 @@ class AutoEncoder:
             self.model = BedrockEncoder(name=name)  # type: ignore
         elif self.type == EncoderType.LITELLM:
             self.model = LiteLLMEncoder(name=name)
+        elif self.type == EncoderType.LOCAL:
+            self.model = LocalEncoder(name=name)
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 
