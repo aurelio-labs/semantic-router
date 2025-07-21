@@ -1,6 +1,6 @@
 import pytest
 
-from semantic_router.encoders import SparseSentenceTransformerEncoder
+from semantic_router.encoders import LocalSparseEncoder
 from semantic_router.schema import SparseEmbedding
 
 _ = pytest.importorskip("sentence_transformers")
