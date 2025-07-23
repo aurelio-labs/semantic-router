@@ -88,18 +88,35 @@ class SemanticRouter:
         set to run for 'unit', 'functional', 'integration',
         or 'all'. By default scope is set to 'unit'.
         """
-        # create uv command as per scope
-        uv_cmd = [
-            "uv", "run", "pytest", "-vv",
-            (f"tests/{scope}" if scope != "all" else "tests")
-        ]
-        # TODO revert to full tests
-        uv_cmd = ["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"]
-        return await (
-            # create a build with all dependencies so we cover all tests
-            (await self.build(src=src, extra="all"))
+        # Map scope to pytest arguments
+        if scope == "all":
+            pytest_args = [
+                "uv", "run", "pytest", "-vv", "--cov=semantic_router", "--cov-report=term-missing", "--cov-report=xml", "--exitfirst", "--maxfail=1", "tests"
+            ]
+        elif scope == "unit":
+            pytest_args = [
+                "uv", "run", "pytest", "-vv", "--exitfirst", "--maxfail=1", "tests/unit"
+            ]
+        elif scope == "functional":
+            pytest_args = [
+                "uv", "run", "pytest", "-vv", "-s", "--exitfirst", "--maxfail=1", "tests/functional"
+            ]
+        elif scope == "integration":
+            pytest_args = [
+                "uv", "run", "pytest", "-vv", "--exitfirst", "--maxfail=1", "tests/integration"
+            ]
+        else:
+            pytest_args = [
+                "uv", "run", "pytest", "-vv", "tests/unit"
+            ]
+
+        container = await self.build(src=src, extra="all")
+        container = (
+            container
             .with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
-            .with_exec(uv_cmd)
-            .stdout()
+            .with_env_variable("PINECONE_API_KEY", "pclocal")
+            .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
+            .with_exec(pytest_args)
         )
+        return await container.stdout()
