@@ -11,13 +11,13 @@ jobs:
       - name: Install Dagger CLI
         run: |
           curl -L https://dl.dagger.io/dagger/install.sh | sh
-          echo "$HOME/.dagger/bin" >> $GITHUB_PATH
+          echo "$PWD/bin" >> $GITHUB_PATH
 
       - name: Echo PATH
         run: echo $PATH
 
       - name: List Dagger bin
-        run: ls -l $HOME/.dagger/bin
+        run: ls -l ./bin
 
       - name: Which Dagger
         run: which dagger
