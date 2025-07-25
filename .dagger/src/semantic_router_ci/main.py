@@ -1,5 +1,6 @@
 import dagger
 from dagger import dag, function, object_type, Container
+import os
 
 
 @object_type
@@ -115,8 +116,16 @@ class SemanticRouter:
             container
             .with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
-            .with_env_variable("PINECONE_API_KEY", "pclocal")
+            .with_env_variable("PINECONE_API_KEY", os.environ.get("PINECONE_API_KEY", "pclocal"))
             .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
+            .with_env_variable("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
+            .with_env_variable("COHERE_API_KEY", os.environ.get("COHERE_API_KEY", ""))
+            .with_env_variable("AURELIO_API_KEY", os.environ.get("AURELIO_API_KEY", ""))
+            .with_env_variable("POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres"))
+            .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
+            .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "routes_db"))
+            .with_env_variable("POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres"))
+            .with_env_variable("POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres"))
             .with_exec(pytest_args)
         )
         return await container.stdout()
