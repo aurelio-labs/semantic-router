@@ -84,7 +84,14 @@ class SemanticRouter:
         
 
     @function
-    async def test(self, src: dagger.Directory, scope: str = "unit") -> str:
+    async def test(
+        self,
+        src: dagger.Directory,
+        scope: str = "unit",
+        openai_api_key: str = "",
+        cohere_api_key: str = "",
+        pinecone_api_key: str = "",
+    ) -> str:
         """Runs tests for semantic-router, scope can be 
         set to run for 'unit', 'functional', 'integration',
         or 'all'. By default scope is set to 'unit'.
@@ -112,12 +119,12 @@ class SemanticRouter:
             ]
 
         container = await self.build(src=src, extra="all")
-        if os.environ.get("OPENAI_API_KEY"):
-            container = container.with_env_variable("OPENAI_API_KEY", os.environ["OPENAI_API_KEY"])
-        if os.environ.get("COHERE_API_KEY"):
-            container = container.with_env_variable("COHERE_API_KEY", os.environ["COHERE_API_KEY"])
-        if os.environ.get("PINECONE_API_KEY"):
-            container = container.with_env_variable("PINECONE_API_KEY", os.environ["PINECONE_API_KEY"])
+        if openai_api_key:
+            container = container.with_env_variable("OPENAI_API_KEY", openai_api_key)
+        if cohere_api_key:
+            container = container.with_env_variable("COHERE_API_KEY", cohere_api_key)
+        if pinecone_api_key:
+            container = container.with_env_variable("PINECONE_API_KEY", pinecone_api_key)
         container = (
             container
             .with_service_binding("postgres", self.postgres_service())
@@ -125,7 +132,7 @@ class SemanticRouter:
             .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
             .with_env_variable("POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres"))
             .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
-            .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "routes_db"))
+            .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
             .with_env_variable("POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres"))
             .with_env_variable("POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres"))
         )
