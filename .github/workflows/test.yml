@@ -12,6 +12,7 @@ jobs:
         run: |
           curl -L https://dl.dagger.io/dagger/install.sh | sh
           echo "$HOME/.dagger/bin" >> $GITHUB_PATH
+          echo 'export PATH="$HOME/.dagger/bin:$PATH"' >> $GITHUB_ENV
 
       - name: Run tests with Dagger
         run: dagger call --mod ./.dagger test --src . --scope all
