@@ -30,25 +30,22 @@ jobs:
           echo "OPENAI_API_KEY: $OPENAI_API_KEY"
           echo "COHERE_API_KEY: $COHERE_API_KEY"
           echo "PINECONE_API_KEY: $PINECONE_API_KEY"
-          echo "AURELIO_API_KEY: $AURELIO_API_KEY"
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          AURELIO_API_KEY: ${{ secrets.AURELIO_API_KEY }}
 
       - name: Run tests with Dagger
-        run: |
-          export COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}"
-          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
-          export PINECONE_API_KEY="${{ secrets.PINECONE_API_KEY }}"
-          export AURELIO_API_KEY="${{ secrets.AURELIO_API_KEY }}"
-          export POSTGRES_HOST=postgres
-          export POSTGRES_PORT=5432
-          export POSTGRES_DB=routes_db
-          export POSTGRES_USER=postgres
-          export POSTGRES_PASSWORD=postgres
-          dagger call --mod ./.dagger test --src . --scope all
+        run: dagger call --mod ./.dagger test --src . --scope all
+        env:
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: routes_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
