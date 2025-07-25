@@ -25,6 +25,18 @@ jobs:
       - name: Dagger Version
         run: dagger version
 
+      - name: Debug secrets
+        run: |
+          echo "OPENAI_API_KEY: $OPENAI_API_KEY"
+          echo "COHERE_API_KEY: $COHERE_API_KEY"
+          echo "PINECONE_API_KEY: $PINECONE_API_KEY"
+          echo "AURELIO_API_KEY: $AURELIO_API_KEY"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          AURELIO_API_KEY: ${{ secrets.AURELIO_API_KEY }}
+
       - name: Run tests with Dagger
         run: |
           export COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}"
