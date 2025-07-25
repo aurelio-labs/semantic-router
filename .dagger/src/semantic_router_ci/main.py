@@ -128,6 +128,8 @@ class SemanticRouter:
             .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "routes_db"))
             .with_env_variable("POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres"))
             .with_env_variable("POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres"))
-            .with_exec(pytest_args)
         )
+        # Debug: print env vars inside the container
+        container = container.with_exec(["env"])
+        container = container.with_exec(pytest_args)
         return await container.stdout()
