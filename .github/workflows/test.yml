@@ -13,28 +13,6 @@ jobs:
           curl -L https://dl.dagger.io/dagger/install.sh | sh
           echo "$PWD/bin" >> $GITHUB_PATH
 
-      - name: Echo PATH
-        run: echo $PATH
-
-      - name: List Dagger bin
-        run: ls -l ./bin
-
-      - name: Which Dagger
-        run: which dagger
-
-      - name: Dagger Version
-        run: dagger version
-
-      - name: Debug secrets
-        run: |
-          echo "OPENAI_API_KEY: $OPENAI_API_KEY"
-          echo "COHERE_API_KEY: $COHERE_API_KEY"
-          echo "PINECONE_API_KEY: $PINECONE_API_KEY"
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-
       - name: Run tests with Dagger
         run: |
           dagger call --mod ./.dagger test \
