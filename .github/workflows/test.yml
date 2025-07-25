@@ -13,12 +13,20 @@ jobs:
           curl -L https://dl.dagger.io/dagger/install.sh | sh
           echo "$HOME/.dagger/bin" >> $GITHUB_PATH
 
+      - name: Echo PATH
+        run: echo $PATH
+
+      - name: List Dagger bin
+        run: ls -l $HOME/.dagger/bin
+
+      - name: Which Dagger
+        run: which dagger
+
+      - name: Dagger Version
+        run: dagger version
+
       - name: Run tests with Dagger
-        run: |
-          echo $PATH
-          which dagger
-          dagger version
-          dagger call --mod ./.dagger test --src . --scope all
+        run: dagger call --mod ./.dagger test --src . --scope all
         env:
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
