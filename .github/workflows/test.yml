@@ -26,17 +26,17 @@ jobs:
         run: dagger version
 
       - name: Run tests with Dagger
-        run: dagger call --mod ./.dagger test --src . --scope all
-        env:
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          AURELIO_API_KEY: ${{ secrets.AURELIO_API_KEY }}
-          POSTGRES_HOST: postgres
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: routes_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+        run: |
+          export COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}"
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          export PINECONE_API_KEY="${{ secrets.PINECONE_API_KEY }}"
+          export AURELIO_API_KEY="${{ secrets.AURELIO_API_KEY }}"
+          export POSTGRES_HOST=postgres
+          export POSTGRES_PORT=5432
+          export POSTGRES_DB=routes_db
+          export POSTGRES_USER=postgres
+          export POSTGRES_PASSWORD=postgres
+          dagger call --mod ./.dagger test --src . --scope all
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
