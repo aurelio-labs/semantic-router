@@ -36,14 +36,20 @@ jobs:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
 
       - name: Run tests with Dagger
-        run: dagger call --mod ./.dagger test --src . --scope all
+        run: |
+          dagger call --mod ./.dagger test \
+            --src . \
+            --scope all \
+            --openai-api-key "$OPENAI_API_KEY" \
+            --cohere-api-key "$COHERE_API_KEY" \
+            --pinecone-api-key "$PINECONE_API_KEY"
         env:
-          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
-          POSTGRES_DB: routes_db
+          POSTGRES_DB: postgres
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
 
