@@ -95,8 +95,6 @@ jobs:
       run: uv sync --extra all
     - name: Install nltk
       run: uv pip install nltk
-    - name: Install pytest-timeout
-      run: uv pip install pytest-timeout
 
     - name: Download nltk data
       run: |
@@ -108,14 +106,14 @@ jobs:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
       run: |
-        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 --timeout=60
+        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1
     - name: Pytest Unit and Functional Only
       if: ${{ inputs.test_scope == 'unit-functional' }}
       env:
         PINECONE_API_KEY: pclocal
         PINECONE_API_BASE_URL: http://localhost:5080
       run: |
-        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 --timeout=60 -m "unit or functional"
+        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 -m "unit or functional"
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
