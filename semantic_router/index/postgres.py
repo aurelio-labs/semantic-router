@@ -206,7 +206,7 @@ class PostgresIndex(BaseIndex):
         self.conn = psycopg.connect(
             conninfo=self.connection_string,
             connect_timeout=5,
-            options='-c statement_timeout=10000'
+            options="-c statement_timeout=10000",
         )
         if not self.has_connection():
             raise ValueError("Index has not established a connection to Postgres")
@@ -263,7 +263,7 @@ class PostgresIndex(BaseIndex):
             self.async_conn = await psycopg.AsyncConnection.connect(
                 self.connection_string,
                 connect_timeout=5,
-                options='-c statement_timeout=10000'
+                options="-c statement_timeout=10000",
             )
 
         if self.dimensions is None and not force_create:
@@ -1126,7 +1126,7 @@ class PostgresIndex(BaseIndex):
             with self.conn.cursor() as cur:
                 # Forcibly terminate other connections to the database (CI safety)
                 cur.execute(
-                    f"""
+                    """
                     SELECT pg_terminate_backend(pid)
                     FROM pg_stat_activity
                     WHERE datname = current_database()
