@@ -202,7 +202,12 @@ class PostgresIndex(BaseIndex):
         """
         if not self.connection_string:
             raise ValueError("No `self.connection_string` attribute set")
-        self.conn = psycopg.connect(conninfo=self.connection_string)
+        # Add connection and statement timeouts
+        self.conn = psycopg.connect(
+            conninfo=self.connection_string,
+            connect_timeout=5,
+            options='-c statement_timeout=10000'
+        )
         if not self.has_connection():
             raise ValueError("Index has not established a connection to Postgres")
 
@@ -254,8 +259,11 @@ class PostgresIndex(BaseIndex):
         if self.async_conn is None:
             if not self.connection_string:
                 raise ValueError("No `self.connection_string` attribute set")
+            # Add connection and statement timeouts for async connection
             self.async_conn = await psycopg.AsyncConnection.connect(
-                self.connection_string
+                self.connection_string,
+                connect_timeout=5,
+                options='-c statement_timeout=10000'
             )
 
         if self.dimensions is None and not force_create:
