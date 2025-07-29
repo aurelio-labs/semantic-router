@@ -1,3 +1,22 @@
+### v0.1.10
+
+The `0.1.10` release was primarily focused on expanding async support for `QdrantIndex`, `PostgresIndex`, and `HybridRouter`, alongside many synchronization and testing improvements.
+
+#### Feature: Expanded Async Support
+
+- **QdrantIndex**: Async methods have been brought inline with our other indexes, ensuring consistent behavior.
+- **PostgresIndex**: Async methods have been added to the `PostgresIndex` for improved performance in async environments.
+- **HybridRouter**: Async support for the `HybridRouter` is now aligned with the `SemanticRouter`, providing a more consistent experience.
+
+#### Fixes and Optimizations
+
+- **LocalIndex Bug Fix**: Added a `metadata` attribute to the local index. This fixes a bug where `LocalIndex` embeddings would always be recomputed, as reported in [issue #585](https://github.com/aurelio-labs/semantic-router/issues/585).
+- Various other bug fixes and optimizations have been included in this release.
+- The `urllib3` library has been upgraded.
+- Test compatibility and synchronization have been optimized.
+
+---
+
 ### v0.1.9
 
 The `0.1.9` update focuses on improving support for our local deployment options. We have standardized the `PostgresIndex` to bring it in line with other index options and prepare it for future feature releases. For `local` extras (inclusing `transformers` and `llama_cpp` support) and `postgres` extras we have resolved issues making those extras unusable with Python 3.13.
