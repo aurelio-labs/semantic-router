@@ -789,14 +789,11 @@ class TestRouterAsync:
         assert len(result) == 4  # Should return all matches
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        index_cls is PostgresIndex,
-        reason="Async PostgresIndex operations not implemented yet"
-    )
     async def test_async_index_operations(
         self, router_cls, index_cls, routes, openai_encoder
     ):
-        """Test async index operations."""
+        if index_cls is PostgresIndex:
+            pytest.skip("Async PostgresIndex operations not implemented yet")
         # we don't test postgres and hybrid together
         if index_cls is PostgresIndex and router_cls == HybridRouter:
             pytest.skip("PostgresIndex does not support hybrid")

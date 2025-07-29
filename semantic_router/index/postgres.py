@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from enum import Enum
@@ -10,8 +11,6 @@ from typing_extensions import deprecated
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
-
-import logging
 
 if TYPE_CHECKING:
     import psycopg
@@ -247,13 +246,17 @@ class PostgresIndex(BaseIndex):
         if self.async_conn is None:
             if not self.connection_string:
                 raise ValueError("No `self.connection_string` attribute set")
-            logging.warning(f"[DEBUG] Connecting async to Postgres with: {self.connection_string}")
+            logging.warning(
+                f"[DEBUG] Connecting async to Postgres with: {self.connection_string}"
+            )
             self.async_conn = await psycopg.AsyncConnection.connect(
                 self.connection_string
             )
             logging.warning(f"[DEBUG] Async connection established: {self.async_conn}")
         if self.dimensions is None and not force_create:
-            logging.warning("[DEBUG] No dimensions and not force_create, returning None from _init_async_index")
+            logging.warning(
+                "[DEBUG] No dimensions and not force_create, returning None from _init_async_index"
+            )
             return None
         if self.dimensions is None:
             raise ValueError("Dimensions are required for PostgresIndex")
@@ -284,7 +287,9 @@ class PostgresIndex(BaseIndex):
                 await self.async_conn.commit()
                 await self._async_create_route_index()
                 await self._async_create_index()
-                logging.warning(f"[DEBUG] Finished async index/table creation for {table_name}")
+                logging.warning(
+                    f"[DEBUG] Finished async index/table creation for {table_name}"
+                )
         except Exception as e:
             logging.warning(f"[DEBUG] Exception in _init_async_index: {e}")
             await self.async_conn.rollback()
