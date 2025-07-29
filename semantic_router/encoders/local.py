@@ -2,8 +2,7 @@ from typing import Any, List, Optional
 
 from pydantic import PrivateAttr
 
-from semantic_router.encoders.base import DenseEncoder
-from semantic_router.encoders.base import SparseEncoder
+from semantic_router.encoders.base import DenseEncoder, SparseEncoder
 from semantic_router.schema import SparseEmbedding
 
 
@@ -53,6 +52,7 @@ class LocalEncoder(DenseEncoder):
 
 class LocalSparseEncoder(SparseEncoder):
     """Local sparse encoder using sentence-transformers' SparseEncoder (e.g., SPLADE, CSR) for efficient local sparse embeddings."""
+
     name: str = "naver/splade-v3"
     type: str = "sparse_local"
     device: Optional[str] = None
@@ -74,6 +74,7 @@ class LocalSparseEncoder(SparseEncoder):
         else:
             # Auto-detect device
             import torch
+
             if torch.cuda.is_available():
                 self.device = "cuda"
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():

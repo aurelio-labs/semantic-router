@@ -203,9 +203,7 @@ class PostgresIndex(BaseIndex):
         if not self.connection_string:
             raise ValueError("No `self.connection_string` attribute set")
         # Add connection and statement timeouts
-        self.conn = psycopg.connect(
-            conninfo=self.connection_string
-        )
+        self.conn = psycopg.connect(conninfo=self.connection_string)
         if not self.has_connection():
             raise ValueError("Index has not established a connection to Postgres")
 
