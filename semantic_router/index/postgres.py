@@ -11,6 +11,8 @@ from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
+import logging
+
 if TYPE_CHECKING:
     import psycopg
 
@@ -241,44 +243,32 @@ class PostgresIndex(BaseIndex):
         return self
 
     async def _init_async_index(self, force_create: bool = False) -> Union[Any, None]:
-        """Initializing the index asynchronously after the object is created.
-
-        If the index doesn't exist and the dimensions are given, the index will
-        be created. If the index exists, it will be returned. If the index doesn't
-        exist and the dimensions are not given, the index will not be created and
-        None will be returned.
-
-        :param force_create: If True, the index will be created even if the
-        dimensions are not given (which will raise an error).
-        :type force_create: bool, optional
-        """
+        logging.warning("[DEBUG] Entering _init_async_index for PostgresIndex")
         if self.async_conn is None:
             if not self.connection_string:
                 raise ValueError("No `self.connection_string` attribute set")
-            # Add connection and statement timeouts for async connection
+            logging.warning(f"[DEBUG] Connecting async to Postgres with: {self.connection_string}")
             self.async_conn = await psycopg.AsyncConnection.connect(
                 self.connection_string
             )
-
+            logging.warning(f"[DEBUG] Async connection established: {self.async_conn}")
         if self.dimensions is None and not force_create:
+            logging.warning("[DEBUG] No dimensions and not force_create, returning None from _init_async_index")
             return None
-
         if self.dimensions is None:
             raise ValueError("Dimensions are required for PostgresIndex")
-
         table_name = self._get_table_name()
-
+        logging.warning(f"[DEBUG] Table name for async index: {table_name}")
         if not await self._async_check_embeddings_dimensions():
             raise ValueError(
                 f"The length of the vector embeddings in the existing table {table_name} "
                 f"does not match the expected dimensions of {self.dimensions}."
             )
-
         if not isinstance(self.async_conn, psycopg.AsyncConnection):
             raise TypeError("Index has not established a connection to async Postgres")
-
         try:
             async with self.async_conn.cursor() as cur:
+                logging.warning(f"[DEBUG] Creating extension/table for {table_name}")
                 await cur.execute(
                     f"""
                     CREATE EXTENSION IF NOT EXISTS vector;
@@ -294,10 +284,12 @@ class PostgresIndex(BaseIndex):
                 await self.async_conn.commit()
                 await self._async_create_route_index()
                 await self._async_create_index()
+                logging.warning(f"[DEBUG] Finished async index/table creation for {table_name}")
         except Exception as e:
+            logging.warning(f"[DEBUG] Exception in _init_async_index: {e}")
             await self.async_conn.rollback()
             raise e
-
+        logging.warning("[DEBUG] Exiting _init_async_index for PostgresIndex")
         return self
 
     def _get_table_name(self) -> str:
@@ -1064,7 +1056,7 @@ class PostgresIndex(BaseIndex):
         :rtype: list[tuple[str, str]]
         """
         if not isinstance(self.async_conn, psycopg.AsyncConnection):
-            raise TypeError("Index has not established a connection to async Postgres")
+            raise TypeError("Index has not established an async connection to Postgres")
 
         table_name = self._get_table_name()
         removed = []

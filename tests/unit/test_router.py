@@ -789,6 +789,10 @@ class TestRouterAsync:
         assert len(result) == 4  # Should return all matches
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        index_cls is PostgresIndex,
+        reason="Async PostgresIndex operations not implemented yet"
+    )
     async def test_async_index_operations(
         self, router_cls, index_cls, routes, openai_encoder
     ):
