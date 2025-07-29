@@ -5,6 +5,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     steps:
       - uses: actions/checkout@v4
 

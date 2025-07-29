@@ -99,23 +99,23 @@ class SemanticRouter:
         # Map scope to pytest arguments
         if scope == "all":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--cov=semantic_router", "--cov-report=term-missing", "--cov-report=xml", "--exitfirst", "--maxfail=1", "tests"
+                "uv", "run", "pytest", "-vv", "--timeout=60", "--cov=semantic_router", "--cov-report=term-missing", "--cov-report=xml", "--exitfirst", "--maxfail=1", "tests"
             ]
         elif scope == "unit":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--exitfirst", "--maxfail=1", "tests/unit"
+                "uv", "run", "pytest", "-vv", "--timeout=60", "--exitfirst", "--maxfail=1", "tests/unit"
             ]
         elif scope == "functional":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "-s", "--exitfirst", "--maxfail=1", "tests/functional"
+                "uv", "run", "pytest", "-vv", "--timeout=60", "-s", "--exitfirst", "--maxfail=1", "tests/functional"
             ]
         elif scope == "integration":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--exitfirst", "--maxfail=1", "tests/integration"
+                "uv", "run", "pytest", "-vv", "--timeout=60", "--exitfirst", "--maxfail=1", "tests/integration"
             ]
         else:
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "tests/unit"
+                "uv", "run", "pytest", "-vv", "--timeout=60", "tests/unit"
             ]
 
         container = await self.build(src=src, extra="all")
