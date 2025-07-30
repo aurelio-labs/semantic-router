@@ -40,7 +40,7 @@ jobs:
         run: |
           dagger call --mod ./.dagger test \
             --src . \
-            --scope all \
+            --scope ${{ inputs.test_scope || 'all' }} \
             --python-version "${{ matrix.python-version }}" \
             --openai-api-key "$OPENAI_API_KEY" \
             --cohere-api-key "$COHERE_API_KEY" \
