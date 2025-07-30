@@ -1,5 +1,7 @@
 name: Diff
 on:
+  push:
+    branches: ["**"]
   workflow_call:
     inputs:
       config:
