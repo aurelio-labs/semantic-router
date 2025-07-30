@@ -57,10 +57,12 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "pytest-xdist>=3.5.0,<4",
     "pytest-asyncio>=0.24.0,<0.25",
+    "pytest-timeout",
     "mypy>=1.7.1,<2",
     "types-pyyaml>=6.0.12.12,<7",
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
+    "dagger-io>=0.1.1 ; python_version >= '3.11'"
 ]
 all = [
     "semantic-router[local]",
@@ -74,6 +76,7 @@ all = [
     "semantic-router[fastembed]",
     "semantic-router[cohere]",
     "semantic-router[dev]",
+    "pytest-timeout",
 ]
 
 [tool.hatch.build.targets.sdist]

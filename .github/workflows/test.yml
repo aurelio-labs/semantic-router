@@ -2,6 +2,10 @@ name: Test
 
 on:
   workflow_call:
+    inputs:
+      test_scope:
+        required: false
+        type: string
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -9,115 +13,51 @@ on:
         required: false
       CODECOV_TOKEN:
         required: false
-    inputs:
-      test_scope:
-        type: string
+      PINECONE_API_KEY:
         required: false
-        default: 'all'
-        description: 'Scope of tests to run: all, unit-functional, or specific test type'
-      postgres_user:
-        type: string
-        required: false
-        default: 'postgres'
-      postgres_password:
-        type: string
-        required: false
-        default: 'postgres'
-      postgres_db:
-        type: string
-        required: false
-        default: 'postgres'
-      postgres_host:
-        type: string
-        required: false
-        default: 'localhost'
-      postgres_port:
-        type: number
-        required: false
-        default: 5432
-
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
-      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY || '' }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      POSTGRES_USER: ${{ inputs.postgres_user }}
-      POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
-      POSTGRES_DB: ${{ inputs.postgres_db }}
-      POSTGRES_HOST: ${{ inputs.postgres_host }}
-      POSTGRES_PORT: ${{ inputs.postgres_port }}
-    services:
-      pinecone:
-        image: ghcr.io/pinecone-io/pinecone-local
-        env:
-          PORT: 5080
-          PINECONE_HOST: localhost
-        ports:
-        - "5080-5430:5080-5430"
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: ${{ inputs.postgres_user }}
-          POSTGRES_PASSWORD: ${{ inputs.postgres_password }}
-          POSTGRES_DB: ${{ inputs.postgres_db }}
-          POSTGRES_HOST: ${{ inputs.postgres_host }}
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - ${{ inputs.postgres_port }}:5432
-
+    timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     strategy:
       matrix:
-        python-version:
-        - "3.10"
-        - "3.11"
-        - "3.12"
-        - "3.13"
+        python-version: ["3.10", "3.13"]
     steps:
-    - uses: actions/checkout@v4
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
-        cache-dependency-glob: "uv.lock"
-        python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies (Essential Only)
-      run: uv sync
-    - name: Confirm Library Imports
-      run: uv run python -c "import semantic_router"
-    - name: Install Dependencies (All)
-      run: uv sync --extra all
-    - name: Install nltk
-      run: uv pip install nltk
-    - name: Install pytest-timeout
-      run: uv pip install pytest-timeout
+      - uses: actions/checkout@v4
 
-    - name: Download nltk data
-      run: |
-        uv run python -m nltk.downloader punkt stopwords wordnet punkt_tab
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Pytest All
-      if: ${{ inputs.test_scope == 'all' }}
-      env:
-        PINECONE_API_KEY: pclocal
-        PINECONE_API_BASE_URL: http://localhost:5080
-      run: |
-        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 --timeout=300
-    - name: Pytest Unit and Functional Only
-      if: ${{ inputs.test_scope == 'unit-functional' }}
-      env:
-        PINECONE_API_KEY: pclocal
-        PINECONE_API_BASE_URL: http://localhost:5080
-      run: |
-        pytest -vv --cov=semantic_router --cov-report=term-missing --cov-report=xml --exitfirst --maxfail=1 --timeout=300 -m "unit or functional"
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+      - name: Install Dagger CLI
+        run: |
+          curl -L https://dl.dagger.io/dagger/install.sh | sh
+          echo "$PWD/bin" >> $GITHUB_PATH
+
+      - name: Run tests with Dagger
+        run: |
+          dagger call --mod ./.dagger test \
+            --src . \
+            --scope ${{ inputs.test_scope || 'all' }} \
+            --python-version "${{ matrix.python-version }}" \
+            --openai-api-key "$OPENAI_API_KEY" \
+            --cohere-api-key "$COHERE_API_KEY" \
+            --pinecone-api-key "$PINECONE_API_KEY"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          file: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

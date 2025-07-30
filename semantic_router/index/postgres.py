@@ -354,7 +354,7 @@ class PostgresIndex(BaseIndex):
         try:
             with self.conn.cursor() as cur:
                 cur.execute(
-                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                    f"CREATE INDEX IF NOT EXISTS {table_name}_route_idx ON {table_name} USING btree (route);"
                 )
                 self.conn.commit()
         except psycopg.errors.DuplicateTable:
@@ -376,7 +376,7 @@ class PostgresIndex(BaseIndex):
         try:
             async with self.async_conn.cursor() as cur:
                 await cur.execute(
-                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                    f"CREATE INDEX IF NOT EXISTS {table_name}_route_idx ON {table_name} USING btree (route);"
                 )
             await self.async_conn.commit()
         except psycopg.errors.DuplicateTable:
@@ -399,19 +399,19 @@ class PostgresIndex(BaseIndex):
                 if self.index_type == IndexType.HNSW:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
                         """
                     )
                 elif self.index_type == IndexType.IVFFLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
                         """
                     )
                 elif self.index_type == IndexType.FLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
                         """
                     )
                 self.conn.commit()
@@ -438,19 +438,19 @@ class PostgresIndex(BaseIndex):
                 if self.index_type == IndexType.HNSW:
                     await cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
                         """
                     )
                 elif self.index_type == IndexType.IVFFLAT:
                     await cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
                         """
                     )
                 elif self.index_type == IndexType.FLAT:
                     await cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
                         """
                     )
             await self.async_conn.commit()
