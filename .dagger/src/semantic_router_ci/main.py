@@ -6,7 +6,7 @@ import os
 @object_type
 class SemanticRouter:
     async def build(
-        self, src: dagger.Directory, extra: str | None
+        self, src: dagger.Directory, extra: str | None, python_version: str = "3.11"
     ) -> Container:
         """Builds python image with uv and installs dev
         dependencies
@@ -14,21 +14,23 @@ class SemanticRouter:
         uv_cmd = ["uv", "sync"]
         if extra:
             uv_cmd.extend(["--extra", extra])
+        python_image = f"python:{python_version}-slim"
         return await (
             dag.container()
-            .from_("ghcr.io/astral-sh/uv:debian")
+            .from_(python_image)
             .with_directory("/app", src)
             .with_workdir("/app")
             # install deps
+            .with_exec(["pip", "install", "uv"])
             .with_exec(uv_cmd)
         )
 
     @function
-    async def lint(self, src: dagger.Directory) -> str:
+    async def lint(self, src: dagger.Directory, python_version: str = "3.11") -> str:
         """Checks if source code passes linter
         """
         return await (
-            (await self.build(src=src, extra="dev"))
+            (await self.build(src=src, extra="dev", python_version=python_version))
             # run lint checks
             .with_exec(["uv", "run", "ruff", "check", "."])
             .with_exec(["uv", "run", "ruff", "format", "."])
@@ -68,12 +70,12 @@ class SemanticRouter:
         )
 
     @function
-    async def unit_test(self, src: dagger.Directory) -> str:
+    async def unit_test(self, src: dagger.Directory, python_version: str = "3.11") -> str:
         """Runs unit tests only for semantic-router.
         """
         return await (
             # create a build with all dependencies so we cover all tests
-            (await self.build(src=src, extra="all"))
+            (await self.build(src=src, extra="all", python_version=python_version))
             .with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
             .with_env_variable("PINECONE_API_KEY", "pclocal")
@@ -91,6 +93,7 @@ class SemanticRouter:
         openai_api_key: str = "",
         cohere_api_key: str = "",
         pinecone_api_key: str = "",
+        python_version: str = "3.11",
     ) -> str:
         """Runs tests for semantic-router, scope can be 
         set to run for 'unit', 'functional', 'integration',
@@ -118,7 +121,7 @@ class SemanticRouter:
                 "uv", "run", "pytest", "-vv", "--timeout=180", "tests/unit"
             ]
 
-        container = await self.build(src=src, extra="all")
+        container = await self.build(src=src, extra="all", python_version=python_version)
         if openai_api_key:
             container = container.with_env_variable("OPENAI_API_KEY", openai_api_key)
         if cohere_api_key:
