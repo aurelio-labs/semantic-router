@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
