@@ -11,6 +11,13 @@ on:
 
 jobs:
 
+  hello_world:
+    name: Hello World
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Hello
+        run: echo "Hello from triggers_pr.yml!"
+
   diff:
     name: "Diff"
     uses: ./.github/workflows/diff.yml
