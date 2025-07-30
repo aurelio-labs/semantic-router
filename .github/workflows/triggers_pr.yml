@@ -8,6 +8,18 @@ on:
   pull_request:
     branches: [ "**" ]
     types: [ opened, edited, synchronize ]
+  workflow_call:
+    inputs:
+      test_scope:
+        required: false
+        type: string
+    secrets:
+      OPENAI_API_KEY:
+        required: false
+      COHERE_API_KEY:
+        required: false
+      CODECOV_TOKEN:
+        required: false
 
 jobs:
 
