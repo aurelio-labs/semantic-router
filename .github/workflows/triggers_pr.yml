@@ -20,6 +20,8 @@ on:
         required: false
       CODECOV_TOKEN:
         required: false
+      PINECONE_API_KEY:
+        required: false
 
 jobs:
 
@@ -46,3 +48,4 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}

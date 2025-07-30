@@ -13,6 +13,8 @@ on:
         required: false
       CODECOV_TOKEN:
         required: false
+      PINECONE_API_KEY:
+        required: false
 
 jobs:
   test:
