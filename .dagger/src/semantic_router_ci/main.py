@@ -20,6 +20,8 @@ class SemanticRouter:
             .from_(python_image)
             .with_directory("/app", src)
             .with_workdir("/app")
+            .with_exec(["apt-get", "update"])
+            .with_exec(["apt-get", "install", "-y", "build-essential", "git"])
             # install deps
             .with_exec(["pip", "install", "uv"])
             .with_exec(uv_cmd)
