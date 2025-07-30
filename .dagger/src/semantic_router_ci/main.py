@@ -1,6 +1,7 @@
 import os
+
 import dagger
-from dagger import dag, function, object_type, Container
+from dagger import Container, dag, function, object_type
 
 
 @object_type
