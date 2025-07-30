@@ -789,7 +789,6 @@ class TestRouterAsync:
     async def test_async_index_operations(
         self, router_cls, index_cls, routes, openai_encoder
     ):
-        """Test async index operations."""
         # we don't test postgres and hybrid together
         if index_cls is PostgresIndex and router_cls == HybridRouter:
             pytest.skip("PostgresIndex does not support hybrid")
