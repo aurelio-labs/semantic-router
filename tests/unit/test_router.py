@@ -21,7 +21,6 @@ from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.schema import RouteChoice, SparseEmbedding
 
-
 PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
 
 def mock_encoder_call(utterances):
