@@ -1,13 +1,16 @@
 import os
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
 
 from semantic_router.encoders.ollama import OllamaEncoder
+
 
 @pytest.fixture
 def mock_ollama_client():
     with patch("ollama.Client") as mock_client:
         yield mock_client
+
 
 class TestOllamaEncoder:
     def test_ollama_encoder_init_success(self, mocker):
@@ -18,7 +21,9 @@ class TestOllamaEncoder:
 
     def test_ollama_encoder_init_import_error(self, mocker):
         mocker.patch.dict("sys.modules", {"ollama": None})
-        with patch("builtins.__import__", side_effect=ImportError("No module named 'ollama'")):
+        with patch(
+            "builtins.__import__", side_effect=ImportError("No module named 'ollama'")
+        ):
             with pytest.raises(ImportError):
                 OllamaEncoder(base_url="http://localhost:11434")
 
@@ -59,5 +64,10 @@ class TestOllamaEncoder:
             encoder = OllamaEncoder()
             assert encoder.client is not None
             # Confirm the client was initialized with the env var
-            mocker.patch.object(encoder, "_initialize_client", wraps=encoder._initialize_client)
-            assert encoder.client.host == test_url or getattr(encoder.client, "host", None) == test_url 
+            mocker.patch.object(
+                encoder, "_initialize_client", wraps=encoder._initialize_client
+            )
+            assert (
+                encoder.client.host == test_url
+                or getattr(encoder.client, "host", None) == test_url
+            )
