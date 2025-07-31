@@ -5,14 +5,17 @@ import pytest
 
 from semantic_router.encoders.ollama import OllamaEncoder
 
+
 @pytest.fixture(autouse=True, scope="session")
 def set_pinecone_api_key():
     os.environ["PINECONE_API_KEY"] = "test"
+
 
 @pytest.fixture
 def mock_ollama_client():
     with patch("ollama.Client") as mock_client:
         yield mock_client
+
 
 class TestOllamaEncoder:
     def test_ollama_encoder_init_success(self, mocker):
