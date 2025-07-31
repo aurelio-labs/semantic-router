@@ -360,7 +360,7 @@ class BaseRouter(BaseModel):
     aggregation: str = "mean"
     aggregation_method: Optional[Callable] = None
     auto_sync: Optional[str] = None
-    async_init_index: bool = False
+    init_async_index: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
@@ -374,7 +374,7 @@ class BaseRouter(BaseModel):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
-        async_init_index: bool = False,
+        init_async_index: bool = False,
     ):
         """Initialize a BaseRouter object. Expected to be used as a base class only,
         not directly instantiated.
@@ -436,7 +436,7 @@ class BaseRouter(BaseModel):
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # initialize index
-        if not async_init_index:
+        if not init_async_index:
             self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
@@ -514,15 +514,14 @@ class BaseRouter(BaseModel):
     async def _async_init_index_state(self):
         """Asynchronously initializes an index (where required) and runs auto_sync if active."""
         # initialize index now, check if we need dimensions
-        if self.index.dimensions is None:
+        if self.index is None or self.index.dimensions is None:
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex):
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
             await self.index._init_async_index(force_create=True)
-        # TODO: convert the following to async where applicable.
-        elif isinstance(self.index, PostgresIndex):
-            self._init_index_state()
 
         # run auto sync if active
         if self.auto_sync:
@@ -812,12 +811,8 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not (
-            self.index.is_ready()
-            or (isinstance(self.index, PineconeIndex) and self.index._is_async_ready())
-        ):
-            # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+        if not (await self.index.ais_ready()):
+            await self._async_init_index_state()
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:

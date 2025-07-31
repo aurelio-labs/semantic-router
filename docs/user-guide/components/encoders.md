@@ -119,6 +119,20 @@ router = HybridRouter(
 | [BM25Encoder](https://semantic-router.aurelio.ai/api/encoders/bm25) | Implements BM25 algorithm for sparse embeddings | `pip install -qU semantic-router` |
 | [TfidfEncoder](https://semantic-router.aurelio.ai/api/encoders/tfidf) | Implements TF-IDF for sparse embeddings | `pip install -qU semantic-router` |
 | [AurelioSparseEncoder](https://semantic-router.aurelio.ai/api/encoders/aurelio) | Uses Aurelio's API for BM25 sparse embeddings | `pip install -qU semantic-router` |
+| **LocalSparseEncoder** | Uses local sentence-transformers SPLADE/CSR models for neural sparse embeddings | `pip install -qU "semantic-router[local]"` |
+
+**Example usage:**
+
+```python
+from semantic_router.encoders import LocalSparseEncoder
+
+encoder = LocalSparseEncoder(name="naver/splade-v3")
+embeddings = encoder(["How's the weather today?", "Tell me about politics"])
+```
+
+- This encoder uses sentence-transformers >=v5's SparseEncoder API to generate high-dimensional sparse vectors (e.g., SPLADE, CSR).
+- No API key required; all computation is local (CPU, CUDA, or MPS).
+- You can use any compatible sparse model from the Hugging Face Hub (e.g., naver/splade-v3, mixedbread-ai/mxbai-embed-large-v1, etc.).
 
 ## Using AutoEncoder
 

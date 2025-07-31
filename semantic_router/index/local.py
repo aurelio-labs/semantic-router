@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 import numpy as np
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from semantic_router.index.base import BaseIndex, IndexConfig
 from semantic_router.linear import similarity_matrix, top_scores
@@ -11,9 +11,12 @@ from semantic_router.utils.logger import logger
 
 class LocalIndex(BaseIndex):
     type: str = "local"
+    metadata: Optional[np.ndarray] = Field(default=None, exclude=True)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.metadata is None:
+            self.metadata = None
 
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
@@ -50,10 +53,30 @@ class LocalIndex(BaseIndex):
             self.index = embeds  # type: ignore
             self.routes = routes_arr
             self.utterances = utterances_arr
+            self.metadata = (
+                np.array(metadata_list, dtype=object)
+                if metadata_list
+                else np.array([{} for _ in utterances], dtype=object)
+            )
         else:
             self.index = np.concatenate([self.index, embeds])
             self.routes = np.concatenate([self.routes, routes_arr])
             self.utterances = np.concatenate([self.utterances, utterances_arr])
+            if self.metadata is not None:
+                self.metadata = np.concatenate(
+                    [
+                        self.metadata,
+                        np.array(metadata_list, dtype=object)
+                        if metadata_list
+                        else np.array([{} for _ in utterances], dtype=object),
+                    ]
+                )
+            else:
+                self.metadata = (
+                    np.array(metadata_list, dtype=object)
+                    if metadata_list
+                    else np.array([{} for _ in utterances], dtype=object)
+                )
 
     def _remove_and_sync(self, routes_to_delete: dict) -> np.ndarray:
         """Remove and sync the index.
@@ -80,6 +103,8 @@ class LocalIndex(BaseIndex):
         self.index = self.index[mask]
         self.routes = self.routes[mask]
         self.utterances = self.utterances[mask]
+        if self.metadata is not None:
+            self.metadata = self.metadata[mask]
         # return what was removed
         return route_utterances[~mask]
 
@@ -87,14 +112,26 @@ class LocalIndex(BaseIndex):
         """Gets a list of route and utterance objects currently stored in the index.
 
         :param include_metadata: Whether to include function schemas and metadata in
-        the returned Utterance objects - LocalIndex doesn't include metadata so this
-        parameter is ignored.
+        the returned Utterance objects - LocalIndex now includes metadata if present.
         :return: A list of Utterance objects.
         :rtype: List[Utterance]
         """
         if self.routes is None or self.utterances is None:
             return []
-        return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
+        if include_metadata and self.metadata is not None:
+            return [
+                Utterance(
+                    route=route,
+                    utterance=utterance,
+                    function_schemas=None,
+                    metadata=metadata,
+                )
+                for route, utterance, metadata in zip(
+                    self.routes, self.utterances, self.metadata
+                )
+            ]
+        else:
+            return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
 
     def describe(self) -> IndexConfig:
         """Describe the index.
@@ -110,6 +147,14 @@ class LocalIndex(BaseIndex):
 
     def is_ready(self) -> bool:
         """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        return self.index is not None and self.routes is not None
+
+    async def ais_ready(self) -> bool:
+        """Checks if the index is ready to be used asynchronously.
 
         :return: True if the index is ready, False otherwise.
         :rtype: bool
@@ -227,6 +272,8 @@ class LocalIndex(BaseIndex):
             self.index = np.delete(self.index, delete_idx, axis=0)
             self.routes = np.delete(self.routes, delete_idx, axis=0)
             self.utterances = np.delete(self.utterances, delete_idx, axis=0)
+            if self.metadata is not None:
+                self.metadata = np.delete(self.metadata, delete_idx, axis=0)
         else:
             raise ValueError(
                 "Attempted to delete route records but either index, routes or "
@@ -252,6 +299,7 @@ class LocalIndex(BaseIndex):
         self.index = None
         self.routes = None
         self.utterances = None
+        self.metadata = None
 
     async def adelete_index(self):
         """Deletes the index, effectively clearing it and setting it to None. Note that this just points
@@ -264,6 +312,7 @@ class LocalIndex(BaseIndex):
         self.index = None
         self.routes = None
         self.utterances = None
+        self.metadata = None
 
     def _get_indices_for_route(self, route_name: str):
         """Gets an array of indices for a specific route.

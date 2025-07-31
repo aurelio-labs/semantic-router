@@ -93,6 +93,9 @@ class SparseEncoder(BaseModel):
         :return: The compact array.
         :rtype: List[SparseEmbedding]
         """
+        # Handle PyTorch sparse tensors by converting to dense numpy arrays
+        if hasattr(sparse_arrays, "to_dense"):
+            sparse_arrays = sparse_arrays.to_dense().cpu().numpy()
         if sparse_arrays.ndim != 2:
             raise ValueError(f"Expected a 2D array, got a {sparse_arrays.ndim}D array.")
         # get coordinates of non-zero values
