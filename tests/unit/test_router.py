@@ -1,5 +1,6 @@
 import importlib
 import os
+import uuid
 from datetime import datetime
 from platform import python_version
 from typing import Any, List
@@ -20,9 +21,7 @@ from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.schema import RouteChoice, SparseEmbedding
 
-PINECONE_SLEEP = 8
-RETRY_COUNT = 10
-
+PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
 
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
@@ -241,8 +240,12 @@ def get_test_indexes():
 
 def get_test_async_indexes():
     indexes = [LocalIndex]
+    if importlib.util.find_spec("qdrant_client") is not None:
+        indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
+    if importlib.util.find_spec("psycopg") is not None:
+        indexes.append(PostgresIndex)
     return indexes
 
 
@@ -251,8 +254,12 @@ def init_index(
     dimensions: int = 3,  # Default to 3 for our mock encoder
     namespace: str = "",
     index_name: str | None = None,
+    init_async_index: bool = False,
 ):
     """Initialize indexes for unit testing."""
+    if index_cls is QdrantIndex:
+        index_name = index_name or f"test_{uuid.uuid4().hex}"
+        return QdrantIndex(index_name=index_name, init_async_index=init_async_index)
     if index_cls is PineconeIndex:
         # Use local Pinecone instance
         index_name = (
@@ -260,17 +267,25 @@ def init_index(
             if not index_name
             else index_name
         )
-        os.environ["PINECONE_API_KEY"] = "pclocal"
-        os.environ["PINECONE_API_BASE_URL"] = "http://localhost:5080"
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
+            index_name=index_name,
+            dimensions=dimensions,
+            namespace=namespace,
+            init_async_index=init_async_index,
+            base_url=PINECONE_BASE_URL,
         )
     elif index_cls is PostgresIndex:
         index = index_cls(
-            index_name=index_name or "test_index", index_prefix="", namespace=namespace
+            index_name=index_name or "test_index",
+            index_prefix="",
+            namespace=namespace,
+            dimensions=dimensions,
+            init_async_index=init_async_index,
         )
+    elif index_cls is None:
+        return None
     else:
-        index = index_cls()
+        index = index_cls(init_async_index=init_async_index)
     return index
 
 
@@ -661,6 +676,168 @@ class TestHybridRouter:
     [
         (router, index)
         for router in [HybridRouter, SemanticRouter]
+        # None for default LocalIndex behavior, and PostgresIndex is not supported for async tests
+        for index in [None] + get_test_async_indexes()
+    ],
+)
+class TestRouterAsync:
+    @pytest.mark.asyncio
+    async def test_async_query_parameter(self, router_cls, index_cls, routes_5, mocker):
+        """Test that we return expected values in RouteChoice objects."""
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        index = init_index(index_cls, init_async_index=True)
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+
+        # Setup a mock for the similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Confirm we have Route 1 and sim score
+        assert result.name == "Route 1"
+        assert result.similarity_score == 0.9
+        assert result.function_call is None
+
+    @pytest.mark.asyncio
+    async def test_async_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
+        """Test that the limit parameter works correctly for async router calls."""
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
+        # Create router with mock encoders
+        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
+        index = init_index(index_cls, init_async_index=True)
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=dense_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+        else:
+            router = router_cls(
+                encoder=dense_encoder,
+                routes=routes_5,
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+
+        # Setup a mock for the async similarity calculation method
+        _ = mocker.patch.object(
+            router,
+            "_score_routes",
+            return_value=[
+                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
+                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
+                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
+                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
+            ],
+        )
+
+        # Test without limit (should return only the top match)
+        result = await router.acall("test query")
+        assert result is not None
+        assert isinstance(result, RouteChoice)
+
+        # Test with limit=2 (should return top 2 matches)
+        result = await router.acall("test query", limit=2)
+        assert result is not None
+        assert len(result) == 2
+
+        # Test with limit=None (should return all matches)
+        result = await router.acall("test query", limit=None)
+        assert result is not None
+        assert len(result) == 4  # Should return all matches
+
+    @pytest.mark.asyncio
+    async def test_async_index_operations(
+        self, router_cls, index_cls, routes, openai_encoder
+    ):
+        # we don't test postgres and hybrid together
+        if index_cls is PostgresIndex and router_cls == HybridRouter:
+            pytest.skip("PostgresIndex does not support hybrid")
+        if index_cls is None:
+            pytest.skip("Test only for specific index implementations")
+
+        index = init_index(index_cls, init_async_index=True)
+
+        if router_cls == HybridRouter:
+            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
+            router = router_cls(
+                encoder=openai_encoder,
+                sparse_encoder=sparse_encoder,
+                routes=[],
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+        else:
+            router = router_cls(
+                encoder=openai_encoder,
+                routes=[],
+                index=index,
+                auto_sync="local",
+                init_async_index=True,
+            )
+
+        # Test adding routes
+        assert await router.index.alen() == 0
+        await router.aadd(routes[0])
+        assert await router.index.alen() == 2  # "Hello" and "Hi"
+
+        await router.aadd(routes[1])
+        assert await router.index.alen() == 5  # All utterances
+
+        # Test deleting routes
+        await router.adelete("Route 1")
+        assert await router.index.alen() == 3  # Only Route 2 utterances
+
+        # Test delete
+        await router.index.adelete_index()
+        assert await router.index.alen() == 0
+
+
+@pytest.mark.parametrize(
+    "router_cls,index_cls",
+    [
+        (router, index)
+        for router in [HybridRouter, SemanticRouter]
         for index in [None] + get_test_indexes()  # None for default LocalIndex behavior
     ],
 )
@@ -798,155 +975,4 @@ class TestRouter:
 
         # Test delete
         router.index.delete_index()
-        assert len(router.index) == 0
-
-
-@pytest.mark.parametrize(
-    "router_cls,index_cls",
-    [
-        (router, index)
-        for router in [HybridRouter, SemanticRouter]
-        # None for default LocalIndex behavior, and PostgresIndex is not supported for async tests
-        for index in [None] + get_test_async_indexes()
-    ],
-)
-class TestRouterAsync:
-    @pytest.mark.asyncio
-    async def test_async_query_parameter(self, router_cls, index_cls, routes_5, mocker):
-        """Test that we return expected values in RouteChoice objects."""
-        # Create router with mock encoders
-        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        index = init_index(index_cls) if index_cls else None
-
-        if router_cls == HybridRouter:
-            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            router = router_cls(
-                encoder=dense_encoder,
-                sparse_encoder=sparse_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-        else:
-            router = router_cls(
-                encoder=dense_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-
-        # Setup a mock for the similarity calculation method
-        _ = mocker.patch.object(
-            router,
-            "_score_routes",
-            return_value=[
-                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
-                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
-                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
-                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
-            ],
-        )
-
-        # Test without limit (should return only the top match)
-        result = await router.acall("test query")
-        assert result is not None
-        assert isinstance(result, RouteChoice)
-
-        # Confirm we have Route 1 and sim score
-        assert result.name == "Route 1"
-        assert result.similarity_score == 0.9
-        assert result.function_call is None
-
-    @pytest.mark.asyncio
-    async def test_async_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
-        """Test that the limit parameter works correctly for async router calls."""
-        # Create router with mock encoders
-        dense_encoder = MockSymmetricDenseEncoder(name="Dense Encoder")
-        index = init_index(index_cls) if index_cls else None
-
-        if router_cls == HybridRouter:
-            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            router = router_cls(
-                encoder=dense_encoder,
-                sparse_encoder=sparse_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-        else:
-            router = router_cls(
-                encoder=dense_encoder,
-                routes=routes_5,
-                index=index,
-                auto_sync="local",
-            )
-
-        # Setup a mock for the async similarity calculation method
-        _ = mocker.patch.object(
-            router,
-            "_score_routes",
-            return_value=[
-                ("Route 1", 0.9, [0.1, 0.2, 0.3]),
-                ("Route 2", 0.8, [0.4, 0.5, 0.6]),
-                ("Route 3", 0.7, [0.7, 0.8, 0.9]),
-                ("Route 4", 0.6, [1.0, 1.1, 1.2]),
-            ],
-        )
-
-        # Test without limit (should return only the top match)
-        result = await router.acall("test query")
-        assert result is not None
-        assert isinstance(result, RouteChoice)
-
-        # Test with limit=2 (should return top 2 matches)
-        result = await router.acall("test query", limit=2)
-        assert result is not None
-        assert len(result) == 2
-
-        # Test with limit=None (should return all matches)
-        result = await router.acall("test query", limit=None)
-        assert result is not None
-        assert len(result) == 4  # Should return all matches
-
-    @pytest.mark.asyncio
-    async def test_async_index_operations(
-        self, router_cls, index_cls, routes, openai_encoder
-    ):
-        """Test async index operations."""
-        if index_cls is None:
-            pytest.skip("Test only for specific index implementations")
-
-        index = init_index(index_cls)
-
-        if router_cls == HybridRouter:
-            sparse_encoder = MockSymmetricSparseEncoder(name="Sparse Encoder")
-            router = router_cls(
-                encoder=openai_encoder,
-                sparse_encoder=sparse_encoder,
-                routes=[],
-                index=index,
-                auto_sync="local",
-            )
-        else:
-            router = router_cls(
-                encoder=openai_encoder,
-                routes=[],
-                index=index,
-                auto_sync="local",
-            )
-
-        # Test adding routes
-        assert len(router.index) == 0
-        await router.aadd(routes[0])
-        assert len(router.index) == 2  # "Hello" and "Hi"
-
-        await router.aadd(routes[1])
-        assert len(router.index) == 5  # All utterances
-
-        # Test deleting routes
-        await router.adelete("Route 1")
-        assert len(router.index) == 3  # Only Route 2 utterances
-
-        # Test delete
-        await router.index.adelete_index()
         assert len(router.index) == 0

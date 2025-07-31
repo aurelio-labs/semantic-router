@@ -24,6 +24,7 @@ class SemanticRouter(BaseRouter):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
+        init_async_index: bool = False,
     ):
         index = self._get_index(index=index)
         encoder = self._get_encoder(encoder=encoder)
@@ -35,6 +36,7 @@ class SemanticRouter(BaseRouter):
             top_k=top_k,
             aggregation=aggregation,
             auto_sync=auto_sync,
+            init_async_index=init_async_index,
         )
 
     def _encode(self, text: list[str], input_type: EncodeInputType) -> Any:
@@ -125,6 +127,49 @@ class SemanticRouter(BaseRouter):
         self.routes.extend(routes)
         if current_local_hash.value == current_remote_hash.value:
             self._write_hash()  # update current hash in index
+        else:
+            logger.warning(
+                "Local and remote route layers were not aligned. Remote hash "
+                f"not updated. Use `{self.__class__.__name__}.get_utterance_diff()` "
+                "to see details."
+            )
+
+    async def aadd(self, routes: List[Route] | Route):
+        """Asynchronously add a route to the local SemanticRouter and index.
+
+        :param routes: The route(s) to add.
+        :type routes: List[Route] | Route
+        """
+        # Ensure index is ready for async operations
+        if not (await self.index.ais_ready()):
+            await self._async_init_index_state()
+
+        current_local_hash = self._get_hash()
+        current_remote_hash = await self.index._async_read_hash()
+        if current_remote_hash.value == "":
+            # if remote hash is empty, the index is to be initialized
+            current_remote_hash = current_local_hash
+        if isinstance(routes, Route):
+            routes = [routes]
+        # create embeddings for all routes
+        (
+            route_names,
+            all_utterances,
+            all_function_schemas,
+            all_metadata,
+        ) = self._extract_routes_details(routes, include_metadata=True)
+        dense_emb = await self._async_encode(all_utterances, input_type="documents")
+        await self.index.aadd(
+            embeddings=dense_emb.tolist(),
+            routes=route_names,
+            utterances=all_utterances,
+            function_schemas=all_function_schemas,
+            metadata_list=all_metadata,
+        )
+
+        self.routes.extend(routes)
+        if current_local_hash.value == current_remote_hash.value:
+            await self._async_write_hash()  # update current hash in index
         else:
             logger.warning(
                 "Local and remote route layers were not aligned. Remote hash "

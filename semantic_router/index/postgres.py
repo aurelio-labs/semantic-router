@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from enum import Enum
@@ -115,8 +116,10 @@ class PostgresIndex(BaseIndex):
     metric: Metric = Metric.COSINE
     namespace: Optional[str] = ""
     conn: Optional["psycopg.Connection"] = None
+    async_conn: Optional["psycopg.AsyncConnection"] = None
     type: str = "postgres"
     index_type: IndexType = IndexType.FLAT
+    init_async_index: bool = False
 
     def __init__(
         self,
@@ -126,6 +129,7 @@ class PostgresIndex(BaseIndex):
         metric: Metric = Metric.COSINE,
         namespace: Optional[str] = "",
         dimensions: int | None = None,
+        init_async_index: bool = False,
     ):
         """Initializes the Postgres index with the specified parameters.
 
@@ -141,6 +145,8 @@ class PostgresIndex(BaseIndex):
         :type metric: Metric
         :param namespace: An optional namespace for the index.
         :type namespace: Optional[str]
+        :param init_async_index: Whether to initialize the index asynchronously.
+        :type init_async_index: bool
         """
         if not _psycopg_installed:
             raise ImportError(
@@ -178,9 +184,9 @@ class PostgresIndex(BaseIndex):
         self.dimensions = dimensions
         self.metric = metric
         self.namespace = namespace
-        self.conn = psycopg.connect(conninfo=self.connection_string)
-        if not self.has_connection():
-            raise ValueError("Index has not established a connection to Postgres")
+        self.init_async_index = init_async_index
+        self.conn = None
+        self.async_conn = None
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -195,6 +201,13 @@ class PostgresIndex(BaseIndex):
             dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
+        if not self.connection_string:
+            raise ValueError("No `self.connection_string` attribute set")
+        # Add connection and statement timeouts
+        self.conn = psycopg.connect(conninfo=self.connection_string)
+        if not self.has_connection():
+            raise ValueError("Index has not established a connection to Postgres")
+
         dimensions_given = self.dimensions is not None
         if not dimensions_given:
             raise ValueError("Dimensions are required for PostgresIndex")
@@ -226,6 +239,62 @@ class PostgresIndex(BaseIndex):
             if self.conn is not None:
                 self.conn.rollback()
             raise
+        return self
+
+    async def _init_async_index(self, force_create: bool = False) -> Union[Any, None]:
+        logging.warning("[DEBUG] Entering _init_async_index for PostgresIndex")
+        if self.async_conn is None:
+            if not self.connection_string:
+                raise ValueError("No `self.connection_string` attribute set")
+            logging.warning(
+                f"[DEBUG] Connecting async to Postgres with: {self.connection_string}"
+            )
+            self.async_conn = await psycopg.AsyncConnection.connect(
+                self.connection_string
+            )
+            logging.warning(f"[DEBUG] Async connection established: {self.async_conn}")
+        if self.dimensions is None and not force_create:
+            logging.warning(
+                "[DEBUG] No dimensions and not force_create, returning None from _init_async_index"
+            )
+            return None
+        if self.dimensions is None:
+            raise ValueError("Dimensions are required for PostgresIndex")
+        table_name = self._get_table_name()
+        logging.warning(f"[DEBUG] Table name for async index: {table_name}")
+        if not await self._async_check_embeddings_dimensions():
+            raise ValueError(
+                f"The length of the vector embeddings in the existing table {table_name} "
+                f"does not match the expected dimensions of {self.dimensions}."
+            )
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+        try:
+            async with self.async_conn.cursor() as cur:
+                logging.warning(f"[DEBUG] Creating extension/table for {table_name}")
+                await cur.execute(
+                    f"""
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    CREATE TABLE IF NOT EXISTS {table_name} (
+                        id VARCHAR(255) PRIMARY KEY,
+                        route VARCHAR(255),
+                        utterance TEXT,
+                        vector VECTOR({self.dimensions})
+                    );
+                    COMMENT ON COLUMN {table_name}.vector IS '{self.dimensions}';
+                    """
+                )
+                await self.async_conn.commit()
+                await self._async_create_route_index()
+                await self._async_create_index()
+                logging.warning(
+                    f"[DEBUG] Finished async index/table creation for {table_name}"
+                )
+        except Exception as e:
+            logging.warning(f"[DEBUG] Exception in _init_async_index: {e}")
+            await self.async_conn.rollback()
+            raise e
+        logging.warning("[DEBUG] Exiting _init_async_index for PostgresIndex")
         return self
 
     def _get_table_name(self) -> str:
@@ -285,7 +354,7 @@ class PostgresIndex(BaseIndex):
         try:
             with self.conn.cursor() as cur:
                 cur.execute(
-                    f"CREATE INDEX {table_name}_route_idx ON {table_name} USING btree (route);"
+                    f"CREATE INDEX IF NOT EXISTS {table_name}_route_idx ON {table_name} USING btree (route);"
                 )
                 self.conn.commit()
         except psycopg.errors.DuplicateTable:
@@ -295,6 +364,28 @@ class PostgresIndex(BaseIndex):
         except Exception:
             if self.conn is not None:
                 self.conn.rollback()
+            raise
+
+    async def _async_create_route_index(self) -> None:
+        """Asynchronously creates an index on the route column."""
+        table_name = self._get_table_name()
+
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                await cur.execute(
+                    f"CREATE INDEX IF NOT EXISTS {table_name}_route_idx ON {table_name} USING btree (route);"
+                )
+            await self.async_conn.commit()
+        except psycopg.errors.DuplicateTable:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            pass
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
             raise
 
     def _create_index(self) -> None:
@@ -308,19 +399,19 @@ class PostgresIndex(BaseIndex):
                 if self.index_type == IndexType.HNSW:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
                         """
                     )
                 elif self.index_type == IndexType.IVFFLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
                         """
                     )
                 elif self.index_type == IndexType.FLAT:
                     cur.execute(
                         f"""
-                        CREATE INDEX {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
                         """
                     )
                 self.conn.commit()
@@ -331,6 +422,45 @@ class PostgresIndex(BaseIndex):
         except Exception:
             if self.conn is not None:
                 self.conn.rollback()
+            raise
+
+    async def _async_create_index(self) -> None:
+        """Asynchronously creates an index on the vector column based on index_type."""
+        table_name = self._get_table_name()
+
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+
+        opclass = self._get_vector_operator()
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                if self.index_type == IndexType.HNSW:
+                    await cur.execute(
+                        f"""
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING hnsw (vector {opclass});
+                        """
+                    )
+                elif self.index_type == IndexType.IVFFLAT:
+                    await cur.execute(
+                        f"""
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 100);
+                        """
+                    )
+                elif self.index_type == IndexType.FLAT:
+                    await cur.execute(
+                        f"""
+                        CREATE INDEX IF NOT EXISTS {table_name}_vector_idx ON {table_name} USING ivfflat (vector {opclass}) WITH (lists = 1);
+                        """
+                    )
+            await self.async_conn.commit()
+        except psycopg.errors.DuplicateTable:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            pass
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
             raise
 
     @deprecated(
@@ -411,6 +541,54 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def _async_check_embeddings_dimensions(self) -> bool:
+        """Asynchronously checks if the vector embedding dimensions match the expected ones.
+
+        Returns True if dimensions match or table does not exist, False otherwise.
+
+        :return: True if the dimensions match or the table does not exist, False otherwise.
+        :rtype: bool
+        :raises ValueError: If the vector column comment does not contain a valid integer.
+        """
+        table_name = self._get_table_name()
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                await cur.execute(
+                    f"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='{table_name}');"
+                )
+                fetch_result = await cur.fetchone()
+                exists = fetch_result[0] if fetch_result else None
+
+                if not exists:
+                    return True
+
+                await cur.execute(
+                    f"""SELECT col_description('{table_name}'::regclass, attnum) AS column_comment
+                        FROM pg_attribute
+                        WHERE attrelid = '{table_name}'::regclass
+                        AND attname = 'vector';"""
+                )
+                result = await cur.fetchone()
+                dimension_comment = result[0] if result else None
+
+                if dimension_comment:
+                    try:
+                        vector_length = int(dimension_comment.split()[-1])
+                        return vector_length == self.dimensions
+                    except ValueError:
+                        raise ValueError(
+                            "The 'vector' column comment does not contain a valid integer."
+                        )
+                else:
+                    raise ValueError("No comment found for the 'vector' column.")
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            raise
+
     def add(
         self,
         embeddings: List[List[float]],
@@ -462,6 +640,64 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def aadd(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[str],
+        function_schemas: Optional[List[Dict[str, Any]]] = None,
+        metadata_list: List[Dict[str, Any]] = [],
+        batch_size: int = 100,
+        **kwargs,
+    ) -> None:
+        """
+        Asynchronously adds records to the index in batches.
+
+        :param embeddings: A list of vector embeddings to add.
+        :param routes: A list of route names corresponding to the embeddings.
+        :param utterances: A list of utterances corresponding to the embeddings.
+        :param function_schemas: (Optional) List of function schemas.
+        :param metadata_list: (Optional) List of metadata dictionaries.
+        :param batch_size: Number of records per batch insert.
+        :raises ValueError: If the vector embeddings don't match expected dimensions.
+        :raises TypeError: If connection is not an async Postgres connection.
+        """
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+
+        table_name = self._get_table_name()
+        new_embeddings_length = len(embeddings[0])
+        if new_embeddings_length != self.dimensions:
+            raise ValueError(
+                f"The vector embeddings being added are of length {new_embeddings_length}, "
+                f"which does not match the expected dimensions of {self.dimensions}."
+            )
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                for i in range(0, len(embeddings), batch_size):
+                    batch_embeddings = embeddings[i : i + batch_size]
+                    batch_routes = routes[i : i + batch_size]
+                    batch_utterances = utterances[i : i + batch_size]
+
+                    values = [
+                        (str(uuid.uuid4()), route, utterance, vector)
+                        for route, utterance, vector in zip(
+                            batch_routes, batch_utterances, batch_embeddings
+                        )
+                    ]
+
+                    await cur.executemany(
+                        f"INSERT INTO {table_name} (id, route, utterance, vector) "
+                        f"VALUES (%s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                        values,
+                    )
+
+                await self.async_conn.commit()
+        except Exception:
+            await self.async_conn.rollback()
+            raise
+
     def delete(self, route_name: str) -> None:
         """Deletes records with the specified route name.
 
@@ -481,6 +717,38 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def adelete(self, route_name: str) -> list[str]:
+        """Asynchronously delete specified route from index if it exists. Returns the IDs
+        of the vectors deleted.
+
+        :param route_name: Name of the route to delete.
+        :type route_name: str
+        :return: List of IDs of the vectors deleted.
+        :rtype: list[str]
+        """
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+
+        table_name = self._get_table_name()
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                await cur.execute(
+                    f"SELECT id FROM {table_name} WHERE route = %s", (route_name,)
+                )
+                result = await cur.fetchall()
+                deleted_ids = [row[0] for row in result]
+
+                await cur.execute(
+                    f"DELETE FROM {table_name} WHERE route = %s", (route_name,)
+                )
+
+                await self.async_conn.commit()
+                return deleted_ids
+        except Exception:
+            await self.async_conn.rollback()
+            raise
+
     def describe(self) -> IndexConfig:
         """Describes the index by returning its type, dimensions, and total vector count.
 
@@ -488,7 +756,7 @@ class PostgresIndex(BaseIndex):
         :rtype: IndexConfig
         """
         table_name = self._get_table_name()
-        if not isinstance(self.conn, psycopg.Connection):
+        if not isinstance(self.async_conn, psycopg.Connection):
             logger.warning("Index has not established a connection to Postgres")
             return IndexConfig(
                 type=self.type,
@@ -496,7 +764,7 @@ class PostgresIndex(BaseIndex):
                 vectors=0,
             )
         try:
-            with self.conn.cursor() as cur:
+            with self.async_conn.cursor() as cur:
                 cur.execute(f"SELECT COUNT(*) FROM {table_name}")
                 result = cur.fetchone()
                 count = result[0] if result is not None else 0
@@ -506,8 +774,8 @@ class PostgresIndex(BaseIndex):
                     vectors=count,
                 )
         except Exception:
-            if self.conn is not None:
-                self.conn.rollback()
+            if self.async_conn is not None:
+                self.async_conn.rollback()
             raise
 
     def is_ready(self) -> bool:
@@ -517,6 +785,14 @@ class PostgresIndex(BaseIndex):
         :rtype: bool
         """
         return isinstance(self.conn, psycopg.Connection)
+
+    async def ais_ready(self) -> bool:
+        """Checks if the index is ready to be used.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        return isinstance(self.async_conn, psycopg.AsyncConnection)
 
     def query(
         self,
@@ -565,6 +841,52 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+    ) -> Tuple[np.ndarray, List[str]]:
+        """Asynchronously search the index for the query vector and return the top_k results.
+
+        :param vector: The query vector to search for.
+        :type vector: np.ndarray
+        :param top_k: The number of top results to return, defaults to 5.
+        :type top_k: int, optional
+        :param route_filter: A list of route names to filter the search results, defaults to None.
+        :type route_filter: Optional[List[str]], optional
+        :param sparse_vector: An optional sparse vector to include in the query.
+        :type sparse_vector: dict[int, float] | SparseEmbedding | None
+        :return: A tuple containing an array of scores and a list of route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises TypeError: If the database connection is not established.
+        """
+        table_name = self._get_table_name()
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+        try:
+            async with self.async_conn.cursor() as cur:
+                filter_query = (
+                    f" AND route = ANY(ARRAY{route_filter})" if route_filter else ""
+                )
+                vector_str = f"'[{','.join(map(str, vector.tolist()))}]'"
+                score_query = self._get_score_query(vector_str)
+                operator = self._get_metric_operator()
+                query = (
+                    f"SELECT route, {score_query} FROM {table_name} "
+                    f"WHERE true{filter_query} "
+                    f"ORDER BY vector {operator} {vector_str} LIMIT {top_k}"
+                )
+                await cur.execute(query)
+                results = await cur.fetchall()
+                return np.array([result[1] for result in results]), [
+                    result[0] for result in results
+                ]
+        except Exception:
+            await self.async_conn.rollback()
+            raise
+
     def _get_route_ids(self, route_name: str):
         """Retrieves all vector IDs for a specific route.
 
@@ -580,6 +902,23 @@ class PostgresIndex(BaseIndex):
         except Exception:
             if self.conn is not None:
                 self.conn.rollback()
+            raise
+
+    async def _async_get_route_ids(self, route_name: str) -> list[str]:
+        """Get the IDs of the routes in the index asynchronously.
+
+        :param route_name: Name of the route to get the IDs for.
+        :type route_name: str
+        :return: List of IDs of the routes.
+        :rtype: list[str]
+        """
+        clean_route = clean_route_name(route_name)
+        try:
+            ids, _ = await self._async_get_all(route_name=f"{clean_route}")
+            return ids
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
             raise
 
     def _get_all(
@@ -625,6 +964,56 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def _async_get_all(
+        self, route_name: Optional[str] = None, include_metadata: bool = False
+    ) -> Tuple[List[str], List[Dict]]:
+        """Retrieves all vector IDs and optionally metadata from the Postgres index asynchronously.
+
+        :param route_name: Optional route name to filter the results by.
+        :type route_name: Optional[str]
+        :param include_metadata: Whether to include metadata in the results.
+        :type include_metadata: bool
+        :return: A tuple containing the list of vector IDs and optionally metadata.
+        :rtype: Tuple[List[str], List[Dict]]
+        :raises TypeError: If the database connection is not established.
+        """
+        table_name = self._get_table_name()
+
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+
+        try:
+            query = "SELECT id"
+            if include_metadata:
+                query += ", route, utterance"
+            query += f" FROM {table_name}"
+            if route_name:
+                query += f" WHERE route LIKE '{route_name}%'"
+
+            all_vector_ids = []
+            metadata = []
+
+            async with self.async_conn.cursor() as cur:
+                await cur.execute(query)
+                results = await cur.fetchall()
+                for row in results:
+                    all_vector_ids.append(row[0])
+                    if include_metadata:
+                        metadata.append({"sr_route": row[1], "sr_utterance": row[2]})
+
+            return all_vector_ids, metadata
+
+        except psycopg.errors.UndefinedTable:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            # Table does not exist, treat as empty
+            return [], []
+
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            raise
+
     def _remove_and_sync(self, routes_to_delete: dict):
         """
         Remove embeddings in a routes syncing process from the Postgres index.
@@ -659,6 +1048,46 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
+    async def _async_remove_and_sync(
+        self, routes_to_delete: dict
+    ) -> list[tuple[str, str]]:
+        """Remove specified routes from index if they exist.
+
+        This method is asynchronous.
+
+        :param routes_to_delete: Routes to delete.
+        :type routes_to_delete: dict
+        :return: List of (route, utterance) tuples that were removed.
+        :rtype: list[tuple[str, str]]
+        """
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+
+        table_name = self._get_table_name()
+        removed = []
+
+        try:
+            async with self.async_conn.cursor() as cur:
+                for route, utterances in routes_to_delete.items():
+                    for utterance in utterances:
+                        await cur.execute(
+                            f"SELECT route, utterance FROM {table_name} WHERE route = %s AND utterance = %s",
+                            (route, utterance),
+                        )
+                        result = await cur.fetchone()
+                        if result:
+                            removed.append(result)
+                        await cur.execute(
+                            f"DELETE FROM {table_name} WHERE route = %s AND utterance = %s",
+                            (route, utterance),
+                        )
+            await self.async_conn.commit()
+            return removed
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            raise
+
     def delete_all(self):
         """Deletes all records from the Postgres index.
 
@@ -686,6 +1115,16 @@ class PostgresIndex(BaseIndex):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
+                # Forcibly terminate other connections to the database (CI safety)
+                cur.execute(
+                    """
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid();
+                    """
+                )
+                self.conn.commit()
                 cur.execute(f"DROP TABLE IF EXISTS {table_name}")
                 self.conn.commit()
         except Exception:
@@ -693,15 +1132,35 @@ class PostgresIndex(BaseIndex):
                 self.conn.rollback()
             raise
 
-    def aget_routes(self):
-        """Asynchronously get all routes from the index.
+    async def adelete_index(self) -> None:
+        """Asynchronously delete the entire table for the index.
 
-        Not yet implemented for PostgresIndex.
-
-        :return: A list of routes.
-        :rtype: List[str]
+        :raises TypeError: If the async database connection is not established.
         """
-        raise NotImplementedError("Async get is not implemented for PostgresIndex.")
+        table_name = self._get_table_name()
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+        try:
+            async with self.async_conn.cursor() as cur:
+                await cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+                await self.async_conn.commit()
+        except Exception:
+            if self.async_conn is not None:
+                await self.async_conn.rollback()
+            raise
+
+    async def aget_routes(self) -> list[tuple]:
+        """Asynchronously get a list of route and utterance objects currently
+        stored in the index.
+
+        :return: A list of (route_name, utterance) objects.
+        :rtype: List[Tuple]
+        :raises TypeError: If the database connection is not established.
+        """
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established an async connection to Postgres")
+
+        return await self._async_get_routes()
 
     def _write_config(self, config: ConfigParameter):
         """Write the config to the index.
@@ -727,6 +1186,29 @@ class PostgresIndex(BaseIndex):
             try:
                 cur.execute(f"SELECT COUNT(*) FROM {table_name}")
                 count = cur.fetchone()
+                if count is None:
+                    return 0
+                return count[0]
+            except psycopg.errors.UndefinedTable:
+                logger.warning("Table does not exist, returning 0")
+                return 0
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        table_name = self._get_table_name()
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            logger.warning(
+                "Index has not established an async connection to Postgres, returning 0"
+            )
+            return 0
+        async with self.async_conn.cursor() as cur:
+            try:
+                await cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+                count = await cur.fetchone()
                 if count is None:
                     return 0
                 return count[0]

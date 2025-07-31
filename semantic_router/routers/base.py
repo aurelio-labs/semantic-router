@@ -360,6 +360,7 @@ class BaseRouter(BaseModel):
     aggregation: str = "mean"
     aggregation_method: Optional[Callable] = None
     auto_sync: Optional[str] = None
+    init_async_index: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
@@ -373,6 +374,7 @@ class BaseRouter(BaseModel):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
+        init_async_index: bool = False,
     ):
         """Initialize a BaseRouter object. Expected to be used as a base class only,
         not directly instantiated.
@@ -434,7 +436,8 @@ class BaseRouter(BaseModel):
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # initialize index
-        self._init_index_state()
+        if not init_async_index:
+            self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         """Get the index to use.
@@ -507,6 +510,29 @@ class BaseRouter(BaseModel):
             )
             sync_strategy = diff.get_sync_strategy(self.auto_sync)
             self._execute_sync_strategy(sync_strategy)
+
+    async def _async_init_index_state(self):
+        """Asynchronously initializes an index (where required) and runs auto_sync if active."""
+        # initialize index now, check if we need dimensions
+        if self.index is None or self.index.dimensions is None:
+            dims = len(self.encoder(["test"])[0])
+            self.index.dimensions = dims
+        # now init index
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
+            await self.index._init_async_index(force_create=True)
+
+        # run auto sync if active
+        if self.auto_sync:
+            local_utterances = self.to_config().to_utterances()
+            remote_utterances = await self.index.aget_utterances(include_metadata=True)
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=remote_utterances,
+            )
+            sync_strategy = diff.get_sync_strategy(self.auto_sync)
+            await self._async_execute_sync_strategy(sync_strategy)
 
     def _set_score_threshold(self):
         """Set the score threshold for the layer based on the encoder
@@ -785,9 +811,8 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not self.index.is_ready():
-            # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+        if not (await self.index.ais_ready()):
+            await self._async_init_index_state()
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
