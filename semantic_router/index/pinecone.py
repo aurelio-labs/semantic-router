@@ -260,13 +260,16 @@ class PineconeIndex(BaseIndex):
 
     def _calculate_index_host(self):
         """Calculate the index host. Used to differentiate between normal Pinecone and Pinecone Local instance."""
-        # If using Pinecone Local, always set to http://localhost:5080 (or port from base_url)
-        if self.base_url and "localhost" in self.base_url:
-            # Extract port from base_url if present
+        # Dagger CI: if base_url contains 'pinecone', use service alias for connection, but 'localhost' for SDK validation
+        if self.base_url and "pinecone" in self.base_url:
+            self.index_host = "http://pinecone:5080"
+            self._sdk_host_for_validation = "http://localhost:5080"
+        elif self.base_url and "localhost" in self.base_url:
             import re
             match = re.match(r"http://localhost:(\d+)", self.base_url)
             port = match.group(1) if match else "5080"
             self.index_host = f"http://localhost:{port}"
+            self._sdk_host_for_validation = self.index_host
         elif self.index_host and self.base_url:
             if "api.pinecone.io" in self.base_url:
                 if not self.index_host.startswith("http"):
@@ -279,6 +282,9 @@ class PineconeIndex(BaseIndex):
                         self.index_host = f"http://{self.base_url.split(":")[-2].strip("/")}:{self.index_host.split(":")[-1]}"
                     else:
                         self.index_host = f"http://{self.index_host}"
+            self._sdk_host_for_validation = self.index_host
+        else:
+            self._sdk_host_for_validation = self.index_host
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
