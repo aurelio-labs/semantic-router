@@ -303,38 +303,40 @@ class PineconeIndex(BaseIndex):
         if self.index is None:
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
-                # if the index doesn't exist and we have dimension value
-                # we create the index
                 self.client.create_index(
                     name=self.index_name,
                     dimension=self.dimensions,
                     metric=self.metric,
                     spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
                 )
-                # wait for index to be created
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
-                index = self.client.Index(self.index_name)
+                try:
+                    index = self.client.Index(self.index_name, host=self.index_host)
+                except ValueError as e:
+                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
+                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
+                    else:
+                        raise
                 self.index = index
                 time.sleep(0.2)
             elif index_exists:
-                # if the index exists we just return it
-                # index = self.client.Index(self.index_name)
-
                 self.index_host = self.client.describe_index(self.index_name).host
                 self._calculate_index_host()
-                index = self.client.Index(self.index_name, host=self.index_host)
+                try:
+                    index = self.client.Index(self.index_name, host=self.index_host)
+                except ValueError as e:
+                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
+                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
+                    else:
+                        raise
                 self.index = index
-
-                # grab the dimensions from the index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
                 raise ValueError(
                     "Cannot create an index without specifying the dimensions."
                 )
             else:
-                # if the index doesn't exist and we don't have the dimensions
-                # we return None
                 logger.warning(
                     "Index could not be initialized. Init parameters: "
                     f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
@@ -345,12 +347,16 @@ class PineconeIndex(BaseIndex):
         else:
             index = self.index
         if self.index is not None and self.host == "":
-            # if the index exists we just return it
             self.index_host = self.client.describe_index(self.index_name).host
-
             if self.index_host and self.base_url:
                 self._calculate_index_host()
-                index = self.client.Index(self.index_name, host=self.index_host)
+                try:
+                    index = self.client.Index(self.index_name, host=self.index_host)
+                except ValueError as e:
+                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
+                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
+                    else:
+                        raise
                 self.host = self.index_host
         return index
 
