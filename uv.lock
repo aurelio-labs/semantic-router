@@ -4394,7 +4394,6 @@ dependencies = [
     { name = "colorlog" },
     { name = "litellm" },
     { name = "numpy" },
-    { name = "ollama" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -4419,6 +4418,7 @@ all = [
     { name = "llama-cpp-python", marker = "python_full_version < '3.13'" },
     { name = "mistralai" },
     { name = "mypy" },
+    { name = "ollama" },
     { name = "pillow", marker = "python_full_version < '3.13'" },
     { name = "pinecone" },
     { name = "psycopg", extra = ["binary"] },
@@ -4482,6 +4482,9 @@ local = [
 mistralai = [
     { name = "mistralai" },
 ]
+ollama = [
+    { name = "ollama" },
+]
 pinecone = [
     { name = "pinecone" },
 ]
@@ -4517,7 +4520,7 @@ requires-dist = [
     { name = "mistralai", marker = "extra == 'mistralai'", specifier = ">=0.0.12,<0.1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.1,<2" },
     { name = "numpy", specifier = ">=1.25.2" },
-    { name = "ollama", specifier = ">=0.1.7" },
+    { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.1.7" },
     { name = "openai", specifier = ">=1.10.0,<2.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=5.0.0,<6.0.0" },
@@ -4543,6 +4546,7 @@ requires-dist = [
     { name = "semantic-router", extras = ["google"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["local"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["mistralai"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["ollama"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["pinecone"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["postgres"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["qdrant"], marker = "extra == 'all'" },
@@ -4559,7 +4563,7 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0,<3" },
     { name = "urllib3", specifier = ">=1.26,<3" },
 ]
-provides-extras = ["local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
+provides-extras = ["ollama", "local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
 
 [[package]]
 name = "sentence-transformers"
