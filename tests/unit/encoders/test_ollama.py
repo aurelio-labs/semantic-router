@@ -3,6 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytest.importorskip("ollama")
+
 from semantic_router.encoders.ollama import OllamaEncoder
 
 

@@ -69,7 +69,9 @@ class OllamaEncoder(DenseEncoder):
         try:
             from ollama import Client
         except ImportError:
-            raise ImportError("Please Install ollama")
+            raise ImportError(
+                "The 'ollama' package is not installed. Install it with: pip install 'semantic-router[ollama]'"
+            )
 
         client: Client = Client(host=base_url)
         return client
