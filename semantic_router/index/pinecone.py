@@ -259,22 +259,24 @@ class PineconeIndex(BaseIndex):
         return Pinecone(**pinecone_args)
 
     def _calculate_index_host(self):
-        """Calculate the index host. Used to differentiate between normal
-        Pinecone and Pinecone Local instance.
-
-        :return: None
-        :rtype: None
-        """
-        if self.index_host and self.base_url:
+        """Calculate the index host. Used to differentiate between normal Pinecone and Pinecone Local instance."""
+        # If using Pinecone Local, always set to http://localhost:5080 (or port from base_url)
+        if self.base_url and "localhost" in self.base_url:
+            # Extract port from base_url if present
+            import re
+            match = re.match(r"http://localhost:(\d+)", self.base_url)
+            port = match.group(1) if match else "5080"
+            self.index_host = f"http://localhost:{port}"
+        elif self.index_host and self.base_url:
             if "api.pinecone.io" in self.base_url:
                 if not self.index_host.startswith("http"):
                     self.index_host = f"https://{self.index_host}"
             else:
                 if "http" not in self.index_host:
-                    self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                    self.index_host = f"http://{self.base_url.split(":")[-2].strip("/")}:{self.index_host.split(":")[-1]}"
                 elif not self.index_host.startswith("http://"):
                     if "localhost" in self.index_host:
-                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
+                        self.index_host = f"http://{self.base_url.split(":")[-2].strip("/")}:{self.index_host.split(":")[-1]}"
                     else:
                         self.index_host = f"http://{self.index_host}"
 
