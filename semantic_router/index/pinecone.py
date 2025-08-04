@@ -243,13 +243,11 @@ class PineconeIndex(BaseIndex):
         """
         try:
             from pinecone import Pinecone, ServerlessSpec
-
             self.ServerlessSpec = ServerlessSpec
         except ImportError:
             raise ImportError(
-                "Please install pinecone-client to use PineconeIndex. "
-                "You can install it with: "
-                "`pip install 'semantic-router[pinecone]'`"
+                "Please install the Pinecone SDK v7+ to use PineconeIndex. "
+                "You can install it with: `pip install 'semantic-router[pinecone]'`"
             )
         pinecone_args = {
             "api_key": api_key,
@@ -258,7 +256,6 @@ class PineconeIndex(BaseIndex):
         }
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
-
         return Pinecone(**pinecone_args)
 
     def _calculate_index_host(self):

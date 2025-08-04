@@ -30,7 +30,7 @@ local = [
     "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
     "sentence-transformers>=5.0.0 ; python_version < '3.13'"
 ]
-pinecone = ["pinecone>=5.0.0,<6.0.0"]
+pinecone = ["pinecone>=7.0.0,<8.0.0"]
 vision = [
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
