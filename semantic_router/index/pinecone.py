@@ -260,10 +260,10 @@ class PineconeIndex(BaseIndex):
 
     def _calculate_index_host(self):
         """Calculate the index host. Used to differentiate between normal Pinecone and Pinecone Local instance."""
-        # Dagger CI: if base_url contains 'pinecone', use service alias for connection, but 'localhost' for SDK validation
+        # Dagger CI: if base_url contains 'pinecone', use service alias for both connection and SDK validation
         if self.base_url and "pinecone" in self.base_url:
             self.index_host = "http://pinecone:5080"
-            self._sdk_host_for_validation = "http://localhost:5080"
+            self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
             import re
             match = re.match(r"http://localhost:(\d+)", self.base_url)
@@ -311,25 +311,13 @@ class PineconeIndex(BaseIndex):
                 )
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
-                try:
-                    index = self.client.Index(self.index_name, host=self.index_host)
-                except ValueError as e:
-                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
-                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
-                    else:
-                        raise
+                index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
                 time.sleep(0.2)
             elif index_exists:
                 self.index_host = self.client.describe_index(self.index_name).host
                 self._calculate_index_host()
-                try:
-                    index = self.client.Index(self.index_name, host=self.index_host)
-                except ValueError as e:
-                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
-                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
-                    else:
-                        raise
+                index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
@@ -350,13 +338,7 @@ class PineconeIndex(BaseIndex):
             self.index_host = self.client.describe_index(self.index_name).host
             if self.index_host and self.base_url:
                 self._calculate_index_host()
-                try:
-                    index = self.client.Index(self.index_name, host=self.index_host)
-                except ValueError as e:
-                    if hasattr(self, '_sdk_host_for_validation') and 'does not appear to be valid' in str(e):
-                        index = self.client.Index(self.index_name, host=self._sdk_host_for_validation)
-                    else:
-                        raise
+                index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
         return index
 
