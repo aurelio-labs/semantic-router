@@ -23,6 +23,7 @@ from semantic_router.schema import RouteChoice, SparseEmbedding
 
 PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
 
+
 def mock_encoder_call(utterances):
     # Define a mapping of utterances to return values
     mock_responses = {
