@@ -83,6 +83,7 @@ class SemanticRouter:
             .with_service_binding("pinecone", self.pinecone_service())
             .with_env_variable("PINECONE_API_KEY", "pclocal")
             .with_env_variable("PINECONE_API_BASE_URL", "http://localhost:5080")
+            .with_extra_host("localhost", "pinecone")
             .with_exec(["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"])
         )
 
@@ -134,6 +135,7 @@ class SemanticRouter:
             .with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
             .with_env_variable("PINECONE_API_BASE_URL", "http://localhost:5080")
+            .with_extra_host("localhost", "pinecone")
             .with_env_variable("POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres"))
             .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
             .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
