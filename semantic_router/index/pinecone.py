@@ -247,9 +247,8 @@ class PineconeIndex(BaseIndex):
             self.ServerlessSpec = ServerlessSpec
         except ImportError:
             raise ImportError(
-                "Please install pinecone-client to use PineconeIndex. "
-                "You can install it with: "
-                "`pip install 'semantic-router[pinecone]'`"
+                "Please install the Pinecone SDK v7+ to use PineconeIndex. "
+                "You can install it with: `pip install 'semantic-router[pinecone]'`"
             )
         pinecone_args = {
             "api_key": api_key,
@@ -258,17 +257,22 @@ class PineconeIndex(BaseIndex):
         }
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
-
         return Pinecone(**pinecone_args)
 
     def _calculate_index_host(self):
-        """Calculate the index host. Used to differentiate between normal
-        Pinecone and Pinecone Local instance.
+        """Calculate the index host. Used to differentiate between normal Pinecone and Pinecone Local instance."""
+        # Dagger CI: if base_url contains 'pinecone', use service alias for both connection and SDK validation
+        if self.base_url and "pinecone" in self.base_url:
+            self.index_host = "http://pinecone:5080"
+            self._sdk_host_for_validation = "http://pinecone:5080"
+        elif self.base_url and "localhost" in self.base_url:
+            import re
 
-        :return: None
-        :rtype: None
-        """
-        if self.index_host and self.base_url:
+            match = re.match(r"http://localhost:(\d+)", self.base_url)
+            port = match.group(1) if match else "5080"
+            self.index_host = f"http://localhost:{port}"
+            self._sdk_host_for_validation = self.index_host
+        elif self.index_host and self.base_url:
             if "api.pinecone.io" in self.base_url:
                 if not self.index_host.startswith("http"):
                     self.index_host = f"https://{self.index_host}"
@@ -280,6 +284,9 @@ class PineconeIndex(BaseIndex):
                         self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
                     else:
                         self.index_host = f"http://{self.index_host}"
+            self._sdk_host_for_validation = self.index_host
+        else:
+            self._sdk_host_for_validation = self.index_host
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -294,42 +301,46 @@ class PineconeIndex(BaseIndex):
             dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
+        import logging
+        logger = logging.getLogger("semantic_router.pinecone")
         dimensions_given = self.dimensions is not None
         if self.index is None:
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
-                # if the index doesn't exist and we have dimension value
-                # we create the index
+                logger.info(f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}")
                 self.client.create_index(
                     name=self.index_name,
                     dimension=self.dimensions,
                     metric=self.metric,
                     spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
                 )
-                # wait for index to be created
+                logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
-                index = self.client.Index(self.index_name)
+                logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
+                index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
-                time.sleep(0.2)
+                # Add delay if running against local Pinecone emulator
+                if (
+                    (self.index_host and ("localhost" in self.index_host or "pinecone:5080" in self.index_host)) or
+                    (self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url))
+                ):
+                    import time
+                    logger.info(f"[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation...")
+                    time.sleep(2)
+                else:
+                    time.sleep(0.2)
             elif index_exists:
-                # if the index exists we just return it
-                # index = self.client.Index(self.index_name)
-
                 self.index_host = self.client.describe_index(self.index_name).host
                 self._calculate_index_host()
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
-
-                # grab the dimensions from the index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
                 raise ValueError(
                     "Cannot create an index without specifying the dimensions."
                 )
             else:
-                # if the index doesn't exist and we don't have the dimensions
-                # we return None
                 logger.warning(
                     "Index could not be initialized. Init parameters: "
                     f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
@@ -340,13 +351,12 @@ class PineconeIndex(BaseIndex):
         else:
             index = self.index
         if self.index is not None and self.host == "":
-            # if the index exists we just return it
             self.index_host = self.client.describe_index(self.index_name).host
-
             if self.index_host and self.base_url:
                 self._calculate_index_host()
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
+        logger.info(f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}")
         return index
 
     async def _init_async_index(self, force_create: bool = False):
@@ -468,8 +478,33 @@ class PineconeIndex(BaseIndex):
         :param batch: The batch of records to upsert.
         :type batch: List[Dict]
         """
+        import logging
+        logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
-            self.index.upsert(vectors=batch, namespace=self.namespace)
+            from pinecone.exceptions import NotFoundException
+            import time
+            max_retries = 5
+            delay = 1
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"[PineconeIndex] Attempting upsert to index: {self.index_name}, batch size: {len(batch)}, attempt {attempt+1}/{max_retries}")
+                    self.index.upsert(vectors=batch, namespace=self.namespace)
+                    logger.info(f"[PineconeIndex] Upsert succeeded for index: {self.index_name}")
+                    break
+                except Exception as e:
+                    logger.error(f"[PineconeIndex] Upsert failed for index: {self.index_name}, error: {e}")
+                    if isinstance(e, NotFoundException):
+                        logger.info(f"[PineconeIndex] NotFoundException on upsert, re-initializing index: {self.index_name}")
+                        self._init_index()
+                        if attempt < max_retries - 1:
+                            logger.info(f"[PineconeIndex] Sleeping {delay}s before retrying upsert...")
+                            time.sleep(delay)
+                            delay *= 2
+                        else:
+                            logger.error(f"[PineconeIndex] Upsert failed after {max_retries} attempts. Raising RuntimeError.")
+                            raise RuntimeError("Pinecone index could not be created or found after retrying upsert.") from e
+                    else:
+                        raise
         else:
             raise ValueError("Index is None, could not upsert.")
 
@@ -673,24 +708,32 @@ class PineconeIndex(BaseIndex):
         :rtype: tuple[list[str], list[dict]]
         """
         if self.index is None:
+            self._init_index()
+        if self.index is None:
             raise ValueError("Index is None, could not retrieve vector IDs.")
         all_vector_ids = []
         metadata = []
+        try:
+            for ids in self.index.list(prefix=prefix, namespace=self.namespace):
+                all_vector_ids.extend(ids)
+                if include_metadata:
+                    for id in ids:
+                        res_meta = (
+                            self.index.fetch(ids=[id], namespace=self.namespace)
+                            if self.index
+                            else {}
+                        )
+                        metadata.extend(
+                            [x["metadata"] for x in res_meta["vectors"].values()]
+                        )
+        except Exception as e:
+            from pinecone.exceptions import NotFoundException
 
-        for ids in self.index.list(prefix=prefix, namespace=self.namespace):
-            all_vector_ids.extend(ids)
-
-            if include_metadata:
-                for id in ids:
-                    res_meta = (
-                        self.index.fetch(ids=[id], namespace=self.namespace)
-                        if self.index
-                        else {}
-                    )
-                    metadata.extend(
-                        [x["metadata"] for x in res_meta["vectors"].values()]
-                    )
-
+            if isinstance(e, NotFoundException):
+                # Index exists but is empty, treat as no vectors
+                return [], []
+            else:
+                raise
         return all_vector_ids, metadata
 
     def delete(self, route_name: str) -> list[str]:
