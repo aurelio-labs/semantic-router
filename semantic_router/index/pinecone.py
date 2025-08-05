@@ -666,24 +666,41 @@ class PineconeIndex(BaseIndex):
         :rtype: tuple[list[str], list[dict]]
         """
         if self.index is None:
-            raise ValueError("Index is None, could not retrieve vector IDs.")
+            self._init_index()
         all_vector_ids = []
         metadata = []
-
-        for ids in self.index.list(prefix=prefix, namespace=self.namespace):
-            all_vector_ids.extend(ids)
-
-            if include_metadata:
-                for id in ids:
-                    res_meta = (
-                        self.index.fetch(ids=[id], namespace=self.namespace)
-                        if self.index
-                        else {}
-                    )
-                    metadata.extend(
-                        [x["metadata"] for x in res_meta["vectors"].values()]
-                    )
-
+        try:
+            for ids in self.index.list(prefix=prefix, namespace=self.namespace):
+                all_vector_ids.extend(ids)
+                if include_metadata:
+                    for id in ids:
+                        res_meta = (
+                            self.index.fetch(ids=[id], namespace=self.namespace)
+                            if self.index
+                            else {}
+                        )
+                        metadata.extend(
+                            [x["metadata"] for x in res_meta["vectors"].values()]
+                        )
+        except Exception as e:
+            # If the index was deleted or not found, try to re-initialize and retry once
+            from pinecone.exceptions import NotFoundException
+            if isinstance(e, NotFoundException):
+                self._init_index()
+                for ids in self.index.list(prefix=prefix, namespace=self.namespace):
+                    all_vector_ids.extend(ids)
+                    if include_metadata:
+                        for id in ids:
+                            res_meta = (
+                                self.index.fetch(ids=[id], namespace=self.namespace)
+                                if self.index
+                                else {}
+                            )
+                            metadata.extend(
+                                [x["metadata"] for x in res_meta["vectors"].values()]
+                            )
+            else:
+                raise
         return all_vector_ids, metadata
 
     def delete(self, route_name: str) -> list[str]:
