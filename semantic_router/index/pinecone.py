@@ -464,14 +464,19 @@ class PineconeIndex(BaseIndex):
         :type batch: List[Dict]
         """
         if self.index is not None:
+            from pinecone.exceptions import NotFoundException
             try:
                 self.index.upsert(vectors=batch, namespace=self.namespace)
             except Exception as e:
-                from pinecone.exceptions import NotFoundException
-
                 if isinstance(e, NotFoundException):
                     self._init_index()
-                    self.index.upsert(vectors=batch, namespace=self.namespace)
+                    try:
+                        self.index.upsert(vectors=batch, namespace=self.namespace)
+                    except Exception as e2:
+                        if isinstance(e2, NotFoundException):
+                            raise RuntimeError("Pinecone index could not be created or found after retrying upsert.") from e2
+                        else:
+                            raise
                 else:
                     raise
         else:
