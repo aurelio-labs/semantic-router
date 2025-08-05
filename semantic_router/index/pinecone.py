@@ -243,6 +243,7 @@ class PineconeIndex(BaseIndex):
         """
         try:
             from pinecone import Pinecone, ServerlessSpec
+
             self.ServerlessSpec = ServerlessSpec
         except ImportError:
             raise ImportError(
@@ -266,6 +267,7 @@ class PineconeIndex(BaseIndex):
             self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
             import re
+
             match = re.match(r"http://localhost:(\d+)", self.base_url)
             port = match.group(1) if match else "5080"
             self.index_host = f"http://localhost:{port}"
@@ -276,10 +278,10 @@ class PineconeIndex(BaseIndex):
                     self.index_host = f"https://{self.index_host}"
             else:
                 if "http" not in self.index_host:
-                    self.index_host = f"http://{self.base_url.split(":")[-2].strip("/")}:{self.index_host.split(":")[-1]}"
+                    self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
                 elif not self.index_host.startswith("http://"):
                     if "localhost" in self.index_host:
-                        self.index_host = f"http://{self.base_url.split(":")[-2].strip("/")}:{self.index_host.split(":")[-1]}"
+                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
                     else:
                         self.index_host = f"http://{self.index_host}"
             self._sdk_host_for_validation = self.index_host
@@ -462,7 +464,16 @@ class PineconeIndex(BaseIndex):
         :type batch: List[Dict]
         """
         if self.index is not None:
-            self.index.upsert(vectors=batch, namespace=self.namespace)
+            try:
+                self.index.upsert(vectors=batch, namespace=self.namespace)
+            except Exception as e:
+                from pinecone.exceptions import NotFoundException
+
+                if isinstance(e, NotFoundException):
+                    self._init_index()
+                    self.index.upsert(vectors=batch, namespace=self.namespace)
+                else:
+                    raise
         else:
             raise ValueError("Index is None, could not upsert.")
 
@@ -667,6 +678,8 @@ class PineconeIndex(BaseIndex):
         """
         if self.index is None:
             self._init_index()
+        if self.index is None:
+            raise ValueError("Index is None, could not retrieve vector IDs.")
         all_vector_ids = []
         metadata = []
         try:
@@ -684,6 +697,7 @@ class PineconeIndex(BaseIndex):
                         )
         except Exception as e:
             from pinecone.exceptions import NotFoundException
+
             if isinstance(e, NotFoundException):
                 # Index exists but is empty, treat as no vectors
                 return [], []

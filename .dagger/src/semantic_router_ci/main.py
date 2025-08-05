@@ -30,8 +30,7 @@ class SemanticRouter:
 
     @function
     async def lint(self, src: dagger.Directory, python_version: str = "3.11") -> str:
-        """Checks if source code passes linter
-        """
+        """Checks if source code passes linter"""
         return await (
             (await self.build(src=src, extra="dev", python_version=python_version))
             # run lint checks
@@ -73,9 +72,10 @@ class SemanticRouter:
         )
 
     @function
-    async def unit_test(self, src: dagger.Directory, python_version: str = "3.11") -> str:
-        """Runs unit tests only for semantic-router.
-        """
+    async def unit_test(
+        self, src: dagger.Directory, python_version: str = "3.11"
+    ) -> str:
+        """Runs unit tests only for semantic-router."""
         return await (
             # create a build with all dependencies so we cover all tests
             (await self.build(src=src, extra="all", python_version=python_version))
@@ -96,49 +96,88 @@ class SemanticRouter:
         pinecone_api_key: str = "",
         python_version: str = "3.11",
     ) -> str:
-        """Runs tests for semantic-router, scope can be 
+        """Runs tests for semantic-router, scope can be
         set to run for 'unit', 'functional', 'integration',
         or 'all'. By default scope is set to 'unit'.
         """
         # Map scope to pytest arguments
         if scope == "all":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--timeout=180", "--cov=semantic_router", "--cov-report=term-missing", "--cov-report=xml", "--exitfirst", "--maxfail=1", "tests"
+                "uv",
+                "run",
+                "pytest",
+                "-vv",
+                "--timeout=180",
+                "--cov=semantic_router",
+                "--cov-report=term-missing",
+                "--cov-report=xml",
+                "--exitfirst",
+                "--maxfail=1",
+                "tests",
             ]
         elif scope == "unit":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--timeout=180", "--exitfirst", "--maxfail=1", "tests/unit"
+                "uv",
+                "run",
+                "pytest",
+                "-vv",
+                "--timeout=180",
+                "--exitfirst",
+                "--maxfail=1",
+                "tests/unit",
             ]
         elif scope == "functional":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--timeout=180", "-s", "--exitfirst", "--maxfail=1", "tests/functional"
+                "uv",
+                "run",
+                "pytest",
+                "-vv",
+                "--timeout=180",
+                "-s",
+                "--exitfirst",
+                "--maxfail=1",
+                "tests/functional",
             ]
         elif scope == "integration":
             pytest_args = [
-                "uv", "run", "pytest", "-vv", "--timeout=180", "--exitfirst", "--maxfail=1", "tests/integration"
+                "uv",
+                "run",
+                "pytest",
+                "-vv",
+                "--timeout=180",
+                "--exitfirst",
+                "--maxfail=1",
+                "tests/integration",
             ]
         else:
-            pytest_args = [
-                "uv", "run", "pytest", "-vv", "--timeout=180", "tests/unit"
-            ]
+            pytest_args = ["uv", "run", "pytest", "-vv", "--timeout=180", "tests/unit"]
 
-        container = await self.build(src=src, extra="all", python_version=python_version)
+        container = await self.build(
+            src=src, extra="all", python_version=python_version
+        )
         if openai_api_key:
             container = container.with_env_variable("OPENAI_API_KEY", openai_api_key)
         if cohere_api_key:
             container = container.with_env_variable("COHERE_API_KEY", cohere_api_key)
         if pinecone_api_key:
-            container = container.with_env_variable("PINECONE_API_KEY", pinecone_api_key)
+            container = container.with_env_variable(
+                "PINECONE_API_KEY", pinecone_api_key
+            )
         container = (
-            container
-            .with_service_binding("postgres", self.postgres_service())
+            container.with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
             .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
-            .with_env_variable("POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres"))
+            .with_env_variable(
+                "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
+            )
             .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
             .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
-            .with_env_variable("POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres"))
-            .with_env_variable("POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres"))
+            .with_env_variable(
+                "POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres")
+            )
+            .with_env_variable(
+                "POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres")
+            )
         )
         # Debug: print env vars inside the container
         container = container.with_exec(["env"])
