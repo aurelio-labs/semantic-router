@@ -683,22 +683,10 @@ class PineconeIndex(BaseIndex):
                             [x["metadata"] for x in res_meta["vectors"].values()]
                         )
         except Exception as e:
-            # If the index was deleted or not found, try to re-initialize and retry once
             from pinecone.exceptions import NotFoundException
             if isinstance(e, NotFoundException):
-                self._init_index()
-                for ids in self.index.list(prefix=prefix, namespace=self.namespace):
-                    all_vector_ids.extend(ids)
-                    if include_metadata:
-                        for id in ids:
-                            res_meta = (
-                                self.index.fetch(ids=[id], namespace=self.namespace)
-                                if self.index
-                                else {}
-                            )
-                            metadata.extend(
-                                [x["metadata"] for x in res_meta["vectors"].values()]
-                            )
+                # Index exists but is empty, treat as no vectors
+                return [], []
             else:
                 raise
         return all_vector_ids, metadata
