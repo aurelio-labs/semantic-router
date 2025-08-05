@@ -19,6 +19,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PINECONE_API_BASE_URL: https://api.pinecone.io
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
     timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     strategy:
       matrix:
@@ -49,12 +54,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          PINECONE_API_BASE_URL: https://api.pinecone.io
-          POSTGRES_HOST: postgres
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
