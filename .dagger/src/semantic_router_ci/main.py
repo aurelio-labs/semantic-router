@@ -182,6 +182,8 @@ class SemanticRouter:
         container = container.with_env_variable(
             "POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres")
         )
+        # Debug: print PINECONE_API_BASE_URL inside the container
+        container = container.with_exec(["printenv", "PINECONE_API_BASE_URL"])
         # Debug: print env vars inside the container
         container = container.with_exec(["env"])
         container = container.with_exec(pytest_args)
