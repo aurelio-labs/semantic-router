@@ -301,18 +301,23 @@ class PineconeIndex(BaseIndex):
             dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
+        import logging
+        logger = logging.getLogger("semantic_router.pinecone")
         dimensions_given = self.dimensions is not None
         if self.index is None:
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
+                logger.info(f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}")
                 self.client.create_index(
                     name=self.index_name,
                     dimension=self.dimensions,
                     metric=self.metric,
                     spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
                 )
+                logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
+                logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
                 time.sleep(0.2)
@@ -342,6 +347,7 @@ class PineconeIndex(BaseIndex):
                 self._calculate_index_host()
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
+        logger.info(f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}")
         return index
 
     async def _init_async_index(self, force_create: bool = False):
@@ -463,16 +469,25 @@ class PineconeIndex(BaseIndex):
         :param batch: The batch of records to upsert.
         :type batch: List[Dict]
         """
+        import logging
+        logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
             from pinecone.exceptions import NotFoundException
             try:
+                logger.info(f"[PineconeIndex] Attempting upsert to index: {self.index_name}, batch size: {len(batch)}")
                 self.index.upsert(vectors=batch, namespace=self.namespace)
+                logger.info(f"[PineconeIndex] Upsert succeeded for index: {self.index_name}")
             except Exception as e:
+                logger.error(f"[PineconeIndex] Upsert failed for index: {self.index_name}, error: {e}")
                 if isinstance(e, NotFoundException):
+                    logger.info(f"[PineconeIndex] NotFoundException on upsert, re-initializing index: {self.index_name}")
                     self._init_index()
                     try:
+                        logger.info(f"[PineconeIndex] Retrying upsert to index: {self.index_name}, batch size: {len(batch)}")
                         self.index.upsert(vectors=batch, namespace=self.namespace)
+                        logger.info(f"[PineconeIndex] Upsert succeeded on retry for index: {self.index_name}")
                     except Exception as e2:
+                        logger.error(f"[PineconeIndex] Upsert failed again for index: {self.index_name}, error: {e2}")
                         if isinstance(e2, NotFoundException):
                             raise RuntimeError("Pinecone index could not be created or found after retrying upsert.") from e2
                         else:
