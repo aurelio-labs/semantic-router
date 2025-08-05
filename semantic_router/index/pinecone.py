@@ -320,7 +320,16 @@ class PineconeIndex(BaseIndex):
                 logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.index = index
-                time.sleep(0.2)
+                # Add delay if running against local Pinecone emulator
+                if (
+                    (self.index_host and ("localhost" in self.index_host or "pinecone:5080" in self.index_host)) or
+                    (self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url))
+                ):
+                    import time
+                    logger.info(f"[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation...")
+                    time.sleep(2)
+                else:
+                    time.sleep(0.2)
             elif index_exists:
                 self.index_host = self.client.describe_index(self.index_name).host
                 self._calculate_index_host()
