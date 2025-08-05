@@ -166,18 +166,20 @@ class SemanticRouter:
         container = (
             container.with_service_binding("postgres", self.postgres_service())
             .with_service_binding("pinecone", self.pinecone_service())
-            .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
-            .with_env_variable(
-                "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
-            )
-            .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
-            .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
-            .with_env_variable(
-                "POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres")
-            )
-            .with_env_variable(
-                "POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres")
-            )
+        )
+        # Use PINECONE_API_BASE_URL from environment if set, else default to local emulator
+        pinecone_api_base_url = os.environ.get("PINECONE_API_BASE_URL", "http://pinecone:5080")
+        container = container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
+        container = container.with_env_variable(
+            "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
+        )
+        container = container.with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
+        container = container.with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
+        container = container.with_env_variable(
+            "POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres")
+        )
+        container = container.with_env_variable(
+            "POSTGRES_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "postgres")
         )
         # Debug: print env vars inside the container
         container = container.with_exec(["env"])
