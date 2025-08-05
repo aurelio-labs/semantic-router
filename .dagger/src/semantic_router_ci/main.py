@@ -165,10 +165,11 @@ class SemanticRouter:
             )
         container = (
             container.with_service_binding("postgres", self.postgres_service())
-            .with_service_binding("pinecone", self.pinecone_service())
         )
-        # Use PINECONE_API_BASE_URL from environment if set, else default to local emulator
         pinecone_api_base_url = os.environ.get("PINECONE_API_BASE_URL", "http://pinecone:5080")
+        if pinecone_api_base_url not in ["https://api.pinecone.io", "https://controller.us-east-1.pinecone.io"]:
+            container = container.with_service_binding("pinecone", self.pinecone_service())
+        # Use PINECONE_API_BASE_URL from environment if set, else default to local emulator
         container = container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
         container = container.with_env_variable(
             "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
