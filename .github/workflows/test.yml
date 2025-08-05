@@ -49,6 +49,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          # Use Pinecone cloud for integration tests
+          PINECONE_API_BASE_URL: https://api.pinecone.io
           POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
           POSTGRES_DB: postgres
