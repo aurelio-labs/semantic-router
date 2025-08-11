@@ -3,6 +3,8 @@ import os
 import dagger
 from dagger import Container, dag, function, object_type
 
+print("DAGGER DEBUG: PINECONE_API_BASE_URL =", os.environ.get("PINECONE_API_BASE_URL"))
+
 
 @object_type
 class SemanticRouter:
