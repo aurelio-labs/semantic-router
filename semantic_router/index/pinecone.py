@@ -220,6 +220,8 @@ class PineconeIndex(BaseIndex):
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
 
+        # Preserve requested name for potential namespace use
+        requested_index_name = index_name
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
@@ -236,6 +238,20 @@ class PineconeIndex(BaseIndex):
         )
 
         self.client = self._initialize_client(api_key=self.api_key)
+
+        # If running against Pinecone Cloud and a shared index is provided via env,
+        # reuse that index and push isolation to namespaces based on requested name
+        if (
+            self.base_url
+            and "api.pinecone.io" in self.base_url
+            and os.getenv("PINECONE_INDEX_NAME")
+        ):
+            shared_index = os.getenv("PINECONE_INDEX_NAME").strip()
+            if shared_index:
+                self.index_name = shared_index
+                if not self.namespace:
+                    # Use the originally requested index name to isolate data
+                    self.namespace = requested_index_name
 
         # try initializing index
         if not init_async_index:
@@ -308,12 +324,23 @@ class PineconeIndex(BaseIndex):
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
                 logger.info(f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}")
-                self.client.create_index(
-                    name=self.index_name,
-                    dimension=self.dimensions,
-                    metric=self.metric,
-                    spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
-                )
+                try:
+                    self.client.create_index(
+                        name=self.index_name,
+                        dimension=self.dimensions,
+                        metric=self.metric,
+                        spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
+                    )
+                except Exception as e:
+                    # If we hit quota (Forbidden), attempt to proceed assuming a shared index exists
+                    from pinecone.exceptions import ForbiddenException
+                    if isinstance(e, ForbiddenException):
+                        logger.warning(
+                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse existing shared index: %s",
+                            self.index_name,
+                        )
+                    else:
+                        raise
                 logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
