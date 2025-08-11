@@ -904,22 +904,24 @@ class PineconeIndex(BaseIndex):
             ids=[config_id],
             namespace="sr_config",
         )
-        if config_record.get("vectors"):
+        # Pinecone v7: FetchResponse with .vectors mapping id -> Vector
+        if hasattr(config_record, "vectors") and config_id in config_record.vectors:
+            vec = config_record.vectors[config_id]
+            md = getattr(vec, "metadata", {}) or {}
+            value = md.get("value", "")
+            created_at = md.get("created_at")
             return ConfigParameter(
                 field=field,
-                value=config_record["vectors"][config_id]["metadata"]["value"],
-                created_at=config_record["vectors"][config_id]["metadata"][
-                    "created_at"
-                ],
+                value=value,
+                created_at=created_at,
                 scope=scope,
             )
-        else:
-            logger.warning(f"Configuration for {field} parameter not found in index.")
-            return ConfigParameter(
-                field=field,
-                value="",
-                scope=scope,
-            )
+        logger.warning(f"Configuration for {field} parameter not found in index.")
+        return ConfigParameter(
+            field=field,
+            value="",
+            scope=scope,
+        )
 
     async def _async_read_config(
         self, field: str, scope: str | None = None
