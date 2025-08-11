@@ -243,6 +243,9 @@ def get_test_routers():
 )
 class TestIndexEncoders:
     def test_initialization(self, routes, index_cls, encoder_cls, router_cls):
+        # If Pinecone is selected but no shared index is provided, skip to avoid quota failures
+        if index_cls is PineconeIndex and not os.environ.get("PINECONE_INDEX_NAME"):
+            pytest.skip("Skipping Pinecone test: set PINECONE_INDEX_NAME to an existing index to run.")
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(
