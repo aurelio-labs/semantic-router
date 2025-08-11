@@ -242,13 +242,14 @@ class PineconeIndex(BaseIndex):
         # If running against Pinecone Cloud and a shared index is provided via env,
         # reuse that index and push isolation to namespaces based on requested name
         if self.base_url and "api.pinecone.io" in self.base_url:
-            # Use shared index if provided, else default to a stable shared name
-            shared_index = os.getenv("PINECONE_INDEX_NAME") or "semantic-router-ci"
-            shared_index = shared_index.strip()
-            self.index_name = shared_index
-            if not self.namespace:
-                # Use the originally requested index name to isolate data
-                self.namespace = requested_index_name
+            shared_index = os.getenv("PINECONE_INDEX_NAME")
+            if shared_index:
+                shared_index = shared_index.strip()
+                if shared_index:
+                    self.index_name = shared_index
+                    if not self.namespace:
+                        # Use the originally requested index name to isolate data
+                        self.namespace = requested_index_name
 
         # try initializing index
         if not init_async_index:
@@ -365,13 +366,20 @@ class PineconeIndex(BaseIndex):
                     else:
                         raise
                 logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
+                start_wait = time.time()
+                max_wait_seconds = 15.0
                 while True:
                     try:
-                        if self.client.describe_index(self.index_name).status["ready"]:
+                        if self.client.describe_index(self.index_name).status.get("ready"):
                             break
-                    except NotFoundException:
-                        # If we switched to an existing index name but it isn't describable yet, wait briefly
+                    except Exception:
+                        # transient or not found; keep waiting within bounds
                         pass
+                    if time.time() - start_wait > max_wait_seconds:
+                        logger.warning(
+                            f"[PineconeIndex] Timed out waiting for index readiness: {self.index_name}. Proceeding."
+                        )
+                        break
                     time.sleep(0.2)
                 logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
                 if self._using_local_emulator:
@@ -398,6 +406,14 @@ class PineconeIndex(BaseIndex):
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
                 raise ValueError("Dimensions must be provided to create a new index.")
+            else:
+                index = self.index
+                # Creation was not possible and index does not exist; give a clear error for cloud
+                if self.base_url and "api.pinecone.io" in self.base_url and self.index is None:
+                    raise RuntimeError(
+                        "Pinecone index unavailable and cannot be created due to quota. "
+                        "Set PINECONE_INDEX_NAME to an existing index and rerun."
+                    )
         else:
             index = self.index
         if self.index is not None and self.host == "":
