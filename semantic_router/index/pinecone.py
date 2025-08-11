@@ -334,15 +334,46 @@ class PineconeIndex(BaseIndex):
                 except Exception as e:
                     # If we hit quota (Forbidden), attempt to proceed assuming a shared index exists
                     from pinecone.exceptions import ForbiddenException
+                    from pinecone.exceptions import NotFoundException
                     if isinstance(e, ForbiddenException):
                         logger.warning(
                             "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse existing shared index: %s",
                             self.index_name,
                         )
+                        # Prefer explicit shared index from env
+                        shared_index_env = os.getenv("PINECONE_INDEX_NAME")
+                        if shared_index_env:
+                            self.index_name = shared_index_env.strip()
+                        else:
+                            # Fallback: pick any existing index
+                            try:
+                                existing = self.client.list_indexes()
+                                if isinstance(existing, list) and existing:
+                                    self.index_name = existing[0].name if hasattr(existing[0], "name") else str(existing[0])
+                                    logger.info(f"[PineconeIndex] Reusing existing index: {self.index_name}")
+                                else:
+                                    raise e
+                            except Exception:
+                                raise e
+                        # Ensure namespace isolation when reusing indexes
+                        if not self.namespace:
+                            # Use the previously requested name as namespace
+                            try:
+                                requested_name = locals().get("requested_index_name")
+                                if requested_name:
+                                    self.namespace = requested_name
+                            except Exception:
+                                pass
                     else:
                         raise
                 logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
-                while not self.client.describe_index(self.index_name).status["ready"]:
+                while True:
+                    try:
+                        if self.client.describe_index(self.index_name).status["ready"]:
+                            break
+                    except NotFoundException:
+                        # If we switched to an existing index name but it isn't describable yet, wait briefly
+                        pass
                     time.sleep(0.2)
                 logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
                 if self._using_local_emulator:
