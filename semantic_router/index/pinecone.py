@@ -715,11 +715,12 @@ class PineconeIndex(BaseIndex):
                         res_meta = (
                             self.index.fetch(ids=[id], namespace=self.namespace)
                             if self.index
-                            else {}
+                            else None
                         )
-                        metadata.extend(
-                            [x["metadata"] for x in res_meta["vectors"].values()]
-                        )
+                        if res_meta is not None and hasattr(res_meta, "vectors"):
+                            for vec in res_meta.vectors.values():
+                                md = getattr(vec, "metadata", None) or {}
+                                metadata.append(md)
         except Exception as e:
             from pinecone.exceptions import NotFoundException
 
