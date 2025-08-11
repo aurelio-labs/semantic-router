@@ -20,10 +20,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      PINECONE_API_BASE_URL: https://api.pinecone.io
-      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
     timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     strategy:
       matrix:
@@ -43,7 +42,7 @@ jobs:
 
       - name: Run tests with Dagger
         run: |
-          dagger call --mod ./.dagger test \
+          PINECONE_API_BASE_URL="https://api.pinecone.io" dagger call --mod ./.dagger test \
             --src . \
             --scope ${{ inputs.test_scope || 'all' }} \
             --python-version "${{ matrix.python-version }}" \
