@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import time
+from datetime import datetime, timezone
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -210,7 +211,9 @@ class PineconeIndex(BaseIndex):
             self.base_url = base_url
 
         # Determine if using local emulator or cloud
-        if self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url):
+        if self.base_url and (
+            "localhost" in self.base_url or "pinecone:5080" in self.base_url
+        ):
             self.index_host = "http://pinecone:5080"
             self._using_local_emulator = True
         else:
@@ -286,7 +289,9 @@ class PineconeIndex(BaseIndex):
     def _calculate_index_host(self):
         """Calculate the index host. Used to differentiate between Pinecone cloud and local emulator."""
         # Local emulator: base_url explicitly points to localhost or the pinecone service alias
-        if self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url):
+        if self.base_url and (
+            "localhost" in self.base_url or "pinecone:5080" in self.base_url
+        ):
             self.index_host = "http://pinecone:5080"
             self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
@@ -298,7 +303,9 @@ class PineconeIndex(BaseIndex):
             self._sdk_host_for_validation = self.index_host
         elif self.index_host and self.base_url:
             # Cloud: keep the described host, ensure scheme if needed
-            if "api.pinecone.io" in self.base_url and not str(self.index_host).startswith("http"):
+            if "api.pinecone.io" in self.base_url and not str(
+                self.index_host
+            ).startswith("http"):
                 self.index_host = f"https://{self.index_host}"
             self._sdk_host_for_validation = self.index_host
         else:
@@ -318,12 +325,15 @@ class PineconeIndex(BaseIndex):
         :type force_create: bool, optional
         """
         import logging
+
         logger = logging.getLogger("semantic_router.pinecone")
         dimensions_given = self.dimensions is not None
         if self.index is None:
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
-                logger.info(f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}")
+                logger.info(
+                    f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}"
+                )
                 try:
                     self.client.create_index(
                         name=self.index_name,
@@ -333,11 +343,14 @@ class PineconeIndex(BaseIndex):
                     )
                 except Exception as e:
                     # If we hit quota (Forbidden), attempt to proceed assuming a shared index exists
-                    from pinecone.exceptions import ForbiddenException
-                    from pinecone.exceptions import NotFoundException
+                    from pinecone.exceptions import (
+                        ForbiddenException,
+                    )
+
                     if isinstance(e, ForbiddenException):
                         logger.warning(
-                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse an existing index.")
+                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse an existing index."
+                        )
                         # Try to select a reusable index
                         reused_index_name = None
                         shared_index_env = os.getenv("PINECONE_INDEX_NAME")
@@ -347,7 +360,11 @@ class PineconeIndex(BaseIndex):
                             try:
                                 existing = self.client.list_indexes()
                                 if isinstance(existing, list) and existing:
-                                    reused_index_name = existing[0].name if hasattr(existing[0], "name") else str(existing[0])
+                                    reused_index_name = (
+                                        existing[0].name
+                                        if hasattr(existing[0], "name")
+                                        else str(existing[0])
+                                    )
                             except Exception:
                                 # Ignore list errors; we'll error explicitly below
                                 pass
@@ -358,18 +375,27 @@ class PineconeIndex(BaseIndex):
                             )
                         # Adopt the reusable index
                         self.index_name = reused_index_name
-                        logger.info(f"[PineconeIndex] Reusing existing index: {self.index_name}")
+                        logger.info(
+                            f"[PineconeIndex] Reusing existing index: {self.index_name}"
+                        )
                         # Ensure namespace isolation when reusing indexes
                         if not self.namespace:
-                            self.namespace = getattr(self, "_requested_index_name", None) or self.index_name
+                            self.namespace = (
+                                getattr(self, "_requested_index_name", None)
+                                or self.index_name
+                            )
                     else:
                         raise
-                logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
+                logger.info(
+                    f"[PineconeIndex] Waiting for index to be ready: {self.index_name}"
+                )
                 start_wait = time.time()
                 max_wait_seconds = 15.0
                 while True:
                     try:
-                        if self.client.describe_index(self.index_name).status.get("ready"):
+                        if self.client.describe_index(self.index_name).status.get(
+                            "ready"
+                        ):
                             break
                     except Exception:
                         # transient or not found; keep waiting within bounds
@@ -388,7 +414,9 @@ class PineconeIndex(BaseIndex):
                 self.index = index
                 # Only sleep for local emulator
                 if self._using_local_emulator:
-                    logger.info(f"[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation...")
+                    logger.info(
+                        "[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation..."
+                    )
                     time.sleep(2)
                 else:
                     time.sleep(0.2)
@@ -399,7 +427,7 @@ class PineconeIndex(BaseIndex):
                     self._sdk_host_for_validation = self.index_host
                     index = self.client.Index(self.index_name, host=self.index_host)
                 else:
-                    self.index_host = desc.host if hasattr(desc, 'host') else None
+                    self.index_host = desc.host if hasattr(desc, "host") else None
                     index = self.client.Index(self.index_name)
                 self.index = index
                 self.dimensions = index.describe_index_stats()["dimension"]
@@ -408,7 +436,11 @@ class PineconeIndex(BaseIndex):
             else:
                 index = self.index
                 # Creation was not possible and index does not exist; give a clear error for cloud
-                if self.base_url and "api.pinecone.io" in self.base_url and self.index is None:
+                if (
+                    self.base_url
+                    and "api.pinecone.io" in self.base_url
+                    and self.index is None
+                ):
                     raise RuntimeError(
                         "Pinecone index unavailable and cannot be created due to quota. "
                         "Set PINECONE_INDEX_NAME to an existing index and rerun."
@@ -428,7 +460,9 @@ class PineconeIndex(BaseIndex):
                     self.host = f"https://{self.index_host}"
                 else:
                     self.host = str(self.index_host)
-        logger.info(f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}")
+        logger.info(
+            f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}"
+        )
         return index
 
     async def _init_async_index(self, force_create: bool = False):
@@ -551,29 +585,45 @@ class PineconeIndex(BaseIndex):
         :type batch: List[Dict]
         """
         import logging
+
         logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
             from pinecone.exceptions import NotFoundException
+
             max_retries = 5
             delay = 1
             for attempt in range(max_retries):
                 try:
-                    logger.info(f"[PineconeIndex] Attempting upsert to index: {self.index_name}, batch size: {len(batch)}, attempt {attempt+1}/{max_retries}")
+                    logger.info(
+                        f"[PineconeIndex] Attempting upsert to index: {self.index_name}, batch size: {len(batch)}, attempt {attempt + 1}/{max_retries}"
+                    )
                     self.index.upsert(vectors=batch, namespace=self.namespace)
-                    logger.info(f"[PineconeIndex] Upsert succeeded for index: {self.index_name}")
+                    logger.info(
+                        f"[PineconeIndex] Upsert succeeded for index: {self.index_name}"
+                    )
                     break
                 except Exception as e:
-                    logger.error(f"[PineconeIndex] Upsert failed for index: {self.index_name}, error: {e}")
+                    logger.error(
+                        f"[PineconeIndex] Upsert failed for index: {self.index_name}, error: {e}"
+                    )
                     if isinstance(e, NotFoundException):
-                        logger.info(f"[PineconeIndex] NotFoundException on upsert, re-initializing index: {self.index_name}")
+                        logger.info(
+                            f"[PineconeIndex] NotFoundException on upsert, re-initializing index: {self.index_name}"
+                        )
                         self._init_index()
                         if attempt < max_retries - 1:
-                            logger.info(f"[PineconeIndex] Sleeping {delay}s before retrying upsert...")
+                            logger.info(
+                                f"[PineconeIndex] Sleeping {delay}s before retrying upsert..."
+                            )
                             time.sleep(delay)
                             delay *= 2
                         else:
-                            logger.error(f"[PineconeIndex] Upsert failed after {max_retries} attempts. Raising RuntimeError.")
-                            raise RuntimeError("Pinecone index could not be created or found after retrying upsert.") from e
+                            logger.error(
+                                f"[PineconeIndex] Upsert failed after {max_retries} attempts. Raising RuntimeError."
+                            )
+                            raise RuntimeError(
+                                "Pinecone index could not be created or found after retrying upsert."
+                            ) from e
                     else:
                         raise
         else:
@@ -986,7 +1036,12 @@ class PineconeIndex(BaseIndex):
             vec = config_record.vectors[config_id]
             md = getattr(vec, "metadata", {}) or {}
             value = md.get("value", "")
-            created_at = md.get("created_at")
+            created_raw = md.get("created_at")
+            created_at: str = (
+                created_raw
+                if isinstance(created_raw, str)
+                else datetime.now(timezone.utc).isoformat()
+            )
             return ConfigParameter(
                 field=field,
                 value=value,
@@ -1025,10 +1080,16 @@ class PineconeIndex(BaseIndex):
         )
         if config_record:
             try:
+                created_raw = config_record.get("created_at")
+                created_at: str = (
+                    created_raw
+                    if isinstance(created_raw, str)
+                    else datetime.now(timezone.utc).isoformat()
+                )
                 return ConfigParameter(
                     field=field,
                     value=config_record["value"],
-                    created_at=config_record["created_at"],
+                    created_at=created_at,
                     scope=scope,
                 )
             except KeyError:

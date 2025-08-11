@@ -166,10 +166,10 @@ class SemanticRouter:
         # Forward optional shared index name to the test container
         pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME")
         if pinecone_index_name:
-            container = container.with_env_variable("PINECONE_INDEX_NAME", pinecone_index_name)
-        container = (
-            container.with_service_binding("postgres", self.postgres_service())
-        )
+            container = container.with_env_variable(
+                "PINECONE_INDEX_NAME", pinecone_index_name
+            )
+        container = container.with_service_binding("postgres", self.postgres_service())
         pinecone_api_base_url = os.environ.get("PINECONE_API_BASE_URL")
         # Decide cloud vs local
         if pinecone_api_base_url is None:
@@ -185,14 +185,22 @@ class SemanticRouter:
             pinecone_api_base_url.startswith("http://pinecone:5080")
             or "localhost" in pinecone_api_base_url
         ):
-            container = container.with_service_binding("pinecone", self.pinecone_service())
+            container = container.with_service_binding(
+                "pinecone", self.pinecone_service()
+            )
         # Set env var inside test container
-        container = container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
+        container = container.with_env_variable(
+            "PINECONE_API_BASE_URL", pinecone_api_base_url
+        )
         container = container.with_env_variable(
             "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
         )
-        container = container.with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
-        container = container.with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
+        container = container.with_env_variable(
+            "POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432")
+        )
+        container = container.with_env_variable(
+            "POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres")
+        )
         container = container.with_env_variable(
             "POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres")
         )

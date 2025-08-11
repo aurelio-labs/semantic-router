@@ -72,10 +72,9 @@ def init_index(
     """
     if index_cls is PineconeIndex:
         # Skip Pinecone tests in cloud mode unless a shared index is provided
-        if (
-            os.environ.get("PINECONE_API_BASE_URL", "").startswith("https://api.pinecone.io")
-            and not os.environ.get("PINECONE_INDEX_NAME")
-        ):
+        if os.environ.get("PINECONE_API_BASE_URL", "").startswith(
+            "https://api.pinecone.io"
+        ) and not os.environ.get("PINECONE_INDEX_NAME"):
             pytest.skip(
                 "Skipping Pinecone in cloud: set PINECONE_INDEX_NAME to an existing index to run."
             )
@@ -90,10 +89,14 @@ def init_index(
             effective_index_name = shared_index
             # Push isolation into namespace using the requested test index name
             if not namespace:
-                namespace = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+                namespace = (
+                    TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+                )
         else:
             # Fallback: unique index name per test run
-            effective_index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+            effective_index_name = (
+                TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+            )
 
         index = index_cls(
             index_name=effective_index_name, dimensions=dimensions, namespace=namespace
@@ -253,7 +256,9 @@ class TestIndexEncoders:
     def test_initialization(self, routes, index_cls, encoder_cls, router_cls):
         # If Pinecone is selected but no shared index is provided, skip to avoid quota failures
         if index_cls is PineconeIndex and not os.environ.get("PINECONE_INDEX_NAME"):
-            pytest.skip("Skipping Pinecone test: set PINECONE_INDEX_NAME to an existing index to run.")
+            pytest.skip(
+                "Skipping Pinecone test: set PINECONE_INDEX_NAME to an existing index to run."
+            )
         encoder = encoder_cls()
         index = init_index(index_cls, index_name=encoder.__class__.__name__)
         route_layer = router_cls(

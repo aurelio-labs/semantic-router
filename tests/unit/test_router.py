@@ -262,7 +262,9 @@ def init_index(
         return QdrantIndex(index_name=index_name, init_async_index=init_async_index)
     if index_cls is PineconeIndex:
         # In CI cloud mode, require a shared index to avoid quota/timeouts
-        cloud_mode = os.getenv("PINECONE_API_BASE_URL", "").startswith("https://api.pinecone.io")
+        cloud_mode = os.getenv("PINECONE_API_BASE_URL", "").startswith(
+            "https://api.pinecone.io"
+        )
         if cloud_mode and not os.getenv("PINECONE_INDEX_NAME"):
             pytest.skip(
                 "Skipping Pinecone in cloud: set PINECONE_INDEX_NAME to an existing index to run."
