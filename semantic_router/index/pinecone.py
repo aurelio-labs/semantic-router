@@ -268,9 +268,9 @@ class PineconeIndex(BaseIndex):
         return Pinecone(**pinecone_args)
 
     def _calculate_index_host(self):
-        """Calculate the index host. Used to differentiate between normal Pinecone and Pinecone Local instance."""
-        # Dagger CI: if base_url contains 'pinecone', use service alias for both connection and SDK validation
-        if self.base_url and "pinecone" in self.base_url:
+        """Calculate the index host. Used to differentiate between Pinecone cloud and local emulator."""
+        # Local emulator: base_url explicitly points to localhost or the pinecone service alias
+        if self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url):
             self.index_host = "http://pinecone:5080"
             self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
@@ -281,17 +281,9 @@ class PineconeIndex(BaseIndex):
             self.index_host = f"http://localhost:{port}"
             self._sdk_host_for_validation = self.index_host
         elif self.index_host and self.base_url:
-            if "api.pinecone.io" in self.base_url:
-                if not self.index_host.startswith("http"):
-                    self.index_host = f"https://{self.index_host}"
-            else:
-                if "http" not in self.index_host:
-                    self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-                elif not self.index_host.startswith("http://"):
-                    if "localhost" in self.index_host:
-                        self.index_host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.index_host.split(':')[-1]}"
-                    else:
-                        self.index_host = f"http://{self.index_host}"
+            # Cloud: keep the described host, ensure scheme if needed
+            if "api.pinecone.io" in self.base_url and not str(self.index_host).startswith("http"):
+                self.index_host = f"https://{self.index_host}"
             self._sdk_host_for_validation = self.index_host
         else:
             self._sdk_host_for_validation = self.index_host
@@ -354,7 +346,8 @@ class PineconeIndex(BaseIndex):
             index = self.index
         if self.index is not None and self.host == "":
             self.index_host = self.client.describe_index(self.index_name).host
-            if self.index_host and self.base_url:
+            # Only rebind with explicit host when using the local emulator
+            if self._using_local_emulator and self.index_host and self.base_url:
                 self._calculate_index_host()
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
