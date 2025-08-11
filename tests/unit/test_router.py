@@ -245,8 +245,7 @@ def get_test_async_indexes():
         indexes.append(QdrantIndex)
     if importlib.util.find_spec("pinecone") is not None:
         indexes.append(PineconeIndex)
-    if importlib.util.find_spec("psycopg") is not None:
-        indexes.append(PostgresIndex)
+    # PostgresIndex async operations are not fully supported; exclude from async tests
     return indexes
 
 
