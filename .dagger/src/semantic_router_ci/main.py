@@ -31,7 +31,6 @@ class SemanticRouter:
     @function
     async def lint(self, src: dagger.Directory, python_version: str = "3.11") -> str:
         """Checks if source code passes linter"""
-        """Checks if source code passes linter"""
         return await (
             (await self.build(src=src, extra="dev", python_version=python_version))
             # run lint checks
@@ -77,10 +76,6 @@ class SemanticRouter:
         self, src: dagger.Directory, python_version: str = "3.11"
     ) -> str:
         """Runs unit tests only for semantic-router."""
-    async def unit_test(
-        self, src: dagger.Directory, python_version: str = "3.11"
-    ) -> str:
-        """Runs unit tests only for semantic-router."""
         return await (
             # create a build with all dependencies so we cover all tests
             (await self.build(src=src, extra="all", python_version=python_version))
@@ -101,25 +96,10 @@ class SemanticRouter:
         pinecone_api_key: str = "",
         python_version: str = "3.11",
     ) -> str:
-        """Runs tests for semantic-router, scope can be
-        """Runs tests for semantic-router, scope can be
-        set to run for 'unit', 'functional', 'integration',
-        or 'all'. By default scope is set to 'unit'.
-        """
+        """Runs tests for semantic-router. Scope: 'unit' (default), 'functional', 'integration', or 'all'."""
         # Map scope to pytest arguments
         if scope == "all":
             pytest_args = [
-                "uv",
-                "run",
-                "pytest",
-                "-vv",
-                "--timeout=180",
-                "--cov=semantic_router",
-                "--cov-report=term-missing",
-                "--cov-report=xml",
-                "--exitfirst",
-                "--maxfail=1",
-                "tests",
                 "uv",
                 "run",
                 "pytest",
@@ -142,26 +122,9 @@ class SemanticRouter:
                 "--exitfirst",
                 "--maxfail=1",
                 "tests/unit",
-                "uv",
-                "run",
-                "pytest",
-                "-vv",
-                "--timeout=180",
-                "--exitfirst",
-                "--maxfail=1",
-                "tests/unit",
             ]
         elif scope == "functional":
             pytest_args = [
-                "uv",
-                "run",
-                "pytest",
-                "-vv",
-                "--timeout=180",
-                "-s",
-                "--exitfirst",
-                "--maxfail=1",
-                "tests/functional",
                 "uv",
                 "run",
                 "pytest",
@@ -182,22 +145,10 @@ class SemanticRouter:
                 "--exitfirst",
                 "--maxfail=1",
                 "tests/integration",
-                "uv",
-                "run",
-                "pytest",
-                "-vv",
-                "--timeout=180",
-                "--exitfirst",
-                "--maxfail=1",
-                "tests/integration",
             ]
         else:
             pytest_args = ["uv", "run", "pytest", "-vv", "--timeout=180", "tests/unit"]
-            pytest_args = ["uv", "run", "pytest", "-vv", "--timeout=180", "tests/unit"]
 
-        container = await self.build(
-            src=src, extra="all", python_version=python_version
-        )
         container = await self.build(
             src=src, extra="all", python_version=python_version
         )
