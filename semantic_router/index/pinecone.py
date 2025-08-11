@@ -333,7 +333,6 @@ class PineconeIndex(BaseIndex):
                 self.index = index
                 # Only sleep for local emulator
                 if self._using_local_emulator:
-                    import time
                     logger.info(f"[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation...")
                     time.sleep(2)
                 else:
@@ -485,7 +484,6 @@ class PineconeIndex(BaseIndex):
         logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
             from pinecone.exceptions import NotFoundException
-            import time
             max_retries = 5
             delay = 1
             for attempt in range(max_retries):
