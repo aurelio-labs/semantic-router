@@ -74,15 +74,21 @@ def init_index(
         if index_name:
             if not dimensions and "OpenAIEncoder" in index_name:
                 dimensions = 1536
-
             elif not dimensions and "CohereEncoder" in index_name:
                 dimensions = 1024
-
-        # we specify different index names to avoid dimensionality issues between different encoders
-        index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+        # Use a stable shared index if provided via env to avoid creation/quota issues in CI
+        shared_index = os.environ.get("PINECONE_INDEX_NAME", "").strip()
+        if shared_index:
+            effective_index_name = shared_index
+            # Push isolation into namespace using the requested test index name
+            if not namespace:
+                namespace = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+        else:
+            # Fallback: unique index name per test run
+            effective_index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
 
         index = index_cls(
-            index_name=index_name, dimensions=dimensions, namespace=namespace
+            index_name=effective_index_name, dimensions=dimensions, namespace=namespace
         )
     elif index_cls is PostgresIndex:
         index = index_cls(index_name=index_name, index_prefix="", namespace=namespace)

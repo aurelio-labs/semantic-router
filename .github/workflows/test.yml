@@ -23,6 +23,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      # If you have a shared Pinecone index, set this secret to reuse it in CI
+      PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
     timeout-minutes: 20  # Fail the job if it runs longer than 20 minutes
     strategy:
       matrix:
@@ -53,6 +55,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2

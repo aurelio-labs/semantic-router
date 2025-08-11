@@ -163,6 +163,10 @@ class SemanticRouter:
             container = container.with_env_variable(
                 "PINECONE_API_KEY", pinecone_api_key
             )
+        # Forward optional shared index name to the test container
+        pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME")
+        if pinecone_index_name:
+            container = container.with_env_variable("PINECONE_INDEX_NAME", pinecone_index_name)
         container = (
             container.with_service_binding("postgres", self.postgres_service())
         )

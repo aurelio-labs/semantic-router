@@ -222,6 +222,8 @@ class PineconeIndex(BaseIndex):
 
         # Preserve requested name for potential namespace use
         requested_index_name = index_name
+        # Persist the originally requested index name for namespace isolation when reusing a shared index
+        self._requested_index_name = requested_index_name
         self.index_name = index_name
         self.dimensions = dimensions
         self.metric = metric
@@ -335,34 +337,31 @@ class PineconeIndex(BaseIndex):
                     from pinecone.exceptions import NotFoundException
                     if isinstance(e, ForbiddenException):
                         logger.warning(
-                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse existing shared index: %s",
-                            self.index_name,
-                        )
-                        # Prefer explicit shared index from env
+                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse an existing index.")
+                        # Try to select a reusable index
+                        reused_index_name = None
                         shared_index_env = os.getenv("PINECONE_INDEX_NAME")
-                        if shared_index_env:
-                            self.index_name = shared_index_env.strip()
+                        if shared_index_env and shared_index_env.strip():
+                            reused_index_name = shared_index_env.strip()
                         else:
-                            # Fallback: pick any existing index
                             try:
                                 existing = self.client.list_indexes()
                                 if isinstance(existing, list) and existing:
-                                    self.index_name = existing[0].name if hasattr(existing[0], "name") else str(existing[0])
-                                    logger.info(f"[PineconeIndex] Reusing existing index: {self.index_name}")
-                                else:
-                                    raise e
+                                    reused_index_name = existing[0].name if hasattr(existing[0], "name") else str(existing[0])
                             except Exception:
-                                # If list fails, continue to describe loop
+                                # Ignore list errors; we'll error explicitly below
                                 pass
+                        if not reused_index_name:
+                            raise RuntimeError(
+                                "Pinecone index cannot be created due to quota and no existing index was found. "
+                                "Set PINECONE_INDEX_NAME to an existing index and rerun."
+                            )
+                        # Adopt the reusable index
+                        self.index_name = reused_index_name
+                        logger.info(f"[PineconeIndex] Reusing existing index: {self.index_name}")
                         # Ensure namespace isolation when reusing indexes
                         if not self.namespace:
-                            # Use the previously requested name as namespace
-                            try:
-                                requested_name = locals().get("requested_index_name")
-                                if requested_name:
-                                    self.namespace = requested_name
-                            except Exception:
-                                pass
+                            self.namespace = getattr(self, "_requested_index_name", None) or self.index_name
                     else:
                         raise
                 logger.info(f"[PineconeIndex] Waiting for index to be ready: {self.index_name}")
