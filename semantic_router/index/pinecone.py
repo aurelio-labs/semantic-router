@@ -154,6 +154,7 @@ class PineconeIndex(BaseIndex):
     headers: dict[str, str] = {}
     index_host: Optional[str] = "http://localhost:5080"
     init_async_index: bool = False
+    _using_local_emulator: bool = False
 
     def __init__(
         self,
@@ -202,12 +203,19 @@ class PineconeIndex(BaseIndex):
             "User-Agent": "source_tag=semanticrouter",
         }
 
-        if base_url is not None or os.getenv("PINECONE_API_BASE_URL"):
-            logger.info("Using pinecone remote API.")
-            if os.getenv("PINECONE_API_BASE_URL"):
-                self.base_url = os.getenv("PINECONE_API_BASE_URL")
-            else:
-                self.base_url = base_url
+        # Set base_url from env or argument
+        if os.getenv("PINECONE_API_BASE_URL"):
+            self.base_url = os.getenv("PINECONE_API_BASE_URL")
+        else:
+            self.base_url = base_url
+
+        # Determine if using local emulator or cloud
+        if self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url):
+            self.index_host = "http://pinecone:5080"
+            self._using_local_emulator = True
+        else:
+            self.index_host = None  # Let Pinecone SDK handle host for cloud
+            self._using_local_emulator = False
 
         if self.base_url and "api.pinecone.io" in self.base_url:
             self.headers["X-Pinecone-API-Version"] = "2024-07"
@@ -318,36 +326,31 @@ class PineconeIndex(BaseIndex):
                 while not self.client.describe_index(self.index_name).status["ready"]:
                     time.sleep(0.2)
                 logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
-                index = self.client.Index(self.index_name, host=self.index_host)
+                if self._using_local_emulator:
+                    index = self.client.Index(self.index_name, host=self.index_host)
+                else:
+                    index = self.client.Index(self.index_name)
                 self.index = index
-                # Add delay if running against local Pinecone emulator
-                if (
-                    (self.index_host and ("localhost" in self.index_host or "pinecone:5080" in self.index_host)) or
-                    (self.base_url and ("localhost" in self.base_url or "pinecone:5080" in self.base_url))
-                ):
+                # Only sleep for local emulator
+                if self._using_local_emulator:
                     import time
                     logger.info(f"[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation...")
                     time.sleep(2)
                 else:
                     time.sleep(0.2)
             elif index_exists:
-                self.index_host = self.client.describe_index(self.index_name).host
-                self._calculate_index_host()
-                index = self.client.Index(self.index_name, host=self.index_host)
+                desc = self.client.describe_index(self.index_name)
+                if self._using_local_emulator:
+                    self.index_host = "http://pinecone:5080"
+                    self._sdk_host_for_validation = self.index_host
+                    index = self.client.Index(self.index_name, host=self.index_host)
+                else:
+                    self.index_host = desc.host if hasattr(desc, 'host') else None
+                    index = self.client.Index(self.index_name)
                 self.index = index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
-                raise ValueError(
-                    "Cannot create an index without specifying the dimensions."
-                )
-            else:
-                logger.warning(
-                    "Index could not be initialized. Init parameters: "
-                    f"{self.index_name=}, {self.dimensions=}, {self.metric=}, "
-                    f"{self.cloud=}, {self.region=}, {self.host=}, {self.namespace=}, "
-                    f"{force_create=}"
-                )
-                index = None
+                raise ValueError("Dimensions must be provided to create a new index.")
         else:
             index = self.index
         if self.index is not None and self.host == "":
