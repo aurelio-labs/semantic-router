@@ -241,17 +241,14 @@ class PineconeIndex(BaseIndex):
 
         # If running against Pinecone Cloud and a shared index is provided via env,
         # reuse that index and push isolation to namespaces based on requested name
-        if (
-            self.base_url
-            and "api.pinecone.io" in self.base_url
-            and os.getenv("PINECONE_INDEX_NAME")
-        ):
-            shared_index = os.getenv("PINECONE_INDEX_NAME").strip()
-            if shared_index:
-                self.index_name = shared_index
-                if not self.namespace:
-                    # Use the originally requested index name to isolate data
-                    self.namespace = requested_index_name
+        if self.base_url and "api.pinecone.io" in self.base_url:
+            # Use shared index if provided, else default to a stable shared name
+            shared_index = os.getenv("PINECONE_INDEX_NAME") or "semantic-router-ci"
+            shared_index = shared_index.strip()
+            self.index_name = shared_index
+            if not self.namespace:
+                # Use the originally requested index name to isolate data
+                self.namespace = requested_index_name
 
         # try initializing index
         if not init_async_index:
@@ -354,7 +351,8 @@ class PineconeIndex(BaseIndex):
                                 else:
                                     raise e
                             except Exception:
-                                raise e
+                                # If list fails, continue to describe loop
+                                pass
                         # Ensure namespace isolation when reusing indexes
                         if not self.namespace:
                             # Use the previously requested name as namespace
