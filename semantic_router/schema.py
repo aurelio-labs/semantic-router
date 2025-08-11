@@ -28,6 +28,7 @@ class EncoderType(Enum):
     GOOGLE = "google"
     BEDROCK = "bedrock"
     LITELLM = "litellm"
+    OLLAMA = "ollama"
     JINA = "jina_ai"
     VOYAGE = "voyage"
     NIM = "nvidia_nim"
