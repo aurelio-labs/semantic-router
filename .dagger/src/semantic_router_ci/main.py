@@ -167,11 +167,22 @@ class SemanticRouter:
             container.with_service_binding("postgres", self.postgres_service())
         )
         pinecone_api_base_url = os.environ.get("PINECONE_API_BASE_URL")
-        if pinecone_api_base_url is None or pinecone_api_base_url.startswith("http://pinecone:5080"):
-            # Start and bind the local emulator only if not using cloud
+        # Decide cloud vs local
+        if pinecone_api_base_url is None:
+            # No explicit base URL provided; infer from API key
+            if pinecone_api_key and pinecone_api_key != "pclocal":
+                # Real key provided: prefer cloud
+                pinecone_api_base_url = "https://api.pinecone.io"
+            else:
+                # Local mode
+                pinecone_api_base_url = "http://pinecone:5080"
+        # Start local emulator only if pointing to local
+        if (
+            pinecone_api_base_url.startswith("http://pinecone:5080")
+            or "localhost" in pinecone_api_base_url
+        ):
             container = container.with_service_binding("pinecone", self.pinecone_service())
-            pinecone_api_base_url = "http://pinecone:5080"
-        # Always set the env var to the correct value (cloud or local)
+        # Set env var inside test container
         container = container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
         container = container.with_env_variable(
             "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
