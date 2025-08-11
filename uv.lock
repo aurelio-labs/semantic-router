@@ -2460,6 +2460,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ollama"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/26/14434e5825083e7895b6d8d00c20037785330ec8cf4393c837147ed8447c/ollama-0.1.7.tar.gz", hash = "sha256:c471286a2bbe9dc9986428831c67a3a6c27e7fb5e3df55f41c1e28b8d00a80a7", size = 9428 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/69/c09d1eb30d4e1f21c4d7394f4f37f599073504e3abe8f9ea5fc608d40098/ollama-0.1.7-py3-none-any.whl", hash = "sha256:7d853ceaadaed6e0425faff46b44192d02f48e92ab4c4cfd422ee4de09d32350", size = 9360 },
+]
+
+[[package]]
 name = "onnx"
 version = "1.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4406,6 +4418,7 @@ all = [
     { name = "llama-cpp-python", marker = "python_full_version < '3.13'" },
     { name = "mistralai" },
     { name = "mypy" },
+    { name = "ollama" },
     { name = "pillow", marker = "python_full_version < '3.13'" },
     { name = "pinecone" },
     { name = "psycopg", extra = ["binary"] },
@@ -4469,6 +4482,9 @@ local = [
 mistralai = [
     { name = "mistralai" },
 ]
+ollama = [
+    { name = "ollama" },
+]
 pinecone = [
     { name = "pinecone" },
 ]
@@ -4504,6 +4520,7 @@ requires-dist = [
     { name = "mistralai", marker = "extra == 'mistralai'", specifier = ">=0.0.12,<0.1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.1,<2" },
     { name = "numpy", specifier = ">=1.25.2" },
+    { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.1.7" },
     { name = "openai", specifier = ">=1.10.0,<2.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
     { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=7.0.0,<8.0.0" },
@@ -4529,6 +4546,7 @@ requires-dist = [
     { name = "semantic-router", extras = ["google"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["local"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["mistralai"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["ollama"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["pinecone"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["postgres"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["qdrant"], marker = "extra == 'all'" },
@@ -4545,7 +4563,7 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0,<3" },
     { name = "urllib3", specifier = ">=1.26,<3" },
 ]
-provides-extras = ["local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
+provides-extras = ["ollama", "local", "pinecone", "vision", "mistralai", "qdrant", "google", "bedrock", "postgres", "fastembed", "docs", "cohere", "dev", "all"]
 
 [[package]]
 name = "sentence-transformers"
