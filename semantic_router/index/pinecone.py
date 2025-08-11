@@ -346,11 +346,17 @@ class PineconeIndex(BaseIndex):
             index = self.index
         if self.index is not None and self.host == "":
             self.index_host = self.client.describe_index(self.index_name).host
-            # Only rebind with explicit host when using the local emulator
+            # For local emulator, bind explicit host; for cloud, set https host for async HTTP calls
             if self._using_local_emulator and self.index_host and self.base_url:
                 self._calculate_index_host()
                 index = self.client.Index(self.index_name, host=self.index_host)
                 self.host = self.index_host
+            elif self.index_host:
+                # Cloud data plane host (no scheme in describe)
+                if not str(self.index_host).startswith("http"):
+                    self.host = f"https://{self.index_host}"
+                else:
+                    self.host = str(self.index_host)
         logger.info(f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}")
         return index
 
@@ -1125,17 +1131,22 @@ class PineconeIndex(BaseIndex):
         }
         if not (await self.ais_ready()):
             raise ValueError("Async index is not initialized.")
-        elif self.base_url and "api.pinecone.io" in self.base_url:
-            if not self.host.startswith("http"):
-                logger.error(f"host exists:{self.host}")
-
-                self.host = f"https://{self.host}"
-        elif self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
+        # Ensure host is set for cloud/local
+        if not self.host:
+            desc = self.client.describe_index(self.index_name)
+            self.index_host = getattr(desc, "host", None)
+            if self._using_local_emulator:
+                self.host = "http://pinecone:5080"
+            elif self.index_host:
+                self.host = (
+                    f"https://{self.index_host}"
+                    if not str(self.index_host).startswith("http")
+                    else str(self.index_host)
+                )
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.host}/query",
+                f"{self.host}/vectors/query",
                 json=params,
                 headers=self.headers,
             ) as response:
