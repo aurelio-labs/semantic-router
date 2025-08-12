@@ -30,9 +30,6 @@ from semantic_router.routers import SemanticRouter
 # Required
 os.environ["PINECONE_API_KEY"] = "<your-key>"
 
-# Cloud endpoint (optional, defaults to cloud when a real key is present)
-os.environ["PINECONE_API_BASE_URL"] = "https://api.pinecone.io"
-
 # Strongly recommended: reuse an existing index to avoid quota
 os.environ["PINECONE_INDEX_NAME"] = "semantic-router-shared"
 
@@ -55,6 +52,7 @@ print(router(text="hi there").name)  # -> greeting
 Notes:
 - If the shared index exists, Semantic Router reuses it and writes route vectors under your `namespace`.
 - If you do not set `PINECONE_INDEX_NAME`, creating a new index requires `dimensions`. If index creation is forbidden (quota), a clear error is raised asking you to set `PINECONE_INDEX_NAME`.
+- You do not need to set `PINECONE_API_BASE_URL` for cloud; override it only when using the local emulator for testing.
 
 ### Local emulator
 
