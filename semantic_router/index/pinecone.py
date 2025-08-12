@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import json
 import os
-import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
@@ -301,9 +300,7 @@ class PineconeIndex(BaseIndex):
             self._sdk_host_for_validation = self.index_host
         elif self.index_host and self.base_url:
             # Cloud: keep the described host, ensure scheme if needed
-            if "api.pinecone.io" in self.base_url and not str(
-                self.index_host
-            ).startswith("http"):
+            if not str(self.index_host).startswith("http"):
                 self.index_host = f"https://{self.index_host}"
             self._sdk_host_for_validation = self.index_host
         else:
@@ -351,39 +348,12 @@ class PineconeIndex(BaseIndex):
                         ) from e
                     raise
                 logger.info(
-                    f"[PineconeIndex] Waiting for index to be ready: {self.index_name}"
+                    f"[PineconeIndex] Index created; proceeding without readiness wait: {self.index_name}"
                 )
-                start_wait = time.time()
-                max_wait_seconds = 15.0
-                while True:
-                    try:
-                        if self.client.describe_index(self.index_name).status.get(
-                            "ready"
-                        ):
-                            break
-                    except Exception:
-                        # transient or not found; keep waiting within bounds
-                        pass
-                    if time.time() - start_wait > max_wait_seconds:
-                        logger.warning(
-                            f"[PineconeIndex] Timed out waiting for index readiness: {self.index_name}. Proceeding."
-                        )
-                        break
-                    time.sleep(0.2)
-                logger.info(f"[PineconeIndex] Index ready: {self.index_name}")
-                if self._using_local_emulator:
-                    index = self.client.Index(self.index_name, host=self.index_host)
-                else:
-                    index = self.client.Index(self.index_name)
+                index = self.client.Index(self.index_name)
                 self.index = index
-                # Only sleep for local emulator
-                if self._using_local_emulator:
-                    logger.info(
-                        "[PineconeIndex] Detected local Pinecone emulator, sleeping 2s after index creation..."
-                    )
-                    time.sleep(2)
-                else:
-                    time.sleep(0.2)
+                # Best-effort to populate dimensions; let errors surface if not ready
+                self.dimensions = index.describe_index_stats()["dimension"]
             elif index_exists:
                 # Let the SDK pick the correct host (cloud or local) based on client configuration
                 index = self.client.Index(self.index_name)
@@ -498,25 +468,8 @@ class PineconeIndex(BaseIndex):
                         cloud=self.cloud,
                         region=self.region,
                     )
-                    index_ready = "false"
-                    while not (
-                        index_ready == "true"
-                        or isinstance(index_ready, bool)
-                        and index_ready
-                    ):
-                        index_stats = await self._async_describe_index(self.index_name)
-                        index_status = index_stats.get("status", {})
-                        index_ready = (
-                            index_status.get("ready", False)
-                            if isinstance(index_status, dict)
-                            else False
-                        )
-                        await asyncio.sleep(0.1)
-
-                    self.index_host = index_stats["host"]
-                    self._calculate_index_host()
-                    self.host = self.index_host
-                    return index_stats
+                    # Proceed without readiness loop; caller will handle transient errors if any
+                    return await self._async_describe_index(self.index_name)
             else:
                 # if the index exists, we return it
                 index_stats = await self._async_describe_index(self.index_name)
