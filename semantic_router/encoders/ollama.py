@@ -35,10 +35,10 @@ class OllamaEncoder(DenseEncoder):
     ):
         """Initializes the OllamaEncoder.
 
-        :param model_name: The name of the pre-trained model to use for embedding.
+        :param name: The name of the pre-trained model to use for embedding.
             If not provided, the default model specified in EncoderDefault will
             be used.
-        :type model_name: str
+        :type name: str
         :param score_threshold: The threshold for similarity scores.
         :type score_threshold: float
         :param base_url: The API endpoint for OLLAMA.
