@@ -44,7 +44,7 @@ jobs:
 
       - name: Run tests with Dagger
         run: |
-          PINECONE_API_BASE_URL="https://api.pinecone.io" dagger call --mod ./.dagger test \
+          dagger call --mod ./.dagger test \
             --src . \
             --scope ${{ inputs.test_scope || 'all' }} \
             --python-version "${{ matrix.python-version }}" \
