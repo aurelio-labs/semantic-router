@@ -2,7 +2,6 @@ import types
 from typing import Any, Dict, List
 
 import numpy as np
-import pytest
 
 from semantic_router.index.pinecone import PineconeIndex
 
@@ -68,7 +67,9 @@ def test_create_index_passes_options(monkeypatch):
     def _init_client(self, api_key: str):  # noqa: ANN001
         return DummyClient()
 
-    monkeypatch.setattr(PineconeIndex, "_initialize_client", _init_client, raising=False)
+    monkeypatch.setattr(
+        PineconeIndex, "_initialize_client", _init_client, raising=False
+    )
 
     idx = PineconeIndex(
         api_key="test-key",
@@ -114,4 +115,3 @@ def test_query_across_namespaces_merge(monkeypatch):
     merged = idx.query_across_namespaces(vec, namespaces=["ns1", "ns2"], top_k=2)
     assert "matches" in merged
     assert [m["id"] for m in merged["matches"]] == ["c", "a"]
-

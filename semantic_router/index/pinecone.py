@@ -248,9 +248,9 @@ class PineconeIndex(BaseIndex):
         )
 
         # Transport selection: env override > argument > default
-        self.transport = (
-            (transport or os.getenv("PINECONE_TRANSPORT", "http")).lower()
-        )
+        env_transport = os.getenv("PINECONE_TRANSPORT")
+        chosen_transport = transport if transport is not None else env_transport
+        self.transport = (chosen_transport or "http").lower()
         if self.transport not in {"http", "grpc"}:
             self.transport = "http"
 
@@ -287,8 +287,8 @@ class PineconeIndex(BaseIndex):
         try:
             if self.transport == "grpc":
                 # gRPC data-plane client for higher-throughput data ops
-                from pinecone.grpc import PineconeGRPC as Pinecone  # type: ignore
                 from pinecone import ServerlessSpec
+                from pinecone.grpc import PineconeGRPC as Pinecone  # type: ignore
             else:
                 from pinecone import Pinecone, ServerlessSpec
 
@@ -978,13 +978,17 @@ class PineconeIndex(BaseIndex):
             if not index_host:
                 desc = await apc.describe_index(self.index_name)
                 candidate = (
-                    desc.get("host") if isinstance(desc, dict) else getattr(desc, "host", None)
+                    desc.get("host")
+                    if isinstance(desc, dict)
+                    else getattr(desc, "host", None)
                 )
                 index_host = candidate if isinstance(candidate, str) else None
             if self._using_local_emulator and not index_host:
                 index_host = "http://pinecone:5080"
             if not index_host:
-                raise ValueError("Could not resolve Pinecone index host for async namespaces query")
+                raise ValueError(
+                    "Could not resolve Pinecone index host for async namespaces query"
+                )
             if not index_host.startswith("http"):
                 index_host = f"https://{index_host}"
             async with apc.Index(host=index_host) as aindex:
