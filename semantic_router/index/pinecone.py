@@ -3,8 +3,6 @@ import hashlib
 import json
 import os
 import time
-from datetime import datetime, timezone
-from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
@@ -345,6 +343,7 @@ class PineconeIndex(BaseIndex):
                     # If index creation is forbidden (likely quota), surface a clear
                     # instruction to reuse an existing index instead of adding fallback logic.
                     from pinecone.exceptions import ForbiddenException
+
                     if isinstance(e, ForbiddenException):
                         raise RuntimeError(
                             "Pinecone index creation forbidden (likely quota). "
@@ -386,7 +385,6 @@ class PineconeIndex(BaseIndex):
                 else:
                     time.sleep(0.2)
             elif index_exists:
-                desc = self.client.describe_index(self.index_name)
                 # Let the SDK pick the correct host (cloud or local) based on client configuration
                 index = self.client.Index(self.index_name)
                 self.index = index
@@ -1174,47 +1172,49 @@ class PineconeIndex(BaseIndex):
         :param include_metadata: Whether to include metadata in the results, defaults to False.
         :type include_metadata: bool, optional
         """
-        params = {
-            "vector": vector,
-            "sparse_vector": sparse_vector,
-            "namespace": namespace,
-            "filter": filter,
-            "top_k": top_k,
-            "include_metadata": include_metadata,
-            "topK": top_k,
-            "includeMetadata": include_metadata,
-        }
+        # Params now passed directly via SDK below
         if not (await self.ais_ready()):
             raise ValueError("Async index is not initialized.")
-        # Ensure host is set for cloud/local
-        if not self.host:
-            desc = self.client.describe_index(self.index_name)
-            self.index_host = getattr(desc, "host", None)
-            if self._using_local_emulator:
-                self.host = "http://pinecone:5080"
-            elif self.index_host:
-                self.host = (
-                    f"https://{self.index_host}"
-                    if not str(self.index_host).startswith("http")
-                    else str(self.index_host)
+        # Use Pinecone async SDK instead of manual HTTP
+        try:
+            from pinecone import PineconeAsyncio
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
+
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            # Resolve host via describe if not already known
+            index_host: Optional[str] = self.host or None
+            if not index_host:
+                desc = await apc.describe_index(self.index_name)
+                candidate = (
+                    desc.get("host")
+                    if isinstance(desc, dict)
+                    else getattr(desc, "host", None)
                 )
+                if isinstance(candidate, str):
+                    index_host = candidate
+                else:
+                    index_host = None
+            if self._using_local_emulator and not index_host:
+                index_host = "http://pinecone:5080"
+            if not index_host:
+                raise ValueError(
+                    "Could not resolve Pinecone index host for async query"
+                )
+            if not index_host.startswith("http"):
+                index_host = f"https://{index_host}"
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.host}/vectors/query",
-                json=params,
-                headers=self.headers,
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Error in query response: {error_text}")
-                    return {}  # or handle the error as needed
-
-                try:
-                    return await response.json(content_type=None)
-                except JSONDecodeError as e:
-                    logger.error(f"JSON decode error: {e}")
-                    return {}
+            async with apc.Index(host=index_host) as aindex:
+                return await aindex.query(
+                    vector=vector,
+                    sparse_vector=sparse_vector,
+                    namespace=namespace,
+                    filter=filter,
+                    top_k=top_k,
+                    include_metadata=include_metadata,
+                )
 
     async def ais_ready(self, client_only: bool = False) -> bool:
         """Checks if class attributes exist to be used for async operations.
@@ -1278,26 +1278,36 @@ class PineconeIndex(BaseIndex):
         if not (await self.ais_ready()):
             raise ValueError("Async index is not initialized.")
 
-        params = {
-            "vectors": vectors,
-            "namespace": namespace,
-        }
+        # Params now passed directly via SDK below
 
-        if self.base_url and "api.pinecone.io" in self.base_url:
-            if not self.host.startswith("http"):
-                logger.error(f"host exists:{self.host}")
-                self.host = f"https://{self.host}"
+        # Use Pinecone async SDK for upsert
+        try:
+            from pinecone import PineconeAsyncio
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
 
-        elif self.host.startswith("localhost") and self.base_url:
-            self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.host}/vectors/upsert",
-                json=params,
-                headers=self.headers,
-            ) as response:
-                res = await response.json(content_type=None)
-                return res
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            index_host: Optional[str] = self.host or None
+            if not index_host:
+                desc = await apc.describe_index(self.index_name)
+                candidate = (
+                    desc.get("host")
+                    if isinstance(desc, dict)
+                    else getattr(desc, "host", None)
+                )
+                index_host = candidate if isinstance(candidate, str) else None
+            if self._using_local_emulator and not index_host:
+                index_host = "http://pinecone:5080"
+            if not index_host:
+                raise ValueError(
+                    "Could not resolve Pinecone index host for async upsert"
+                )
+            if not index_host.startswith("http"):
+                index_host = f"https://{index_host}"
+            async with apc.Index(host=index_host) as aindex:
+                return await aindex.upsert(vectors=vectors, namespace=namespace)
 
     async def _async_create_index(
         self,
@@ -1472,37 +1482,55 @@ class PineconeIndex(BaseIndex):
         elif self.host.startswith("localhost") and self.base_url:
             self.host = f"http://{self.base_url.split(':')[-2].strip('/')}:{self.host.split(':')[-1]}"
 
-        url = f"{self.host}/vectors/fetch"
-
-        params = {
-            "ids": [vector_id],
-        }
-
-        if namespace:
-            params["namespace"] = [namespace]
-        elif self.namespace:
-            params["namespace"] = [self.namespace]
-
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url, params=params, headers=self.headers
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Error fetching metadata: {error_text}")
-                    return {}
-
-                try:
-                    response_data = await response.json(content_type=None)
-                except Exception as e:
-                    logger.warning(f"No metadata found for vector {vector_id}: {e}")
-                    return {}
-
-                return (
-                    response_data.get("vectors", {})
-                    .get(vector_id, {})
-                    .get("metadata", {})
+        # Use Pinecone async SDK to fetch metadata
+        try:
+            from pinecone import PineconeAsyncio
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            index_host: Optional[str] = self.host or None
+            if not index_host:
+                desc = await apc.describe_index(self.index_name)
+                candidate = (
+                    desc.get("host")
+                    if isinstance(desc, dict)
+                    else getattr(desc, "host", None)
                 )
+                index_host = candidate if isinstance(candidate, str) else None
+                if index_host and not str(index_host).startswith("http"):
+                    index_host = f"https://{index_host}"
+            if self._using_local_emulator and not index_host:
+                index_host = "http://pinecone:5080"
+            if not index_host:
+                raise ValueError(
+                    "Could not resolve Pinecone index host for async fetch"
+                )
+            async with apc.Index(host=index_host) as aindex:
+                data = await aindex.fetch(
+                    ids=[vector_id], namespace=namespace or self.namespace
+                )
+                try:
+                    if hasattr(data, "vectors"):
+                        vectors = data.vectors
+                    else:
+                        vectors = (
+                            data.get("vectors", []) if isinstance(data, dict) else []
+                        )
+                    if vectors:
+                        first = (
+                            vectors[0]
+                            if isinstance(vectors, list)
+                            else vectors.get(vector_id)
+                        )
+                        metadata = getattr(first, "metadata", None) or (
+                            first.get("metadata") if isinstance(first, dict) else {}
+                        )
+                        return metadata or {}
+                except Exception as e:
+                    logger.error(f"Error parsing metadata response: {e}")
+                return {}
 
     def __len__(self):
         """Returns the total number of vectors in the index. If the index is not initialized
@@ -1546,14 +1574,25 @@ class PineconeIndex(BaseIndex):
         :return: Index statistics.
         :rtype: dict
         """
-        url = f"{self.index_host}/describe_index_stats"
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url,
-                headers=self.headers,
-                json={"namespace": self.namespace},
-                timeout=aiohttp.ClientTimeout(total=300),
-            ) as response:
-                response.raise_for_status()
-                return await response.json()
+        # Use Pinecone async SDK to describe index stats
+        try:
+            from pinecone import PineconeAsyncio
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            index_host = self.host
+            if not index_host:
+                desc = await apc.describe_index(self.index_name)
+                index_host = (
+                    desc.get("host")
+                    if isinstance(desc, dict)
+                    else getattr(desc, "host", None)
+                )
+                if index_host and not str(index_host).startswith("http"):
+                    index_host = f"https://{index_host}"
+            if self._using_local_emulator and not index_host:
+                index_host = "http://pinecone:5080"
+            async with apc.Index(host=index_host) as aindex:
+                return await aindex.describe_index_stats(namespace=self.namespace)

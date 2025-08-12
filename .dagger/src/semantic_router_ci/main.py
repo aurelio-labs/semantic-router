@@ -188,17 +188,12 @@ class SemanticRouter:
             )
         # Set env vars inside test container
         container = (
-            container
-            .with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
+            container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
             .with_env_variable(
                 "POSTGRES_HOST", os.environ.get("POSTGRES_HOST", "postgres")
             )
-            .with_env_variable(
-                "POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432")
-            )
-            .with_env_variable(
-                "POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres")
-            )
+            .with_env_variable("POSTGRES_PORT", os.environ.get("POSTGRES_PORT", "5432"))
+            .with_env_variable("POSTGRES_DB", os.environ.get("POSTGRES_DB", "postgres"))
             .with_env_variable(
                 "POSTGRES_USER", os.environ.get("POSTGRES_USER", "postgres")
             )
