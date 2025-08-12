@@ -15,6 +15,7 @@ pip install "semantic-router[pinecone]"
   - Cloud: `https://api.pinecone.io` (default if a real API key is set)
   - Local emulator: `http://localhost:5080` or `http://pinecone:5080`
 - `PINECONE_INDEX_NAME` (recommended on cloud): Name of an existing index to reuse
+- `PINECONE_TRANSPORT` (optional): Set to `grpc` to enable gRPC data plane (default: HTTP)
 
 Why set `PINECONE_INDEX_NAME`? Pinecone serverless has per-project index limits. Reusing a shared index avoids 403 quota errors. Semantic Router will automatically isolate data using namespaces.
 
@@ -37,7 +38,16 @@ encoder = OpenAIEncoder(name="text-embedding-3-small")
 
 # Use a namespace for isolation (otherwise the router will use the requested
 # index name internally as the namespace when reusing a shared index)
-index = PineconeIndex(index_name="demo-index", namespace="demo", dimensions=1536)
+index = PineconeIndex(
+    index_name="demo-index",
+    namespace="demo",
+    dimensions=1536,
+    # Optional index creation options (cloud only):
+    deletion_protection="disabled",
+    tags={"team": "search", "env": "prod"},
+    # Optional: use gRPC by argument instead of env
+    transport="http",  # or "grpc"
+)
 
 routes = [
     Route(name="greeting", utterances=["hello", "hi"]),
@@ -77,6 +87,26 @@ asyncio.run(main())
 ```
 
 Internally, the library resolves the Pinecone v7 data-plane host and uses the correct `/vectors/query` endpoint for async queries.
+
+### Query across namespaces
+
+To query across multiple namespaces (useful when reusing a shared index), use the helpers:
+
+```python
+# Sync
+merged = index.query_across_namespaces(
+    vector=embedding,
+    namespaces=["team-a", "team-b"],
+    top_k=10,
+)
+
+# Async
+merged_async = await index.aquery_across_namespaces(
+    vector=embedding,
+    namespaces=["team-a", "team-b"],
+    top_k=10,
+)
+```
 
 ### Error handling and retries
 

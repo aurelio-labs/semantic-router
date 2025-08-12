@@ -153,6 +153,11 @@ class PineconeIndex(BaseIndex):
     index_host: Optional[str] = "http://localhost:5080"
     init_async_index: bool = False
     _using_local_emulator: bool = False
+    # New: transport selection for data operations ("http" or "grpc")
+    transport: str = "http"
+    # New: index creation options
+    deletion_protection: str = "disabled"
+    tags: Optional[Dict[str, str]] = None
 
     def __init__(
         self,
@@ -166,6 +171,9 @@ class PineconeIndex(BaseIndex):
         namespace: Optional[str] = "",
         base_url: Optional[str] = "https://api.pinecone.io",
         init_async_index: bool = False,
+        transport: Optional[str] = None,
+        deletion_protection: str = "disabled",
+        tags: Optional[Dict[str, str]] = None,
     ):
         """Initialize PineconeIndex.
 
@@ -239,6 +247,17 @@ class PineconeIndex(BaseIndex):
             "Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6"
         )
 
+        # Transport selection: env override > argument > default
+        self.transport = (
+            (transport or os.getenv("PINECONE_TRANSPORT", "http")).lower()
+        )
+        if self.transport not in {"http", "grpc"}:
+            self.transport = "http"
+
+        # Index creation options
+        self.deletion_protection = deletion_protection
+        self.tags = tags
+
         self.client = self._initialize_client(api_key=self.api_key)
 
         # If running against Pinecone Cloud and a shared index is provided via env,
@@ -266,7 +285,12 @@ class PineconeIndex(BaseIndex):
         :rtype: Pinecone
         """
         try:
-            from pinecone import Pinecone, ServerlessSpec
+            if self.transport == "grpc":
+                # gRPC data-plane client for higher-throughput data ops
+                from pinecone.grpc import PineconeGRPC as Pinecone  # type: ignore
+                from pinecone import ServerlessSpec
+            else:
+                from pinecone import Pinecone, ServerlessSpec
 
             self.ServerlessSpec = ServerlessSpec
         except ImportError:
@@ -335,6 +359,8 @@ class PineconeIndex(BaseIndex):
                         dimension=self.dimensions,
                         metric=self.metric,
                         spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
+                        deletion_protection=self.deletion_protection,
+                        tags=self.tags or None,
                     )
                 except Exception as e:
                     # If index creation is forbidden (likely quota), surface a clear
@@ -884,6 +910,112 @@ class PineconeIndex(BaseIndex):
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
 
+    def query_across_namespaces(
+        self,
+        vector: np.ndarray,
+        namespaces: List[str],
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        include_metadata: bool = True,
+    ) -> Dict[str, Any]:
+        """Run a query across multiple namespaces and merge results.
+
+        :return: SDK response compatible dict with merged matches and usage if available.
+        """
+        if self.index is None:
+            raise ValueError("Index is not populated.")
+        query_vector_list = vector.tolist()
+        filter_query = {"sr_route": {"$in": route_filter}} if route_filter else None
+        # If SDK exposes query_namespaces, use it directly
+        if hasattr(self.index, "query_namespaces"):
+            return self.index.query_namespaces(
+                vector=query_vector_list,
+                namespaces=namespaces,
+                top_k=top_k,
+                include_metadata=include_metadata,
+                filter=filter_query,
+            )
+        # Fallback: run per-namespace and merge by score
+        all_matches: List[Dict[str, Any]] = []
+        for ns in namespaces:
+            res = self.index.query(
+                vector=query_vector_list,
+                top_k=top_k,
+                include_metadata=include_metadata,
+                filter=filter_query,
+                namespace=ns,
+            )
+            all_matches.extend(res.get("matches", []))
+        # Sort and truncate
+        all_matches.sort(key=lambda m: m.get("score", 0), reverse=True)
+        return {"matches": all_matches[:top_k]}
+
+    async def aquery_across_namespaces(
+        self,
+        vector: np.ndarray,
+        namespaces: List[str],
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        include_metadata: bool = True,
+    ) -> Dict[str, Any]:
+        """Async query across multiple namespaces using the async SDK.
+
+        :return: SDK response compatible dict with merged matches and usage if available.
+        """
+        if not (await self.ais_ready()):
+            raise ValueError("Async index is not initialized.")
+        query_vector_list = vector.tolist()
+        filter_query = {"sr_route": {"$in": route_filter}} if route_filter else None
+        try:
+            from pinecone import PineconeAsyncio
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            # Resolve host similarly to other async paths
+            index_host: Optional[str] = self.host or None
+            if not index_host:
+                desc = await apc.describe_index(self.index_name)
+                candidate = (
+                    desc.get("host") if isinstance(desc, dict) else getattr(desc, "host", None)
+                )
+                index_host = candidate if isinstance(candidate, str) else None
+            if self._using_local_emulator and not index_host:
+                index_host = "http://pinecone:5080"
+            if not index_host:
+                raise ValueError("Could not resolve Pinecone index host for async namespaces query")
+            if not index_host.startswith("http"):
+                index_host = f"https://{index_host}"
+            async with apc.Index(host=index_host) as aindex:
+                # If SDK adds query_namespaces async, prefer it
+                if hasattr(aindex, "query_namespaces"):
+                    return await aindex.query_namespaces(
+                        vector=query_vector_list,
+                        namespaces=namespaces,
+                        top_k=top_k,
+                        include_metadata=include_metadata,
+                        filter=filter_query,
+                    )
+                # Fallback: run concurrently and merge
+                import asyncio as _asyncio
+
+                async def _one(ns: str):
+                    return await aindex.query(
+                        vector=query_vector_list,
+                        namespace=ns,
+                        top_k=top_k,
+                        include_metadata=include_metadata,
+                        filter=filter_query,
+                    )
+
+                results = await _asyncio.gather(*[_one(ns) for ns in namespaces])
+                all_matches: List[Dict[str, Any]] = []
+                for r in results:
+                    all_matches.extend(r.get("matches", []))
+                all_matches.sort(key=lambda m: m.get("score", 0), reverse=True)
+                return {"matches": all_matches[:top_k]}
+
     def _read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
         """Read a config parameter from the index.
 
@@ -1283,20 +1415,23 @@ class PineconeIndex(BaseIndex):
         :param metric: The metric to use for the index, defaults to "dotproduct".
         :type metric: str, optional
         """
-        params = {
-            "name": name,
-            "dimension": dimension,
-            "metric": metric,
-            "spec": {"serverless": {"cloud": cloud, "region": region}},
-            "deletion_protection": "disabled",
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/indexes",
-                json=params,
-                headers=self.headers,
-            ) as response:
-                return await response.json(content_type=None)
+        # Use Pinecone async SDK to create index with options
+        try:
+            from pinecone import PineconeAsyncio, ServerlessSpec
+        except ImportError as e:
+            raise ImportError(
+                'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
+            ) from e
+
+        async with PineconeAsyncio(api_key=self.api_key) as apc:
+            return await apc.create_index(
+                name=name,
+                dimension=dimension,
+                metric=metric,
+                spec=ServerlessSpec(cloud=cloud, region=region),
+                deletion_protection=self.deletion_protection,
+                tags=self.tags or None,
+            )
 
     async def _async_delete(self, ids: list[str], namespace: str = ""):
         """Asynchronously deletes vectors from the index.
