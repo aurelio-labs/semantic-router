@@ -387,13 +387,8 @@ class PineconeIndex(BaseIndex):
                     time.sleep(0.2)
             elif index_exists:
                 desc = self.client.describe_index(self.index_name)
-                if self._using_local_emulator:
-                    self.index_host = "http://pinecone:5080"
-                    self._sdk_host_for_validation = self.index_host
-                    index = self.client.Index(self.index_name, host=self.index_host)
-                else:
-                    self.index_host = desc.host if hasattr(desc, "host") else None
-                    index = self.client.Index(self.index_name)
+                # Let the SDK pick the correct host (cloud or local) based on client configuration
+                index = self.client.Index(self.index_name)
                 self.index = index
                 self.dimensions = index.describe_index_stats()["dimension"]
             elif force_create and not dimensions_given:
@@ -413,18 +408,13 @@ class PineconeIndex(BaseIndex):
         else:
             index = self.index
         if self.index is not None and self.host == "":
+            # Get the data-plane host from describe; normalize scheme for cloud
             self.index_host = self.client.describe_index(self.index_name).host
-            # For local emulator, bind explicit host; for cloud, set https host for async HTTP calls
-            if self._using_local_emulator and self.index_host and self.base_url:
-                self._calculate_index_host()
-                index = self.client.Index(self.index_name, host=self.index_host)
-                self.host = self.index_host
-            elif self.index_host:
-                # Cloud data plane host (no scheme in describe)
-                if not str(self.index_host).startswith("http"):
-                    self.host = f"https://{self.index_host}"
-                else:
+            if self.index_host:
+                if str(self.index_host).startswith("http"):
                     self.host = str(self.index_host)
+                else:
+                    self.host = f"https://{self.index_host}"
         logger.info(
             f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}"
         )
