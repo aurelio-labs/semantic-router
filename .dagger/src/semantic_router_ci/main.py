@@ -84,6 +84,7 @@ class SemanticRouter:
             .with_env_variable("PINECONE_API_KEY", "pclocal")
             .with_env_variable("PINECONE_API_BASE_URL", "http://pinecone:5080")
             .with_exec(["uv", "run", "pytest", "-vv", "tests/unit/test_sync.py"])
+            .stdout()
         )
 
     @function
