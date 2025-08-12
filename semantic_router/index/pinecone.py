@@ -342,50 +342,15 @@ class PineconeIndex(BaseIndex):
                         spec=self.ServerlessSpec(cloud=self.cloud, region=self.region),
                     )
                 except Exception as e:
-                    # If we hit quota (Forbidden), attempt to proceed assuming a shared index exists
-                    from pinecone.exceptions import (
-                        ForbiddenException,
-                    )
-
+                    # If index creation is forbidden (likely quota), surface a clear
+                    # instruction to reuse an existing index instead of adding fallback logic.
+                    from pinecone.exceptions import ForbiddenException
                     if isinstance(e, ForbiddenException):
-                        logger.warning(
-                            "[PineconeIndex] Create index forbidden (quota?). Attempting to reuse an existing index."
-                        )
-                        # Try to select a reusable index
-                        reused_index_name = None
-                        shared_index_env = os.getenv("PINECONE_INDEX_NAME")
-                        if shared_index_env and shared_index_env.strip():
-                            reused_index_name = shared_index_env.strip()
-                        else:
-                            try:
-                                existing = self.client.list_indexes()
-                                if isinstance(existing, list) and existing:
-                                    reused_index_name = (
-                                        existing[0].name
-                                        if hasattr(existing[0], "name")
-                                        else str(existing[0])
-                                    )
-                            except Exception:
-                                # Ignore list errors; we'll error explicitly below
-                                pass
-                        if not reused_index_name:
-                            raise RuntimeError(
-                                "Pinecone index cannot be created due to quota and no existing index was found. "
-                                "Set PINECONE_INDEX_NAME to an existing index and rerun."
-                            )
-                        # Adopt the reusable index
-                        self.index_name = reused_index_name
-                        logger.info(
-                            f"[PineconeIndex] Reusing existing index: {self.index_name}"
-                        )
-                        # Ensure namespace isolation when reusing indexes
-                        if not self.namespace:
-                            self.namespace = (
-                                getattr(self, "_requested_index_name", None)
-                                or self.index_name
-                            )
-                    else:
-                        raise
+                        raise RuntimeError(
+                            "Pinecone index creation forbidden (likely quota). "
+                            "Set PINECONE_INDEX_NAME to an existing index and rerun."
+                        ) from e
+                    raise
                 logger.info(
                     f"[PineconeIndex] Waiting for index to be ready: {self.index_name}"
                 )
