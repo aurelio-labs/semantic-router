@@ -543,44 +543,13 @@ class PineconeIndex(BaseIndex):
 
         logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
-            from pinecone.exceptions import NotFoundException
-
-            max_retries = 5
-            delay = 1
-            for attempt in range(max_retries):
-                try:
-                    logger.info(
-                        f"[PineconeIndex] Attempting upsert to index: {self.index_name}, batch size: {len(batch)}, attempt {attempt + 1}/{max_retries}"
-                    )
-                    self.index.upsert(vectors=batch, namespace=self.namespace)
-                    logger.info(
-                        f"[PineconeIndex] Upsert succeeded for index: {self.index_name}"
-                    )
-                    break
-                except Exception as e:
-                    logger.error(
-                        f"[PineconeIndex] Upsert failed for index: {self.index_name}, error: {e}"
-                    )
-                    if isinstance(e, NotFoundException):
-                        logger.info(
-                            f"[PineconeIndex] NotFoundException on upsert, re-initializing index: {self.index_name}"
-                        )
-                        self._init_index()
-                        if attempt < max_retries - 1:
-                            logger.info(
-                                f"[PineconeIndex] Sleeping {delay}s before retrying upsert..."
-                            )
-                            time.sleep(delay)
-                            delay *= 2
-                        else:
-                            logger.error(
-                                f"[PineconeIndex] Upsert failed after {max_retries} attempts. Raising RuntimeError."
-                            )
-                            raise RuntimeError(
-                                "Pinecone index could not be created or found after retrying upsert."
-                            ) from e
-                    else:
-                        raise
+            logger.info(
+                f"[PineconeIndex] Upserting to index: {self.index_name}, batch size: {len(batch)}"
+            )
+            self.index.upsert(vectors=batch, namespace=self.namespace)
+            logger.info(
+                f"[PineconeIndex] Upsert succeeded for index: {self.index_name}"
+            )
         else:
             raise ValueError("Index is None, could not upsert.")
 
