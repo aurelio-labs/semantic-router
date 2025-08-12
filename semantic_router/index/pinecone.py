@@ -958,14 +958,14 @@ class PineconeIndex(BaseIndex):
         # Pinecone v7: FetchResponse with .vectors mapping id -> Vector
         if hasattr(config_record, "vectors") and config_id in config_record.vectors:
             vec = config_record.vectors[config_id]
-            md = getattr(vec, "metadata", {}) or {}
-            value = md.get("value", "")
-            created_raw = md.get("created_at")
-            created_at: str = (
-                created_raw
-                if isinstance(created_raw, str)
-                else datetime.now(timezone.utc).isoformat()
-            )
+            metadata = getattr(vec, "metadata", {}) or {}
+            value = metadata.get("value", "")
+            created_raw = metadata.get("created_at")
+            if not isinstance(created_raw, str):
+                raise TypeError(
+                    f"Invalid created_at type: {type(created_raw)} for config {field}. Expected str."
+                )
+            created_at: str = created_raw
             return ConfigParameter(
                 field=field,
                 value=value,
@@ -1005,15 +1005,14 @@ class PineconeIndex(BaseIndex):
         if config_record:
             try:
                 created_raw = config_record.get("created_at")
-                created_at: str = (
-                    created_raw
-                    if isinstance(created_raw, str)
-                    else datetime.now(timezone.utc).isoformat()
-                )
+                if not isinstance(created_raw, str):
+                    raise TypeError(
+                        f"Invalid created_at type: {type(created_raw)} for config {field}. Expected str."
+                    )
                 return ConfigParameter(
                     field=field,
                     value=config_record["value"],
-                    created_at=created_at,
+                    created_at=created_raw,
                     scope=scope,
                 )
             except KeyError:
