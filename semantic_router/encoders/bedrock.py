@@ -101,6 +101,7 @@ class BedrockEncoder(DenseEncoder):
         :raises ValueError: If the Bedrock Platform client fails to initialize.
         """
         super().__init__(name=name, score_threshold=score_threshold)
+        self.input_type = input_type
         if client:
             self.client = client
         else:
@@ -112,7 +113,6 @@ class BedrockEncoder(DenseEncoder):
             self.region = self.get_env_variable(
                 "AWS_DEFAULT_REGION", region, default="us-west-1"
             )
-            self.input_type = input_type
             try:
                 self.client = self._initialize_client(
                     self.access_key_id,
