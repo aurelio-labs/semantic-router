@@ -1109,6 +1109,7 @@ class PineconeIndex(BaseIndex):
                 except JSONDecodeError as e:
                     logger.error(f"JSON decode error: {e}")
                     return {}
+                
 
     async def ais_ready(self, client_only: bool = False) -> bool:
         """Checks if class attributes exist to be used for async operations.
