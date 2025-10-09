@@ -16,7 +16,6 @@ class HybridLocalIndex(LocalIndex):
     def __init__(self, **data):
         super().__init__(**data)
         self.metadata = None
-        
 
     def add(
         self,
