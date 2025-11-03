@@ -1,3 +1,75 @@
+### v0.1.12
+
+The `0.1.12` release brings Pinecone v7 support and AWS Bedrock boto3 client integration, improving compatibility and expanding cloud deployment options.
+
+#### Feature: Pinecone v7 Upgrade
+
+Semantic Router now supports Pinecone Python SDK v7, providing:
+- Improved data plane performance and reliability
+- Enhanced async support for high-throughput applications
+- Simplified API structure for better developer experience
+- Better error handling and retry logic
+
+The upgrade is backward compatible - existing code continues to work without changes. For shared index deployments, set `PINECONE_INDEX_NAME` to reuse existing indexes and avoid quota limits. Semantic Router automatically isolates data using namespaces.
+
+#### Feature: Bedrock boto3 Client Support
+
+Added support for custom boto3 clients in the `BedrockEncoder`, enabling:
+- Advanced AWS credential management (IAM roles, cross-account access)
+- Custom retry policies and timeout configurations
+- VPC endpoint support for private deployments
+- Better integration with existing AWS infrastructure
+
+This provides greater flexibility for enterprise AWS deployments while maintaining backward compatibility with the existing credential-based approach.
+
+---
+
+### v0.1.11
+
+The `0.1.11` release introduces new encoder options for local and self-hosted deployments, alongside sparse encoding improvements and CI/CD enhancements.
+
+#### Feature: Local Encoder
+
+Added `LocalEncoder` for fully local embedding generation using sentence-transformers:
+- No API keys or internet connection required
+- Automatic device selection (CUDA, MPS, CPU)
+- Support for any sentence-transformers model
+- Privacy-first design - all data stays on your machine
+
+Perfect for offline deployments, privacy-sensitive applications, or development environments.
+
+#### Feature: Local Sparse Encoder 
+
+Added sparse encoder support using sentence transformers with `LocalSparseEncoder`.
+- Same offline advantages as the Local Encoder above.
+- Better handling of sentence boundaries
+- Improved BM25 and TF-IDF implementations
+- Enhanced compatibility with `HybridRouter`
+#### Feature: Ollama Encoder
+
+Introduced `OllamaEncoder` for using Ollama-hosted embedding models:
+- Works with any Ollama embedding model (nomic-embed-text, mxbai-embed-large, etc.)
+- Full control over model versions and hosting
+- Low latency with local Ollama instances
+- Both sync and async support
+
+Ideal for organizations wanting to self-host embedding models while maintaining API-like convenience.
+
+
+#### Feature: Dagger CI
+
+Implemented Dagger for CI/CD pipeline, providing:
+- Faster, more reliable builds
+- Better caching and parallelization
+- Consistent local and remote execution
+- Improved developer experience
+
+#### Chore: Torch Dependency Optimization
+
+Removed torch from main dependencies to reduce installation size. PyTorch is now only installed when needed via `semantic-router[local]` extras, reducing default installation from ~2GB to <100MB.
+
+---
+
 ### v0.1.10
 
 The `0.1.10` release was primarily focused on expanding async support for `QdrantIndex`, `PostgresIndex`, and `HybridRouter`, alongside many synchronization and testing improvements.
