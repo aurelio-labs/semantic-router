@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
@@ -292,7 +293,6 @@ class PineconeIndex(BaseIndex):
             self.index_host = "http://pinecone:5080"
             self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
-            import re
 
             match = re.match(r"http://localhost:(\d+)", self.base_url)
             port = match.group(1) if match else "5080"
@@ -319,14 +319,11 @@ class PineconeIndex(BaseIndex):
             dimensions are not given (which will raise an error).
         :type force_create: bool, optional
         """
-        import logging
-
-        logger = logging.getLogger("semantic_router.pinecone")
         dimensions_given = self.dimensions is not None
         if self.index is None:
             index_exists = self.client.has_index(name=self.index_name)
             if dimensions_given and not index_exists:
-                logger.info(
+                logger.debug(
                     f"[PineconeIndex] Creating index: {self.index_name} with dimensions={self.dimensions}, metric={self.metric}, cloud={self.cloud}, region={self.region}"
                 )
                 try:
@@ -347,7 +344,7 @@ class PineconeIndex(BaseIndex):
                             "Set PINECONE_INDEX_NAME to an existing index and rerun."
                         ) from e
                     raise
-                logger.info(
+                logger.debug(
                     f"[PineconeIndex] Index created; proceeding without readiness wait: {self.index_name}"
                 )
                 index = self.client.Index(self.index_name)
@@ -383,7 +380,7 @@ class PineconeIndex(BaseIndex):
                     self.host = str(self.index_host)
                 else:
                     self.host = f"https://{self.index_host}"
-        logger.info(
+        logger.debug(
             f"[PineconeIndex] _init_index returning index: {self.index_name}, index={self.index}"
         )
         return index
@@ -490,15 +487,12 @@ class PineconeIndex(BaseIndex):
         :param batch: The batch of records to upsert.
         :type batch: List[Dict]
         """
-        import logging
-
-        logger = logging.getLogger("semantic_router.pinecone")
         if self.index is not None:
-            logger.info(
+            logger.debug(
                 f"[PineconeIndex] Upserting to index: {self.index_name}, batch size: {len(batch)}"
             )
             self.index.upsert(vectors=batch, namespace=self.namespace)
-            logger.info(
+            logger.debug(
                 f"[PineconeIndex] Upsert succeeded for index: {self.index_name}"
             )
         else:
