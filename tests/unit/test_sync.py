@@ -50,6 +50,13 @@ def init_index(
     issues during testing.
     """
     if index_cls is PineconeIndex:
+        # In cloud mode, require a shared index to avoid creation quota failures
+        if os.getenv("PINECONE_API_BASE_URL", "").startswith(
+            "https://api.pinecone.io"
+        ) and not os.getenv("PINECONE_INDEX_NAME"):
+            pytest.skip(
+                "Skipping Pinecone in cloud: set PINECONE_INDEX_NAME to an existing index to run."
+            )
         if index_name:
             if not dimensions and "OpenAIEncoder" in index_name:
                 dimensions = 1536

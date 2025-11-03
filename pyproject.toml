@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.1.11"
+version = "0.1.12"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.9,<3.14"
@@ -31,13 +31,13 @@ local = [
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
+pinecone = ["pinecone>=7.0.0,<8.0.0"]
 vision = [
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
-pinecone = ["pinecone>=5.0.0,<6.0.0"]
 mistralai = ["mistralai>=0.0.12,<0.1.0"]
 qdrant = ["qdrant-client>=1.11.1,<2"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
