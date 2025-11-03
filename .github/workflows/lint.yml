@@ -25,3 +25,4 @@ jobs:
     - name: Run Lint
       run: |
         make lint
+

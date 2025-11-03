@@ -1,4 +1,5 @@
 import logging
+import os
 
 import colorlog
 
@@ -35,12 +36,18 @@ def setup_custom_logger(name):
     """Setup a custom logger."""
     logger = logging.getLogger(name)
 
-    if not logger.hasHandlers():
-        add_coloured_handler(logger)
-        logger.setLevel(logging.INFO)
-        logger.propagate = False
+    # get log level from environment vars
+    # first check for semantic_router_log_level, then log_level, then default to INFO
+    log_level = (
+        os.getenv("SEMANTIC_ROUTER_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "INFO"
+    )
+    log_level = log_level.upper()
+
+    add_coloured_handler(logger)
+    logger.setLevel(log_level)
+    logger.propagate = False
 
     return logger
 
 
-logger: logging.Logger = setup_custom_logger(__name__)
+logger: logging.Logger = setup_custom_logger("semantic_router")

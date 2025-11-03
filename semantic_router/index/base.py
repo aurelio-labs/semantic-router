@@ -222,6 +222,15 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    async def ais_ready(self) -> bool:
+        """Checks if the index is ready to be used asynchronously.
+        This method should be implemented by subclasses.
+
+        :return: True if the index is ready, False otherwise.
+        :rtype: bool
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
     def query(
         self,
         vector: np.ndarray,
@@ -295,6 +304,13 @@ class BaseIndex(BaseModel):
         This method should be implemented by subclasses.
 
         :raises NotImplementedError: If the method is not implemented by the subclass.
+        """
+        logger.warning("This method should be implemented by subclasses.")
+        self.index = None
+
+    async def adelete_index(self):
+        """Deletes or resets the index asynchronously.
+        This method should be implemented by subclasses.
         """
         logger.warning("This method should be implemented by subclasses.")
         self.index = None
@@ -516,6 +532,60 @@ class BaseIndex(BaseModel):
         return route_info  # type: ignore
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
+
+    def _init_index(self, force_create: bool = False) -> Union[Any, None]:
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        This method must be implemented by subclasses.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def _init_async_index(self, force_create: bool = False):
+        """Initializing the index can be done after the object has been created
+        to allow for the user to set the dimensions and other parameters.
+
+        If the index doesn't exist and the dimensions are given, the index will
+        be created. If the index exists, it will be returned. If the index doesn't
+        exist and the dimensions are not given, the index will not be created and
+        None will be returned.
+
+        This method is used to initialize the index asynchronously.
+
+        This method must be implemented by subclasses.
+
+        :param force_create: If True, the index will be created even if the
+            dimensions are not given (which will raise an error).
+        :type force_create: bool, optional
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def __len__(self):
+        """Returns the total number of vectors in the index. If the index is not initialized
+        returns 0.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    async def alen(self):
+        """Async version of __len__. Returns the total number of vectors in the index.
+        Default implementation just calls the sync version.
+
+        :return: The total number of vectors.
+        :rtype: int
+        """
+        return len(self)
 
 
 def parse_route_info(metadata: List[Dict[str, Any]]) -> List[Tuple]:

@@ -29,6 +29,14 @@ class EncoderDefault(Enum):
         "embedding_model": os.getenv("JINA_MODEL_NAME", "jina-embeddings-v3"),
         "language_model": os.getenv("JINA_CHAT_MODEL_NAME", "ReaderLM-v2"),
     }
+    NVIDIA_NIM = {
+        "embedding_model": os.getenv(
+            "NVIDIA_NIM_MODEL_NAME", "nvidia/nv-embedqa-e5-v5"
+        ),
+        "language_model": os.getenv(
+            "NVIDIA_NIM_CHAT_MODEL_NAME", "meta/llama3-70b-instruct"
+        ),
+    }
     AZURE = {
         "embedding_model": os.getenv("AZURE_OPENAI_MODEL", "text-embedding-3-small"),
         "language_model": os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-4o"),
@@ -40,6 +48,11 @@ class EncoderDefault(Enum):
         "embedding_model": os.getenv(
             "GOOGLE_EMBEDDING_MODEL", "textembedding-gecko@003"
         ),
+    }
+    OLLAMA = {
+        "embedding_model": os.getenv(
+            "OLLAMA_EMBEDDING_MODEL", "hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:F16"
+        )
     }
     BEDROCK = {
         "embedding_model": os.environ.get(

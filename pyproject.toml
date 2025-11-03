@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.1.8"
+version = "0.1.12"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.9,<3.14"
@@ -17,24 +17,26 @@ dependencies = [
     "tiktoken>=0.6.0,<1.0.0",
     "aiohttp>=3.10.11,<4",
     "tornado>=6.4.2,<7",
-    "urllib3>=1.25.4,<1.27",
+    "urllib3>=1.26,<3",
     "litellm>=1.61.3",
-    "openai>=1.10.0,<2.0.0",
+    "openai>=1.10.0,<2.0.0"
 ]
 
 [project.optional-dependencies]
+ollama = ["ollama>=0.1.7"]
 local = [
-    "torch>=2.1.0,<2.6.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
     "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
+    "sentence-transformers>=5.0.0 ; python_version < '3.13'",
+    "torch>=2.6.0 ; python_version < '3.13'"
 ]
-pinecone = ["pinecone>=5.0.0,<6.0.0"]
+pinecone = ["pinecone>=7.0.0,<8.0.0"]
 vision = [
-    "torch>=2.1.0 ; python_version < '3.13'",
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
+    "torch>=2.6.0 ; python_version < '3.13'"
 ]
 mistralai = ["mistralai>=0.0.12,<0.1.0"]
 qdrant = ["qdrant-client>=1.11.1,<2"]
@@ -44,7 +46,7 @@ bedrock = [
     "botocore>=1.34.110,<2",
 ]
 postgres = [
-    "psycopg2-binary>=2.9.9,<3",
+    "psycopg[binary]>=3.1.0,<4",
 ]
 fastembed = ["fastembed>=0.3.0,<0.4 ; python_version < '3.13'"]
 docs = ["pydoc-markdown>=4.8.2 ; python_version < '3.12'"]
@@ -57,10 +59,12 @@ dev = [
     "pytest-cov>=4.1.0,<5",
     "pytest-xdist>=3.5.0,<4",
     "pytest-asyncio>=0.24.0,<0.25",
+    "pytest-timeout",
     "mypy>=1.7.1,<2",
     "types-pyyaml>=6.0.12.12,<7",
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
+    "dagger-io>=0.1.1 ; python_version >= '3.11'"
 ]
 all = [
     "semantic-router[local]",
@@ -74,16 +78,8 @@ all = [
     "semantic-router[fastembed]",
     "semantic-router[cohere]",
     "semantic-router[dev]",
-]
-
-[tool.uv.sources]
-torch = [
-    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
-    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
-]
-torchvision = [
-    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
-    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+    "semantic-router[ollama]",
+    "pytest-timeout",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -119,3 +115,13 @@ explicit = true
 name = "pytorch-nightly"
 url = "https://download.pytorch.org/whl/nightly/cpu"
 explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]
+torchvision = [
+    { index = "pytorch-nightly", marker = "python_version >= '3.13' and sys_platform == 'darwin'"  },
+    { index = "pytorch-cpu", marker = "python_version < '3.13' or sys_platform != 'darwin'" },
+]

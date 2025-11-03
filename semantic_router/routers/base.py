@@ -21,6 +21,7 @@ from semantic_router.encoders.encode_input_type import EncodeInputType
 from semantic_router.index.base import BaseIndex
 from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
+from semantic_router.index.postgres import PostgresIndex
 from semantic_router.index.qdrant import QdrantIndex
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
@@ -359,6 +360,7 @@ class BaseRouter(BaseModel):
     aggregation: str = "mean"
     aggregation_method: Optional[Callable] = None
     auto_sync: Optional[str] = None
+    init_async_index: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
 
@@ -372,6 +374,7 @@ class BaseRouter(BaseModel):
         top_k: int = 5,
         aggregation: str = "mean",
         auto_sync: Optional[str] = None,
+        init_async_index: bool = False,
     ):
         """Initialize a BaseRouter object. Expected to be used as a base class only,
         not directly instantiated.
@@ -421,14 +424,20 @@ class BaseRouter(BaseModel):
                 f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
             )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
-        self.auto_sync = auto_sync
+        # to keep PostgresIndex backwards compatible we will default auto_sync to "local",
+        # this will be removed in 0.2.0
+        if isinstance(self.index, PostgresIndex):
+            self.auto_sync = "local"
+        else:
+            self.auto_sync = auto_sync
 
         # set route score thresholds if not already set
         for route in self.routes:
             if route.score_threshold is None:
                 route.score_threshold = self.score_threshold
         # initialize index
-        self._init_index_state()
+        if not init_async_index:
+            self._init_index_state()
 
     def _get_index(self, index: Optional[BaseIndex]) -> BaseIndex:
         """Get the index to use.
@@ -483,7 +492,9 @@ class BaseRouter(BaseModel):
             dims = len(self.encoder(["test"])[0])
             self.index.dimensions = dims
         # now init index
-        if isinstance(self.index, PineconeIndex):
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
             # _init_index will not create index if already exists — it will also check
             # for required attributes like self.index.host and self.index.dimensions and
             # fetch them if not set
@@ -499,6 +510,29 @@ class BaseRouter(BaseModel):
             )
             sync_strategy = diff.get_sync_strategy(self.auto_sync)
             self._execute_sync_strategy(sync_strategy)
+
+    async def _async_init_index_state(self):
+        """Asynchronously initializes an index (where required) and runs auto_sync if active."""
+        # initialize index now, check if we need dimensions
+        if self.index is None or self.index.dimensions is None:
+            dims = len(self.encoder(["test"])[0])
+            self.index.dimensions = dims
+        # now init index
+        if isinstance(self.index, PineconeIndex) or isinstance(
+            self.index, PostgresIndex
+        ):
+            await self.index._init_async_index(force_create=True)
+
+        # run auto sync if active
+        if self.auto_sync:
+            local_utterances = self.to_config().to_utterances()
+            remote_utterances = await self.index.aget_utterances(include_metadata=True)
+            diff = UtteranceDiff.from_utterances(
+                local_utterances=local_utterances,
+                remote_utterances=remote_utterances,
+            )
+            sync_strategy = diff.get_sync_strategy(self.auto_sync)
+            await self._async_execute_sync_strategy(sync_strategy)
 
     def _set_score_threshold(self):
         """Set the score threshold for the layer based on the encoder
@@ -639,6 +673,8 @@ class BaseRouter(BaseModel):
                         route.llm = self.llm
                 # call dynamic route to generate the function_call content
                 route_choice = route(query=text)
+                if route_choice is not None and route_choice.similarity_score is None:
+                    route_choice.similarity_score = total_score
                 passed_routes.append(route_choice)
             elif passed and route is not None and simulate_static:
                 passed_routes.append(
@@ -724,6 +760,8 @@ class BaseRouter(BaseModel):
                         route.llm = self.llm
                 # TODO need to move to asyncio tasks and gather
                 route_choice = await route.acall(query=text)
+                if route_choice is not None and route_choice.similarity_score is None:
+                    route_choice.similarity_score = total_score
                 passed_routes.append(route_choice)
             elif passed and route is not None and simulate_static:
                 passed_routes.append(
@@ -755,6 +793,7 @@ class BaseRouter(BaseModel):
         self,
         text: Optional[str] = None,
         vector: Optional[List[float] | np.ndarray] = None,
+        limit: int | None = 1,
         simulate_static: bool = False,
         route_filter: Optional[List[str]] = None,
     ) -> RouteChoice | list[RouteChoice]:
@@ -772,9 +811,8 @@ class BaseRouter(BaseModel):
         :return: The route choice.
         :rtype: RouteChoice
         """
-        if not self.index.is_ready():
-            # TODO: need async version for qdrant
-            raise ValueError("Index is not ready.")
+        if not (await self.index.ais_ready()):
+            await self._async_init_index_state()
         # if no vector provided, encode text to get vector
         if vector is None:
             if text is None:
@@ -794,7 +832,7 @@ class BaseRouter(BaseModel):
             scored_routes=scored_routes,
             simulate_static=simulate_static,
             text=text,
-            limit=1,
+            limit=limit,
         )
 
     def _index_ready(self) -> bool:

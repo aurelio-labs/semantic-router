@@ -2,18 +2,18 @@
 
 <p>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/semantic-router?logo=python&logoColor=gold" />
-<img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
-<img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
+<a href="https://github.com/aurelio-labs/semantic-router/graphs/contributors"><img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/aurelio-labs/semantic-router" />
+<a href="https://github.com/aurelio-labs/semantic-router/commits/main"><img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/aurelio-labs/semantic-router" />
 <img alt="" src="https://img.shields.io/github/repo-size/aurelio-labs/semantic-router" />
-<img alt="GitHub Issues" src="https://img.shields.io/github/issues/aurelio-labs/semantic-router" />
-<img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/aurelio-labs/semantic-router" />
+<a href="https://github.com/aurelio-labs/semantic-router/issues"><img alt="GitHub Issues" src="https://img.shields.io/github/issues/aurelio-labs/semantic-router" />
+<a href="https://github.com/aurelio-labs/semantic-router/pulls"><img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/aurelio-labs/semantic-router" />
 <img src="https://codecov.io/gh/aurelio-labs/semantic-router/graph/badge.svg?token=H8OOMV2TUF" />
-<img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+<a href="https://github.com/aurelio-labs/semantic-router/blob/main/LICENSE"><img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </p>
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
-#### [Read the Docs](https://docs.aurelio.ai/semantic-router/index.html)
+#### [Read the Docs](https://docs.aurelio.ai/semantic-router/get-started/introduction)
 
 ---
 

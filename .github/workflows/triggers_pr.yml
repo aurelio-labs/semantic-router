@@ -6,8 +6,22 @@ permissions:
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ "**" ]
     types: [ opened, edited, synchronize ]
+  workflow_call:
+    inputs:
+      test_scope:
+        required: false
+        type: string
+    secrets:
+      OPENAI_API_KEY:
+        required: false
+      COHERE_API_KEY:
+        required: false
+      CODECOV_TOKEN:
+        required: false
+      PINECONE_API_KEY:
+        required: false
 
 jobs:
 
@@ -28,7 +42,10 @@ jobs:
     name: "Tests"
     if: ${{ fromJson(needs.diff.outputs.tags).code.changed }}
     uses: ./.github/workflows/test.yml
+    with:
+      test_scope: ${{ github.event.pull_request.head.repo.full_name != github.repository && 'unit-functional' || 'all' }}
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
