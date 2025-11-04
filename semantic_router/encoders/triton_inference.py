@@ -135,7 +135,7 @@ class TritonEncoder(DenseEncoder):
         try:
             docs_np = np.array([doc.encode("utf-8") for doc in docs], dtype=np.bytes_)
 
-            if self.client.is_batching_supported():
+            if self.client.is_batching_supported:
                 inputs = {self.input_name: docs_np}
 
                 results_dict = self.client.infer_batch(**inputs)
