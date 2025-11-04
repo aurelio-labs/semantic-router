@@ -74,7 +74,7 @@ class TritonEncoder(DenseEncoder):
         if name is None:
             name = EncoderDefault.TRITON.value["embedding_model"]
 
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name, score_threshold=score_threshold, input_name=input_name, output_name=output_name)
         if base_url is None:
             base_url = os.getenv("TRITON_BASE_URL", "http://localhost:8000")
 
