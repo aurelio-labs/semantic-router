@@ -131,6 +131,7 @@ class TritonEncoder(DenseEncoder):
         """
         if self.client is None:
             raise ValueError("Triton client is not initialized.")
+        self.client
         try:
             docs_np = np.array([doc.encode("utf-8") for doc in docs], dtype=np.bytes_)
 
@@ -141,9 +142,11 @@ class TritonEncoder(DenseEncoder):
 
                 embeddings_np = results_dict[self.output_name]
             else:
-                # TODO:
-                ...
-
+                for doc in docs:
+                    doc_np = np.array(doc.encode("utf-8"), dtype=np.bytes_)
+                    input = {self.input_name: doc_np}
+                    result = self.client.infer_sample(**input)
+                    embeddings_np = result[self.output_name]
             return embeddings_np.tolist()
         except Exception as e:
             raise ValueError(f"Triton API call failed. Error: {e}") from e
