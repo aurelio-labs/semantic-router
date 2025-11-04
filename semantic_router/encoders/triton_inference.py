@@ -74,7 +74,12 @@ class TritonEncoder(DenseEncoder):
         if name is None:
             name = EncoderDefault.TRITON.value["embedding_model"]
 
-        super().__init__(name=name, score_threshold=score_threshold, input_name=input_name, output_name=output_name)
+        super().__init__(
+            name=name,
+            score_threshold=score_threshold,
+            input_name=input_name,
+            output_name=output_name,
+        )
         if base_url is None:
             base_url = os.getenv("TRITON_BASE_URL", "http://localhost:8000")
 
@@ -127,19 +132,18 @@ class TritonEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("Triton client is not initialized.")
         try:
-            # Convert Python strings to NumPy array of bytes
             docs_np = np.array([doc.encode("utf-8") for doc in docs], dtype=np.bytes_)
 
-            # Prepare the input dictionary using the configured input_name
-            inputs = {self.input_name: docs_np}
+            if self.client.is_batchin_supported():
+                inputs = {self.input_name: docs_np}
 
-            # Use infer_batch for batch processing
-            results_dict = self.client.infer_batch(**inputs)
+                results_dict = self.client.infer_batch(**inputs)
 
-            # Extract the output using the configured output_name
-            embeddings_np = results_dict[self.output_name]
+                embeddings_np = results_dict[self.output_name]
+            else:
+                # TODO:
+                ...
 
-            # Convert the NumPy array to List[List[float]]
             return embeddings_np.tolist()
         except Exception as e:
             raise ValueError(f"Triton API call failed. Error: {e}") from e
