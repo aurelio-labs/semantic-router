@@ -143,7 +143,7 @@ class TritonEncoder(DenseEncoder):
                 embeddings_np = results_dict[self.output_name]
             else:
                 for doc in docs:
-                    doc_np = np.array(doc.encode("utf-8"), dtype=np.bytes_)
+                    doc_np = np.array([doc.encode("utf-8")], dtype=np.bytes_)
                     input = {self.input_name: doc_np}
                     result = self.client.infer_sample(**input)
                     embeddings_np = result[self.output_name]
