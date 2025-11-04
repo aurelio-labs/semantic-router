@@ -54,6 +54,7 @@ class EncoderDefault(Enum):
             "OLLAMA_EMBEDDING_MODEL", "hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:F16"
         )
     }
+    TRITON = {"embedding_model": os.getenv("TRITON_EMBEDDING_MODEL", "e5")}
     BEDROCK = {
         "embedding_model": os.environ.get(
             "BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-image-v1"
