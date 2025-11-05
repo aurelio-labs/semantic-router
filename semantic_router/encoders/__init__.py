@@ -18,6 +18,7 @@ from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.ollama import OllamaEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 from semantic_router.encoders.tfidf import TfidfEncoder
+from semantic_router.encoders.triton_inference import TritonEncoder
 from semantic_router.encoders.vit import VitEncoder
 from semantic_router.encoders.voyage import VoyageEncoder
 from semantic_router.schema import EncoderType, SparseEmbedding
@@ -44,6 +45,7 @@ __all__ = [
     "JinaEncoder",
     "NimEncoder",
     "OllamaEncoder",
+    "TritonEncoder",
     "LocalEncoder",
     "LocalSparseEncoder",
 ]

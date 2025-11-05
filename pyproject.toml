@@ -39,6 +39,9 @@ vision = [
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
 mistralai = ["mistralai>=0.0.12,<0.1.0"]
+triton = [
+    "nvidia-pytriton>=0.5.0,<1.0.0"
+]
 qdrant = ["qdrant-client>=1.11.1,<2"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
 bedrock = [
@@ -79,6 +82,7 @@ all = [
     "semantic-router[cohere]",
     "semantic-router[dev]",
     "semantic-router[ollama]",
+    "semantic-router[triton]",
     "pytest-timeout",
 ]
 
