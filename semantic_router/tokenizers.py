@@ -59,7 +59,7 @@ class BaseTokenizer:
         if isinstance(path, str):
             path = Path(path)
 
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             config = json.load(fp)
         return cls(**config)
 
