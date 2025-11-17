@@ -19,7 +19,7 @@ dependencies = [
     "tornado>=6.4.2,<7",
     "urllib3>=1.26,<3",
     "litellm>=1.61.3",
-    "openai>=1.10.0,<2.0.0"
+    "openai>=2.8.0"
 ]
 
 [project.optional-dependencies]
