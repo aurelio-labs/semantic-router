@@ -19,7 +19,7 @@ dependencies = [
     "tornado>=6.4.2,<7",
     "urllib3>=1.26,<3",
     "litellm>=1.61.3",
-    "openai>=2.8.0"
+    "openai>=1.10.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -64,7 +64,8 @@ dev = [
     "types-pyyaml>=6.0.12.12,<7",
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
-    "dagger-io>=0.1.1 ; python_version >= '3.11'"
+    "dagger-io>=0.1.1 ; python_version >= '3.11'",
+    "python-dotenv>=1.0.0,<2"
 ]
 all = [
     "semantic-router[local]",
