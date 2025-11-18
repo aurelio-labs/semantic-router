@@ -1,7 +1,20 @@
 # Monkeypatch Pinecone SDK host validation to allow 'pinecone:5080' for Dagger CI
 
+from pathlib import Path
+
 
 def pytest_configure(config):
+    # Load .env file if it exists (for local testing only)
+    try:
+        from dotenv import load_dotenv
+
+        # Look for .env in the project root
+        env_path = Path(__file__).parent.parent / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+    except ImportError:
+        pass  # python-dotenv not installed, skip
+
     try:
         import pinecone
 

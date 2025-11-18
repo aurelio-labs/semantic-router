@@ -178,7 +178,7 @@ class AzureOpenAIEncoder(DenseEncoder):
                 embeds = self.client.embeddings.create(
                     input=docs,
                     model=str(self.deployment_name),
-                    dimensions=self.dimensions,
+                    dimensions=self.dimensions,  # type: ignore[arg-type]  # NotGiven vs Omit - ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )
                 if embeds.data:
                     break
@@ -222,7 +222,7 @@ class AzureOpenAIEncoder(DenseEncoder):
                 embeds = await self.async_client.embeddings.create(
                     input=docs,
                     model=str(self.deployment_name),
-                    dimensions=self.dimensions,
+                    dimensions=self.dimensions,  # type: ignore[arg-type]  # NotGiven vs Omit - ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )
                 if embeds.data:
                     break

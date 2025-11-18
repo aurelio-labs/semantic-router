@@ -19,7 +19,7 @@ dependencies = [
     "tornado>=6.4.2,<7",
     "urllib3>=1.26,<3",
     "litellm>=1.61.3",
-    "openai>=1.10.0,<2.0.0"
+    "openai>=1.10.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +31,7 @@ local = [
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
-pinecone = ["pinecone>=7.0.0,<8.0.0"]
+pinecone = ["pinecone[asyncio]>=7.0.0,<8.0.0"]
 vision = [
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
@@ -64,7 +64,8 @@ dev = [
     "types-pyyaml>=6.0.12.12,<7",
     "requests-mock>=1.12.1,<2",
     "types-requests>=2.31.0,<3",
-    "dagger-io>=0.1.1 ; python_version >= '3.11'"
+    "dagger-io>=0.1.1 ; python_version >= '3.11'",
+    "python-dotenv>=1.0.0,<2"
 ]
 all = [
     "semantic-router[local]",

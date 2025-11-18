@@ -84,14 +84,15 @@ def init_index(
             elif not dimensions and "CohereEncoder" in index_name:
                 dimensions = 1024
         # Use a stable shared index if provided via env to avoid creation/quota issues in CI
+        # Append encoder name to create separate indexes per encoder dimension
         shared_index = os.environ.get("PINECONE_INDEX_NAME", "").strip()
         if shared_index:
-            effective_index_name = shared_index
-            # Push isolation into namespace using the requested test index name
+            effective_index_name = (
+                f"{shared_index}-{index_name.lower()}" if index_name else shared_index
+            )
+            # Push isolation into namespace using the test ID
             if not namespace:
-                namespace = (
-                    TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
-                )
+                namespace = TEST_ID
         else:
             # Fallback: unique index name per test run
             effective_index_name = (

@@ -141,7 +141,7 @@ class OpenAIEncoder(DenseEncoder):
                 embeds = self._client.embeddings.create(
                     input=docs,
                     model=self.name,
-                    dimensions=self.dimensions,
+                    dimensions=self.dimensions,  # type: ignore[arg-type]  # NotGiven vs Omit - ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )
                 if embeds.data:
                     break
@@ -212,7 +212,7 @@ class OpenAIEncoder(DenseEncoder):
                 embeds = await self._async_client.embeddings.create(
                     input=docs,
                     model=self.name,
-                    dimensions=self.dimensions,
+                    dimensions=self.dimensions,  # type: ignore[arg-type]  # NotGiven vs Omit - ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )
                 if embeds.data:
                     break

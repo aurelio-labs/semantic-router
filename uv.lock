@@ -141,6 +141,18 @@ wheels = [
 ]
 
 [[package]]
+name = "aiohttp-retry"
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/61/ebda4d8e3d8cfa1fd3db0fb428db2dd7461d5742cea35178277ad180b033/aiohttp_retry-2.9.1.tar.gz", hash = "sha256:8eb75e904ed4ee5c2ec242fefe85bf04240f685391c4879d8f541d6028ff01f1", size = 13608, upload-time = "2024-11-06T10:44:54.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/99/84ba7273339d0f3dfa57901b846489d2e5c2cd731470167757f1935fffbd/aiohttp_retry-2.9.1-py3-none-any.whl", hash = "sha256:66d2759d1921838256a05a3f80ad7e724936f083e35be5abb5e16eed6be6dc54", size = 9981, upload-time = "2024-11-06T10:44:52.917Z" },
+]
+
+[[package]]
 name = "aiosignal"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2601,7 +2613,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.98.0"
+version = "2.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2613,9 +2625,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/9d/52eadb15c92802711d6b6cf00df3a6d0d18b588f4c5ba5ff210c6419fc03/openai-1.98.0.tar.gz", hash = "sha256:3ee0fcc50ae95267fd22bd1ad095ba5402098f3df2162592e68109999f685427", size = 496695, upload-time = "2025-07-30T12:48:03.701Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/e4/42591e356f1d53c568418dc7e30dcda7be31dd5a4d570bca22acb0525862/openai-2.8.1.tar.gz", hash = "sha256:cb1b79eef6e809f6da326a7ef6038719e35aa944c42d081807bfa1be8060f15f", size = 602490, upload-time = "2025-11-17T22:39:59.549Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/fe/f64631075b3d63a613c0d8ab761d5941631a470f6fa87eaaee1aa2b4ec0c/openai-1.98.0-py3-none-any.whl", hash = "sha256:b99b794ef92196829120e2df37647722104772d2a74d08305df9ced5f26eae34", size = 767713, upload-time = "2025-07-30T12:48:01.264Z" },
+    { url = "https://files.pythonhosted.org/packages/55/4f/dbc0c124c40cb390508a82770fb9f6e3ed162560181a85089191a851c59a/openai-2.8.1-py3-none-any.whl", hash = "sha256:c6c3b5a04994734386e8dad3c00a393f56d3b68a27cd2e8acae91a59e4122463", size = 1022688, upload-time = "2025-11-17T22:39:57.675Z" },
 ]
 
 [[package]]
@@ -2911,6 +2923,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fa/38/12731d4af470851b4963eba616605868a8599ef4df51c7b6c928e5f3166d/pinecone-7.3.0.tar.gz", hash = "sha256:307edc155621d487c20dc71b76c3ad5d6f799569ba42064190d03917954f9a7b", size = 235256, upload-time = "2025-06-27T20:03:51.498Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/a6/c5d54a5fb1de3983a8739c1a1660e7a7074db2cbadfa875b823fcf29b629/pinecone-7.3.0-py3-none-any.whl", hash = "sha256:315b8fef20320bef723ecbb695dec0aafa75d8434d86e01e5a0e85933e1009a8", size = 587563, upload-time = "2025-06-27T20:03:50.249Z" },
+]
+
+[package.optional-dependencies]
+asyncio = [
+    { name = "aiohttp" },
+    { name = "aiohttp-retry" },
 ]
 
 [[package]]
@@ -4418,7 +4436,7 @@ all = [
     { name = "mypy" },
     { name = "ollama" },
     { name = "pillow", marker = "python_full_version < '3.13'" },
-    { name = "pinecone" },
+    { name = "pinecone", extra = ["asyncio"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -4426,6 +4444,7 @@ all = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "python-dotenv" },
     { name = "qdrant-client", version = "1.12.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "qdrant-client", version = "1.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "requests-mock" },
@@ -4458,6 +4477,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "python-dotenv" },
     { name = "requests-mock" },
     { name = "ruff" },
     { name = "types-pyyaml" },
@@ -4488,7 +4508,7 @@ ollama = [
     { name = "ollama" },
 ]
 pinecone = [
-    { name = "pinecone" },
+    { name = "pinecone", extra = ["asyncio"] },
 ]
 postgres = [
     { name = "psycopg", extra = ["binary"] },
@@ -4525,9 +4545,9 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.1,<2" },
     { name = "numpy", specifier = ">=1.25.2" },
     { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.1.7" },
-    { name = "openai", specifier = ">=1.10.0,<2.0.0" },
+    { name = "openai", specifier = ">=1.10.0,<3.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
-    { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=7.0.0,<8.0.0" },
+    { name = "pinecone", extras = ["asyncio"], marker = "extra == 'pinecone'", specifier = ">=7.0.0,<8.0.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1.0,<4" },
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pydoc-markdown", marker = "python_full_version < '3.12' and extra == 'docs'", specifier = ">=4.8.2" },
@@ -4538,6 +4558,7 @@ requires-dist = [
     { name = "pytest-timeout", marker = "extra == 'all'" },
     { name = "pytest-timeout", marker = "extra == 'dev'" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.5.0,<4" },
+    { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.0.0,<2" },
     { name = "pyyaml", specifier = ">=6.0.1,<7" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.11.1,<2" },
     { name = "regex", specifier = ">=2023.12.25" },
