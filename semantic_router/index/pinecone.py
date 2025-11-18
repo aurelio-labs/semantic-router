@@ -282,7 +282,7 @@ class PineconeIndex(BaseIndex):
         }
         if self.namespace:
             pinecone_args["namespace"] = self.namespace
-        return Pinecone(**pinecone_args)
+        return Pinecone(**pinecone_args)  # type: ignore[arg-type]
 
     def _calculate_index_host(self):
         """Calculate the index host. Used to differentiate between Pinecone cloud and local emulator."""
@@ -293,7 +293,6 @@ class PineconeIndex(BaseIndex):
             self.index_host = "http://pinecone:5080"
             self._sdk_host_for_validation = "http://pinecone:5080"
         elif self.base_url and "localhost" in self.base_url:
-
             match = re.match(r"http://localhost:(\d+)", self.base_url)
             port = match.group(1) if match else "5080"
             self.index_host = f"http://localhost:{port}"
@@ -1153,7 +1152,7 @@ class PineconeIndex(BaseIndex):
             if not index_host.startswith("http"):
                 index_host = f"https://{index_host}"
 
-            async with apc.Index(host=index_host) as aindex:
+            async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.query(
                     vector=vector,
                     sparse_vector=sparse_vector,
@@ -1253,7 +1252,7 @@ class PineconeIndex(BaseIndex):
                 )
             if not index_host.startswith("http"):
                 index_host = f"https://{index_host}"
-            async with apc.Index(host=index_host) as aindex:
+            async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.upsert(vectors=vectors, namespace=namespace)
 
     async def _async_create_index(
@@ -1454,7 +1453,7 @@ class PineconeIndex(BaseIndex):
                 raise ValueError(
                     "Could not resolve Pinecone index host for async fetch"
                 )
-            async with apc.Index(host=index_host) as aindex:
+            async with apc.IndexAsyncio(host=index_host) as aindex:
                 data = await aindex.fetch(
                     ids=[vector_id], namespace=namespace or self.namespace
                 )
@@ -1541,5 +1540,5 @@ class PineconeIndex(BaseIndex):
                     index_host = f"https://{index_host}"
             if self._using_local_emulator and not index_host:
                 index_host = "http://pinecone:5080"
-            async with apc.Index(host=index_host) as aindex:
+            async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.describe_index_stats(namespace=self.namespace)
