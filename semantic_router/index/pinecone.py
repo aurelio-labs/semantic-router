@@ -16,6 +16,7 @@ from semantic_router.utils.logger import logger
 
 
 def clean_route_name(route_name: str) -> str:
+    # standardize route names
     return route_name.strip().replace(" ", "-")
 
 
