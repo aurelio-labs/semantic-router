@@ -149,7 +149,7 @@ class OpenAILLM(BaseLLM):
 
                 # Collecting multiple tool calls information
                 output = str(
-                    self._extract_tool_calls_info(tool_calls)
+                    self._extract_tool_calls_info(tool_calls)  # type: ignore[arg-type]  # Ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )  # str in keeping with base type.
             else:
                 content = completion.choices[0].message.content
@@ -202,7 +202,7 @@ class OpenAILLM(BaseLLM):
 
                 # Collecting multiple tool calls information
                 output = str(
-                    await self.async_extract_tool_calls_info(tool_calls)
+                    await self.async_extract_tool_calls_info(tool_calls)  # type: ignore[arg-type]  # Ignore type errors between openai SDK <2.0.0 and >=2.0.0
                 )  # str in keeping with base type.
             else:
                 content = completion.choices[0].message.content
