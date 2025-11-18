@@ -22,6 +22,10 @@ Added support for custom boto3 clients in the `BedrockEncoder`, enabling:
 
 This provides greater flexibility for enterprise AWS deployments while maintaining backward compatibility with the existing credential-based approach.
 
+#### Chore: Relaxed OpenAI SDK Dependency
+
+Updated OpenAI SDK dependency constraints from `<2.0.0` to `<3.0.0`, allowing compatibility with OpenAI SDK v2.x releases. This provides access to newer OpenAI features and improvements while maintaining stability through the v2 major version.
+
 ---
 
 ### v0.1.11
