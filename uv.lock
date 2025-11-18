@@ -141,6 +141,18 @@ wheels = [
 ]
 
 [[package]]
+name = "aiohttp-retry"
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/61/ebda4d8e3d8cfa1fd3db0fb428db2dd7461d5742cea35178277ad180b033/aiohttp_retry-2.9.1.tar.gz", hash = "sha256:8eb75e904ed4ee5c2ec242fefe85bf04240f685391c4879d8f541d6028ff01f1", size = 13608, upload-time = "2024-11-06T10:44:54.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/99/84ba7273339d0f3dfa57901b846489d2e5c2cd731470167757f1935fffbd/aiohttp_retry-2.9.1-py3-none-any.whl", hash = "sha256:66d2759d1921838256a05a3f80ad7e724936f083e35be5abb5e16eed6be6dc54", size = 9981, upload-time = "2024-11-06T10:44:52.917Z" },
+]
+
+[[package]]
 name = "aiosignal"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2913,6 +2925,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/a6/c5d54a5fb1de3983a8739c1a1660e7a7074db2cbadfa875b823fcf29b629/pinecone-7.3.0-py3-none-any.whl", hash = "sha256:315b8fef20320bef723ecbb695dec0aafa75d8434d86e01e5a0e85933e1009a8", size = 587563, upload-time = "2025-06-27T20:03:50.249Z" },
 ]
 
+[package.optional-dependencies]
+asyncio = [
+    { name = "aiohttp" },
+    { name = "aiohttp-retry" },
+]
+
 [[package]]
 name = "pinecone-plugin-assistant"
 version = "1.7.0"
@@ -4418,7 +4436,7 @@ all = [
     { name = "mypy" },
     { name = "ollama" },
     { name = "pillow", marker = "python_full_version < '3.13'" },
-    { name = "pinecone" },
+    { name = "pinecone", extra = ["asyncio"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -4490,7 +4508,7 @@ ollama = [
     { name = "ollama" },
 ]
 pinecone = [
-    { name = "pinecone" },
+    { name = "pinecone", extra = ["asyncio"] },
 ]
 postgres = [
     { name = "psycopg", extra = ["binary"] },
@@ -4529,7 +4547,7 @@ requires-dist = [
     { name = "ollama", marker = "extra == 'ollama'", specifier = ">=0.1.7" },
     { name = "openai", specifier = ">=1.10.0,<3.0.0" },
     { name = "pillow", marker = "python_full_version < '3.13' and extra == 'vision'", specifier = ">=10.2.0,<11.0.0" },
-    { name = "pinecone", marker = "extra == 'pinecone'", specifier = ">=7.0.0,<8.0.0" },
+    { name = "pinecone", extras = ["asyncio"], marker = "extra == 'pinecone'", specifier = ">=7.0.0,<8.0.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1.0,<4" },
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pydoc-markdown", marker = "python_full_version < '3.12' and extra == 'docs'", specifier = ">=4.8.2" },

@@ -31,7 +31,7 @@ local = [
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
-pinecone = ["pinecone>=7.0.0,<8.0.0"]
+pinecone = ["pinecone[asyncio]>=7.0.0,<8.0.0"]
 vision = [
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
