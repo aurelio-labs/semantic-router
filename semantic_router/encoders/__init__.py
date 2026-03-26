@@ -13,6 +13,7 @@ from semantic_router.encoders.huggingface import HFEndpointEncoder, HuggingFaceE
 from semantic_router.encoders.jina import JinaEncoder
 from semantic_router.encoders.litellm import LiteLLMEncoder
 from semantic_router.encoders.local import LocalEncoder, LocalSparseEncoder
+from semantic_router.encoders.minimax import MiniMaxEncoder
 from semantic_router.encoders.mistral import MistralEncoder
 from semantic_router.encoders.nvidia_nim import NimEncoder
 from semantic_router.encoders.ollama import OllamaEncoder
@@ -40,6 +41,7 @@ __all__ = [
     "GoogleEncoder",
     "BedrockEncoder",
     "LiteLLMEncoder",
+    "MiniMaxEncoder",
     "VoyageEncoder",
     "JinaEncoder",
     "NimEncoder",
@@ -95,6 +97,8 @@ class AutoEncoder:
             self.model = BedrockEncoder(name=name)  # type: ignore
         elif self.type == EncoderType.LITELLM:
             self.model = LiteLLMEncoder(name=name)
+        elif self.type == EncoderType.MINIMAX:
+            self.model = MiniMaxEncoder(name=name)
         elif self.type == EncoderType.OLLAMA:
             self.model = OllamaEncoder(name=name)
         elif self.type == EncoderType.LOCAL:

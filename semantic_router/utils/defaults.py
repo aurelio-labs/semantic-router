@@ -37,6 +37,10 @@ class EncoderDefault(Enum):
             "NVIDIA_NIM_CHAT_MODEL_NAME", "meta/llama3-70b-instruct"
         ),
     }
+    MINIMAX = {
+        "embedding_model": os.getenv("MINIMAX_MODEL_NAME", "embo-01"),
+        "language_model": os.getenv("MINIMAX_CHAT_MODEL_NAME", "MiniMax-M2.5"),
+    }
     AZURE = {
         "embedding_model": os.getenv("AZURE_OPENAI_MODEL", "text-embedding-3-small"),
         "language_model": os.getenv("OPENAI_CHAT_MODEL_NAME", "gpt-4o"),
