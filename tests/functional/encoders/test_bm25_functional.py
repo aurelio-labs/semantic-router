@@ -19,16 +19,16 @@ QUERIES = ["weights", "ratio logarithm"]
 
 
 @pytest.fixture
-@pytest.mark.skipif(
-    os.environ.get("RUN_HF_TESTS") is None,
-    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
-)
 def bm25_encoder():
     sparse_encoder = BM25Encoder(use_default_params=True)
     sparse_encoder.fit([Route(name="test_route", utterances=UTTERANCES)])
     return sparse_encoder
 
 
+@pytest.mark.skipif(
+    os.environ.get("RUN_HF_TESTS") is None,
+    reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
+)
 class TestBM25Encoder:
     def _sparse_to_vector(self, sparse_embedding, vocab_size):
         """Re-constructs the full (sparse_embedding.shape[0], vocab_size) array"""
@@ -37,10 +37,6 @@ class TestBM25Encoder:
             * np.atleast_2d(sparse_embedding[:, 1]).T
         ).sum(axis=0)
 
-    @pytest.mark.skipif(
-        os.environ.get("RUN_HF_TESTS") is None,
-        reason="Set RUN_HF_TESTS=1 to run. This test downloads models from Hugging Face which can time out in CI.",
-    )
     def test_bm25_scoring(self, bm25_encoder):
         vocab_size = bm25_encoder._tokenizer.vocab_size
         expected = np.array(
