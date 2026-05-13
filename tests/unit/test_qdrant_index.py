@@ -3,14 +3,15 @@ import uuid
 
 import numpy as np
 import pytest
+
+pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
+
 from qdrant_client import models
 
 from semantic_router.index.qdrant import (
     SR_ROUTE_PAYLOAD_KEY,
     QdrantIndex,
 )
-
-pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
 
 DIMS = 4
 

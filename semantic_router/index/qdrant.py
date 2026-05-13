@@ -187,7 +187,7 @@ class QdrantIndex(BaseIndex):
                 **self.config,
             )
 
-        if self.namespace:
+        if self.namespace is not None:
             self.client.create_payload_index(
                 collection_name=self.index_name,
                 field_name="namespace",
@@ -198,7 +198,7 @@ class QdrantIndex(BaseIndex):
 
     def _build_filter(self, base_filter: Optional[Any] = None) -> Optional[Any]:
         """Return a filter scoped to this namespace, optionally AND-ed with *base_filter*."""
-        if not self.namespace:
+        if self.namespace is None:
             return base_filter
 
         from qdrant_client import models
@@ -249,7 +249,7 @@ class QdrantIndex(BaseIndex):
 
         # Deterministic UUIDs — namespace-prefixed when set to avoid cross-tenant collisions
         ids = [
-            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace else f"{route}:{utterance}"))
+            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace is not None else f"{route}:{utterance}"))
             for route, utterance in zip(routes, utterances)
         ]
 
@@ -262,7 +262,7 @@ class QdrantIndex(BaseIndex):
                 SR_ROUTE_PAYLOAD_KEY: route,
                 SR_UTTERANCE_PAYLOAD_KEY: utterance,
                 "metadata": metadata if metadata is not None else {},
-                **({"namespace": self.namespace} if self.namespace else {}),
+                **({"namespace": self.namespace} if self.namespace is not None else {}),
             }
             for route, utterance, metadata in zip(routes, utterances, metadata_list)
         ]
@@ -731,12 +731,12 @@ class QdrantIndex(BaseIndex):
                 SR_ROUTE_PAYLOAD_KEY: route,
                 SR_UTTERANCE_PAYLOAD_KEY: utterance,
                 "metadata": metadata if metadata is not None else {},
-                **({"namespace": self.namespace} if self.namespace else {}),
+                **({"namespace": self.namespace} if self.namespace is not None else {}),
             }
             for route, utterance, metadata in zip(routes, utterances, metadata_list)
         ]
         ids = [
-            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace else f"{route}:{utterance}"))
+            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace is not None else f"{route}:{utterance}"))
             for route, utterance in zip(routes, utterances)
         ]
         # AsyncQdrantClient.upload_collection is not a coroutine; use batched upsert instead.
