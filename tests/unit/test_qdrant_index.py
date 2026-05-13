@@ -1,26 +1,16 @@
-"""Unit tests for QdrantIndex — uses in-memory or file-based Qdrant, no server needed."""
-import sys
+"""Unit tests for QdrantIndex — uses in-memory Qdrant, no server needed."""
 import uuid
-from pathlib import Path
 
 import numpy as np
 import pytest
-
-# Ensure the local development copy of semantic-router takes precedence over any
-# installed version so tests always exercise the code in this repo.
-_repo_root = str(Path(__file__).resolve().parents[2])
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
-
-pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
-
 from qdrant_client import models
 
 from semantic_router.index.qdrant import (
     SR_ROUTE_PAYLOAD_KEY,
-    SR_UTTERANCE_PAYLOAD_KEY,
     QdrantIndex,
 )
+
+pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
 
 DIMS = 4
 
@@ -129,7 +119,8 @@ class TestBuildFilter:
         assert len(f.must) == 2
         # One element must be the namespace FieldCondition
         ns_items = [
-            c for c in f.must
+            c
+            for c in f.must
             if isinstance(c, models.FieldCondition) and c.key == "namespace"
         ]
         assert len(ns_items) == 1
@@ -177,7 +168,9 @@ class TestInitCollection:
 class TestAdd:
     def test_add_writes_points(self):
         idx = make_index()
-        idx.add(embeddings=rand_vecs(2), routes=["r1", "r1"], utterances=["hello", "hi"])
+        idx.add(
+            embeddings=rand_vecs(2), routes=["r1", "r1"], utterances=["hello", "hi"]
+        )
         assert len(idx.get_utterances()) == 2
 
     def test_add_injects_namespace_payload(self):
