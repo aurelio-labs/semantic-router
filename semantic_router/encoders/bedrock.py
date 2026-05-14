@@ -105,11 +105,15 @@ class BedrockEncoder(DenseEncoder):
         if client:
             self.client = client
         else:
-            self.access_key_id = self.get_env_variable("AWS_ACCESS_KEY_ID", access_key_id)
+            self.access_key_id = self.get_env_variable(
+                "AWS_ACCESS_KEY_ID", access_key_id
+            )
             self.secret_access_key = self.get_env_variable(
                 "AWS_SECRET_ACCESS_KEY", secret_access_key
             )
-            self.session_token = self.get_env_variable("AWS_SESSION_TOKEN", session_token)
+            self.session_token = self.get_env_variable(
+                "AWS_SESSION_TOKEN", session_token
+            )
             self.region = self.get_env_variable(
                 "AWS_DEFAULT_REGION", region, default="us-west-1"
             )
@@ -121,7 +125,9 @@ class BedrockEncoder(DenseEncoder):
                     self.region,
                 )
             except Exception as e:
-                raise ValueError(f"Bedrock client failed to initialise. Error: {e}") from e
+                raise ValueError(
+                    f"Bedrock client failed to initialise. Error: {e}"
+                ) from e
 
     def _initialize_client(
         self, access_key_id, secret_access_key, session_token, region

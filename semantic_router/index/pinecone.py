@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import json
 import os
-import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
@@ -290,7 +289,11 @@ class PineconeIndex(BaseIndex):
                 try:
                     import importlib
 
-                    importlib.import_module(_mod_name).check_realistic_host = _noop
+                    setattr(
+                        importlib.import_module(_mod_name),
+                        "check_realistic_host",
+                        _noop,
+                    )
                 except (ImportError, AttributeError):
                     pass
         pinecone_args = {
