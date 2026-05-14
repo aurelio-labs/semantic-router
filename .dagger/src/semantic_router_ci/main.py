@@ -44,16 +44,35 @@ class SemanticRouter:
     @function
     def pinecone_service(self) -> dagger.Service:
         """Build and run a pinecone-local service. Used to test
-        PineconeIndex
+        PineconeIndex.
+
+        pinecone-local spawns a separate data-plane HTTP server on a fresh
+        port (5081+) per index, and the Pinecone SDK connects directly to
+        the per-index host returned by describe_index. We:
+
+        - Set PINECONE_HOST=pinecone so describe_index returns a hostname
+          resolvable inside the Dagger service network (matches the
+          with_service_binding alias used in `test`).
+        - Expose port 5080 (the controller) with a health check so Dagger
+          waits for the service to be ready before starting the test
+          container.
+        - Expose ports 5081-5099 with experimental_skip_healthcheck=True so
+          per-index data-plane ports are reachable but Dagger doesn't hang
+          waiting for them: those ports only open after the SDK creates an
+          index, which happens during test runtime, not at service startup.
         """
-        return (
+        container = (
             dag.container()
             .from_("ghcr.io/pinecone-io/pinecone-local")
-            .with_env_variable("PINECONE_HOST", "0.0.0.0")
+            .with_env_variable("PINECONE_HOST", "pinecone")
             .with_env_variable("PORT", "5080")
             .with_exposed_port(5080)
-            .as_service(use_entrypoint=True)
         )
+        for port in range(5081, 5100):
+            container = container.with_exposed_port(
+                port, experimental_skip_healthcheck=True
+            )
+        return container.as_service(use_entrypoint=True)
 
     def postgres_service(self) -> dagger.Service:
         """Build and run a postgres instance with
@@ -185,7 +204,7 @@ class SemanticRouter:
         ):
             container = container.with_service_binding(
                 "pinecone", self.pinecone_service()
-            )
+            ).with_env_variable("PINECONE_API_KEY", "pclocal")
         # Set env vars inside test container
         container = (
             container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)

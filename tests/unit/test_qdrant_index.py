@@ -1,4 +1,5 @@
 """Unit tests for QdrantIndex — uses in-memory Qdrant, no server needed."""
+
 import uuid
 
 import numpy as np
