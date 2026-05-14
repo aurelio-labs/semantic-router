@@ -44,16 +44,27 @@ class SemanticRouter:
     @function
     def pinecone_service(self) -> dagger.Service:
         """Build and run a pinecone-local service. Used to test
-        PineconeIndex
+        PineconeIndex.
+
+        pinecone-local spawns a separate data-plane HTTP server on a fresh
+        port (5081+) per index, and the Pinecone SDK connects directly to
+        the per-index host returned by describe_index. We:
+
+        - Set PINECONE_HOST=pinecone so describe_index returns a hostname
+          resolvable inside the Dagger service network (matches the
+          with_service_binding alias used in `test`).
+        - Expose ports 5080-5099 so per-index data-plane ports are reachable
+          across many created-and-destroyed indexes during a test run.
         """
-        return (
+        container = (
             dag.container()
             .from_("ghcr.io/pinecone-io/pinecone-local")
-            .with_env_variable("PINECONE_HOST", "0.0.0.0")
+            .with_env_variable("PINECONE_HOST", "pinecone")
             .with_env_variable("PORT", "5080")
-            .with_exposed_port(5080)
-            .as_service(use_entrypoint=True)
         )
+        for port in range(5080, 5100):
+            container = container.with_exposed_port(port)
+        return container.as_service(use_entrypoint=True)
 
     def postgres_service(self) -> dagger.Service:
         """Build and run a postgres instance with
