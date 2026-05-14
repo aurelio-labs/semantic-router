@@ -185,7 +185,7 @@ class SemanticRouter:
         ):
             container = container.with_service_binding(
                 "pinecone", self.pinecone_service()
-            )
+            ).with_env_variable("PINECONE_API_KEY", "pclocal")
         # Set env vars inside test container
         container = (
             container.with_env_variable("PINECONE_API_BASE_URL", pinecone_api_base_url)
