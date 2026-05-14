@@ -53,17 +53,25 @@ class SemanticRouter:
         - Set PINECONE_HOST=pinecone so describe_index returns a hostname
           resolvable inside the Dagger service network (matches the
           with_service_binding alias used in `test`).
-        - Expose ports 5080-5099 so per-index data-plane ports are reachable
-          across many created-and-destroyed indexes during a test run.
+        - Expose port 5080 (the controller) with a health check so Dagger
+          waits for the service to be ready before starting the test
+          container.
+        - Expose ports 5081-5099 with experimental_skip_healthcheck=True so
+          per-index data-plane ports are reachable but Dagger doesn't hang
+          waiting for them: those ports only open after the SDK creates an
+          index, which happens during test runtime, not at service startup.
         """
         container = (
             dag.container()
             .from_("ghcr.io/pinecone-io/pinecone-local")
             .with_env_variable("PINECONE_HOST", "pinecone")
             .with_env_variable("PORT", "5080")
+            .with_exposed_port(5080)
         )
-        for port in range(5080, 5100):
-            container = container.with_exposed_port(port)
+        for port in range(5081, 5100):
+            container = container.with_exposed_port(
+                port, experimental_skip_healthcheck=True
+            )
         return container.as_service(use_entrypoint=True)
 
     def postgres_service(self) -> dagger.Service:
