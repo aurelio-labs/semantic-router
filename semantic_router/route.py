@@ -10,6 +10,8 @@ from semantic_router.utils import function_call
 from semantic_router.utils.logger import logger
 
 
+# TODO: remove this - triggering CI tests
+
 def is_valid(route_config: str) -> bool:
     """Check if the route config is valid.
 
