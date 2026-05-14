@@ -249,7 +249,14 @@ class QdrantIndex(BaseIndex):
 
         # Deterministic UUIDs — namespace-prefixed when set to avoid cross-tenant collisions
         ids = [
-            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace is not None else f"{route}:{utterance}"))
+            str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_DNS,
+                    f"{self.namespace}:{route}:{utterance}"
+                    if self.namespace is not None
+                    else f"{route}:{utterance}",
+                )
+            )
             for route, utterance in zip(routes, utterances)
         ]
 
@@ -736,7 +743,14 @@ class QdrantIndex(BaseIndex):
             for route, utterance, metadata in zip(routes, utterances, metadata_list)
         ]
         ids = [
-            str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{self.namespace}:{route}:{utterance}" if self.namespace is not None else f"{route}:{utterance}"))
+            str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_DNS,
+                    f"{self.namespace}:{route}:{utterance}"
+                    if self.namespace is not None
+                    else f"{route}:{utterance}",
+                )
+            )
             for route, utterance in zip(routes, utterances)
         ]
         # AsyncQdrantClient.upload_collection is not a coroutine; use batched upsert instead.

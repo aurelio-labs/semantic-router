@@ -269,9 +269,12 @@ def init_index(
             pytest.skip(
                 "Skipping Pinecone in cloud: set PINECONE_INDEX_NAME to an existing index to run."
             )
-        # Use local Pinecone instance
+        # Use local Pinecone instance. Include microseconds + a short uuid in
+        # the index name so parameterized tests that run within the same second
+        # don't collide on a shared index (pinecone-local persists indexes for
+        # the lifetime of the emulator container).
         index_name = (
-            f"test-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            f"test-{datetime.now().strftime('%Y%m%d%H%M%S%f')}-{uuid.uuid4().hex[:6]}"
             if not index_name
             else index_name
         )
