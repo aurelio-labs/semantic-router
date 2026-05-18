@@ -211,13 +211,55 @@ class QdrantIndex(BaseIndex):
 
         return models.Filter(must=[ns_condition, base_filter])
 
-    def _remove_and_sync(self, routes_to_delete: dict):
-        """Remove and sync the index.
+    def _point_ids_for_utterances(self, routes_to_delete: dict) -> list[str]:
+        """Compute deterministic point IDs for the given route→utterance mapping.
 
-        :param routes_to_delete: The routes to delete.
+        Uses the same uuid5 scheme as ``add()`` so IDs are derived without
+        a round-trip to Qdrant.
+        """
+        ids = []
+        for route, utterances in routes_to_delete.items():
+            for utterance in utterances:
+                key = (
+                    f"{self.namespace}:{route}:{utterance}"
+                    if self.namespace is not None
+                    else f"{route}:{utterance}"
+                )
+                ids.append(str(uuid.uuid5(uuid.NAMESPACE_DNS, key)))
+        return ids
+
+    def _remove_and_sync(self, routes_to_delete: dict):
+        """Remove specific utterances from the index.
+
+        :param routes_to_delete: Dict mapping route name to list of utterances to remove.
         :type routes_to_delete: dict
         """
-        logger.error("Sync remove is not implemented for QdrantIndex.")
+        from qdrant_client import models
+
+        ids = self._point_ids_for_utterances(routes_to_delete)
+        if ids:
+            self.client.delete(
+                self.index_name,
+                points_selector=models.PointIdsList(points=ids),
+            )
+
+    async def _async_remove_and_sync(self, routes_to_delete: dict):
+        """Asynchronously remove specific utterances from the index.
+
+        :param routes_to_delete: Dict mapping route name to list of utterances to remove.
+        :type routes_to_delete: dict
+        """
+        from qdrant_client import models
+
+        ids = self._point_ids_for_utterances(routes_to_delete)
+        if ids:
+            if self.aclient is not None:
+                await self.aclient.delete(
+                    self.index_name,
+                    points_selector=models.PointIdsList(points=ids),
+                )
+            else:
+                self._remove_and_sync(routes_to_delete)
 
     def add(
         self,
@@ -283,27 +325,23 @@ class QdrantIndex(BaseIndex):
             batch_size=batch_size,
         )
 
-    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
-        """Gets a list of route and utterance objects currently stored in the index.
+    def _get_all(
+        self, prefix: Optional[str] = None, include_metadata: bool = False
+    ) -> tuple[list[str], list[dict]]:
+        """Retrieves all vector IDs (and optionally payloads) via scroll.
 
-        :param include_metadata: Whether to include function schemas and metadata in
-        the returned Utterance objects - QdrantIndex does not currently support this
-        parameter so it is ignored. If required for your use-case please reach out to
-        semantic-router maintainers on GitHub via an issue or PR.
-        :type include_metadata: bool
-        :return: A list of Utterance objects.
-        :rtype: List[Utterance]
+        :param prefix: Unused for Qdrant; filtering is handled by namespace.
+        :param include_metadata: Whether to include payload dicts in the return value.
+        :return: Tuple of (ids, metadata_list).
         """
-        # Check if collection exists first
         if not self.client.collection_exists(self.index_name):
-            return []
+            return [], []
 
         from qdrant_client import grpc
 
         results = []
         next_offset = None
         stop_scrolling = False
-        scroll_filter = self._build_filter()
         try:
             while not stop_scrolling:
                 records, next_offset = self.client.scroll(
@@ -311,29 +349,83 @@ class QdrantIndex(BaseIndex):
                     limit=SCROLL_SIZE,
                     offset=next_offset,
                     with_payload=True,
-                    scroll_filter=scroll_filter,
+                    scroll_filter=self._build_filter(),
                 )
                 stop_scrolling = next_offset is None or (
                     isinstance(next_offset, grpc.PointId)
                     and next_offset.num == 0
                     and next_offset.uuid == ""
                 )
-
                 results.extend(records)
-
-            utterances: List[Utterance] = [
-                Utterance(
-                    route=x.payload[SR_ROUTE_PAYLOAD_KEY],
-                    utterance=x.payload[SR_UTTERANCE_PAYLOAD_KEY],
-                    function_schemas=None,
-                    metadata=x.payload.get("metadata", {}),
-                )
-                for x in results
-            ]
         except ValueError as e:
             logger.warning(f"Index likely empty, error: {e}")
-            return []
-        return utterances
+            return [], []
+
+        ids = [str(r.id) for r in results]
+        metadata = [r.payload or {} for r in results] if include_metadata else []
+        return ids, metadata
+
+    async def _async_get_all(
+        self, prefix: Optional[str] = None, include_metadata: bool = False
+    ) -> tuple[list[str], list[dict]]:
+        """Async version of _get_all.
+
+        :param prefix: Unused for Qdrant; filtering is handled by namespace.
+        :param include_metadata: Whether to include payload dicts in the return value.
+        :return: Tuple of (ids, metadata_list).
+        """
+        if self.aclient is None:
+            return self._get_all(prefix=prefix, include_metadata=include_metadata)
+
+        if not await self.aclient.collection_exists(self.index_name):
+            return [], []
+
+        from qdrant_client import grpc
+
+        results = []
+        next_offset = None
+        stop_scrolling = False
+        try:
+            while not stop_scrolling:
+                records, next_offset = await self.aclient.scroll(
+                    self.index_name,
+                    limit=SCROLL_SIZE,
+                    offset=next_offset,
+                    with_payload=True,
+                    scroll_filter=self._build_filter(),
+                )
+                stop_scrolling = next_offset is None or (
+                    isinstance(next_offset, grpc.PointId)
+                    and next_offset.num == 0
+                    and next_offset.uuid == ""
+                )
+                results.extend(records)
+        except ValueError as e:
+            logger.warning(f"Index likely empty, error: {e}")
+            return [], []
+
+        ids = [str(r.id) for r in results]
+        metadata = [r.payload or {} for r in results] if include_metadata else []
+        return ids, metadata
+
+    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
+        """Gets a list of route and utterance objects currently stored in the index.
+
+        :param include_metadata: Whether to include metadata in the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
+        """
+        _, payloads = self._get_all(include_metadata=True)
+        return [
+            Utterance(
+                route=p.get(SR_ROUTE_PAYLOAD_KEY, ""),
+                utterance=p.get(SR_UTTERANCE_PAYLOAD_KEY, ""),
+                function_schemas=None,
+                metadata=p.get("metadata", {}) if include_metadata else {},
+            )
+            for p in payloads
+        ]
 
     def delete(self, route_name: str):
         """Delete records from the index.
@@ -479,13 +571,28 @@ class QdrantIndex(BaseIndex):
         ]
         return np.array(scores), route_names
 
-    def aget_routes(self):
-        """Asynchronously get all routes from the index.
+    def get_routes_tuples(self) -> list[tuple]:
+        """Synchronously get route and utterance objects as tuples.
 
-        :return: A list of routes.
-        :rtype: List[str]
+        :return: A list of (route_name, utterance, function_schemas, metadata) tuples.
+        :rtype: list[tuple]
         """
-        logger.error("Sync remove is not implemented for QdrantIndex.")
+        utterances = self.get_utterances(include_metadata=True)
+        return [
+            (u.route, u.utterance, u.function_schemas, u.metadata) for u in utterances
+        ]
+
+    async def aget_routes(self) -> list[tuple]:
+        """Asynchronously get a list of route and utterance objects currently
+        stored in the index.
+
+        :return: A list of (route_name, utterance, function_schemas, metadata) tuples.
+        :rtype: list[tuple]
+        """
+        utterances = await self.aget_utterances(include_metadata=True)
+        return [
+            (u.route, u.utterance, u.function_schemas, u.metadata) for u in utterances
+        ]
 
     def delete_index(self):
         """Delete the index.
@@ -767,43 +874,20 @@ class QdrantIndex(BaseIndex):
             )
 
     async def aget_utterances(self, include_metadata: bool = False) -> List[Utterance]:
-        """Asynchronously gets a list of route and utterance objects currently stored in the index, including metadata."""
-        if self.aclient is None:
-            logger.warning(
-                "Cannot use async get_utterances with an in-memory Qdrant instance; falling back to sync get_utterances."
-            )
-            return self.get_utterances(include_metadata=include_metadata)
-        from qdrant_client import grpc
+        """Asynchronously gets a list of route and utterance objects currently stored in the index.
 
-        results = []
-        next_offset = None
-        stop_scrolling = False
-        scroll_filter = self._build_filter()
-        try:
-            while not stop_scrolling:
-                records, next_offset = await self.aclient.scroll(
-                    self.index_name,
-                    limit=SCROLL_SIZE,
-                    offset=next_offset,
-                    with_payload=True,
-                    scroll_filter=scroll_filter,
-                )
-                stop_scrolling = next_offset is None or (
-                    isinstance(next_offset, grpc.PointId)
-                    and next_offset.num == 0
-                    and next_offset.uuid == ""
-                )
-                results.extend(records)
-            utterances: List[Utterance] = [
-                Utterance(
-                    route=x.payload[SR_ROUTE_PAYLOAD_KEY],
-                    utterance=x.payload[SR_UTTERANCE_PAYLOAD_KEY],
-                    function_schemas=None,
-                    metadata=x.payload.get("metadata", {}),
-                )
-                for x in results
-            ]
-        except ValueError as e:
-            logger.warning(f"Index likely empty, error: {e}")
-            return []
-        return utterances
+        :param include_metadata: Whether to include metadata in the returned Utterance objects.
+        :type include_metadata: bool
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
+        """
+        _, payloads = await self._async_get_all(include_metadata=True)
+        return [
+            Utterance(
+                route=p.get(SR_ROUTE_PAYLOAD_KEY, ""),
+                utterance=p.get(SR_UTTERANCE_PAYLOAD_KEY, ""),
+                function_schemas=None,
+                metadata=p.get("metadata", {}) if include_metadata else {},
+            )
+            for p in payloads
+        ]
