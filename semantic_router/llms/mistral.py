@@ -76,9 +76,7 @@ class MistralAILLM(BaseLLM):
         """
         if self._client is None:
             raise ValueError("MistralAI client is not initialized.")
-        chat_messages = [
-            {"role": m.role, "content": m.content} for m in messages
-        ]
+        chat_messages = [{"role": m.role, "content": m.content} for m in messages]
         try:
             completion = self._client.chat.complete(
                 model=self.name,
