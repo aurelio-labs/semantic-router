@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.1.14"
+version = "0.1.15"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.9,<3.14"
@@ -18,7 +18,8 @@ dependencies = [
     "aiohttp>=3.10.11,<4",
     "tornado>=6.4.2,<7",
     "urllib3>=1.26,<3",
-    "litellm>=1.61.3",
+    # https://www.cve.org/CVERecord?id=CVE-2026-42208 explains >=1.83.7 
+    "litellm>=1.83.7",
     "openai>=1.10.0,<3.0.0",
 ]
 
@@ -38,7 +39,7 @@ vision = [
     "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
-mistralai = ["mistralai>=0.0.12,<0.1.0"]
+mistralai = ["mistralai>=1.0.0,<2.0.0"]
 qdrant = ["qdrant-client>=1.11.1,<2"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
 bedrock = [

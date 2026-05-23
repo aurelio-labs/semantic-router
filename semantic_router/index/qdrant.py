@@ -211,13 +211,13 @@ class QdrantIndex(BaseIndex):
 
         return models.Filter(must=[ns_condition, base_filter])
 
-    def _point_ids_for_utterances(self, routes_to_delete: dict) -> list[str]:
+    def _point_ids_for_utterances(self, routes_to_delete: dict) -> list[str | int]:
         """Compute deterministic point IDs for the given route→utterance mapping.
 
         Uses the same uuid5 scheme as ``add()`` so IDs are derived without
         a round-trip to Qdrant.
         """
-        ids = []
+        ids: list[str | int] = []
         for route, utterances in routes_to_delete.items():
             for utterance in utterances:
                 key = (
