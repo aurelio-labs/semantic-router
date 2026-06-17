@@ -241,13 +241,13 @@ class LocalIndex(BaseIndex):
             route_names = [self.routes[i] for i in idx]
         return scores, route_names
 
-    def aget_routes(self):
+    async def aget_routes(self):
         """Get all routes from the index.
 
         :return: A list of routes.
         :rtype: List[str]
         """
-        logger.error("Sync remove is not implemented for LocalIndex.")
+        logger.error("Async get routes is not implemented for LocalIndex.")
 
     def _write_config(self, config: ConfigParameter):
         """Write the config to the index.
