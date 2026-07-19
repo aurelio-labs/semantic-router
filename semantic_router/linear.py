@@ -30,5 +30,10 @@ def top_scores(sim: np.ndarray, top_k: int = 5) -> Tuple[np.ndarray, np.ndarray]
     top_k = min(top_k, sim.shape[0])
     idx = np.argpartition(sim, -top_k)[-top_k:]
     scores = sim[idx]
+    # np.argpartition only guarantees the correct top-k set, not their order,
+    # so sort the selected results ascending by score before returning.
+    order = np.argsort(scores)
+    scores = scores[order]
+    idx = idx[order]
 
     return scores, idx
