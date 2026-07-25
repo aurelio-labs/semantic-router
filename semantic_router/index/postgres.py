@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import uuid
 from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
@@ -62,6 +63,29 @@ def clean_route_name(route_name: str) -> str:
     :rtype: str
     """
     return route_name.strip().replace(" ", "-")
+
+
+_IDENT_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _validate_identifier(name: str) -> str:
+    """Validates that *name* is a safe PostgreSQL identifier.
+
+    Only letters, digits, and underscores are allowed, and the name must not
+    start with a digit. Raises :exc:`ValueError` for anything else so that
+    a mis-configured prefix/name fails loudly rather than producing broken SQL.
+
+    :param name: The identifier to validate.
+    :type name: str
+    :return: The original name, unchanged.
+    :rtype: str
+    """
+    if not _IDENT_RE.fullmatch(name):
+        raise ValueError(
+            f"Invalid SQL identifier {name!r}: only letters, digits, and "
+            "underscores are allowed, and the name must not start with a digit."
+        )
+    return name
 
 
 class PostgresIndexRecord(BaseModel):
@@ -304,7 +328,7 @@ class PostgresIndex(BaseIndex):
         :return: The table name.
         :rtype: str
         """
-        return f"{self.index_prefix}{self.index_name}"
+        return _validate_identifier(f"{self.index_prefix}{self.index_name}")
 
     def _get_metric_operator(self) -> str:
         """Returns the PostgreSQL operator for the specified metric.
