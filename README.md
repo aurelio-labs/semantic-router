@@ -137,6 +137,7 @@ Our utterance vector space also integrates with [Pinecone](https://github.com/au
 | [Local Execution](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb) | Fully local Semantic Router with dynamic routes — *local models such as Mistral 7B outperform GPT-3.5 in most tests* |
 | [Route Optimization](https://github.com/aurelio-labs/semantic-router/blob/main/docs/06-threshold-optimization.ipynb) | How to train route layer thresholds to optimize performance |
 | [Multi-Modal Routes](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb) | Using multi-modal routes to identify Shrek vs. not-Shrek pictures |
+| [Healthcare Administrative Routing](https://github.com/aurelio-labs/semantic-router/blob/main/docs/examples/healthcare-routing/healthcare-administrative-routing.ipynb) | Fully local routing, threshold optimization, and evaluation across seven synthetic healthcare administrative workflows |
 
 ### Online Course
 
