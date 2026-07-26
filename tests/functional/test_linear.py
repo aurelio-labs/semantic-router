@@ -67,3 +67,12 @@ def test_top_scores__scores(test_index):
 
     # Scores and indexes should be sorted ascending
     assert np.allclose(scores, np.array([0.0, 0.89442719, 1.0]))
+
+
+def test_top_scores_returns_sorted_ascending():
+    # argpartition selects the top-k set but not in order; a general (>3 element)
+    # input must still come out sorted ascending by score.
+    sim = np.array([0.1, 0.9, 0.5, 0.3, 0.7])  # top-3: 0.5(i2), 0.7(i4), 0.9(i1)
+    scores, idx = top_scores(sim, top_k=3)
+    assert np.allclose(scores, np.array([0.5, 0.7, 0.9])), f"scores={scores}"
+    assert np.array_equal(idx, np.array([2, 4, 1])), f"idx={idx}"
