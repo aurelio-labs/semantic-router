@@ -1,0 +1,104 @@
+id,split,speaker,example_type,utterance,expected_route,alternate_routes,rationale
+HC001,train,member,positive,Was the claim from my office visit received?,claims,,The member asks about a submitted claim.
+HC002,train,provider,positive,Can you check the adjudication status for the claim we sent last week?,claims,,The provider asks about claim processing after submission.
+HC003,train,member,positive,Why did the plan pay only part of my lab claim?,claims,benefits,The requested action is explaining payment on an existing claim.
+HC004,train,provider,positive,How do we submit a corrected claim for this service?,claims,,The provider wants to correct a billed claim.
+HC005,train,member,positive,Has my ambulance claim been adjusted yet?,claims,,The member asks about adjustment of an existing claim.
+HC006,validation,provider,positive,Where can I find the remittance details for this claim?,claims,,Remittance details belong to claim payment administration.
+HC007,validation,member,positive,The hospital bill was sent to the plan but I cannot see a claim,claims,,The request concerns receipt of a billed claim.
+HC008,test,provider,positive,What documentation is missing from our pending claim?,claims,,The provider requests claim-processing information.
+HC009,test,member,positive,Please reprocess the claim with the corrected billing code,claims,,The requested action is claim reprocessing rather than a formal appeal.
+HC010,train,member,positive,Is my coverage active today?,eligibility,,The member asks whether enrollment is active.
+HC011,train,provider,positive,Can you verify this patient's eligibility for the date of service?,eligibility,,The provider asks for date-specific eligibility.
+HC012,train,member,positive,When did my plan eligibility begin?,eligibility,,The request concerns the enrollment effective date.
+HC013,train,provider,positive,The eligibility response says inactive; can you confirm the member's status?,eligibility,,The provider wants enrollment status confirmed.
+HC014,train,member,positive,Am I still enrolled after changing jobs?,eligibility,,The member asks whether enrollment continues.
+HC015,validation,provider,positive,Please verify dependent eligibility for next Monday,eligibility,,The provider requests future-date enrollment verification.
+HC016,validation,member,positive,Why does the portal say I am not eligible this month?,eligibility,,The question is about current eligibility status.
+HC017,test,provider,positive,What is the member's coverage termination date?,eligibility,,The requested information is an eligibility end date.
+HC018,test,member,positive,Can you confirm that my child was added to my plan?,eligibility,,The member asks whether dependent enrollment is active.
+HC019,train,member,positive,Does my MRI need approval before I schedule it?,prior_authorization,,The member asks whether pre-service approval is required.
+HC020,train,provider,positive,What is the status of the authorization request for physical therapy?,prior_authorization,,The provider asks about a pending pre-service authorization.
+HC021,train,member,positive,My doctor sent the clinical notes for approval; were they received?,prior_authorization,,The action is checking documentation for an authorization.
+HC022,train,provider,positive,How do I request prior approval for this procedure?,prior_authorization,,The provider wants to initiate an authorization.
+HC023,train,member,positive,The pharmacy says my medication needs prior authorization,prior_authorization,pharmacy,The explicit requested workflow is preapproval despite the pharmacy context.
+HC024,validation,provider,positive,Can we extend the approved dates on this authorization?,prior_authorization,,The provider wants an authorization-date change.
+HC025,validation,member,positive,Has the health plan approved my upcoming surgery yet?,prior_authorization,,The member asks about pre-service approval status.
+HC026,test,provider,positive,Where should I send additional records for the pending authorization?,prior_authorization,,The provider requests authorization-document submission instructions.
+HC027,test,member,positive,The infusion center needs an authorization number before scheduling me,prior_authorization,infusion_therapy,Authorization is the blocking action even though infusion is mentioned.
+HC028,train,member,positive,What is my deductible for outpatient care?,benefits,,The member asks about cost-sharing benefits.
+HC029,train,provider,positive,Does this plan cover telehealth visits?,benefits,,The provider asks whether a service is covered.
+HC030,train,member,positive,How many physical therapy visits does my plan allow?,benefits,,The question concerns a benefit limit.
+HC031,train,provider,positive,Is this specialist in network under the member's plan?,benefits,,Network rules are benefit information.
+HC032,train,member,positive,What will my copay be for urgent care?,benefits,,The member asks about plan cost share.
+HC033,validation,provider,positive,Is home health included in this member's benefits?,benefits,,The provider asks about benefit coverage.
+HC034,validation,member,positive,Why is this service excluded from my plan?,benefits,,The member asks about a coverage exclusion rather than a submitted claim.
+HC035,test,provider,positive,What are the member's out-of-network benefits?,benefits,,The request concerns plan benefit rules.
+HC036,test,member,positive,Does my plan pay for a second medical opinion?,benefits,,The member asks whether a service is covered.
+HC037,train,member,positive,Is my medication on the formulary?,pharmacy,,The request concerns drug formulary status.
+HC038,train,provider,positive,Which retail pharmacies can fill this prescription?,pharmacy,,The provider asks about the dispensing network.
+HC039,train,member,positive,Why is my refill too soon?,pharmacy,,The member asks about a pharmacy refill edit.
+HC040,train,provider,positive,Does the plan require a ninety-day mail-order supply?,pharmacy,,The request concerns pharmacy dispensing rules.
+HC041,train,member,positive,Can the pharmacy fill a vacation override?,pharmacy,,The member requests a pharmacy override.
+HC042,validation,provider,positive,What is the quantity limit for this medication?,pharmacy,,The provider asks about a pharmacy quantity limit.
+HC043,validation,member,positive,The drugstore says my prescription is not covered by the pharmacy benefit,pharmacy,benefits,The immediate issue is pharmacy-benefit processing.
+HC044,test,provider,positive,Can this prescription be transferred to a specialty pharmacy?,pharmacy,,The provider asks about pharmacy fulfillment.
+HC045,test,member,positive,Where can I get a ninety-day refill filled?,pharmacy,,The member requests pharmacy dispensing information.
+HC046,train,member,positive,Where will my infusion appointment take place?,infusion_therapy,,The member asks about the infusion site.
+HC047,train,provider,positive,Can the infusion center schedule the next dose?,infusion_therapy,,The provider requests infusion scheduling.
+HC048,train,member,positive,Has the medication been delivered to the infusion suite?,infusion_therapy,pharmacy,The action is coordinating delivery to the infusion site.
+HC049,train,provider,positive,Which site of care can administer this infusion?,infusion_therapy,benefits,The request is infusion-site coordination.
+HC050,train,member,positive,Who should I call to reschedule my infusion?,infusion_therapy,,The member requests infusion scheduling support.
+HC051,validation,provider,positive,The dose changed; how do we update the infusion appointment?,infusion_therapy,,The provider asks to coordinate an infusion appointment.
+HC052,validation,member,positive,Can I move my infusion from the hospital to an outpatient center?,infusion_therapy,benefits,The immediate requested action is changing the infusion site.
+HC053,test,provider,positive,Has the infusion vendor confirmed delivery to our clinic?,infusion_therapy,pharmacy,The request concerns infusion-specific delivery coordination.
+HC054,test,member,positive,My infusion is approved; when can the center schedule it?,infusion_therapy,prior_authorization,Approval is complete and the requested action is scheduling.
+HC055,train,member,positive,How do I appeal the denial of my claim?,appeals,claims,The member explicitly asks to challenge a claim decision.
+HC056,train,provider,positive,Where do we submit a reconsideration of the authorization denial?,appeals,prior_authorization,The provider requests formal reconsideration.
+HC057,train,member,positive,I disagree with the benefit denial and want a review,appeals,benefits,The member asks to challenge an adverse benefit decision.
+HC058,train,provider,positive,What is the deadline to file an appeal?,appeals,,The provider asks about the formal appeal process.
+HC059,train,member,positive,Can I send more information for the appeal already in progress?,appeals,,The request concerns an existing appeal.
+HC060,validation,provider,positive,Has the expedited appeal been assigned for review?,appeals,,The provider asks about appeal status.
+HC061,validation,member,positive,Please reconsider the decision not to cover my medication,appeals,pharmacy,The member explicitly requests reconsideration.
+HC062,test,provider,positive,How can the member authorize us to represent them in an appeal?,appeals,,The request concerns appeal representation.
+HC063,test,member,positive,I want an independent review of the denied infusion,appeals,infusion_therapy,The requested action is review of an adverse decision.
+HC064,train,other,negative,What time does the clinic open?,,,"Clinic hours are outside the seven administrative routes."
+HC065,train,member,negative,I have chest pain and feel short of breath.,,,"A symptom report is clinical and must not be routed by this example."
+HC066,train,provider,negative,What dose should this patient receive?,,,"Clinical dosing is outside the administrative taxonomy."
+HC067,train,member,negative,Please help me reset my portal password.,,,"Portal technical support is out of scope."
+HC068,train,other,negative,What is the weather tomorrow?,,,"General conversation is unrelated to healthcare administration."
+HC069,train,member,negative,I need to update my mailing address.,,,"Member demographic maintenance is not represented by a route."
+HC070,validation,provider,negative,How should I treat this condition?,,,"Treatment guidance is clinical and out of scope."
+HC071,validation,member,negative,Can you recommend a primary care doctor?,,,"Provider search is not represented by a route."
+HC072,validation,other,negative,I want to apply for a job at the hospital.,,,"Employment requests are out of scope."
+HC073,test,member,negative,Can you explain these laboratory results?,,,"Interpreting results is clinical and outside the example."
+HC074,test,provider,negative,How do I enroll our practice in the network?,,,"Provider enrollment is not one of the seven routes."
+HC075,test,member,negative,Please send me a new insurance card.,,,"ID card fulfillment is outside the taxonomy."
+HC076,validation,member,ambiguous,My infusion medication was denied.,,pharmacy|prior_authorization|claims|infusion_therapy|appeals,"A denial and product are mentioned, but the requested action and decision type are missing."
+HC077,validation,provider,ambiguous,We need help with a member's coverage.,,eligibility|benefits,"Coverage could mean active enrollment or covered benefits."
+HC078,validation,member,ambiguous,The pharmacy says there is a problem with my prescription.,,pharmacy|prior_authorization|benefits,"The problem could be dispensing, authorization, or coverage."
+HC079,validation,provider,ambiguous,The plan did not approve the service.,,prior_authorization|claims|appeals,"It is unclear whether this is a pre-service decision, claim result, or request to appeal."
+HC080,validation,member,ambiguous,I have a question about my bill and coverage.,,claims|benefits,"The request does not identify whether it concerns claim processing or plan benefits."
+HC081,validation,provider,ambiguous,Can you help with an infusion issue?,,infusion_therapy|prior_authorization|pharmacy|claims,"No operational action is stated."
+HC082,validation,member,ambiguous,I need to know whether I am covered.,,eligibility|benefits,"The user may mean active enrollment or the scope of benefits."
+HC083,test,member,ambiguous,My infusion claim was denied; please tell me whether the claim was processed correctly.,claims,appeals|infusion_therapy,"The explicit action is reviewing claim processing, not filing an appeal."
+HC084,test,provider,ambiguous,The member is active; what does the plan cover for this procedure?,benefits,eligibility,"Active status is known and the requested action is benefit explanation."
+HC085,test,member,ambiguous,The pharmacy says prior approval is required; has my doctor submitted it?,prior_authorization,pharmacy,"The explicit question concerns authorization submission."
+HC086,test,provider,ambiguous,The authorization was denied and we need to request reconsideration.,appeals,prior_authorization,"Reconsideration makes appeals the operational destination."
+HC087,test,member,ambiguous,My infusion authorization is approved; I need to change the appointment.,infusion_therapy,prior_authorization,"Approval is complete and the requested action is infusion scheduling."
+HC088,test,provider,ambiguous,The prescription is covered; which specialty pharmacy should dispense it?,pharmacy,benefits,"Coverage is established and the requested action is pharmacy fulfillment."
+HC089,test,member,ambiguous,The hospital billed the plan; am I eligible on the service date?,eligibility,claims,"The explicit question is date-specific eligibility despite the claim context."
+HC090,train,member,positive,I already received the service; did the billed charge become a claim?,claims,,The service occurred and the requested action concerns claim receipt.
+HC091,train,provider,positive,The care was rendered; please check payment on our submitted claim,claims,,The provider asks about post-service claim payment.
+HC092,train,provider,positive,A claim exists but we only need to verify enrollment on the date of care,eligibility,claims,The explicit action is date-specific eligibility verification.
+HC093,train,member,positive,Was I enrolled when I received this service?,eligibility,,The member asks about eligibility on a past service date.
+HC094,train,provider,positive,The infusion cannot be booked until the authorization number is issued,prior_authorization,infusion_therapy,Pre-service authorization is the blocking action.
+HC095,train,member,positive,Has the plan approved my procedure before it takes place?,prior_authorization,benefits,The request is for approval before service.
+HC096,train,member,positive,I know I am enrolled; does my plan cover this treatment?,benefits,eligibility,Enrollment is established and the question concerns covered benefits.
+HC097,train,provider,positive,Is a second medical opinion covered under this member's benefits?,benefits,,The provider asks whether a service is covered.
+HC098,train,member,positive,Which specialty pharmacy is required to dispense this prescription?,pharmacy,,The request concerns pharmacy fulfillment.
+HC099,train,provider,positive,What refill limit applies to this medication?,pharmacy,,The provider asks about a pharmacy dispensing limit.
+HC100,train,member,positive,My authorization is complete; help me arrange the infusion location,infusion_therapy,prior_authorization,Approval is complete and the requested action is infusion coordination.
+HC101,train,provider,positive,Approval is on file; coordinate the infusion delivery and appointment,infusion_therapy,prior_authorization|pharmacy,The requested action is infusion-specific coordination.
+HC102,train,member,positive,Please reconsider the decision not to cover my medicine,appeals,pharmacy|benefits,The member explicitly requests reconsideration.
+HC103,train,provider,positive,We need to challenge the decision after the authorization was denied,appeals,prior_authorization,The provider explicitly requests a challenge to an adverse decision.
