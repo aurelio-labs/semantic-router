@@ -421,7 +421,7 @@ class BaseRouter(BaseModel):
         self.aggregation = aggregation
         if self.aggregation not in ["sum", "mean", "max"]:
             raise ValueError(
-                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'sum', 'mean', or 'max'."
             )
         self.aggregation_method = self._set_aggregation_method(self.aggregation)
         # to keep PostgresIndex backwards compatible we will default auto_sync to "local",
@@ -1295,19 +1295,6 @@ class BaseRouter(BaseModel):
         Not yet implemented for BaseRouter.
         """
         raise NotImplementedError("This method has not yet been implemented.")
-        route_mapping = {route.name: route for route in self.routes}
-        index_routes = self.index.get_utterances()
-        new_routes_names = []
-        new_routes = []
-        for route_name, utterance in index_routes:
-            if route_name in route_mapping:
-                if route_name not in new_routes_names:
-                    existing_route = route_mapping[route_name]
-                    new_routes.append(existing_route)
-
-                new_routes.append(Route(name=route_name, utterances=[utterance]))
-            route = route_mapping[route_name]
-            self.routes.append(route)
 
     def _get_hash(self) -> ConfigParameter:
         """Get the hash of the current routes.
@@ -1530,7 +1517,7 @@ class BaseRouter(BaseModel):
             return lambda x: max(x)
         else:
             raise ValueError(
-                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'."
+                f"Unsupported aggregation method chosen: {aggregation}. Choose either 'sum', 'mean', or 'max'."
             )
 
     def _score_routes(
