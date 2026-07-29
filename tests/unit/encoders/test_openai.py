@@ -95,6 +95,24 @@ class TestOpenAIEncoder:
 
         assert "OpenAI API call failed. Error: Non-OpenAIError" in str(e.value)
 
+    def test_openai_encoder_call_rejects_empty_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder([])
+
+        assert "OpenAI encoder input cannot be empty." in str(e.value)
+
+    def test_openai_encoder_call_rejects_blank_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["   "])
+
+        assert "contains an empty string" in str(e.value)
+
+    def test_openai_encoder_call_rejects_non_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["ok", 123])  # type: ignore[list-item]
+
+        assert "must contain only strings" in str(e.value)
+
     def test_openai_encoder_call_successful_retry(self, openai_encoder, mocker):
         mock_embeddings = mocker.Mock()
         mock_embeddings.data = [
