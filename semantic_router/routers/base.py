@@ -69,9 +69,7 @@ def is_valid(layer_config: str) -> bool:
 class RouterConfig:
     """Generates a RouterConfig object that can be used for initializing routers."""
 
-    routes: List[Route] = Field(default_factory=list)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
+    routes: List[Route]
 
     def __init__(
         self,
