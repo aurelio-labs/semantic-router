@@ -191,7 +191,7 @@ class LocalIndex(BaseIndex):
                     filtered_index.append(vec)
                     filtered_routes.append(route)
             if not filtered_routes:
-                raise ValueError("No routes found matching the filter criteria.")
+                return np.array([]), []
             sim = similarity_matrix(vector, np.array(filtered_index))
             scores, idx = top_scores(sim, top_k)
             route_names = [filtered_routes[i] for i in idx]
@@ -231,7 +231,7 @@ class LocalIndex(BaseIndex):
                     filtered_index.append(vec)
                     filtered_routes.append(route)
             if not filtered_routes:
-                raise ValueError("No routes found matching the filter criteria.")
+                return np.array([]), []
             sim = similarity_matrix(vector, np.array(filtered_index))
             scores, idx = top_scores(sim, top_k)
             route_names = [filtered_routes[i] for i in idx]
