@@ -55,7 +55,7 @@ class BaseLLM(BaseModel):
         :rtype: bool
         """
         for name in mandatory_params:
-            if name not in inputs:
+            if name not in inputs or inputs[name] is None:
                 logger.error(f"Mandatory input {name} missing from query")
                 return False
         return True
