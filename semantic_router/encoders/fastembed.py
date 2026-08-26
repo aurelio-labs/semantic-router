@@ -14,6 +14,7 @@ class FastEmbedEncoder(DenseEncoder):
     :param max_length: The maximum length of the input text.
     :param cache_dir: The directory to cache the embedding model.
     :param threads: The number of threads to use for the embedding.
+    :param local_files_only: Whether to only use a locally cached model.
     """
 
     type: str = "fastembed"
@@ -21,6 +22,7 @@ class FastEmbedEncoder(DenseEncoder):
     max_length: int = 512
     cache_dir: Optional[str] = None
     threads: Optional[int] = None
+    local_files_only: bool = False
     _client: Any = PrivateAttr()
 
     def __init__(self, score_threshold: float = 0.5, **data):
@@ -49,6 +51,7 @@ class FastEmbedEncoder(DenseEncoder):
             "max_length": self.max_length,
             "cache_dir": self.cache_dir,
             "threads": self.threads,
+            "local_files_only": self.local_files_only,
         }
 
         embedding_args = {k: v for k, v in embedding_args.items() if v is not None}
