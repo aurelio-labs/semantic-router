@@ -1829,6 +1829,7 @@ class BaseRouter(BaseModel):
 def threshold_random_search(
     route_layer: BaseRouter,
     search_range: Union[int, float],
+    seed: Optional[int] = None,
 ) -> Dict[str, float]:
     """Performs a random search iteration given a route layer and a search range.
 
@@ -1836,6 +1837,8 @@ def threshold_random_search(
     :type route_layer: BaseRouter
     :param search_range: The search range to use.
     :type search_range: Union[int, float]
+    :param seed: Optional seed for reproducible threshold selection.
+    :type seed: Optional[int]
     :return: A dictionary of route names and their associated thresholds.
     :rtype: Dict[str, float]
     """
@@ -1853,9 +1856,10 @@ def threshold_random_search(
                 num=100,
             )
         )
-    # Generate a random threshold for each route
+    # Use a local generator so reproducible searches do not alter global state.
+    rng = random.Random(seed)
     score_thresholds = {
-        route: random.choice(score_threshold_values[i])
+        route: rng.choice(score_threshold_values[i])
         for i, route in enumerate(route_names)
     }
     return score_thresholds
