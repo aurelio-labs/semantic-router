@@ -246,3 +246,18 @@ class TestBedrockEncoderWithCohere:
         result = bedrock_encoder_with_cohere(["test with different input type"])
         assert isinstance(result, list), "Result should be a list"
         assert result == [[0.1, 0.2, 0.3]], "Expected specific embeddings"
+
+    def test_cohere_chunks_are_pooled_per_document(self, bedrock_encoder_with_cohere):
+        response_content = json.dumps(
+            {"embeddings": [[0.0, 1.0], [1.0, 0.0]]}
+        )
+        bedrock_encoder_with_cohere.client.invoke_model.return_value = {
+            "body": BytesIO(response_content.encode("utf-8"))
+        }
+
+        result = bedrock_encoder_with_cohere(
+            ["one two three four five six seven eight nine ten eleven twelve "
+             "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty one"]
+        )
+
+        assert result == [[0.5, 0.5]]

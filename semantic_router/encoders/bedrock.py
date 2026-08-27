@@ -21,6 +21,7 @@ import os
 from time import sleep
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 import tiktoken
 
 from semantic_router.encoders import DenseEncoder
@@ -257,7 +258,7 @@ class BedrockEncoder(DenseEncoder):
                         )
                         response_body = json.loads(response.get("body").read())
                         chunk_embeddings = response_body.get("embeddings")
-                        embeddings.extend(chunk_embeddings)
+                        embeddings.append(np.mean(chunk_embeddings, axis=0).tolist())
                 else:
                     raise ValueError("Unknown model name")
                 return embeddings
