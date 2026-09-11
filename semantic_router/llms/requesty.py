@@ -1,20 +1,14 @@
 import os
-from typing import List, Optional
+from typing import Optional
 
-import openai
-from pydantic import PrivateAttr
-
-from semantic_router.llms import BaseLLM
-from semantic_router.schema import Message
-from semantic_router.utils.logger import logger
+from semantic_router.llms.openai_compatible import OpenAICompatibleLLM
 
 
-class RequestyLLM(BaseLLM):
-    """LLM for Requesty. Requires a Requesty API key, see here for more information
-    https://docs.requesty.ai/quickstart"""
-
-    _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
-    _base_url: str = PrivateAttr(default="https://router.requesty.ai/v1")
+class RequestyLLM(OpenAICompatibleLLM):
+    """LLM for Requesty, a preset of OpenAICompatibleLLM pointing at the Requesty
+    router (https://router.requesty.ai/v1) and reading the API key from
+    REQUESTY_API_KEY. See https://docs.requesty.ai for more information and
+    https://app.requesty.ai/api-keys to create a key."""
 
     def __init__(
         self,
@@ -26,9 +20,11 @@ class RequestyLLM(BaseLLM):
     ):
         """Initialize the RequestyLLM.
 
-        :param name: The name of the Requesty model to use.
+        :param name: The name of the Requesty model to use. Defaults to the
+            REQUESTY_CHAT_MODEL_NAME environment variable or openai/gpt-4o-mini.
         :type name: Optional[str]
-        :param requesty_api_key: The Requesty API key.
+        :param requesty_api_key: The Requesty API key. Defaults to the
+            REQUESTY_API_KEY environment variable.
         :type requesty_api_key: Optional[str]
         :param base_url: The base URL for the Requesty API.
         :type base_url: str
@@ -39,43 +35,11 @@ class RequestyLLM(BaseLLM):
         """
         if name is None:
             name = os.getenv("REQUESTY_CHAT_MODEL_NAME", "openai/gpt-4o-mini")
-        super().__init__(name=name)
-        self._base_url = base_url
-        api_key = requesty_api_key or os.getenv("REQUESTY_API_KEY")
-        if api_key is None:
-            raise ValueError("Requesty API key cannot be 'None'.")
-        try:
-            self._client = openai.OpenAI(api_key=api_key, base_url=self._base_url)
-        except Exception as e:
-            raise ValueError(
-                f"Requesty API client failed to initialize. Error: {e}"
-            ) from e
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-
-    def __call__(self, messages: List[Message]) -> str:
-        """Call the RequestyLLM.
-
-        :param messages: The messages to pass to the RequestyLLM.
-        :type messages: List[Message]
-        :return: The response from the RequestyLLM.
-        :rtype: str
-        """
-        if self._client is None:
-            raise ValueError("Requesty client is not initialized.")
-        try:
-            completion = self._client.chat.completions.create(
-                model=self.name,
-                messages=[m.to_openai() for m in messages],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
-
-            output = completion.choices[0].message.content
-
-            if not output:
-                raise Exception("No output generated")
-            return output
-        except Exception as e:
-            logger.error(f"LLM error: {e}")
-            raise Exception(f"LLM error: {e}") from e
+        super().__init__(
+            name=name,
+            base_url=base_url,
+            api_key=requesty_api_key,
+            api_key_var_name="REQUESTY_API_KEY",
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
