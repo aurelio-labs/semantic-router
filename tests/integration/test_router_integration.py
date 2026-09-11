@@ -21,6 +21,7 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.postgres import PostgresIndex
 from semantic_router.index.qdrant import QdrantIndex
+from semantic_router.index.redis import RedisIndex
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, SemanticRouter
 from semantic_router.schema import RouteChoice
@@ -148,6 +149,10 @@ def init_index(
         url = os.getenv("QDRANT_URL")
         kwargs = {"location": None, "url": url} if url else {}
         index = QdrantIndex(index_name=f"test_{uuid.uuid4().hex}", **kwargs)
+    elif index_cls is RedisIndex:
+        # index_name doubles as the RediSearch key prefix, so it must be unique
+        # per test the same way a Postgres table or Qdrant collection is.
+        index = RedisIndex(index_name=f"test-{uuid.uuid4().hex}")
     else:
         index = index_cls()
     return index
@@ -273,6 +278,8 @@ def get_test_indexes():
         indexes.append(PineconeIndex)
     if importlib.util.find_spec("psycopg") is not None:
         indexes.append(PostgresIndex)
+    if importlib.util.find_spec("redis") is not None:
+        indexes.append(RedisIndex)
     return indexes
 
 

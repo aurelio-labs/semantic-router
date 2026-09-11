@@ -107,6 +107,7 @@ router = HybridRouter(
 | [PineconeIndex](../../client-reference/index/pinecone) | Pinecone vector database | `pip install -qU "semantic-router[pinecone]"` |
 | [QdrantIndex](../../client-reference/index/qdrant) | Qdrant vector database | `pip install -qU "semantic-router[qdrant]"` |
 | [PostgresIndex](../../client-reference/index/postgres) | PostgreSQL with pgvector | `pip install -qU "semantic-router[postgres]"` |
+| [RedisIndex](../../client-reference/index/redis) | Redis with RediSearch vector search | `pip install -qU "semantic-router[redis]"` |
 
 ## Keeping local and remote in sync
 

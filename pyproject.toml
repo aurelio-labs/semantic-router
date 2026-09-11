@@ -46,6 +46,7 @@ vision = [
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
 qdrant = ["qdrant-client>=1.11.1,<2"]
+redis = ["redis>=5.0.0,<7"]
 google = ["google-cloud-aiplatform>=1.45.0,<2"]
 bedrock = [
     "boto3>=1.34.98,<2",
@@ -60,6 +61,7 @@ all = [
     "semantic-router[pinecone]",
     "semantic-router[vision]",
     "semantic-router[qdrant]",
+    "semantic-router[redis]",
     "semantic-router[google]",
     "semantic-router[bedrock]",
     "semantic-router[postgres]",

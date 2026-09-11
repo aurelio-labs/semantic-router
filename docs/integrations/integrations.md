@@ -33,6 +33,7 @@ Index integrations enable efficient storage and retrieval of vector embeddings. 
 - [Pinecone](pinecone.md) - Serverless or pod-based vector database with namespace support
 - [Qdrant](qdrant.md) - High-performance open-source vector database
 - [PostgreSQL](postgres.md) - PostgreSQL with pgvector extension (FLAT, IVFFLAT, HNSW)
+- [Redis](redis.md) - Redis with RediSearch vector search (FLAT, HNSW)
 - **Local** - In-memory index for development and testing
 
 Each index integration supports:

@@ -4,6 +4,7 @@ from semantic_router.index.local import LocalIndex
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.index.postgres import PostgresIndex
 from semantic_router.index.qdrant import QdrantIndex
+from semantic_router.index.redis import RedisIndex
 
 __all__ = [
     "BaseIndex",
@@ -12,4 +13,5 @@ __all__ = [
     "QdrantIndex",
     "PineconeIndex",
     "PostgresIndex",
+    "RedisIndex",
 ]
