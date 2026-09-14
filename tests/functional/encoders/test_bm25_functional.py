@@ -39,10 +39,14 @@ class TestBM25Encoder:
 
     def test_bm25_scoring(self, bm25_encoder):
         vocab_size = bm25_encoder._tokenizer.vocab_size
+        # Pinned against the ATIRE formula (paper section 4.1) with the
+        # documented deviations in BM25Encoder: IDF smoothing, L1-normalised
+        # query weights scaled by 1/(k1+1). Verified against a longhand
+        # reference implementation; see PR #692.
         expected = np.array(
             [
-                [0.00000, 0.00000, 0.54575, 0.00000, 0.00000, 0.00000, 0.00000],
-                [0.00000, 0.00000, 0.00000, 0.18864, 0.00000, 0.67897, 0.00000],
+                [0.00000, 0.00000, 0.44146, 0.00000, 0.00000, 0.00000, 0.00000],
+                [0.00000, 0.00000, 0.00000, 0.12814, 0.00000, 0.36436, 0.00000],
             ]
         )
         q_e = np.stack(
