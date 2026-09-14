@@ -1,4 +1,5 @@
 import os
+import sys
 
 import numpy as np
 import pytest
@@ -40,6 +41,30 @@ def routes():
         Route(name="Route 1", utterances=[UTTERANCES[0], UTTERANCES[1]]),
         Route(name="Route 2", utterances=[UTTERANCES[2], UTTERANCES[3], UTTERANCES[4]]),
     ]
+
+
+def test_default_initialization_does_not_require_nltk(mocker):
+    """Regression test for https://github.com/aurelio-labs/semantic-router/issues/466
+
+    `BM25Encoder` used to default to an NLTK-backed tokenizer, and raised a long,
+    unhelpful error when NLTK's `punkt` corpus hadn't been downloaded yet. The
+    default tokenizer was since rewritten to use a HuggingFace `PretrainedTokenizer`
+    instead (see `semantic_router.tokenizers.PretrainedTokenizer`), so the encoder
+    no longer touches nltk at all, and `nltk` isn't even a project dependency
+    anymore. This guards against a regression back to that behaviour.
+    """
+    assert "nltk" not in sys.modules
+
+    # avoid a real network call to the Hugging Face hub, we only care that
+    # initialization doesn't go anywhere near nltk
+    mocker.patch(
+        "tokenizers.Tokenizer.from_pretrained", return_value=mocker.MagicMock()
+    )
+
+    encoder = BM25Encoder(use_default_params=True)
+
+    assert encoder._tokenizer is not None
+    assert "nltk" not in sys.modules
 
 
 @pytest.mark.skipif(
