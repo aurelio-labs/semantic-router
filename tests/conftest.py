@@ -54,6 +54,8 @@ def pytest_configure(config):
     # Qdrant falls back to the in-memory client when no server is listening.
     if "QDRANT_URL" not in os.environ and _reachable("localhost", 6333):
         os.environ["QDRANT_URL"] = "http://localhost:6333"
+    os.environ.setdefault("REDIS_HOST", "localhost")
+    os.environ.setdefault("REDIS_PORT", "6379")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -76,6 +78,15 @@ def pytest_collection_modifyitems(config, items):
                 f"Postgres is not reachable at {host}:{port}. "
                 "Start the local services with `make services`, or deselect "
                 "these tests with `-k 'not PostgresIndex'`.",
+                returncode=2,
+            )
+    if any("RedisIndex" in i for i in ids):
+        host, port = os.environ["REDIS_HOST"], int(os.environ["REDIS_PORT"])
+        if not _reachable(host, port):
+            pytest.exit(
+                f"Redis is not reachable at {host}:{port}. "
+                "Start the local services with `make services`, or deselect "
+                "these tests with `-k 'not RedisIndex'`.",
                 returncode=2,
             )
 
@@ -169,5 +180,30 @@ def _cleanup_qdrant_collections(monkeypatch):
     for index in created:
         try:
             index.client.delete_collection(index.index_name)
+        except Exception:
+            pass  # already deleted by the test, or never created
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_redis_indexes(monkeypatch):
+    """Drop every RediSearch index (and its documents) a test creates once the test finishes."""
+    try:
+        from semantic_router.index.redis import RedisIndex
+    except ImportError:
+        yield
+        return
+
+    created: list = []
+    original_init = RedisIndex.__init__
+
+    def tracking_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        created.append(self)
+
+    monkeypatch.setattr(RedisIndex, "__init__", tracking_init)
+    yield
+    for index in created:
+        try:
+            index.delete_index()
         except Exception:
             pass  # already deleted by the test, or never created

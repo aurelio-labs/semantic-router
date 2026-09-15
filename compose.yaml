@@ -34,3 +34,15 @@ services:
     ports:
       - "6333:6333"
       - "6334:6334"
+
+  redis:
+    # Redis Stack bundles RediSearch, which is what provides vector search
+    # (plain Redis has no vector index type).
+    image: redis/redis-stack-server:7.4.0-v3
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
