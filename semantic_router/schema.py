@@ -48,7 +48,7 @@ class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[List[Dict]] = None
     similarity_score: Optional[float] = None
-
+    utterance_scores: Optional[List[float]] = None
 
 class Message(BaseModel):
     """A message in a conversation, includes the role and content fields."""
