@@ -708,10 +708,17 @@ class PostgresIndex(BaseIndex):
                     batch_routes = routes[i : i + batch_size]
                     batch_utterances = utterances[i : i + batch_size]
 
+                    # same deterministic id as the sync path, so adding an utterance
+                    # twice is a no-op instead of a duplicate row
                     values = [
-                        (str(uuid.uuid4()), route, utterance, vector)
-                        for route, utterance, vector in zip(
-                            batch_routes, batch_utterances, batch_embeddings
+                        (record.id, record.route, record.utterance, record.vector)
+                        for record in (
+                            PostgresIndexRecord(
+                                vector=vector, route=route, utterance=utterance
+                            )
+                            for route, utterance, vector in zip(
+                                batch_routes, batch_utterances, batch_embeddings
+                            )
                         )
                     ]
 
