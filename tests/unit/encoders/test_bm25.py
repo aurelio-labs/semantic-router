@@ -6,7 +6,7 @@ import pytest
 
 from semantic_router.encoders import BM25Encoder
 from semantic_router.route import Route
-from semantic_router.tokenizers import BaseTokenizer
+from semantic_router.tokenizers import BaseTokenizer, PretrainedTokenizer
 
 UTTERANCES = [
     "Hello we need this text to be a little longer for our sparse encoders",
@@ -53,18 +53,27 @@ def test_default_initialization_does_not_require_nltk(mocker):
     no longer touches nltk at all, and `nltk` isn't even a project dependency
     anymore. This guards against a regression back to that behaviour.
     """
-    assert "nltk" not in sys.modules
+    # patching Tokenizer needs the package importable; it is only declared in
+    # the `local` extra, and reaches py3.13 transitively through cohere
+    pytest.importorskip("tokenizers")
 
-    # avoid a real network call to the Hugging Face hub, we only care that
-    # initialization doesn't go anywhere near nltk
+    # avoid a real network call to the Hugging Face hub, we only care which
+    # tokenizer the encoder reaches for
     mocker.patch(
         "tokenizers.Tokenizer.from_pretrained", return_value=mocker.MagicMock()
     )
+    # whether some other test already imported nltk is not this test's business,
+    # only whether constructing the encoder imports it
+    nltk_already_imported = "nltk" in sys.modules
 
     encoder = BM25Encoder(use_default_params=True)
 
-    assert encoder._tokenizer is not None
-    assert "nltk" not in sys.modules
+    # the tokenizer it chose is the real guard: a regression to an nltk-backed
+    # default fails here, and names what changed
+    assert isinstance(encoder._tokenizer, PretrainedTokenizer)
+    assert ("nltk" in sys.modules) == nltk_already_imported, (
+        "constructing BM25Encoder imported nltk"
+    )
 
 
 @pytest.mark.skipif(
