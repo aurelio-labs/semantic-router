@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.2.0.dev2"
+version = "1.0.0.dev0"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.10,<3.14"

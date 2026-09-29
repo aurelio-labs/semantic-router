@@ -27,7 +27,7 @@ You choose how much runs on your machine:
 
 New to Semantic Router? The [quickstart](quickstart) gets you routing in a few minutes.
 
-Upgrading from a 0.0.x release? v0.1 introduced breaking changes — the [migration guide](../user-guide/guides/migration-to-v1) walks you through them.
+Upgrading from a 0.0.x release? v0.1 introduced breaking changes — the [migration guide](../user-guide/guides/migration-to-v0-1) walks you through them.
 
 ## Resources
 

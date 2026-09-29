@@ -2,7 +2,7 @@ name: Release Docs
 
 on:
   push:
-    branches: [main]
+    branches: [main, v0]
     paths:
       - "docs/**"
       - "semantic_router/**"
@@ -21,6 +21,14 @@ jobs:
         - "3.11"
     steps:
     - uses: actions/checkout@v4
+    - name: Resolve the docs version from the branch
+      # each release line publishes into its own directory on the docs site
+      run: |
+        case "$GITHUB_REF_NAME" in
+          main) echo "DOCS_VERSION=v1" >> "$GITHUB_ENV" ;;
+          v0)   echo "DOCS_VERSION=v0" >> "$GITHUB_ENV" ;;
+          *)    echo "no docs version is published from branch $GITHUB_REF_NAME"; exit 1 ;;
+        esac
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
@@ -47,8 +55,8 @@ jobs:
         ROOT_DIR=$(pwd)
 
         # Clean existing documentation in target repo
-        rm -rf temp-docs/semantic-router
-        mkdir -p temp-docs/semantic-router/
+        rm -rf "temp-docs/semantic-router/$DOCS_VERSION"
+        mkdir -p "temp-docs/semantic-router/$DOCS_VERSION/"
 
         # Define directories to process (excluding client-reference which is auto-generated separately)
         DOC_DIRS=("get-started" "user-guide")
@@ -66,10 +74,10 @@ jobs:
             # Create target directory if it doesn't exist
             if [ "$rel_path" = "." ]; then
               # File is directly in the doc_dir
-              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir"
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$DOCS_VERSION/$doc_dir"
             else
               # File is in a subdirectory
-              target_dir="$ROOT_DIR/temp-docs/semantic-router/$doc_dir/$rel_path"
+              target_dir="$ROOT_DIR/temp-docs/semantic-router/$DOCS_VERSION/$doc_dir/$rel_path"
             fi
             
             mkdir -p "$target_dir"
@@ -83,8 +91,8 @@ jobs:
     - name: Process reference documentation
       run: |
         ROOT_DIR=$(pwd)
-        rm -rf temp-docs/semantic-router/client-reference
-        mkdir -p temp-docs/semantic-router/client-reference/
+        rm -rf temp-docs/semantic-router/$DOCS_VERSION/client-reference
+        mkdir -p temp-docs/semantic-router/$DOCS_VERSION/client-reference/
 
         # Check if build directory exists
         if [ -d "docs/build/semantic_router" ]; then
@@ -93,8 +101,8 @@ jobs:
           find . -type f -name "*.md" | while read file; do
             dir=$(dirname "$file")
             echo "Processing file: $file in directory: $dir"
-            mkdir -p "$ROOT_DIR/temp-docs/semantic-router/client-reference/$dir"
-            cp "$file" "$ROOT_DIR/temp-docs/semantic-router/client-reference/${file%.md}.mdx"
+            mkdir -p "$ROOT_DIR/temp-docs/semantic-router/$DOCS_VERSION/client-reference/$dir"
+            cp "$file" "$ROOT_DIR/temp-docs/semantic-router/$DOCS_VERSION/client-reference/${file%.md}.mdx"
           done
         else
           echo "Warning: Reference docs build directory does not exist. Skipping reference documentation processing."
@@ -102,7 +110,7 @@ jobs:
 
     - name: Update frontmatter keys
       run: |
-        find temp-docs/semantic-router/client-reference -type f -name "*.mdx" -exec sed -i 's/sidebar_label:/sidebarTitle:/g' {} +
+        find temp-docs/semantic-router/$DOCS_VERSION/client-reference -type f -name "*.mdx" -exec sed -i 's/sidebar_label:/sidebarTitle:/g' {} +
 
     - name: Install jq
       run: sudo apt-get install -y jq
@@ -110,13 +118,13 @@ jobs:
     - name: Update mintlify docs.json navigation
       run: |
         # Get files and create grouped structure using jq
-        files=$(cd temp-docs/semantic-router/client-reference && find . -type f -name "*.mdx" | sed 's|^./||' | sed 's|.mdx$||' | sort | jq -R -s '
+        files=$(cd "temp-docs/semantic-router/$DOCS_VERSION/client-reference" && find . -type f -name "*.mdx" | sed 's|^./||' | sed 's|.mdx$||' | sort | jq --arg ver "$DOCS_VERSION" -R -s '
           split("\n")[:-1] 
-          | map("semantic-router/client-reference/" + .) 
+          | map("semantic-router/" + $ver + "/client-reference/" + .)
           | reduce .[] as $path (
               {"root": [], "groups": {}};
-              if ($path | split("/") | length) == 4 then
-                .groups[$path | split("/")[2]] += [$path]
+              if ($path | split("/") | length) == 5 then
+                .groups[$path | split("/")[3]] += [$path]
               else
                 .root += [$path]
               end
@@ -129,10 +137,11 @@ jobs:
         ')
 
         # Update the docs.json file
-        jq --arg pages "$files" '
-          (.navigation.tabs[] | select(.tab == "Semantic Router") | 
-           .groups[] | select(.group == "Client Reference") | 
-           .pages) |= ($pages | fromjson)
+        jq --arg pages "$files" --arg ver "$DOCS_VERSION" '
+          (.navigation.tabs[] | select(.tab == "Semantic Router")
+           | .versions[] | select(.version == $ver)
+           | .groups[] | select(.group == "Client Reference")
+           | .pages) |= ($pages | fromjson)
         ' temp-docs/docs.json > temp-docs/docs.json.tmp && mv temp-docs/docs.json.tmp temp-docs/docs.json
 
     - name: Git commit and push
@@ -142,4 +151,4 @@ jobs:
         git config --local user.name "aurelio-bot"
         git remote set-url origin https://aurelio-bot:${{ secrets.PAT }}@github.com/aurelio-labs/docs.git
         git add .
-        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update semantic router docs" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update semantic router $DOCS_VERSION docs" && git push)
