@@ -108,7 +108,7 @@ User Query → Router → Encoder → Embeddings → Index → Similarity Search
 
 ### Common Gotchas
 1. Many encoders require API keys set as environment variables (e.g., `OPENAI_API_KEY`)
-2. The project supports Python 3.9-3.13, some features are disabled for 3.13+ due to dependency constraints
+2. The project supports Python 3.10-3.13, some features are disabled for 3.13+ due to dependency constraints
 3. Local models require the `[local]` extra: `pip install "semantic-router[local]"`
 4. Hybrid routing requires the `[hybrid]` extra
 5. When working with indexes, be aware of synchronization between local and remote states

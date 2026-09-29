@@ -96,20 +96,22 @@ class CLIPEncoder(DenseEncoder):
         :returns: A tuple of the tokenizer, processor, and model.
         :rtype: Tuple[Any, Any, Any]
         """
-        try:
-            from transformers import CLIPModel, CLIPProcessor, CLIPTokenizerFast
-        except ImportError:
-            raise ImportError(
-                "Please install transformers to use CLIPEncoder. "
-                "You can install it with: "
-                "`pip install semantic-router[vision]`"
-            )
-
+        # torch first: transformers >= 5 imports torch itself, so checking it
+        # second would report a missing torch as a missing transformers
         try:
             import torch
         except ImportError:
             raise ImportError(
                 "Please install Pytorch to use CLIPEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[vision]`"
+            )
+
+        try:
+            from transformers import CLIPModel, CLIPProcessor, CLIPTokenizerFast
+        except ImportError:
+            raise ImportError(
+                "Please install transformers to use CLIPEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )
@@ -166,6 +168,9 @@ class CLIPEncoder(DenseEncoder):
         ).to(self.device)
         with self._torch.no_grad():
             embeds = self._model.get_text_features(**inputs)
+            # transformers >= 5 returns a model output whose pooler_output holds the
+            # projected features; earlier versions return that tensor directly
+            embeds = getattr(embeds, "pooler_output", embeds)
             embeds = embeds.squeeze(0).cpu().detach().numpy()
         return embeds
 
@@ -183,6 +188,7 @@ class CLIPEncoder(DenseEncoder):
         ].to(self.device)
         with self._torch.no_grad():
             embeds = self._model.get_image_features(pixel_values=inputs)
+            embeds = getattr(embeds, "pooler_output", embeds)  # see _encode_text
             embeds = embeds.squeeze(0).cpu().detach().numpy()
         return embeds
 
