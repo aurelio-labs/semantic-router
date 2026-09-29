@@ -16,6 +16,18 @@ Semantic Router is a superfast decision-making layer for your LLMs and agents. R
 
 ---
 
+## Versions
+
+Semantic Router has two release lines. The **0.x line** (`v0` branch) is the current stable library and finishes at 0.2.0, after which it receives bug fixes only. The **1.x line** (`main` branch) is a breaking rewrite of the routing layer and ships as 1.0.0. Pin to the line you are on:
+
+```
+pip install "semantic-router<1"   # 0.x
+```
+
+Details, and the docs for each line, are on the [versions page](https://docs.aurelio.ai/semantic-router/v0/get-started/versions).
+
+---
+
 ## Quickstart
 
 To get started with _semantic-router_ we install it like so:
