@@ -24,7 +24,7 @@ Semantic Router has two release lines. The **0.x line** (`v0` branch) is the cur
 pip install "semantic-router<1"   # 0.x
 ```
 
-Details, and the docs for each line, are on the [versions page](https://docs.aurelio.ai/semantic-router/v0/get-started/versions).
+This branch (`main`) is the 1.x line, in development; the quickstart below still describes 0.x until the rewrite lands. Details, and the docs for each line, are on the [versions page](https://docs.aurelio.ai/semantic-router/v0/get-started/versions).
 
 ---
 
