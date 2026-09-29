@@ -112,4 +112,5 @@ jobs:
       - name: Test
         run: make test
         env:
-          PYTEST_ADDOPTS: --durations=15
+          # one line per test as it finishes, plus the slowest ones at the end
+          PYTEST_ADDOPTS: -v --durations=15

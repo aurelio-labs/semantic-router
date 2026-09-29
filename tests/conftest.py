@@ -7,8 +7,10 @@ Test tiers
   qdrant). No API keys are needed, so this is what CI runs on every pull
   request, including ones from forks.
 * ``live`` (``make test_live``): tests marked ``@pytest.mark.live`` call paid
-  third-party APIs (OpenAI, Cohere). They are excluded from the default run
-  and are skipped automatically when the relevant key is missing.
+  third-party APIs (OpenAI, Cohere). They are excluded from the default run.
+  Mark a test with the env var it needs, e.g. ``@pytest.mark.live("OPENAI_API_KEY")``,
+  and it is skipped automatically when that key is missing. A bare ``live``
+  mark requires every key in ``LIVE_KEYS``.
 """
 
 import os
@@ -77,13 +79,17 @@ def pytest_collection_modifyitems(config, items):
                 returncode=2,
             )
 
-    # Skip live tests when the key they need is missing.
-    missing = [k for k in LIVE_KEYS if not os.environ.get(k, "").strip()]
-    if missing:
-        skip = pytest.mark.skip(reason=f"live test: set {', '.join(missing)} to run")
-        for item in items:
-            if "live" in item.keywords:
-                item.add_marker(skip)
+    # Skip each live test when a key it needs is missing.
+    for item in items:
+        live_marks = list(item.iter_markers("live"))
+        if not live_marks:
+            continue
+        needed = {key for mark in live_marks for key in mark.args} or set(LIVE_KEYS)
+        missing = sorted(k for k in needed if not os.environ.get(k, "").strip())
+        if missing:
+            item.add_marker(
+                pytest.mark.skip(reason=f"live test: set {', '.join(missing)} to run")
+            )
 
 
 @pytest.fixture(autouse=True)

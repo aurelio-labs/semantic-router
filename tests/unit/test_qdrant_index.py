@@ -417,3 +417,64 @@ class TestAsync:
 
         _, routes = await idx_a.aquery(vector=np.array(rand_vecs(1)[0]), top_k=10)
         assert "route-b" not in routes
+
+
+# ---------------------------------------------------------------------------
+# A failed read is not an empty index
+# ---------------------------------------------------------------------------
+
+
+class TestScrollFailureIsNotEmptiness:
+    """A scroll that fails must not be reported as a collection with nothing in it.
+
+    ``_get_all`` is what ``get_utterances`` reads, and a router running with
+    ``auto_sync="remote"`` deletes every local utterance that is absent from the remote
+    reply. So an empty answer given for the wrong reason removes the user's routes.
+    """
+
+    def test_empty_collection_still_returns_empty(self):
+        """The case the removed handler claimed to cover is handled without it.
+
+        An empty collection never raised: ``collection_exists`` is checked first, and a
+        scroll over a collection with no points returns no records.
+        """
+        idx = make_index()
+        idx.add(rand_vecs(1), ["r"], ["u"])
+        idx.delete("r")
+
+        ids, metadata = idx._get_all(include_metadata=True)
+
+        assert ids == []
+        assert metadata == []
+
+    def test_get_all_raises_when_the_scroll_fails(self):
+        """A failing scroll surfaces instead of answering "empty"."""
+        idx = make_index()
+        idx.add(rand_vecs(2), ["r", "r"], ["u1", "u2"])
+
+        def boom(*args, **kwargs):
+            raise ValueError("Unexpected response from Qdrant")
+
+        idx.client.scroll = boom
+
+        with pytest.raises(ValueError, match="Unexpected response"):
+            idx._get_all(include_metadata=True)
+
+    @pytest.mark.asyncio
+    async def test_async_get_all_raises_when_the_scroll_fails(self):
+        """Same contract on the async path, which is the one auto_sync uses."""
+        idx = make_index()
+        idx.add(rand_vecs(2), ["r", "r"], ["u1", "u2"])
+
+        async def boom(*args, **kwargs):
+            raise ValueError("Unexpected response from Qdrant")
+
+        async def exists(*args, **kwargs):
+            return True
+
+        idx.aclient = idx.client
+        idx.aclient.scroll = boom
+        idx.aclient.collection_exists = exists
+
+        with pytest.raises(ValueError, match="Unexpected response"):
+            await idx._async_get_all(include_metadata=True)

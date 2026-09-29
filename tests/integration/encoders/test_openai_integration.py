@@ -6,7 +6,7 @@ from openai import OpenAIError
 from semantic_router.encoders.base import DenseEncoder
 from semantic_router.encoders.openai import OpenAIEncoder
 
-pytestmark = pytest.mark.live
+pytestmark = pytest.mark.live("OPENAI_API_KEY")
 
 with open("tests/integration/57640.4032.txt", "r") as fp:
     long_doc = fp.read()

@@ -340,6 +340,32 @@ class PineconeIndex(BaseIndex):
             self.index_host = f"{scheme}://{self.index_host}"
         self._sdk_host_for_validation = self.index_host
 
+    @staticmethod
+    def _describe_index_stats_when_reachable(index, attempts: int = 8) -> dict:
+        """Call ``describe_index_stats`` on a freshly opened index, retrying
+        connection-level failures.
+
+        Right after an index is created its data-plane host can take a moment
+        to accept connections. pinecone-local in particular opens a new port
+        per index, and that listener is not always up by the time
+        ``create_index`` returns. Only connection errors are retried; anything
+        else is raised immediately.
+        """
+        import time
+
+        import urllib3
+        from pinecone.utils.error_handling import ProtocolError
+
+        transient = (ProtocolError, urllib3.exceptions.MaxRetryError, ConnectionError)
+        for attempt in range(1, attempts + 1):
+            try:
+                return index.describe_index_stats()
+            except transient:
+                if attempt == attempts:
+                    raise
+                time.sleep(0.25 * attempt)
+        raise RuntimeError("unreachable")  # pragma: no cover
+
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
         to allow for the user to set the dimensions and other parameters.
@@ -383,12 +409,15 @@ class PineconeIndex(BaseIndex):
                 )
                 index = self._open_sync_index(self.index_name)
                 self.index = index
-                # Best-effort to populate dimensions; let errors surface if not ready
-                self.dimensions = index.describe_index_stats()["dimension"]
+                self.dimensions = self._describe_index_stats_when_reachable(index)[
+                    "dimension"
+                ]
             elif index_exists:
                 index = self._open_sync_index(self.index_name)
                 self.index = index
-                self.dimensions = index.describe_index_stats()["dimension"]
+                self.dimensions = self._describe_index_stats_when_reachable(index)[
+                    "dimension"
+                ]
             elif force_create and not dimensions_given:
                 raise ValueError("Dimensions must be provided to create a new index.")
             else:

@@ -142,3 +142,5 @@ jobs:
 
       - name: Live tests
         run: make test_live
+        env:
+          PYTEST_ADDOPTS: -v --durations=15

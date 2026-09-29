@@ -291,16 +291,15 @@ def get_test_routers():
 def router_params(encoders, indexes=None):
     """Every (index, encoder, router) combination. Combinations that use a
     hosted encoder are marked `live` so they only run when keys are present."""
-    local_marks = [
-        pytest.mark.skipif(not HAS_FASTEMBED, reason="needs the [fastembed] extra")
-    ]
+    marks = {
+        LocalTestEncoder: [
+            pytest.mark.skipif(not HAS_FASTEMBED, reason="needs the [fastembed] extra")
+        ],
+        OpenAIEncoder: [pytest.mark.live("OPENAI_API_KEY")],
+        CohereEncoder: [pytest.mark.live("COHERE_API_KEY")],
+    }
     return [
-        pytest.param(
-            index,
-            encoder,
-            router,
-            marks=local_marks if encoder is LocalTestEncoder else [pytest.mark.live],
-        )
+        pytest.param(index, encoder, router, marks=marks[encoder])
         for index in (indexes if indexes is not None else get_test_indexes())
         for encoder in encoders
         for router in get_test_routers()
@@ -360,7 +359,7 @@ class TestIndexEncoders:
         else:
             assert score_threshold == encoder.score_threshold
 
-    @pytest.mark.live  # encoder=None falls back to OpenAIEncoder
+    @pytest.mark.live("OPENAI_API_KEY")  # encoder=None falls back to OpenAIEncoder
     def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
         route_layer_none = router_cls(encoder=None)
         score_threshold = route_layer_none.score_threshold
