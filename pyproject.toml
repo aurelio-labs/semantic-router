@@ -3,7 +3,7 @@ name = "semantic-router"
 version = "0.2.0.dev2"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10,<3.14"
 readme = "README.md"
 license = "MIT"
 dependencies = [
@@ -27,8 +27,9 @@ dependencies = [
 [project.optional-dependencies]
 # only required by LiteLLMEncoder; the provider-specific encoders use their own SDKs
 litellm = [
-    # https://www.cve.org/CVERecord?id=CVE-2026-42208 explains >=1.83.7
-    "litellm>=1.83.7",
+    # 1.84.0 fixes an authentication bypass via Host header injection
+    # (GHSA-4xpc-pv4p-pm3w); 1.83.7 was the previous floor for CVE-2026-42208
+    "litellm>=1.84.0",
 ]
 ollama = ["ollama>=0.1.7"]
 local = [
@@ -42,7 +43,7 @@ pinecone = ["pinecone[asyncio]>=7.0.0,<8.0.0"]
 vision = [
     "torchvision>=0.17.0 ; python_version < '3.13'",
     "transformers>=4.36.2 ; python_version < '3.13'",
-    "pillow>=10.2.0,<11.0.0 ; python_version < '3.13'",
+    "pillow>=10.2.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
 qdrant = ["qdrant-client>=1.11.1,<2"]
@@ -54,7 +55,7 @@ bedrock = [
 postgres = [
     "psycopg[binary]>=3.1.0,<4",
 ]
-fastembed = ["fastembed>=0.7.0,<1 ; python_version >= '3.10'"]
+fastembed = ["fastembed>=0.7.0,<1"]
 all = [
     "semantic-router[local]",
     "semantic-router[pinecone]",
