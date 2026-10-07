@@ -50,6 +50,7 @@ class RouteChoice(BaseModel):
     similarity_score: Optional[float] = None
     utterance_scores: Optional[List[float]] = None
 
+
 class Message(BaseModel):
     """A message in a conversation, includes the role and content fields."""
 
