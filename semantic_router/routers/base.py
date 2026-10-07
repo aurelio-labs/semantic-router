@@ -671,8 +671,11 @@ class BaseRouter(BaseModel):
                         route.llm = self.llm
                 # call dynamic route to generate the function_call content
                 route_choice = route(query=text)
-                if route_choice is not None and route_choice.similarity_score is None:
-                    route_choice.similarity_score = total_score
+                if route_choice is not None:
+                    if route_choice.similarity_score is None:
+                        route_choice.similarity_score = total_score
+                    if route_choice.utterance_scores is None:
+                        route_choice.utterance_scores = scores
                 passed_routes.append(route_choice)
             elif passed and route is not None and simulate_static:
                 passed_routes.append(
@@ -680,6 +683,7 @@ class BaseRouter(BaseModel):
                         name=route.name,
                         function_call=None,
                         similarity_score=None,
+                        utterance_scores=scores,
                     )
                 )
             if limit is None:
@@ -758,8 +762,11 @@ class BaseRouter(BaseModel):
                         route.llm = self.llm
                 # TODO need to move to asyncio tasks and gather
                 route_choice = await route.acall(query=text)
-                if route_choice is not None and route_choice.similarity_score is None:
-                    route_choice.similarity_score = total_score
+                if route_choice is not None:
+                    if route_choice.similarity_score is None:
+                        route_choice.similarity_score = total_score
+                    if route_choice.utterance_scores is None:
+                        route_choice.utterance_scores = scores
                 passed_routes.append(route_choice)
             elif passed and route is not None and simulate_static:
                 passed_routes.append(
@@ -767,6 +774,7 @@ class BaseRouter(BaseModel):
                         name=route.name,
                         function_call=None,
                         similarity_score=None,
+                        utterance_scores=scores,
                     )
                 )
             if limit is None:

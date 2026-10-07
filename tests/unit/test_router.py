@@ -759,6 +759,7 @@ class TestRouterAsync:
         # Confirm we have Route 1 and sim score
         assert result.name == "Route 1"
         assert result.similarity_score == 0.9
+        assert result.utterance_scores == [0.1, 0.2, 0.3]
         assert result.function_call is None
 
     @pytest.mark.asyncio
@@ -916,6 +917,7 @@ class TestRouter:
         # Confirm we have Route 1 and sim score
         assert result.name == "Route 1"
         assert result.similarity_score == 0.9
+        assert result.utterance_scores == [0.1, 0.2, 0.3]
         assert result.function_call is None
 
     def test_limit_parameter(self, router_cls, index_cls, routes_5, mocker):
