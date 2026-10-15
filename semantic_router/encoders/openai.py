@@ -19,17 +19,14 @@ model_configs = {
     "text-embedding-ada-002": EncoderInfo(
         name="text-embedding-ada-002",
         token_limit=8192,
-        threshold=0.82,
     ),
     "text-embedding-3-small": EncoderInfo(
         name="text-embedding-3-small",
         token_limit=8192,
-        threshold=0.3,
     ),
     "text-embedding-3-large": EncoderInfo(
         name="text-embedding-3-large",
         token_limit=8192,
-        threshold=0.3,
     ),
 }
 
@@ -38,8 +35,7 @@ class OpenAIEncoder(DenseEncoder):
     """OpenAI encoder class for generating embeddings using OpenAI API.
 
     The OpenAIEncoder class is a subclass of DenseEncoder and utilizes the OpenAI API
-    to generate embeddings for given documents. It requires an OpenAI API key and
-    supports customization of the score threshold for filtering or processing the embeddings.
+    to generate embeddings for given documents. It requires an OpenAI API key.
     """
 
     _client: Optional[openai.Client] = PrivateAttr(default=None)
@@ -56,7 +52,6 @@ class OpenAIEncoder(DenseEncoder):
         openai_base_url: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         openai_org_id: Optional[str] = None,
-        score_threshold: Optional[float] = None,
         dimensions: Union[int, NotGiven] = NotGiven(),
         max_retries: int = 3,
     ):
@@ -70,8 +65,6 @@ class OpenAIEncoder(DenseEncoder):
         :type openai_api_key: str
         :param openai_org_id: The OpenAI organization ID.
         :type openai_org_id: str
-        :param score_threshold: The score threshold for the embeddings.
-        :type score_threshold: float
         :param dimensions: The dimensions of the embeddings.
         :type dimensions: int
         :param max_retries: The maximum number of retries for the OpenAI API call.
@@ -79,19 +72,7 @@ class OpenAIEncoder(DenseEncoder):
         """
         if name is None:
             name = EncoderDefault.OPENAI.value["embedding_model"]
-        if score_threshold is None and name in model_configs:
-            set_score_threshold = model_configs[name].threshold
-        elif score_threshold is None:
-            logger.warning(
-                f"Score threshold not set for model: {name}. Using default value."
-            )
-            set_score_threshold = 0.82
-        else:
-            set_score_threshold = score_threshold
-        super().__init__(
-            name=name,
-            score_threshold=set_score_threshold,
-        )
+        super().__init__(name=name)
         api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         base_url = openai_base_url or os.getenv("OPENAI_BASE_URL")
         openai_org_id = openai_org_id or os.getenv("OPENAI_ORG_ID")

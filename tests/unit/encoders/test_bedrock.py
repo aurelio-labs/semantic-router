@@ -41,11 +41,9 @@ class TestBedrockEncoder:
 
     def test_initialisation_with_custom_values(self, mocker):
         name = "custom_model"
-        score_threshold = 0.5
         input_type = "custom_input"
         bedrock_encoder = BedrockEncoder(
             name=name,
-            score_threshold=score_threshold,
             input_type=input_type,
             access_key_id="fake_id",
             secret_access_key="fake_secret",
@@ -54,9 +52,6 @@ class TestBedrockEncoder:
         )
         assert bedrock_encoder.name == name, "Custom name not set correctly"
         assert bedrock_encoder.region == "us-west-2", "Custom region not set correctly"
-        assert bedrock_encoder.score_threshold == score_threshold, (
-            "Custom score threshold not set correctly"
-        )
         assert bedrock_encoder.input_type == input_type, (
             "Custom input type not set correctly"
         )

@@ -43,8 +43,8 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
 
     2. Query weight normalization. The paper produces an unbounded relevance
        score, which is fine for a search engine that only ranks within a single
-       query. A router instead compares scores against a fixed
-       `score_threshold`, so scores must be comparable *across* queries. We
+       query. A router instead compares scores against a fixed threshold, so
+       scores must be comparable *across* queries. We
        therefore L1-normalize the query weights and scale them by
        `1 / (k1 + 1)`, which bounds the query·document dot product to [0, 1] --
        the same range as the cosine similarity returned by the dense encoders,
@@ -65,7 +65,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         trained on the INEX 2008 Wikipedia collection, whose documents average 878 words (paper table 5), whereas this
         encoder is fitted on route utterances averaging on the order of ten tokens. Transferring the paper's parameters
         to utterance-length text is not obviously more correct, and changing the default would silently shift the scores
-        that existing `score_threshold` values were tuned against.
+        that existing thresholds were tuned against.
     :type k1: float
     :param b: normalizer parameter that balances the effect of a single document length compared to the average document
         length. Defaults to 0.75 rather than the paper's 0.4, for the same reason as `k1`. Note that `b` is considerably
@@ -259,8 +259,8 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
 
         # DEVIATION FROM THE ATIRE PAPER: the paper's RSV is an unbounded sum,
         # which is fine when only ranking within one query. A router compares
-        # scores against a fixed `score_threshold`, so they must be comparable
-        # across queries too. Two steps make that so:
+        # scores against a fixed threshold, so they must be comparable across
+        # queries too. Two steps make that so:
         #
         #   1. L1-normalize, so the weights sum to 1 regardless of how long the
         #      query is or how rare its terms are.

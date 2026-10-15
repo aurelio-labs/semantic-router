@@ -51,7 +51,6 @@ class TestVoyageEncoderInit:
         enc = VoyageEncoder("voyage-3", api_key="test_api_key")
         assert enc.name == "voyage-3"
         assert enc.type == "voyage"
-        assert enc.score_threshold == 0.4
 
     def test_initialization_with_env_api_key(self, mock_voyage, monkeypatch):
         monkeypatch.setenv("VOYAGE_API_KEY", "test_api_key")

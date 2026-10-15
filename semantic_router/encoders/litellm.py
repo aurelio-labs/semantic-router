@@ -50,8 +50,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
     """LiteLLM encoder class for generating embeddings using LiteLLM.
 
     The LiteLLMEncoder class is a subclass of DenseEncoder and utilizes the LiteLLM SDK
-    to generate embeddings for given documents. It supports all encoders supported by LiteLLM
-    and supports customization of the score threshold for filtering or processing the embeddings.
+    to generate embeddings for given documents. It supports all encoders supported by LiteLLM.
 
     litellm is an optional dependency: install it with
     ``pip install "semantic-router[litellm]"``.
@@ -63,7 +62,6 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
     def __init__(
         self,
         name: str | None = None,
-        score_threshold: float | None = None,
         api_key: str | None = None,
     ):
         """Initialize the LiteLLMEncoder.
@@ -71,17 +69,12 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
         :param name: The name of the embedding model to use. Must use LiteLLM naming
             convention (e.g. "openai/text-embedding-3-small" or "mistral/mistral-embed").
         :type name: str
-        :param score_threshold: The score threshold for the embeddings.
-        :type score_threshold: float
         :raises ImportError: If litellm is not installed.
         """
         if name is None:
             # defaults to default openai model if none provided
             name = "openai/" + EncoderDefault.OPENAI.value["embedding_model"]
-        super().__init__(
-            name=name,
-            score_threshold=score_threshold if score_threshold is not None else 0.3,
-        )
+        super().__init__(name=name)
         self._litellm = _import_litellm()
         self.type, self.name = self.name.split("/", 1)
         if api_key is None:

@@ -15,7 +15,6 @@ def encoder(requests_mock):
     return HFEndpointEncoder(
         huggingface_url="https://api-inference.huggingface.co/models/bert-base-uncased",
         huggingface_api_key="test-api-key",
-        score_threshold=0.8,
     )
 
 
@@ -26,7 +25,6 @@ class TestHFEndpointEncoder:
             == "https://api-inference.huggingface.co/models/bert-base-uncased"
         )
         assert encoder.huggingface_api_key == "test-api-key"
-        assert encoder.score_threshold == 0.8
 
     def test_initialization_failure_no_api_key(self):
         with pytest.raises(ValueError) as exc_info:

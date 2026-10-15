@@ -66,7 +66,6 @@ class TestClipEncoder:
         clip_encoder = CLIPEncoder(name=test_model_name)
         assert clip_encoder.name == test_model_name
         assert clip_encoder.type == "huggingface"
-        assert clip_encoder.score_threshold == 0.2
         assert clip_encoder.device == device
 
     @pytest.mark.skipif(

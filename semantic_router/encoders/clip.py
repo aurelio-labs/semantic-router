@@ -50,8 +50,6 @@ class CLIPEncoder(DenseEncoder):
         :param **data: Keyword arguments for the encoder.
         :type **data: Dict
         """
-        if data.get("score_threshold") is None:
-            data["score_threshold"] = 0.2
         super().__init__(**data)
         self._tokenizer, self._processor, self._model = self._initialize_hf_model()
 
