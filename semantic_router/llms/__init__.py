@@ -1,3 +1,4 @@
+from semantic_router.llms.atlascloud import AtlasCloudLLM
 from semantic_router.llms.base import BaseLLM
 from semantic_router.llms.cohere import CohereLLM
 from semantic_router.llms.llamacpp import LlamaCppLLM
@@ -8,6 +9,7 @@ from semantic_router.llms.zure import AzureOpenAILLM
 
 __all__ = [
     "BaseLLM",
+    "AtlasCloudLLM",
     "OpenAILLM",
     "LlamaCppLLM",
     "OpenRouterLLM",
