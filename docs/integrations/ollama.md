@@ -64,10 +64,10 @@ embeddings = await encoder.acall(["your text here"])
 
 ## Integration with Routers
 
-The `OllamaEncoder` works with both `SemanticRouter` and `HybridRouter`:
+The `OllamaEncoder` plugs into an `IndexedRouter` like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -81,10 +81,9 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 
@@ -108,7 +107,7 @@ router = SemanticRouter(
 
 ```python
 from semantic_router.encoders import OllamaEncoder
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 # Initialize encoder
@@ -121,7 +120,7 @@ routes = [
 ]
 
 # Create router
-router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+router = IndexedRouter(encoder=encoder, routes=routes)
 
 # Route queries
 print(router("hi there").name)  # -> greeting

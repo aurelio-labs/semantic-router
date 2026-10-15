@@ -18,8 +18,10 @@ healthcare regulation.
 ## Contents
 
 - `healthcare-administrative-routing.ipynb` defines the routes, runs a fully
-  local encoder, optimizes route thresholds, evaluates a held-out split, explores
-  ambiguous inputs, and maps route names to placeholder workflows.
+  local encoder, calibrates the router on the training split, chooses a
+  confidence threshold on the validation split, evaluates the held-out test
+  split, explores ambiguous inputs, and maps route names to placeholder
+  workflows.
 - `healthcare-routing-evaluation.csv` contains synthetic member and provider
   utterances with expected route labels.
 
@@ -77,19 +79,22 @@ The CSV columns are:
 | `rationale` | Short explanation of the expected behavior |
 
 Route seed utterances in the notebook are separate from the evaluation rows to
-avoid direct example leakage. Threshold fitting uses only the training split.
-Validation and test examples remain held out. The notebook fixes the random seed
-used by threshold search so reruns are reproducible for the same dependency and
-model versions.
+avoid direct example leakage, and calibrating on a route's own utterances would
+make the router under-rate real queries. Calibration (`fit`) uses only the
+training split, the confidence threshold is chosen on the validation split, and
+the test split stays held out. Calibration has no random search, so reruns
+give the same result for the same dependency and model versions.
 
 The dataset is deliberately small and educational. Its results must not be
 interpreted as production performance.
 
-The checked-in notebook output from a CPU run with
-`BAAI/bge-small-en-v1.5` reports 83.3% held-out test accuracy and 95.8%
-coverage. The optimized validation accuracy is 54.2%, and abstention recall is
-0.33, so the example still needs broader domain data and calibration before any
-production use. Exact results can vary with dependency and model versions.
+The checked-in notebook output with `BAAI/bge-small-en-v1.5` reports 87.5%
+held-out test accuracy and 83.3% coverage, with a 0.7 confidence threshold.
+Calibrating and setting that threshold lifts validation accuracy from 54.2%
+(no threshold, so every abstention example is a miss) to 62.5%, and the 3 test abstention examples are
+all recalled. These are small samples: the example still needs broader domain
+data before any production use. Exact results can vary with dependency and
+model versions.
 
 ## Run locally
 
@@ -115,7 +120,8 @@ establish HIPAA compliance or authorize processing PHI.
 4. Add boundary pairs that differ only in the requested action.
 5. Add out-of-scope examples expected to return no route.
 6. Preserve independent training, validation, and test splits.
-7. Refit thresholds after changing routes, examples, or the encoder.
+7. Refit the calibrator and choose the threshold again after changing routes,
+   examples, or the encoder.
 8. Review per-route precision and recall, abstention behavior, coverage, and the
    confusion matrix—not accuracy alone.
 9. Version the taxonomy and dataset together.
@@ -132,8 +138,10 @@ ownership and boundaries can be stated clearly.
 - The example performs single-turn semantic routing and does not use conversation
   history, authenticated identity, plan state, claim state, or authorization
   state.
-- Similarity scores are not calibrated probabilities.
-- Threshold optimization can overfit a small or unrepresentative dataset.
+- Confidences are calibrated on 55 synthetic training queries, so they are only
+  as reliable as that data.
+- A threshold chosen on 24 validation queries can overfit a small or
+  unrepresentative dataset.
 - A single-label route cannot fully represent multi-intent requests.
 - Local inference does not guarantee privacy, security, or regulatory
   compliance.

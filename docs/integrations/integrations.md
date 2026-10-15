@@ -22,7 +22,7 @@ Encoder integrations allow Semantic Router to use various embedding models for s
 - Hugging Face - Self-hosted or Inference API models
 - FastEmbed - Fast local embedding models
 
-Each encoder integration provides access to high-quality embedding models that can be used with both the `SemanticRouter` and `HybridRouter` classes. All encoders support both synchronous and asynchronous operations.
+Each encoder plugs into an `IndexedRouter`: dense encoders as its `encoder`, and sparse encoders (BM25, TF-IDF, Aurelio) as its `sparse_encoder` for hybrid routing. All encoders support both synchronous and asynchronous operations.
 
 ## 2. Index Integrations
 
@@ -41,27 +41,18 @@ Each index integration supports:
 - Full CRUD operations (create, read, update, delete)
 - Route isolation via namespaces or collections
 
-## 3. LLM Integrations
+## 3. Decision Model Integrations
 
-LLM integrations enable dynamic route generation and decision-making using large language models. These integrations are particularly useful for:
-- Generating route responses
-- Creating dynamic routes based on context
-- Handling complex routing logic
-- Parameter extraction from queries
+A `DecisionRouter` routes by asking a decision model instead of comparing embeddings. It speaks the `/v1/systemone` API that TypeSafe's **Jev** introduced, which **Laya** and **Von** also implement: point `base_url` at any of them. It needs no encoder and no index. See [decision models](../user-guide/features/decision-models.md).
 
-Currently supported LLM providers:
-- **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
-- **Azure OpenAI** - OpenAI models via Azure
-- **Mistral** - Mistral AI language models
-- **Bedrock** - AWS Bedrock LLMs (Claude, Titan, etc.)
-- **LiteLLM** - Unified interface to 100+ LLM providers
+Semantic Router 1.0 no longer wraps LLMs (OpenAI, Mistral, Bedrock and so on) for dynamic routes: route first, then call your LLM with whichever client you already use.
 
 ## 4. Framework Integrations
 
 While not built-in integrations, Semantic Router works well with many popular AI frameworks and libraries. We provide example notebooks and documentation showing how to use Semantic Router with:
 
 - [Pydantic AI](pydantic-ai.md) - Type-safe AI agent framework
-- [LiteLLM](litellm.md) - Unified LLM interface
+- [LiteLLM](litellm.md) - One encoder for 100+ embedding providers
 - Agent frameworks (LangChain, LlamaIndex, etc.)
 - Custom applications
 

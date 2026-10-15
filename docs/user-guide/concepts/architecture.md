@@ -1,55 +1,53 @@
-# Semantic Router: Technical Architecture
+---
+title: Architecture
+description: The router contract, the router types, calibration, and how a query flows through them.
+---
 
 ## System overview
 
-Three components do the work. An **encoder** turns the input into a vector. An **index** stores your route vectors. A **router** compares the two and picks a match.
+Every router does one thing: given a query, it scores every route. Everything after that is shared. The base class turns the scores into confidences (calibrated, if you've fitted it), applies the thresholds, and hands back a `RouteChoice`.
 
 ```mermaid
 graph TD
-    A[Input Query] --> B[Encoder]
-    B --> C[Vector Embedding]
-    C --> D[Router]
-    E[Routes] --> D
-    F[Index] <--> D
-    D --> G[Matched Route]
-    G --> H[Response Handler]
+    Q[Query] --> S["Score every route<br/>(each router type, its own way)"]
+    S --> C["Calibrate<br/>raw score → probability"]
+    C --> T["Apply thresholds<br/>call, route, router"]
+    T --> R[RouteChoice]
 ```
 
-## Core components
-
-### 1. Encoders
-
-Encoders map inputs into semantic space.
+Routers differ only in how they score:
 
 ```mermaid
 classDiagram
-    class BaseEncoder {
-        +encode(text: List[str]) -> Any
-        +aencode(text: List[str]) -> Any
+    class BaseRouter {
+        +routes
+        +confidence_threshold
+        +calibrator
+        +__call__(query, limit, threshold) RouteChoice
+        +acall(query, limit, threshold) RouteChoice
+        +fit(X, y, method) FitReport
+        +evaluate(X, y) float
+        +add(routes)
+        +remove(name)
+        #_scores(query)* dict
     }
-    class DenseEncoder {
-        +encode() -> dense vectors
-    }
-    class SparseEncoder {
-        +encode() -> sparse vectors
-    }
-    BaseEncoder <|-- DenseEncoder
-    BaseEncoder <|-- SparseEncoder
-    DenseEncoder <|-- OpenAIEncoder
-    DenseEncoder <|-- HuggingFaceEncoder
-    DenseEncoder <|-- CLIPEncoder
-    SparseEncoder <|-- AurelioSparseEncoder
-    SparseEncoder <|-- BM25Encoder
-    SparseEncoder <|-- TFIDFEncoder
+    BaseRouter <|-- IndexedRouter
+    BaseRouter <|-- DecisionRouter
+    BaseRouter <|-- Chain
+    BaseRouter <|-- Merge
 ```
 
-- **Dense encoders** produce continuous vectors (OpenAI, Hugging Face, …).
-- **Sparse encoders** produce mostly-zero vectors (BM25, TF-IDF, AurelioSparse, …).
-- **Multimodal encoders** handle images as well as text (CLIP, ViT).
+- **`IndexedRouter`** scores by embedding similarity: an encoder plus an index.
+- **`DecisionRouter`** scores by asking a decision model, with one HTTP call.
+- **`Chain`** and **`Merge`** score by asking other routers.
 
-### 2. Routes
+A router of your own is one more subclass: implement `_scores` and the rest comes free. See [routers](../components/routers#build-your-own-router).
 
-A route is a pattern to match, defined by example inputs that should trigger it.
+## Core components
+
+### Routes
+
+A route is one decision a router can make. The same `Route` works with every router type.
 
 ```mermaid
 classDiagram
@@ -57,103 +55,109 @@ classDiagram
         +name: str
         +utterances: List[str]
         +description: Optional[str]
-        +function_schemas: Optional[List[Dict]]
-        +score_threshold: Optional[float]
-        +metadata: Optional[Dict]
+        +confidence_threshold: Optional[float]
+        +metadata: Dict
     }
 ```
 
-- **name** — the route's identifier.
-- **utterances** — example inputs that should match.
-- **function_schemas** — optional. Set this and the route becomes *dynamic*, able to call functions.
-- **score_threshold** — the minimum similarity needed to match.
+`IndexedRouter` embeds the `utterances`; `DecisionRouter` reads the `description`. See [routes](../components/routes).
 
-### 3. Indexes
+### Encoders
 
-Indexes store route vectors and search them efficiently.
+Encoders map inputs into semantic space. `IndexedRouter` uses them; `DecisionRouter` doesn't.
+
+```mermaid
+classDiagram
+    class DenseEncoder
+    class SparseEncoder
+    DenseEncoder <|-- OpenAIEncoder
+    DenseEncoder <|-- FastEmbedEncoder
+    DenseEncoder <|-- HuggingFaceEncoder
+    DenseEncoder <|-- CLIPEncoder
+    SparseEncoder <|-- BM25Encoder
+    SparseEncoder <|-- TfidfEncoder
+    SparseEncoder <|-- AurelioSparseEncoder
+```
+
+- **Dense encoders** produce continuous vectors (OpenAI, FastEmbed, Hugging Face, ...).
+- **Sparse encoders** produce mostly-zero vectors keyed on terms (BM25, TF-IDF, ...). Add one to an `IndexedRouter` for hybrid search.
+- **Asymmetric encoders** embed queries and documents differently; the router calls the right side for each.
+
+See [encoders](../components/encoders).
+
+### Indexes
+
+Indexes store utterance vectors and search them. The index is the single source of truth for an `IndexedRouter`'s routes: building a router writes to it, and `router.routes` is a cached view of it, which `refresh()` re-reads.
 
 ```mermaid
 classDiagram
     class BaseIndex {
         +add(embeddings, routes, utterances)
-        +query(vector, top_k) -> matches
-        +delete(route_name)
+        +aquery(vector, top_k) matches
+        +adelete(route_name)
+        +get_routes() List[Route]
     }
     BaseIndex <|-- LocalIndex
-    BaseIndex <|-- PostgresIndex 
+    LocalIndex <|-- HybridLocalIndex
     BaseIndex <|-- PineconeIndex
     BaseIndex <|-- QdrantIndex
-    LocalIndex <|-- HybridLocalIndex
+    BaseIndex <|-- PostgresIndex
 ```
 
-- **LocalIndex** — in-memory, dense vectors.
-- **HybridLocalIndex** — in-memory, dense *and* sparse.
-- **PineconeIndex / QdrantIndex** — cloud vector databases.
-- **PostgresIndex** — SQL storage via pgvector.
+See [indexes](../components/indexes).
+
+### Calibrator
+
+A `Calibrator` maps a raw score to the probability that the top route is right. `fit()` builds one from labelled queries, with Platt scaling or isotonic regression. Both are monotone, so calibration never changes which route ranks first, only the number attached to it. See [calibration](../features/calibration).
 
 ## Data flow
+
+An `IndexedRouter` call:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Router
+    participant Router as IndexedRouter
     participant Encoder
     participant Index
-    User->>Router: send query
-    Router->>Encoder: encode query
-    Encoder->>Router: return vector
-    Router->>Index: search for similar routes
-    Index->>Router: return matches
-    Router->>User: return best matched route
+    User->>Router: router("query")
+    Router->>Encoder: embed the query
+    Encoder->>Router: vector
+    Router->>Index: top_k nearest utterances
+    Index->>Router: (route, score) hits
+    Router->>Router: aggregate per route, calibrate, apply thresholds
+    Router->>User: RouteChoice(name, confidence, calibrated)
 ```
 
-1. An input arrives (text, an image).
-2. The encoder turns it into a vector.
-3. The router searches the index for similar route vectors.
-4. The best match above threshold is selected.
-5. The matched route comes back, ready for your handler.
-
-## Router types
+A `Chain` of an `IndexedRouter` and a `DecisionRouter`:
 
 ```mermaid
-classDiagram
-    class BaseRouter {
-        +__call__(query) -> RouteChoice
-        +acall(query) -> RouteChoice
-        +add(routes)
-        +route(query) -> RouteChoice
-    }
-    BaseRouter <|-- SemanticRouter
-    BaseRouter <|-- HybridRouter
+sequenceDiagram
+    participant User
+    participant Chain
+    participant Fast as IndexedRouter
+    participant Smart as DecisionRouter
+    User->>Chain: chain("query")
+    Chain->>Fast: score
+    Fast->>Chain: confidences
+    alt top confidence clears its bar
+        Chain->>User: RouteChoice from Fast
+    else not sure
+        Chain->>Smart: score
+        Smart->>Chain: probabilities
+        Chain->>User: RouteChoice from Smart
+    end
 ```
 
-- **SemanticRouter** — dense embeddings, pure semantic matching.
-- **HybridRouter** — dense *and* sparse, for better accuracy when exact keywords matter.
+## Sync and async
 
-## Putting it together
+The router logic is async all the way down. Every sync method (`__call__`, `fit`, `add`, ...) runs its async twin on one background event loop that all routers share. That keeps HTTP connections pooled between calls, so repeated calls to a remote encoder, index or decision model don't pay to reconnect. It also means sync calls work inside notebooks, which already run a loop.
 
-```python
-from semantic_router import Route, SemanticRouter
-from semantic_router.encoders import OpenAIEncoder
-
-# 1. Define routes
-weather_route = Route(name="weather", utterances=["What's the weather like?"])
-greeting_route = Route(name="greeting", utterances=["Hello there!", "Hi!"])
-
-# 2. Pick an encoder
-encoder = OpenAIEncoder()
-
-# 3. Build the router
-router = SemanticRouter(encoder=encoder, routes=[weather_route, greeting_route])
-
-# 4. Route a query
-result = router("What's the forecast for tomorrow?")
-print(result.name)  # "weather"
-```
+In async code, use the `a`-methods with `await`.
 
 ## Performance notes
 
-- **In-memory vs. vector DB** — pick by scale and latency needs.
-- **Encoder choice** — trade accuracy against speed for your use case.
-- **Batching** — use the batch methods for higher throughput.
-- **Async** — available for high-concurrency and network-heavy workloads.
+- **Encoding dominates.** For an `IndexedRouter`, nearly all of a call's time is embedding the query. A local encoder or a fast embedding API matters more than the index.
+- **Batch where you can.** `fit()` and `evaluate()` embed all their queries in one encoder call.
+- **A Chain pays only when it must.** Confident queries stop at the first router; only ambiguous ones pay for the decision model too.
+- **Warm up remote models.** The first call to a decision model can be much slower than the rest. Make one call at startup.
