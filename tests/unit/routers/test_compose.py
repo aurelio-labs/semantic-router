@@ -1,3 +1,5 @@
+import asyncio
+
 from semantic_router.route import Route
 from semantic_router.routers import Chain, Merge
 from semantic_router.routers.base import BaseRouter
@@ -79,3 +81,38 @@ def test_an_empty_pick_on_a_calibrated_router_says_calibrated():
     r = Canned({"a": 0.2, "b": 0.1}, probabilistic=True, confidence_threshold=0.9)
     choice = r("q")
     assert choice.name is None and choice.calibrated
+
+
+class Batched(BaseRouter):
+    """scores from a table per query, and records the size of every batch it is asked"""
+
+    def __init__(self, table, **kw):
+        super().__init__(ROUTES, **kw)
+        self.table, self.batches = table, []
+
+    async def _scores(self, query):
+        return dict(self.table[query])
+
+    async def _scores_many(self, queries):
+        self.batches.append(len(queries))
+        return [dict(self.table[q]) for q in queries]
+
+
+def test_chain_batches_and_only_passes_on_the_unsure_queries():
+    sure, unsure = {"a": 0.9, "b": 0.1}, {"a": 0.5, "b": 0.4}
+    first = Batched({"q1": sure, "q2": unsure, "q3": sure}, confidence_threshold=0.8)
+    second = Batched({q: {"a": 0.0, "b": 1.0} for q in ("q1", "q2", "q3")})
+    chain = Chain(routers=[first, second])
+    scored = asyncio.run(chain._scores_many(["q1", "q2", "q3"]))
+    assert first.batches == [3] and second.batches == [1]  # one batch each
+    assert [max(s, key=s.get) for s in scored] == ["a", "b", "a"]  # order kept
+    assert chain("q2").name == "b"  # a single query takes the same path
+
+
+def test_merge_scores_the_whole_batch_once_per_router():
+    one = Batched({"q1": {"a": 1.0, "b": 0.0}, "q2": {"a": 0.0, "b": 1.0}})
+    two = Batched({"q1": {"a": 1.0, "b": 0.0}, "q2": {"a": 0.0, "b": 1.0}})
+    merge = Merge(routers=[one, two])
+    scored = asyncio.run(merge._scores_many(["q1", "q2"]))
+    assert one.batches == [2] and two.batches == [2]
+    assert [max(s, key=s.get) for s in scored] == ["a", "b"]
