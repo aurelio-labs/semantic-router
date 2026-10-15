@@ -18,7 +18,7 @@ In version 1 the index holds your routes, and the router is a client of it:
 
 - **Building a router writes its routes to the index.** Each record's id comes from its route and utterance, so writing the same routes again changes nothing. Two processes can start up with the same routes and the index ends up the same.
 - **Passing `routes=` adds or updates, and never deletes.** Routes already in the index that aren't in your list stay there. Remove one with `router.remove(name=...)`.
-- **`router.routes` reads from the index**, so every router on that index sees the same routes, including ones another process added.
+- **`router.routes` is a view of the index.** The router fills it from the index when it's built, after its own `add()` and `remove()`, and whenever you refresh it. It never writes routes anywhere else. See [sharing an index](#sharing-an-index).
 
 There is no sync step, and no `auto_sync`: there's only one copy of your routes to keep right. (0.x kept a second copy in the router and reconciled the two. The [migration guide](../guides/migration-to-v1#sync-is-gone) covers moving off it.)
 
@@ -118,6 +118,29 @@ sorted(r.name for r in reader.routes)
 ```
 [Out]: ['politics', 'weather']
 ```
+
+Each router keeps its own cached copy of the route list, so routing a query never re-reads every route from the index. That read grows with the number of utterances, and on Pinecone it can take seconds. The cache fills when the router is built and after its own `add()` and `remove()`. Changes another router writes show up when you refresh:
+
+```python
+writer.add(routes=Route(name="greetings", utterances=["hello there", "hi, how are you?"]))
+
+reader.refresh()
+sorted(r.name for r in reader.routes)
+```
+
+```
+[Out]: ['greetings', 'politics', 'weather']
+```
+
+Use `await router.arefresh()` in async code. To pick up other writers' changes without calling it yourself, set `refresh_interval`, in seconds. When the cache is older than that, the next call re-reads the routes while it embeds the query:
+
+```python
+reader = IndexedRouter(encoder=encoder, index=shared, refresh_interval=60)
+```
+
+With the default, `refresh_interval=None`, a call never reads routes from the index.
+
+The search itself always runs against the index, so a stale cache doesn't hide stored utterances from it. What the cache holds is the route list (`router.routes`) and each route's settings, such as its `confidence_threshold`. So refresh when another writer changes routes' settings, not just their utterances.
 
 Every router on a shared index must use the same encoder: the stored vectors only mean something to the model that made them.
 

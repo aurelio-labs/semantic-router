@@ -47,6 +47,7 @@ The constructor embeds the utterances and writes them to the index before it ret
 |---|---|---|
 | `encoder` | required | The dense encoder that embeds utterances and queries. |
 | `routes` | none | Routes to write to the index. Leave it out to use the routes already in the index. |
+| `refresh_interval` | `None` | Seconds before the router re-reads its routes from the index on the next call, to see other writers' changes. `None` never re-reads; call `refresh()` instead. See [sharing an index](indexes#sharing-an-index). |
 | `index` | in memory | Where the vectors live: `LocalIndex`, `PineconeIndex`, `QdrantIndex`, `PostgresIndex`, ... See [indexes](indexes). |
 | `sparse_encoder` | `None` | Set it to make the router hybrid (below). |
 | `alpha` | `0.7` | Hybrid only: the weight on the dense score; the sparse score gets `1 - alpha`. |

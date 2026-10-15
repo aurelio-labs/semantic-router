@@ -87,7 +87,7 @@ See [encoders](../components/encoders).
 
 ### Indexes
 
-Indexes store utterance vectors and search them. The index is the single source of truth for an `IndexedRouter`'s routes: building a router writes to it, and `router.routes` reads from it.
+Indexes store utterance vectors and search them. The index is the single source of truth for an `IndexedRouter`'s routes: building a router writes to it, and `router.routes` is a cached view of it, which `refresh()` re-reads.
 
 ```mermaid
 classDiagram
