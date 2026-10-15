@@ -6,7 +6,7 @@ import pytest
 
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.v2 import Chain, DecisionRouter, IndexedRouter, noul
+from semantic_router.routers import Chain, DecisionRouter, IndexedRouter, noul
 
 ROUTES = [
     Route(
@@ -97,8 +97,8 @@ def test_chain_semantic_then_decision():
     fast = IndexedRouter(OpenAIEncoder(), ROUTES, confidence_threshold=0.9)
     slow = DecisionRouter(ROUTES)
     try:
-        assert Chain(fast, slow)("how do i export everything before i leave").name in {
-            r.name for r in ROUTES
-        }
+        assert Chain(routers=[fast, slow])(
+            "how do i export everything before i leave"
+        ).name in {r.name for r in ROUTES}
     finally:
         slow.close()

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from semantic_router.v2.calibration import Calibrator, ece
+from semantic_router.calibration import Calibrator, ece
 
 
 def _sample(n: int = 600, seed: int = 0):

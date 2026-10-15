@@ -35,7 +35,6 @@ ollama = ["ollama>=0.1.7"]
 local = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
-    "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]

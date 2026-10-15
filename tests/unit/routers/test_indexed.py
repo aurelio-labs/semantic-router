@@ -6,7 +6,7 @@ import pytest
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.route import Route
-from semantic_router.v2 import IndexedRouter
+from semantic_router.routers import IndexedRouter
 
 # each keyword owns an axis, so "refund" is near "charged" and far from "crash"
 AXES = {
@@ -111,7 +111,7 @@ def test_hybrid_router_rebuilds_sparse_index_on_add():
 
 
 def test_sync_call_from_inside_the_router_loop_fails_loudly(router):
-    from semantic_router.v2 import base
+    from semantic_router.routers import base
 
     async def naughty():
         return router("refund")  # sync call on the loop that must run it
@@ -141,7 +141,7 @@ def test_an_empty_qdrant_index_passed_in_is_the_one_used():
     pytest.importorskip("qdrant_client")
     from semantic_router.index import QdrantIndex
 
-    idx = QdrantIndex(index_name=f"v2-{uuid4().hex[:8]}", dimensions=3)  # in memory
+    idx = QdrantIndex(index_name=f"v1-{uuid4().hex[:8]}", dimensions=3)  # in memory
     r = IndexedRouter(FakeEncoder(), ROUTES, index=idx)
     assert r.index is idx
     assert len(idx) == 6
@@ -165,7 +165,8 @@ def test_remove_refits_with_the_removed_routes_queries_as_no_route(router):
 
 
 def test_a_route_change_drops_a_calibrator_it_cannot_refit(monkeypatch):
-    from semantic_router.v2 import Calibrator, base
+    from semantic_router.calibration import Calibrator
+    from semantic_router.routers import base
 
     warned: list[str] = []
     monkeypatch.setattr(base.logger, "warning", warned.append)
@@ -177,10 +178,61 @@ def test_a_route_change_drops_a_calibrator_it_cannot_refit(monkeypatch):
 
 
 def test_fit_warns_when_training_on_stored_utterances(router, monkeypatch):
-    from semantic_router.v2 import indexed
+    from semantic_router.routers import indexed
 
     warned: list[str] = []
     monkeypatch.setattr(indexed.logger, "warning", warned.append)
     X = ["refund please", "app crash", "hello"]  # first two are stored utterances
     router.fit(X, ["billing", "technical", None])
     assert warned and "2/3 training queries are stored utterances" in warned[0]
+
+
+def test_a_route_bar_overrides_the_router_bar():
+    strict = [
+        Route(name="billing", utterances=["refund please"], confidence_threshold=0.99),
+        Route(name="technical", utterances=["app crash"]),
+    ]
+    r = IndexedRouter(encoder=FakeEncoder(), routes=strict, confidence_threshold=0.5)
+    # "refund crash" sits halfway: 0.71 to each route, under billing's own 0.99 bar
+    assert r("refund crash").name == "technical"
+    assert r("refund").name == "billing"  # 1.0 clears it
+
+
+def test_a_per_call_threshold_wins_over_route_and_router_bars():
+    strict = [Route(name="billing", utterances=["refund"], confidence_threshold=0.99)]
+    r = IndexedRouter(encoder=FakeEncoder(), routes=strict, confidence_threshold=0.99)
+    assert r("refund crash", threshold=0.5).name == "billing"
+
+
+def test_add_takes_one_route_or_a_list(router):
+    router.add(routes=Route(name="support", utterances=["call a human"]))
+    router.add(routes=[Route(name="other", utterances=["speak to a person"])])
+    assert [r.name for r in router.routes] == [
+        "billing",
+        "technical",
+        "support",
+        "other",
+    ]
+
+
+def test_route_level_fields_are_stored_on_every_record():
+    routes = [
+        Route(
+            name="billing",
+            utterances=["refund please", "charged twice"],
+            description="money owed",
+            confidence_threshold=0.9,
+            metadata={"team": "finance"},
+        ),
+        Route(name="technical", utterances=["app crash"]),
+    ]
+    r = IndexedRouter(encoder=FakeEncoder(), routes=routes)
+    meta = {
+        u.utterance: u.metadata for u in r.index.get_utterances(include_metadata=True)
+    }
+    assert meta["charged twice"] == {
+        "team": "finance",
+        "sr_description": "money owed",
+        "sr_confidence_threshold": 0.9,
+    }
+    assert meta["app crash"] == {}  # unset fields are left out, not stored as None

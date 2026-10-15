@@ -7,6 +7,7 @@ from typing import Callable, Literal, Sequence
 
 import numpy as np
 
+from semantic_router.calibration import Calibrator, Method
 from semantic_router.encoders import DenseEncoder, SparseEncoder
 from semantic_router.encoders.base import (
     AsymmetricDenseMixin,
@@ -15,10 +16,9 @@ from semantic_router.encoders.base import (
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
 from semantic_router.route import Route
+from semantic_router.routers.base import BaseRouter, FitReport
 from semantic_router.schema import SparseEmbedding
 from semantic_router.utils.logger import logger
-from semantic_router.v2.base import BaseRouter, FitReport
-from semantic_router.v2.calibration import Calibrator, Method
 
 Kind = Literal["queries", "documents"]
 Aggregation = Literal["mean", "max", "sum"]
@@ -56,6 +56,16 @@ async def _aencode(
         return await asyncio.to_thread(_encode, enc, texts, kind)
 
 
+def _record_metadata(route: Route) -> dict:
+    # route-level fields ride on every record, so the index alone can rebuild the route
+    meta = dict(route.metadata)
+    if route.description is not None:
+        meta["sr_description"] = route.description
+    if route.confidence_threshold is not None:
+        meta["sr_confidence_threshold"] = route.confidence_threshold
+    return meta
+
+
 class IndexedRouter(BaseRouter):
     def __init__(
         self,
@@ -86,18 +96,20 @@ class IndexedRouter(BaseRouter):
 
     def _index(self, routes: list[Route]) -> None:
         names = [r.name for r in routes for _ in r.utterances]
-        texts = [str(u) for r in routes for u in r.utterances]
-        if not texts:
+        # encoders get the utterances as given (images for multimodal routes), the index text
+        items = [u for r in routes for u in r.utterances]
+        if not items:
             return
         sparse = (
-            _encode(self.sparse_encoder, texts, "documents")
+            _encode(self.sparse_encoder, items, "documents")
             if self.sparse_encoder
             else None
         )
         self.index.add(
-            embeddings=_encode(self.encoder, texts, "documents"),
+            embeddings=_encode(self.encoder, items, "documents"),
             routes=names,
-            utterances=texts,
+            utterances=[str(u) for u in items],
+            metadata_list=[_record_metadata(r) for r in routes for _ in r.utterances],
             sparse_embeddings=sparse,
         )
 

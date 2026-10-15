@@ -4,7 +4,7 @@ import json
 import pytest
 
 from semantic_router.route import Route
-from semantic_router.v2 import DecisionRouter, choice, noul
+from semantic_router.routers import DecisionRouter, choice, noul
 
 ROUTES = [
     Route(name="billing", utterances=[], description="money already paid or owed"),

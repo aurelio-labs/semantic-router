@@ -57,13 +57,18 @@ uv run jupyter notebook docs/00-introduction.ipynb
 
 1. **Routes** (`semantic_router/route.py`)
    - Basic unit of routing logic
-   - Contains name, utterances, optional function schemas and LLM
-   - Supports both static (simple matching) and dynamic (parameter extraction) routes
+   - Contains name, utterances, description, an optional route-level
+     `confidence_threshold`, and metadata
 
 2. **Routers** (`semantic_router/routers/`)
-   - `BaseRouter`: Abstract base with core routing logic, training, and sync
-   - `SemanticRouter`: Standard dense embedding-based router
-   - `HybridRouter`: Combines dense and sparse embeddings for better accuracy
+   - `BaseRouter`: the contract. Subclasses implement `_scores(query)`; calling,
+     thresholds, `fit`/`evaluate` (calibration) and `add`/`remove` are shared
+   - `IndexedRouter`: encoder + index; pass a `sparse_encoder` to make it hybrid
+   - `DecisionRouter`: asks a System One decision model (TypeSafe Jev) over HTTP
+   - `Chain` / `Merge`: routers made of routers (sequential fall-through, or a
+     weighted mean of confidences)
+   - Calibration (`semantic_router/calibration.py`) turns raw scores into
+     probabilities, so `confidence_threshold` means what it says
 
 3. **Encoders** (`semantic_router/encoders/`)
    - `DenseEncoder`: Base class for semantic embeddings (OpenAI, Cohere, HuggingFace, etc.)
@@ -78,14 +83,14 @@ uv run jupyter notebook docs/00-introduction.ipynb
 
 ### Data Flow
 ```
-User Query → Router → Encoder → Embeddings → Index → Similarity Search → Route Selection → Response
+User Query → Router._scores (Encoder → Index, or a decision model) → Calibrator → Threshold → RouteChoice
 ```
 
 ### Key Patterns
 - **Strategy Pattern**: Swappable encoders and indexes
 - **Template Method**: BaseRouter defines algorithm, subclasses implement specifics
 - **Async Support**: Full async/await support throughout
-- **Configuration**: Routes can be imported/exported as JSON/YAML
+- **Index as source of truth**: routers upsert records with deterministic ids; there is no sync step
 
 ## Important Considerations
 
@@ -111,10 +116,12 @@ User Query → Router → Encoder → Embeddings → Index → Similarity Search
 2. The project supports Python 3.10-3.13, some features are disabled for 3.13+ due to dependency constraints
 3. Local models require the `[local]` extra: `pip install "semantic-router[local]"`
 4. Hybrid routing requires the `[hybrid]` extra
-5. When working with indexes, be aware of synchronization between local and remote states
+5. Fit calibration on held-out queries, never on the stored utterances (they match themselves at ~1.0)
+6. In docs and examples, always pass parameters by keyword
 
 ### Performance Considerations
 - Route encoding happens once during initialization
 - Query encoding happens on every request
-- Use `auto_sync="local"` for better performance when routes don't change frequently
-- HybridRouter is more accurate but slightly slower than SemanticRouter
+- A hybrid `IndexedRouter` is more accurate but slightly slower than a dense one
+- A `Chain` of an `IndexedRouter` and a `DecisionRouter` only pays for the decision
+  model on queries the index isn't confident about

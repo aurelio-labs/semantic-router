@@ -43,53 +43,12 @@ class EncoderInfo(BaseModel):
 
 
 class RouteChoice(BaseModel):
-    """A route choice typically output by the routers."""
+    """A route choice output by the routers."""
 
     name: Optional[str] = None
-    function_call: Optional[List[Dict]] = None
-    similarity_score: Optional[float] = None
-    # v2 routers: the confidence behind the choice, and whether it is a probability
+    # the confidence behind the choice, and whether it is a probability
     confidence: Optional[float] = None
     calibrated: bool = False
-
-
-class Message(BaseModel):
-    """A message in a conversation, includes the role and content fields."""
-
-    role: str
-    content: str
-
-    def to_openai(self):
-        """Convert the message to an OpenAI-compatible format."""
-        if self.role.lower() not in ["user", "assistant", "system", "tool"]:
-            raise ValueError(
-                "Role must be either 'user', 'assistant', 'system' or 'tool'"
-            )
-        return {"role": self.role, "content": self.content}
-
-    def to_cohere(self):
-        """Convert the message to a Cohere-compatible format."""
-        return {"role": self.role, "message": self.content}
-
-    def to_llamacpp(self):
-        """Convert the message to a LlamaCPP-compatible format."""
-        return {"role": self.role, "content": self.content}
-
-    def to_mistral(self):
-        """Convert the message to a Mistral-compatible format."""
-        return {"role": self.role, "content": self.content}
-
-    def to_voyage(self):
-        """Convert the message to a Voyage-compatible format."""
-        return {"role": self.role, "content": self.content}
-
-    def to_jina(self):
-        """Convert the message to a Jina-compatible format."""
-        return {"role": self.role, "content": self.content}
-
-    def __str__(self):
-        """Convert the message to a string."""
-        return f"{self.role}: {self.content}"
 
 
 class ConfigParameter(BaseModel):

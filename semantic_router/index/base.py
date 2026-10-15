@@ -149,7 +149,6 @@ class BaseIndex(BaseModel):
                 routes_dict[utt.route] = Route(
                     name=utt.route,
                     utterances=[utt.utterance],
-                    function_schemas=utt.function_schemas,
                     metadata=utt.metadata,
                 )
             else:

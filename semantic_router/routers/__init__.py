@@ -1,10 +1,16 @@
-from semantic_router.routers.base import BaseRouter, RouterConfig
-from semantic_router.routers.hybrid import HybridRouter
-from semantic_router.routers.semantic import SemanticRouter
+from semantic_router.routers.base import BaseRouter, FitReport
+from semantic_router.routers.compose import Chain, Merge
+from semantic_router.routers.decision import DecisionRouter, choice, noul, score
+from semantic_router.routers.indexed import IndexedRouter
 
 __all__ = [
     "BaseRouter",
-    "RouterConfig",
-    "SemanticRouter",
-    "HybridRouter",
+    "FitReport",
+    "IndexedRouter",
+    "DecisionRouter",
+    "Chain",
+    "Merge",
+    "choice",
+    "noul",
+    "score",
 ]

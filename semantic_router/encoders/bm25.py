@@ -48,7 +48,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
        therefore L1-normalize the query weights and scale them by
        `1 / (k1 + 1)`, which bounds the query·document dot product to [0, 1] --
        the same range as the cosine similarity returned by the dense encoders,
-       so the two can be blended in `HybridRouter` and thresholded alike.
+       so the two can be blended in a hybrid `IndexedRouter` and thresholded alike.
 
        This is ranking-neutral within a query (it is a single positive constant
        per query) but it does discard cross-query IDF magnitude: two queries
@@ -269,7 +269,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         # `encode_documents` returns values in (0, k1 + 1] (it keeps the paper's
         # `(k1 + 1)` numerator), so the dot product of the two is bounded to
         # [0, 1] -- the same range as the cosine similarity produced by the
-        # dense encoders. That lets `HybridRouter` blend the two and lets one
+        # dense encoders. That lets a hybrid `IndexedRouter` blend the two and lets one
         # threshold apply to both. Without the `k1 + 1` divisor the sparse score
         # would reach `k1 + 1` (2.5 at the default `k1`) and would dominate the
         # dense component of the hybrid score.

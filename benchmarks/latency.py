@@ -1,6 +1,6 @@
-"""latency of every v2 path, measured against the real apis. prints a table and writes json.
+"""latency of every v1 router path, measured against the real apis. prints a table and writes json.
 
-usage: uv run python benchmarks/v2_latency.py [--n 20]
+usage: uv run python benchmarks/latency.py [--n 20]
 cost: ~n*8 jev calls at ~450 tokens and n*3 openai embeds; well under a cent at n=20.
 """
 
@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.v2 import Chain, DecisionRouter, IndexedRouter, noul
+from semantic_router.routers import Chain, DecisionRouter, IndexedRouter, noul
 
 load_dotenv(Path(__file__).parents[1] / ".env")
 
@@ -218,7 +218,7 @@ async def main(n: int) -> None:
         f"\ncalibrated indexed router: accuracy {report.accuracy:.2f}, ece {report.ece:.3f}, n={report.n}"
     )
     fast.confidence_threshold = 0.85
-    chain = Chain(fast, decision)
+    chain = Chain(routers=[fast, decision])
     rows.append(
         row(
             "chain (calibrated): confident, stops at indexed",
@@ -240,7 +240,7 @@ async def main(n: int) -> None:
         print(
             f"{r['name']:58} {r['p50']:8.1f} {r['p95']:8.1f} {r['min']:8.1f} {r['max']:8.1f}"
         )
-    out = Path(__file__).parent / "results" / "v2_latency.json"
+    out = Path(__file__).parent / "results" / "latency.json"
     out.write_text(json.dumps({"n": n, "rows": rows}, indent=1))
     print(f"\nwrote {out}")
 

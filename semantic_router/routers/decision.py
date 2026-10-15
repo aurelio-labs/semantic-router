@@ -9,9 +9,9 @@ from typing import Sequence
 
 import aiohttp
 
+from semantic_router.calibration import Calibrator
 from semantic_router.route import Route
-from semantic_router.v2.base import BaseRouter, run
-from semantic_router.v2.calibration import Calibrator
+from semantic_router.routers.base import BaseRouter, run
 
 Question = dict[str, object]
 Answer = dict[str, object]
