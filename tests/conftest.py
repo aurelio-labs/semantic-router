@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import pytest
 
 # Env var -> tests that need it are skipped when it is unset.
-LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY")
+LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY", "JEV_API_KEY")
 
 
 def _reachable(host: str, port: int, timeout: float = 1.0) -> bool:

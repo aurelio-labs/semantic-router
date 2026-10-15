@@ -48,6 +48,9 @@ class RouteChoice(BaseModel):
     name: Optional[str] = None
     function_call: Optional[List[Dict]] = None
     similarity_score: Optional[float] = None
+    # v2 routers: the confidence behind the choice, and whether it is a probability
+    confidence: Optional[float] = None
+    calibrated: bool = False
 
 
 class Message(BaseModel):

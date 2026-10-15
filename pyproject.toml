@@ -101,6 +101,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["I", "E501", "T201", "F404"]
+"benchmarks/*" = ["T201"]  # scripts report to stdout on purpose
 
 [tool.ruff]
 line-length = 88

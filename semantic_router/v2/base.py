@@ -1,0 +1,165 @@
+"""the routing contract. a router scores every route for a query; everything else is shared."""
+
+from __future__ import annotations
+
+import asyncio
+import threading
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Coroutine, Sequence, TypeVar
+
+import numpy as np
+
+from semantic_router.route import Route
+from semantic_router.schema import RouteChoice
+from semantic_router.v2.calibration import Calibrator, Method, ece
+
+T = TypeVar("T")
+
+
+_loop: asyncio.AbstractEventLoop | None = None
+
+
+def run(coro: Coroutine[object, object, T]) -> T:
+    """run a coroutine from sync code, including from inside a running loop (notebooks).
+
+    every sync call shares one background loop, so pooled connections survive between calls
+    instead of being torn down with a fresh `asyncio.run` each time.
+    """
+    global _loop
+    try:
+        running: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+    if _loop is not None and running is _loop:
+        coro.close()
+        raise RuntimeError(
+            "use `await` here: a sync call from inside the router loop would deadlock"
+        )
+    if _loop is None:
+        _loop = asyncio.new_event_loop()
+        threading.Thread(
+            target=_loop.run_forever, name="semantic-router", daemon=True
+        ).start()
+    return asyncio.run_coroutine_threadsafe(coro, _loop).result()
+
+
+@dataclass(frozen=True)
+class FitReport:
+    method: str
+    n: int
+    accuracy: float  # top-1 accuracy on queries that have a route, before any threshold
+    ece: float  # calibration error of the stated confidences
+
+
+class BaseRouter(ABC):
+    # true when raw scores are already probabilities (system one models)
+    probabilistic = False
+    concurrency = 8  # cap on in-flight requests when scoring many queries
+
+    def __init__(
+        self,
+        routes: Sequence[Route],
+        confidence_threshold: float | None = None,
+        calibrator: Calibrator | None = None,
+    ):
+        self.routes = list(routes)
+        self.confidence_threshold = confidence_threshold
+        self.calibrator = calibrator
+
+    @abstractmethod
+    async def _scores(self, query: str) -> dict[str, float]:
+        """raw score for every route, higher means more likely."""
+
+    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        # default fans out with a concurrency cap; indexed routers override to batch-embed
+        sem = asyncio.Semaphore(self.concurrency)
+
+        async def one(q: str) -> dict[str, float]:
+            async with sem:
+                return await self._scores(q)
+
+        return list(await asyncio.gather(*(one(q) for q in queries)))
+
+    @property
+    def calibrated(self) -> bool:
+        return self.calibrator is not None or self.probabilistic
+
+    def _probs(self, scores: dict[str, float]) -> dict[str, float]:
+        # confidence per route: calibrated if we can, raw otherwise
+        if self.calibrator is None:
+            return scores
+        names = list(scores)
+        p = self.calibrator(np.array([scores[n] for n in names]))
+        return dict(zip(names, map(float, p)))
+
+    def _choose(
+        self, scores: dict[str, float], limit: int | None, threshold: float | None
+    ) -> RouteChoice | list[RouteChoice]:
+        bar = self.confidence_threshold if threshold is None else threshold
+        ranked = sorted(self._probs(scores).items(), key=lambda kv: kv[1], reverse=True)
+        picks = [
+            RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
+            for n, c in ranked
+            if bar is None or c >= bar
+        ][:limit]
+        if limit == 1:
+            return picks[0] if picks else RouteChoice()
+        return picks
+
+    async def acall(
+        self, query: str, limit: int | None = 1, threshold: float | None = None
+    ) -> RouteChoice | list[RouteChoice]:
+        return self._choose(await self._scores(query), limit, threshold)
+
+    def __call__(
+        self, query: str, limit: int | None = 1, threshold: float | None = None
+    ) -> RouteChoice | list[RouteChoice]:
+        return run(self.acall(query, limit, threshold))
+
+    async def afit(
+        self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
+    ) -> FitReport:
+        """calibrate on labelled queries. a label of None means no route should match."""
+        scored = await self._scores_many(X)
+        top = [max(s, key=lambda k: s[k]) for s in scored]
+        raw = np.array([s[t] for s, t in zip(scored, top)])
+        correct = np.array([t == truth for t, truth in zip(top, y)], dtype=float)
+        self.calibrator = Calibrator.fit(raw, correct, method)
+        # accuracy over queries that have a route; a None label can only ever be a miss here
+        labelled = np.array([truth is not None for truth in y])
+        acc = float(correct[labelled].mean()) if labelled.any() else float("nan")
+        return FitReport(method, len(X), acc, ece(self.calibrator(raw), correct))
+
+    def fit(
+        self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
+    ) -> FitReport:
+        return run(self.afit(X, y, method))
+
+    async def aevaluate(self, X: Sequence[str], y: Sequence[str | None]) -> float:
+        """end-to-end accuracy with the threshold applied; None labels are right when nothing passes."""
+        picks = [self._choose(s, 1, None) for s in await self._scores_many(X)]
+        return float(np.mean([getattr(p, "name", None) == t for p, t in zip(picks, y)]))
+
+    def evaluate(self, X: Sequence[str], y: Sequence[str | None]) -> float:
+        return run(self.aevaluate(X, y))
+
+    async def aadd(self, *routes: Route) -> None:
+        self.routes.extend(routes)
+        await self._on_add(list(routes))
+
+    def add(self, *routes: Route) -> None:
+        run(self.aadd(*routes))
+
+    async def aremove(self, name: str) -> None:
+        self.routes = [r for r in self.routes if r.name != name]
+        await self._on_remove(name)
+
+    def remove(self, name: str) -> None:
+        run(self.aremove(name))
+
+    async def _on_add(self, routes: list[Route]) -> None:
+        """hook for routers that keep state per route (an index)."""
+
+    async def _on_remove(self, name: str) -> None:
+        """hook for routers that keep state per route (an index)."""
