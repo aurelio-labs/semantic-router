@@ -58,10 +58,9 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
             raise TypeError("`routes` parameter must be a list of Route objects.")
 
     def _build_word_index(self, docs: List[str]) -> Dict:
-        words = set()
-        for doc in docs:
-            for word in doc.split():
-                words.add(word)
+        # sorted, so a word gets the same id in every process (set order depends
+        # on PYTHONHASHSEED, and ids stored in a remote index must stay valid)
+        words = sorted({word for doc in docs for word in doc.split()})
         word_index = {word: i for i, word in enumerate(words)}
         return word_index
 
@@ -74,8 +73,9 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
             for word, count in word_counts.items():
                 if word in self.word_index:
                     tf[i, self.word_index[word]] = count
-        # L2 normalization
-        tf = tf / np.linalg.norm(tf, axis=1, keepdims=True)
+        # L2 normalization; a doc with no words in the index stays all zero
+        norms = np.linalg.norm(tf, axis=1, keepdims=True)
+        tf = np.divide(tf, norms, out=np.zeros_like(tf), where=norms != 0)
         return tf
 
     def _compute_idf(self, docs: List[str]) -> np.ndarray:
