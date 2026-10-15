@@ -198,27 +198,72 @@ def test_a_router_on_a_filled_index_needs_no_routes(index, encoder, make_index):
     assert second("don't you love politics?").name == "politics"
 
 
-def test_routes_another_router_adds_show_up(index, encoder, make_index):
-    first = make_router(index, encoder)
-    sparse = {"sparse_encoder": first.sparse_encoder} if first.sparse_encoder else {}
-    second = make_router(second_handle(index, make_index), encoder, **sparse)
-
-    first.add(routes=BILLING)
-
-    assert "billing" in {r.name for r in second.routes}
-    assert second("I'd like my money back").name == "billing"
+def writer_and_reader(index, encoder, make_index, **kwargs):
+    """two routers on one index, as two processes would share it"""
+    writer = make_router(index, encoder)
+    sparse = {"sparse_encoder": writer.sparse_encoder} if writer.sparse_encoder else {}
+    reader = make_router(second_handle(index, make_index), encoder, **sparse, **kwargs)
+    return writer, reader
 
 
-def test_fit_and_evaluate(index, encoder, request):
-    if isinstance(index, HybridLocalIndex):
-        request.applymarker(
-            pytest.mark.xfail(
-                strict=True,
-                reason="at the default alpha=0.3, TF-IDF carries 70% of the score and is "
-                "too noisy on this small corpus (raw top-1 4/6; 6/6 from alpha=0.7). "
-                "the default alpha is an open question in thread 10714",
-            )
-        )
+def test_another_routers_route_shows_up_after_refresh(index, encoder, make_index):
+    writer, reader = writer_and_reader(index, encoder, make_index)
+    writer.add(routes=BILLING)
+
+    # the reader's routes are a cache of the index, filled when it last read it
+    assert "billing" not in {r.name for r in reader.routes}
+    reader.refresh()
+    billing = {r.name: r for r in reader.routes}["billing"]
+    assert billing.confidence_threshold == 0.2
+
+
+@pytest.mark.asyncio
+async def test_arefresh_reads_the_index_again(index, encoder, make_index):
+    writer, reader = writer_and_reader(index, encoder, make_index)
+    writer.add(routes=BILLING)
+
+    await reader.arefresh()
+
+    assert "billing" in {r.name for r in reader.routes}
+
+
+def test_refresh_interval_zero_rereads_on_every_call(index, encoder, make_index):
+    writer, reader = writer_and_reader(index, encoder, make_index, refresh_interval=0)
+    writer.add(routes=BILLING)
+
+    assert reader("I'd like my money back").name == "billing"
+    assert "billing" in {r.name for r in reader.routes}
+
+
+def test_a_query_finds_a_route_that_is_not_cached_yet(index, encoder, make_index):
+    writer, reader = writer_and_reader(index, encoder, make_index)
+    writer.add(routes=BILLING)
+
+    # the search runs against the index, so the new route comes back before a refresh;
+    # the cache only supplies the route list and each route's settings
+    assert reader("I'd like my money back").name == "billing"
+    assert "billing" not in {r.name for r in reader.routes}
+
+
+@pytest.mark.parametrize("refresh_interval", [None, 3600.0])
+@pytest.mark.asyncio
+async def test_a_call_reads_no_routes_while_the_cache_is_fresh(
+    index, encoder, mocker, refresh_interval
+):
+    router = make_router(index, encoder, refresh_interval=refresh_interval)
+    reads = [
+        mocker.spy(BaseIndex, "get_routes"),
+        mocker.spy(BaseIndex, "aget_routes"),
+    ]
+
+    router("don't you love politics?")
+    await router.acall("how's the weather today?")
+    router("tell me about the election", limit=None)
+
+    assert [spy.call_count for spy in reads] == [0, 0]
+
+
+def test_fit_and_evaluate(index, encoder):
     router = make_router(index, encoder)
     X = [
         "what do you think about the government",

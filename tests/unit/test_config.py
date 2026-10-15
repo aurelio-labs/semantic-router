@@ -56,6 +56,9 @@ def offline(monkeypatch, mocker):
         monkeypatch.setenv(k, v)
     mocker.patch.object(OpenAIEncoder, "__call__", fake_embed)
     mocker.patch.object(OpenAIEncoder, "acall", fake_aembed)
+    # a router reads its routes from the index once it's built; these postgres indexes
+    # hold fake credentials, so stand in an empty table for that read
+    mocker.patch.object(PostgresIndex, "get_routes", return_value=[])
 
 
 ROUTES = [
@@ -80,6 +83,7 @@ def indexed():
         aggregation="max",
         confidence_threshold=0.5,
         calibrator=CALIBRATOR,
+        refresh_interval=30.0,
     )
 
 

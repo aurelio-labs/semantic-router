@@ -162,12 +162,13 @@ class IndexedConfig(_Strict):
     router_type: Literal["indexed"] = "indexed"
     encoder: EncoderConfig
     sparse_encoder: EncoderConfig | None = None
-    alpha: float = 0.3
+    alpha: float = 0.7
     top_k: int = 5
     aggregation: Aggregation = "mean"
     index: IndexConfig = IndexConfig()
     confidence_threshold: float | None = None
     calibrator: CalibratorConfig | None = None
+    refresh_interval: float | None = None
     # None when the index holds the routes; a file then has no routes key at all
     routes: list[Route] | None = None
 
@@ -239,6 +240,7 @@ def to_config(router: BaseRouter) -> RouterConfig:
             index=_index_config(router.index),
             confidence_threshold=router.confidence_threshold,
             calibrator=calibrator,
+            refresh_interval=router.refresh_interval,
             # read the routes only from an index that keeps nothing between runs
             routes=None if _persists(router.index) else _routes(router),
         )
@@ -302,6 +304,7 @@ def from_config(config: RouterConfig | dict[str, Any]) -> BaseRouter:
             aggregation=cfg.aggregation,
             confidence_threshold=cfg.confidence_threshold,
             calibrator=calibrator,
+            refresh_interval=cfg.refresh_interval,
         )
     if isinstance(cfg, DecisionConfig):
         return DecisionRouter(
