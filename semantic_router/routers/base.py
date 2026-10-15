@@ -46,6 +46,18 @@ def run(coro: Coroutine[object, object, T]) -> T:
     return asyncio.run_coroutine_threadsafe(coro, _loop).result()
 
 
+def in_sync_call() -> bool:
+    """true while a sync method's coroutine runs on the shared background loop.
+
+    routers use their clients' sync APIs there: an async client used on that loop binds
+    to it, and then fails when the caller later awaits on a loop of their own.
+    """
+    try:
+        return asyncio.get_running_loop() is _loop
+    except RuntimeError:
+        return False
+
+
 @dataclass(frozen=True)
 class FitReport:
     method: str

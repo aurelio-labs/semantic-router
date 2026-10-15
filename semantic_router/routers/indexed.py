@@ -17,7 +17,7 @@ from semantic_router.encoders.base import (
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter, FitReport
+from semantic_router.routers.base import BaseRouter, FitReport, in_sync_call
 from semantic_router.schema import SparseEmbedding
 from semantic_router.utils.logger import logger
 
@@ -44,6 +44,10 @@ def _encode(enc: DenseEncoder | SparseEncoder, texts: list[str], kind: Kind) -> 
 async def _aencode(
     enc: DenseEncoder | SparseEncoder, texts: list[str], kind: Kind
 ) -> list:
+    if in_sync_call():
+        # a sync call: use the encoder's sync client, so its async one never binds to
+        # the shared loop
+        return await asyncio.to_thread(_encode, enc, texts, kind)
     try:
         if isinstance(enc, (AsymmetricDenseMixin, AsymmetricSparseMixin)):
             return await (
@@ -143,7 +147,13 @@ class IndexedRouter(BaseRouter):
 
     async def arefresh(self) -> None:
         """re-read the routes from the index, picking up other writers' changes."""
-        self._fill(await self.index.aget_routes())
+        self._fill(await self._aget_routes())
+
+    async def _aget_routes(self) -> list[Route]:
+        # a sync call uses the index's sync client (see in_sync_call)
+        if in_sync_call():
+            return await asyncio.to_thread(self.index.get_routes)
+        return await self.index.aget_routes()
 
     def _fill(self, routes: list[Route]) -> None:
         # one assignment, so a concurrent call sees either the old routes or the new
@@ -189,14 +199,17 @@ class IndexedRouter(BaseRouter):
             # stored sparse vector stale; the only correct move is to refit and rebuild.
             # read every stored route fresh before deleting the index, which is where
             # they live
-            routes = _merge(await self.index.aget_routes(), routes)
+            routes = _merge(await self._aget_routes(), routes)
             self.sparse_encoder.fit(routes)
             self.index.delete_index()
         await asyncio.to_thread(self._index, routes)
         await self.arefresh()
 
     async def _on_remove(self, name: str) -> None:
-        await self.index.adelete(name)
+        if in_sync_call():
+            await asyncio.to_thread(self.index.delete, name)
+        else:
+            await self.index.adelete(name)
         await self.arefresh()
 
     async def _query(
@@ -209,9 +222,14 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-        scores, names = await self.index.aquery(
-            vector=vec, top_k=self.top_k, sparse_vector=sparse
-        )
+        if in_sync_call():
+            scores, names = await asyncio.to_thread(
+                self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
+            )
+        else:
+            scores, names = await self.index.aquery(
+                vector=vec, top_k=self.top_k, sparse_vector=sparse
+            )
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}

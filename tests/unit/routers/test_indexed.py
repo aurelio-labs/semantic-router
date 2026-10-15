@@ -234,3 +234,37 @@ def test_route_level_fields_are_stored_on_every_record():
         "sr_confidence_threshold": 0.9,
     }
     assert meta["app crash"] == {}  # unset fields are left out, not stored as None
+
+
+# an async client that, like httpx or anyio, binds to the first loop that uses it
+_BOUND: dict[int, asyncio.AbstractEventLoop] = {}
+
+
+class LoopBoundEncoder(FakeEncoder):
+    async def acall(self, docs):
+        loop = asyncio.get_running_loop()
+        if _BOUND.setdefault(id(self), loop) is not loop:
+            raise RuntimeError("bound to a different event loop")
+        return self(docs)
+
+
+def test_sync_calls_leave_async_clients_free_for_the_callers_loop():
+    r = IndexedRouter(encoder=LoopBoundEncoder(), routes=ROUTES)
+    # sync calls run on the shared background loop; they must not bind the async client
+    assert r("refund").name == "billing"
+    r.fit(X_FIT, Y_FIT)
+    assert r.evaluate(["refund"], ["billing"]) == 1.0
+    # the caller's own loop is then the first to use it, so this works
+    assert asyncio.run(r.acall("refund")).name == "billing"
+
+
+def test_sync_calls_use_the_index_sync_api(router, monkeypatch):
+    async def boom(*args, **kwargs):
+        raise AssertionError("a sync call used the index's async API")
+
+    for name in ("aquery", "aget_routes", "adelete", "aadd"):
+        monkeypatch.setattr(type(router.index), name, boom)
+    assert router("refund").name == "billing"
+    router.add(routes=Route(name="support", utterances=["call a human"]))
+    router.remove(name="support")
+    assert [r.name for r in router.routes] == ["billing", "technical"]
