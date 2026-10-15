@@ -227,9 +227,7 @@ def test_route_level_fields_are_stored_on_every_record():
         Route(name="technical", utterances=["app crash"]),
     ]
     r = IndexedRouter(encoder=FakeEncoder(), routes=routes)
-    meta = {
-        u.utterance: u.metadata for u in r.index.get_utterances(include_metadata=True)
-    }
+    meta = {u.utterance: u.metadata for u in r.index.get_utterances()}
     assert meta["charged twice"] == {
         "team": "finance",
         "sr_description": "money owed",

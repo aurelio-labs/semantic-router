@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Callable, Literal, Sequence
 
 import numpy as np
@@ -66,33 +67,102 @@ def _record_metadata(route: Route) -> dict:
     return meta
 
 
+def _merge(stored: list[Route], new: list[Route]) -> list[Route]:
+    """the routes the index holds once `new` is upserted onto `stored`: a new route
+    replaces a stored one's fields, and their utterances add up."""
+    merged = {r.name: r for r in stored}
+    for r in new:
+        old = merged.get(r.name)
+        if old is not None:
+            extra = [u for u in r.utterances if u not in old.utterances]
+            r = r.model_copy(update={"utterances": list(old.utterances) + extra})
+        merged[r.name] = r
+    return list(merged.values())
+
+
 class IndexedRouter(BaseRouter):
     def __init__(
         self,
         encoder: DenseEncoder,
-        routes: Sequence[Route],
+        routes: Sequence[Route] = (),
         index: BaseIndex | None = None,
         sparse_encoder: SparseEncoder | None = None,
-        alpha: float = 0.3,
+        alpha: float = 0.7,
         top_k: int = 5,
         aggregation: Aggregation = "mean",
         confidence_threshold: float | None = None,
         calibrator: Calibrator | None = None,
+        refresh_interval: float | None = None,
     ):
+        # the routes as last read from the index, and when (time.monotonic)
+        self._cache: dict[str, Route] = {}
+        self._read_at = 0.0
         super().__init__(routes, confidence_threshold, calibrator)
         self.encoder = encoder
         self.sparse_encoder = sparse_encoder
         self.alpha = alpha
         self.top_k = top_k
         self.aggregate = _AGG[aggregation]
+        # seconds a call trusts the cached routes before re-reading the index; None never
+        # re-reads, so only refresh() and this router's own add / remove do
+        self.refresh_interval = refresh_interval
         # `is None`, not `or`: an empty index has len 0, so `or` would swap it for a local one
         if index is None:
             index = HybridLocalIndex() if sparse_encoder else LocalIndex()
         self.index = index
-        # build synchronously so a constructed router is ready to call
-        if isinstance(self.sparse_encoder, FittableMixin):
-            self.sparse_encoder.fit(self.routes)
-        self._index(self.routes)
+        # build synchronously so a constructed router is ready to call; the given routes
+        # are upserted onto whatever the index already holds
+        if isinstance(self.sparse_encoder, FittableMixin) and (
+            corpus := _merge(self.index.get_routes(), list(routes))
+        ):
+            self.sparse_encoder.fit(corpus)
+        self._index(list(routes))
+        self.refresh()
+
+    @property
+    def routes(self) -> list[Route]:
+        """the routes in the index, as last read from it.
+
+        the index is the only place routes are written, and this view is only ever filled
+        from it: on build, after this router's add / remove, on refresh(), and per call
+        once the cache is older than refresh_interval. a route another router wrote shows
+        up here after a refresh, but a query finds it in the index straight away.
+        """
+        return list(self._cache.values())
+
+    @routes.setter
+    def routes(self, routes: list[Route]) -> None:
+        # BaseRouter assigns routes on init and remove; an indexed router writes them to
+        # the index (_index, _on_add, _on_remove) and reads them back, so there is
+        # nothing to keep here
+        pass
+
+    def refresh(self) -> None:
+        """re-read the routes from the index, picking up other writers' changes."""
+        self._fill(self.index.get_routes())
+
+    async def arefresh(self) -> None:
+        """re-read the routes from the index, picking up other writers' changes."""
+        self._fill(await self.index.aget_routes())
+
+    def _fill(self, routes: list[Route]) -> None:
+        # one assignment, so a concurrent call sees either the old routes or the new
+        self._cache = {r.name: r for r in routes}
+        self._read_at = time.monotonic()
+
+    def _stale(self) -> bool:
+        return (
+            self.refresh_interval is not None
+            and time.monotonic() - self._read_at >= self.refresh_interval
+        )
+
+    def _bar(self, name: str) -> float | None:
+        # same rule as BaseRouter._bar, by name from the cache. a route that isn't cached
+        # yet (another router added it) is held to the router's threshold until a refresh
+        route = self._cache.get(name)
+        if route is not None and route.confidence_threshold is not None:
+            return route.confidence_threshold
+        return self.confidence_threshold
 
     def _index(self, routes: list[Route]) -> None:
         names = [r.name for r in routes for _ in r.utterances]
@@ -116,14 +186,18 @@ class IndexedRouter(BaseRouter):
     async def _on_add(self, routes: list[Route]) -> None:
         if isinstance(self.sparse_encoder, FittableMixin):
             # a fitted sparse model changes its vocabulary with the corpus, which makes every
-            # stored sparse vector stale; the only correct move is to refit and rebuild
-            self.sparse_encoder.fit(self.routes)
+            # stored sparse vector stale; the only correct move is to refit and rebuild.
+            # read every stored route fresh before deleting the index, which is where
+            # they live
+            routes = _merge(await self.index.aget_routes(), routes)
+            self.sparse_encoder.fit(routes)
             self.index.delete_index()
-            routes = self.routes
         await asyncio.to_thread(self._index, routes)
+        await self.arefresh()
 
     async def _on_remove(self, name: str) -> None:
         await self.index.adelete(name)
+        await self.arefresh()
 
     async def _query(
         self, dense: list[float], sparse: SparseEmbedding | None
@@ -138,7 +212,9 @@ class IndexedRouter(BaseRouter):
         scores, names = await self.index.aquery(
             vector=vec, top_k=self.top_k, sparse_vector=sparse
         )
-        hits: dict[str, list[float]] = {r.name: [] for r in self.routes}
+        # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
+        # cached yet still counts, because the search always runs against the index
+        hits: dict[str, list[float]] = {name: [] for name in self._cache}
         for n, s in zip(names, scores):
             hits.setdefault(n, []).append(float(s))
         return {n: self.aggregate(v) if v else 0.0 for n, v in hits.items()}
@@ -164,7 +240,13 @@ class IndexedRouter(BaseRouter):
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
         # one encoder call for the whole batch, then a cheap index query per vector
         texts = list(queries)
-        dense = await _aencode(self.encoder, texts, "queries")
+        if self._stale():
+            # re-read the routes alongside the embedding call, so it adds no latency
+            dense, _ = await asyncio.gather(
+                _aencode(self.encoder, texts, "queries"), self.arefresh()
+            )
+        else:
+            dense = await _aencode(self.encoder, texts, "queries")
         sparse = (
             await _aencode(self.sparse_encoder, texts, "queries")
             if self.sparse_encoder

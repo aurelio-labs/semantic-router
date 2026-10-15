@@ -2,6 +2,10 @@
 
 keys and secrets are never written: a loaded router reads them from the environment
 (`OPENAI_API_KEY`, `JEV_API_KEY`, `PINECONE_API_KEY`...), as it would if built in code.
+
+an indexed router on a remote index (pinecone, postgres, a qdrant server) is saved without
+its routes: the index holds them and stays the single source of truth, so the file only
+names the index. an in-memory index keeps nothing between runs, so its file carries routes.
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_serializer
 
 from semantic_router.calibration import Calibrator, Method
 from semantic_router.encoders import (
@@ -158,13 +162,22 @@ class IndexedConfig(_Strict):
     router_type: Literal["indexed"] = "indexed"
     encoder: EncoderConfig
     sparse_encoder: EncoderConfig | None = None
-    alpha: float = 0.3
+    alpha: float = 0.7
     top_k: int = 5
     aggregation: Aggregation = "mean"
     index: IndexConfig = IndexConfig()
     confidence_threshold: float | None = None
     calibrator: CalibratorConfig | None = None
-    routes: list[Route]
+    refresh_interval: float | None = None
+    # None when the index holds the routes; a file then has no routes key at all
+    routes: list[Route] | None = None
+
+    @model_serializer(mode="wrap")
+    def _leave_out_index_routes(self, handler):
+        data = handler(self)
+        if self.routes is None:
+            data.pop("routes", None)
+        return data
 
 
 class DecisionConfig(_Strict):
@@ -227,7 +240,9 @@ def to_config(router: BaseRouter) -> RouterConfig:
             index=_index_config(router.index),
             confidence_threshold=router.confidence_threshold,
             calibrator=calibrator,
-            routes=_routes(router),
+            refresh_interval=router.refresh_interval,
+            # read the routes only from an index that keeps nothing between runs
+            routes=None if _persists(router.index) else _routes(router),
         )
     if isinstance(router, DecisionRouter):
         return DecisionConfig(
@@ -280,7 +295,8 @@ def from_config(config: RouterConfig | dict[str, Any]) -> BaseRouter:
             sparse = built
         return IndexedRouter(
             encoder=encoder,
-            routes=cfg.routes,
+            # routes in the file are upserted; with none, they're read from the index
+            routes=cfg.routes or (),
             index=_build_index(cfg.index),
             sparse_encoder=sparse,
             alpha=cfg.alpha,
@@ -288,6 +304,7 @@ def from_config(config: RouterConfig | dict[str, Any]) -> BaseRouter:
             aggregation=cfg.aggregation,
             confidence_threshold=cfg.confidence_threshold,
             calibrator=calibrator,
+            refresh_interval=cfg.refresh_interval,
         )
     if isinstance(cfg, DecisionConfig):
         return DecisionRouter(
@@ -360,6 +377,16 @@ def _parse(data: object) -> RouterConfig:
             f"to_yaml or to_json; the migration guide shows how: {MIGRATION_GUIDE}"
         )
     return _ADAPTER.validate_python(data)
+
+
+def _persists(index: BaseIndex) -> bool:
+    """whether the index keeps its routes between runs, so a file needn't carry them."""
+    if isinstance(index, LocalIndex):  # HybridLocalIndex too
+        return False
+    if isinstance(index, QdrantIndex):
+        # qdrant's default location is an in-memory store
+        return index.location != ":memory:"
+    return True
 
 
 def _routes(router: BaseRouter) -> list[Route]:
