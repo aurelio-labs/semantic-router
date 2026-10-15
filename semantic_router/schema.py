@@ -2,13 +2,16 @@ import json
 from datetime import datetime, timezone
 from difflib import Differ
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.utils.logger import logger
+
+if TYPE_CHECKING:
+    # type-only: importing aurelio_sdk calls logging.basicConfig
+    from aurelio_sdk.schema import SparseEmbedding as BM25SparseEmbedding
 
 
 class EncoderType(Enum):
@@ -492,7 +495,7 @@ class SparseEmbedding(BaseModel):
         return cls.from_compact_array(np.array([np.arange(len(vector)), vector]).T)
 
     @classmethod
-    def from_aurelio(cls, embedding: BM25SparseEmbedding):
+    def from_aurelio(cls, embedding: "BM25SparseEmbedding"):
         """Create a SparseEmbedding object from an AurelioSparseEmbedding object.
 
         :param embedding: An AurelioSparseEmbedding object.
