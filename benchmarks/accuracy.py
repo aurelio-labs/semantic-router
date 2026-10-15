@@ -62,13 +62,9 @@ N_OOS_FIT, N_OOS_TEST = 100, 150  # a quarter of each split is out of scope
 BAR = 0.5  # every router answers when its calibrated P(correct) clears this
 STOP_BAR = 0.85  # chain: the indexed stage answers on its own when this sure
 STOP_SWEEP = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.01]
-ALPHA_SWEEP = [
-    0.1,
-    0.3,
-    0.5,
-    0.7,
-    0.9,
-]  # hybrid: the weight on dense, the rest on sparse
+# hybrid: the weight on dense, the rest on sparse. 0.0 is sparse alone, and 1.0 must score
+# exactly like dense alone
+ALPHA_SWEEP = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
 WARMUP = 2
 ROUTERS = [
     "indexed_openai",
