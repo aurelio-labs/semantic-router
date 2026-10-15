@@ -187,6 +187,7 @@ class DecisionConfig(_Strict):
     instructions: str = "Which route does the user's message belong to?"
     timeout: float = 10.0
     retries: int = 3
+    concurrency: int = 8
     confidence_threshold: float | None = None
     calibrator: CalibratorConfig | None = None
     routes: list[Route]
@@ -251,6 +252,7 @@ def to_config(router: BaseRouter) -> RouterConfig:
             instructions=router.instructions,
             timeout=router.timeout,
             retries=router.retries,
+            concurrency=router.concurrency,
             confidence_threshold=router.confidence_threshold,
             calibrator=calibrator,
             routes=_routes(router),
@@ -314,6 +316,7 @@ def from_config(config: RouterConfig | dict[str, Any]) -> BaseRouter:
             instructions=cfg.instructions,
             timeout=cfg.timeout,
             retries=cfg.retries,
+            concurrency=cfg.concurrency,
             confidence_threshold=cfg.confidence_threshold,
             calibrator=calibrator,
         )

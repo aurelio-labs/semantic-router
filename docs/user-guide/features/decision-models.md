@@ -37,6 +37,7 @@ There's no encoder and no index. The router turns your routes into one multiple-
 | `instructions` | `"Which route does the user's message belong to?"` | The question asked about each query. |
 | `timeout` | `10.0` | Seconds per request. |
 | `retries` | `3` | Retries on rate limits (429, 529), server errors and timeouts, with exponential backoff and jitter. |
+| `concurrency` | `8` | Requests in flight when scoring a batch (`fit`, `evaluate`, `Chain`, `Merge`). Each query is one request, so this caps a batch's throughput: raise it as far as your rate limit allows. |
 | `confidence_threshold` | `None` | The router's default bar, as on every router. |
 
 ## Write literal descriptions

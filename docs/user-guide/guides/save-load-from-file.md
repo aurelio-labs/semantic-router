@@ -139,6 +139,7 @@ base_url: https://api.typesafe.ai
 instructions: Which route does the user's message belong to?
 timeout: 10.0
 retries: 3
+concurrency: 8
 confidence_threshold: null
 calibrator: null
 routes:

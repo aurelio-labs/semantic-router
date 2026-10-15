@@ -104,6 +104,7 @@ def decision():
         instructions="Which team should take this?",
         timeout=5.0,
         retries=1,
+        concurrency=16,
         confidence_threshold=0.8,
     )
 

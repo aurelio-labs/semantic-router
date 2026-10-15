@@ -192,3 +192,20 @@ def test_missing_api_key_fails_at_construction(monkeypatch):
     monkeypatch.delenv("JEV_API_KEY", raising=False)
     with pytest.raises(ValueError, match="JEV_API_KEY"):
         DecisionRouter(ROUTES)
+
+
+def test_concurrency_caps_requests_in_flight_for_a_batch():
+    r = DecisionRouter(ROUTES, api_key="k", concurrency=3)
+    live, peak = 0, 0
+
+    async def fake_ask(state, questions):
+        nonlocal live, peak
+        live += 1
+        peak = max(peak, live)
+        await asyncio.sleep(0.02)
+        live -= 1
+        return {"route": {"probabilities": {"billing": 0.9}}}
+
+    r.aask = fake_ask  # type: ignore[method-assign]
+    scored = asyncio.run(r._scores_many([f"q{i}" for i in range(12)]))
+    assert len(scored) == 12 and peak == 3

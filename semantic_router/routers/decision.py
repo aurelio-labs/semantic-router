@@ -49,6 +49,7 @@ class DecisionRouter(BaseRouter):
         instructions: str = "Which route does the user's message belong to?",
         timeout: float = 10.0,
         retries: int = 3,
+        concurrency: int = 8,
         confidence_threshold: float | None = None,
         calibrator: Calibrator | None = None,
         session: aiohttp.ClientSession | None = None,
@@ -63,6 +64,9 @@ class DecisionRouter(BaseRouter):
             instructions,
         )
         self.timeout, self.retries = timeout, retries
+        # requests in flight when scoring a batch: with one call per query, this caps a
+        # batch's throughput, so raise it as far as your rate limit allows
+        self.concurrency = concurrency
         self._session = session
         self._loop: asyncio.AbstractEventLoop | None = None
 
