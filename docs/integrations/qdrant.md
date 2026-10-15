@@ -24,14 +24,14 @@ from semantic_router.index.qdrant import QdrantIndex
 
 # Cloud Qdrant
 index = QdrantIndex(
-    location="https://your-cluster.qdrant.io",
+    url="https://your-cluster.qdrant.io",
     api_key="your-api-key",
     index_name="semantic_router"
 )
 
 # Self-hosted Qdrant
 index = QdrantIndex(
-    location="http://localhost:6333",
+    url="http://localhost:6333",
     index_name="semantic_router"
 )
 ```
@@ -40,19 +40,19 @@ index = QdrantIndex(
 
 ### Cloud and Self-Hosted
 
-Supports both Qdrant Cloud and self-hosted deployments. Pass the server's address as `location` (it defaults to `":memory:"`, an in-process instance), and the collection name as `index_name`:
+Supports both Qdrant Cloud and self-hosted deployments. Pass the server's address as `url` and the collection name as `index_name`:
 
 ```python
 # Cloud deployment
 index = QdrantIndex(
-    location="https://xyz-example.qdrant.io",
+    url="https://xyz-example.qdrant.io",
     api_key="your-api-key",
     index_name="routes"
 )
 
 # Local/self-hosted
 index = QdrantIndex(
-    location="http://localhost:6333",
+    url="http://localhost:6333",
     index_name="routes"
 )
 ```
@@ -64,7 +64,7 @@ Automatic collection creation and management:
 ```python
 # Specify dimensions for new collection
 index = QdrantIndex(
-    location="http://localhost:6333",
+    url="http://localhost:6333",
     index_name="my_routes",
     dimensions=1536  # Must match encoder dimensions
 )

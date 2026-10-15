@@ -59,6 +59,7 @@ calibrator:
     - 9.789179445243244
     b:
     - -4.871250211949403
+refresh_interval: null
 routes:
 - name: politics
   utterances:
@@ -76,7 +77,7 @@ routes:
   metadata: {}
 ```
 
-The encoder is saved by type and model name, and the index by type and its settings. The fitted calibrator is saved too.
+The encoder is saved by type and model name, and the index by type and its settings. The fitted calibrator is saved too. The routes are in the file because this router's index is in memory, so the file is the only place they can come back from.
 
 ## Load it back
 
@@ -92,6 +93,32 @@ router("don't you love politics?")
 ```
 
 `load_router` returns the class the file's `router_type` names: an `IndexedRouter`, a `DecisionRouter`, a `Chain` or a `Merge`. It rebuilds the encoder and the index, writes the routes to the index, and restores the calibrator, so the loaded router routes exactly like the one you saved, with no refit.
+
+## Routers on a remote index
+
+A remote index (Pinecone, Qdrant, Postgres) already holds the routes, and it's their single source of truth. So the file names the index and leaves the routes out:
+
+```yaml
+router_type: indexed
+encoder:
+  type: fastembed
+  name: BAAI/bge-small-en-v1.5
+sparse_encoder: null
+alpha: 0.7
+top_k: 5
+aggregation: mean
+index:
+  type: qdrant
+  dimensions: 384
+  index_name: support-routes
+  location: null
+  url: http://localhost:6333
+confidence_threshold: null
+calibrator: null
+refresh_interval: null
+```
+
+`load_router` connects to that index and reads the routes from it, so a loaded router always routes over what's stored now, not what was there when you saved.
 
 A loaded calibrator doesn't come with the labelled queries it was fitted on. If you `add()` or `remove()` a route on a loaded router, the calibrator is dropped with a warning: call `fit()` again.
 
