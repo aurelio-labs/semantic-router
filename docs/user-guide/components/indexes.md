@@ -140,7 +140,7 @@ reader = IndexedRouter(encoder=encoder, index=shared, refresh_interval=60)
 
 With the default, `refresh_interval=None`, a call never reads routes from the index.
 
-The search itself always runs against the index, so a stale cache doesn't hide stored utterances from it. What the cache holds is the route list (`router.routes`) and each route's settings, such as its `confidence_threshold`. So refresh when another writer changes routes' settings, not just their utterances.
+The search itself always runs against the index, so a stale cache never hides a route: if another writer adds a route, the reader returns it for a matching query even before it refreshes. What the cache holds is the route list (`router.routes`) and each route's settings. Until a refresh, a route the reader hasn't cached is held to the router's `confidence_threshold`, because its own isn't known yet. So refresh after another writer changes routes' settings, such as a route's threshold.
 
 Every router on a shared index must use the same encoder: the stored vectors only mean something to the model that made them.
 
