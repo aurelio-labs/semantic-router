@@ -121,7 +121,8 @@ class BaseRouter(ABC):
                 )
         picks = picks[:limit]
         if limit == 1:
-            return picks[0] if picks else RouteChoice()
+            # an empty pick still says whether the bar it missed was a calibrated one
+            return picks[0] if picks else RouteChoice(calibrated=self.calibrated)
         return picks
 
     async def acall(

@@ -73,3 +73,9 @@ def test_a_flat_calibrator_never_reorders_routes():
     r = Canned({"a": 0.2, "b": 0.9}, calibrator=flat)
     assert r("q").name == "b"
     assert Chain(routers=[r])("q").name == "b"
+
+
+def test_an_empty_pick_on_a_calibrated_router_says_calibrated():
+    r = Canned({"a": 0.2, "b": 0.1}, probabilistic=True, confidence_threshold=0.9)
+    choice = r("q")
+    assert choice.name is None and choice.calibrated
