@@ -57,12 +57,12 @@ sparse_encoder = AurelioSparseEncoder(name="bm25")
 index = HybridLocalIndex()
 ```
 
-## Integration with HybridRouter
+## Hybrid routing
 
-The `AurelioSparseEncoder` is designed for use with `HybridRouter`:
+The `AurelioSparseEncoder` is a sparse encoder: pass it to an `IndexedRouter` as `sparse_encoder`, next to a dense `encoder`, and the router becomes hybrid:
 
 ```python
-from semantic_router.routers import HybridRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -82,7 +82,7 @@ routes = [
     )
 ]
 
-router = HybridRouter(
+router = IndexedRouter(
     encoder=dense_encoder,
     sparse_encoder=sparse_encoder,
     routes=routes,
@@ -92,7 +92,7 @@ router = HybridRouter(
 
 ## Best Practices
 
-1. **Hybrid Setup**: Always use sparse encoders with dense encoders in a `HybridRouter`
+1. **Hybrid Setup**: A sparse encoder always goes next to a dense one, as `IndexedRouter(encoder=..., sparse_encoder=...)`. `alpha` (default 0.7) is the weight on the dense score
 
 2. **Index Selection**: Use `HybridLocalIndex` for development or `PineconeIndex` (with hybrid support) for production
 
@@ -100,7 +100,7 @@ router = HybridRouter(
 
 4. **API Key Management**: Store API keys securely using environment variables
 
-5. **Performance**: Hybrid search typically provides 10-20% improvement over dense-only search
+5. **Measure it**: Hybrid search helps most when queries hinge on exact terms like product codes and names. Compare it with a dense-only router on your own queries with `evaluate()`
 
 ## Advantages
 
@@ -115,19 +115,20 @@ Hybrid search (sparse + dense) provides:
 - Better exact match recall
 - Improved handling of rare terms and proper nouns
 - More robust retrieval across diverse query types
-- Typically 10-20% better accuracy than dense-only
+
+How much it helps depends on your queries: on sets without keyword-heavy routes, a dense encoder alone can do as well. See the [accuracy sweep](../user-guide/components/routers.md#hybrid-search), and measure on your own queries.
 
 ## Example Usage
 
 ```python
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.encoders.aurelio import AurelioSparseEncoder
-from semantic_router.routers import HybridRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 from semantic_router.index.hybrid_local import HybridLocalIndex
 
 # Initialize encoders
-dense_encoder = OpenAIEncoder(name="text-embedding-3-small", score_threshold=0.3)
+dense_encoder = OpenAIEncoder(name="text-embedding-3-small")
 sparse_encoder = AurelioSparseEncoder(name="bm25")
 
 # Initialize index
@@ -140,7 +141,7 @@ routes = [
 ]
 
 # Create hybrid router
-router = HybridRouter(
+router = IndexedRouter(
     encoder=dense_encoder,
     sparse_encoder=sparse_encoder,
     routes=routes,
