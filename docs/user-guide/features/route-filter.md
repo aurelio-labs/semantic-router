@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 removes `route_filter`. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1#route_filter-is-gone) shows what to do instead.
+
 Sometimes you only want the router to consider *some* of its routes. Maybe context tells you the user is mid-conversation about one topic, or a certain route shouldn't fire in this part of your app. `route_filter` lets you narrow the field per call.
 
 Say your router has `politics`, `weather`, and `chitchat`. To consider only `chitchat` for one query:

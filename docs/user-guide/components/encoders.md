@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/encoders), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 An encoder turns text (or images, or other data) into a vector — a list of numbers that captures meaning. Those vectors are what let Semantic Router measure how similar two inputs are. Every routing decision starts here.
 
 ## What an encoder does
