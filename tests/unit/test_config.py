@@ -217,6 +217,40 @@ def test_index_params_round_trip(tmp_path):
     assert loaded.index.connection_string == SECRETS["POSTGRES_CONNECTION_STRING"]
 
 
+@pytest.mark.parametrize("fmt", ["yaml", "json"])
+def test_a_remote_index_file_has_no_routes(fmt, tmp_path):
+    # the index holds the routes, so saving neither reads them nor writes them; routes
+    # with no utterances also mean the router builds without a database
+    router = IndexedRouter(
+        encoder=OpenAIEncoder(name="text-embedding-3-small"),
+        routes=[Route(name="billing", description="money")],
+        index=PostgresIndex(index_name=f"cfg_{uuid4().hex[:8]}"),
+    )
+    text = save(router, tmp_path, fmt).read_text()
+    data = yaml.safe_load(text) if fmt == "yaml" else json.loads(text)
+    assert "routes" not in data
+    assert data["index"]["type"] == "postgres"
+    assert to_config(router).routes is None
+
+
+def test_an_in_memory_qdrant_file_keeps_its_routes(tmp_path):
+    # qdrant's default location is in memory, so nothing would hold the routes
+    router = IndexedRouter(
+        encoder=OpenAIEncoder(name="text-embedding-3-small"),
+        routes=ROUTES,
+        index=QdrantIndex(index_name=f"cfg-{uuid4().hex[:8]}"),
+    )
+    loaded = load_router(path=save(router, tmp_path, "yaml"))
+
+    def by_name(routes):
+        # qdrant returns records in point-id order, not the order they were added
+        return {
+            r.name: {**r.to_dict(), "utterances": sorted(r.utterances)} for r in routes
+        }
+
+    assert by_name(loaded.routes) == by_name(ROUTES)
+
+
 def test_a_0x_file_points_to_the_migration_guide(tmp_path):
     path = tmp_path / "router.yaml"
     path.write_text(
