@@ -32,6 +32,10 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
         docs = [self._preprocess(doc) for doc in docs]
         tf = self._compute_tf(docs)
         tfidf = tf * self.idf
+        # L2-normalize after weighting, so a query·document score is a cosine in
+        # [0, 1], the same range as the dense scores it is blended with
+        norms = np.linalg.norm(tfidf, axis=1, keepdims=True)
+        tfidf = np.divide(tfidf, norms, out=np.zeros_like(tfidf), where=norms != 0)
         return self._array_to_sparse_embeddings(tfidf)
 
     async def acall(self, docs: List[str]) -> List[SparseEmbedding]:
@@ -87,7 +91,9 @@ class TfidfEncoder(SparseEncoder, FittableMixin):
             for word in words:
                 if word in self.word_index:
                     idf[self.word_index[word]] += 1
-        idf = np.log(len(docs) / (idf + 1))
+        # smoothed as in scikit-learn: always >= 1, so a word in every document
+        # still counts, and never with a negative weight
+        idf = np.log((1 + len(docs)) / (1 + idf)) + 1
         return idf
 
     def _preprocess(self, doc: str) -> str:
