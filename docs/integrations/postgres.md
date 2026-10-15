@@ -97,12 +97,12 @@ index.close()
 
 ## Integration with Routers
 
-The `PostgresIndex` works with both `SemanticRouter` and `HybridRouter`:
+The `PostgresIndex` is where an `IndexedRouter` keeps its routes. It stores dense vectors only, so it can't back a hybrid router (one with a `sparse_encoder`):
 
 ```python
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
 encoder = OpenAIEncoder()
 
@@ -123,11 +123,10 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
     index=index,
-    auto_sync="local"
 )
 ```
 
@@ -145,17 +144,14 @@ print(result.name)  # -> politics
 
 ```python
 # Delete a specific route
-router.delete(route_name="chitchat")
+router.remove(name="chitchat")
 ```
 
 ### Get Routes
 
 ```python
-# Get all routes
+# Get all routes, rebuilt from the stored records
 all_routes = index.get_routes()
-
-# Get specific route IDs
-route_ids = index._get_route_ids(route_name="politics")
 ```
 
 ### Index Info
@@ -198,7 +194,6 @@ print(len(index))
 
 - **psycopg2 → psycopg v3**: Better performance and Python 3.13 compatibility
 - **IndexType Support**: Added `FLAT`, `IVFFLAT`, and `HNSW` index types
-- **Standardized Methods**: Consistent sync methods across all indexes
 
 ### v0.1.10 Changes
 
@@ -206,4 +201,4 @@ print(len(index))
 
 ## Example Notebook
 
-For a complete example of using the PostgreSQL integration, see the [PostgreSQL Sync Notebook](../indexes/postgres-sync.ipynb).
+For a complete example of using the PostgreSQL integration, see the [PostgreSQL Notebook](../indexes/postgres/postgres.ipynb).

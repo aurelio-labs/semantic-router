@@ -47,19 +47,16 @@ class NimEncoder(DenseEncoder, AsymmetricDenseMixin):
         self,
         name: str | None = None,
         api_key: str | None = None,
-        score_threshold: float = 0.4,
         base_url: str | None = None,
     ):
         """Initialize the NimEncoder.
 
         :param name: The name of the embedding model to use such as
-            "nvidia/nv-embedqa-e5-v5".
+            "nvidia/nv-embedqa-mistral-7b-v2".
         :type name: str
         :param api_key: The Nim API key, can also be set via the NVIDIA_NIM_API_KEY
             environment variable.
         :type api_key: str
-        :param score_threshold: The score threshold for the embeddings.
-        :type score_threshold: float
         :param base_url: Override the NIM API base URL, can also be set via the
             NVIDIA_NIM_API_BASE environment variable. Use this to target a
             self-hosted NIM container.
@@ -69,7 +66,7 @@ class NimEncoder(DenseEncoder, AsymmetricDenseMixin):
         # get default model name if none provided
         if name is None:
             name = f"{EncoderDefault.NVIDIA_NIM.value['embedding_model']}"
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         if api_key is None:
             api_key = os.getenv("NVIDIA_NIM_API_KEY")
         if api_key is None:

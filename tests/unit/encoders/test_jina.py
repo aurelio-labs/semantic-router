@@ -66,7 +66,6 @@ class TestJinaEncoderInit:
         enc = JinaEncoder("jina-embeddings-v3", api_key="test_api_key")
         assert enc.name == "jina-embeddings-v3"
         assert enc.type == "jina"
-        assert enc.score_threshold == 0.4
 
     def test_initialization_with_env_api_key(self, mock_jina, monkeypatch):
         monkeypatch.delenv("JINA_AI_API_KEY", raising=False)

@@ -36,7 +36,7 @@ import os
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.index.pinecone import PineconeIndex
 from semantic_router.route import Route
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
 # Required
 os.environ["PINECONE_API_KEY"] = "your-api-key"
@@ -58,9 +58,9 @@ routes = [
     Route(name="goodbye", utterances=["bye", "goodbye"])
 ]
 
-router = SemanticRouter(encoder=encoder, routes=routes, index=index, auto_sync="local")
+router = IndexedRouter(encoder=encoder, routes=routes, index=index)
 
-print(router(text="hi there").name)  # -> greeting
+print(router("hi there").name)  # -> greeting
 ```
 
 ## Features
@@ -119,24 +119,23 @@ The upgrade is transparent - existing code should continue working without chang
 
 ## Integration with Routers
 
-The `PineconeIndex` works with both `SemanticRouter` and `HybridRouter`:
+The `PineconeIndex` is where an `IndexedRouter` keeps its routes. It stores dense and sparse vectors, so it works for hybrid routers too:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
     index=index,
-    auto_sync="local"  # or "remote" or None
 )
 ```
 
-### Auto-Sync Modes
+### The index is the source of truth
 
-- `auto_sync="local"`: Faster, syncs only when routes change
-- `auto_sync="remote"`: Always syncs with remote index
-- `auto_sync=None`: Manual sync control
+There's no sync step. Building the router writes its routes to Pinecone, with ids that come from each route and utterance, so writing the same routes again changes nothing. Passing `routes=` adds or updates and never deletes; remove a route with `router.remove(name=...)`.
+
+To connect to an index that's already filled, leave `routes` out, and call `router.refresh()` (or set `refresh_interval`) to see routes other processes add. See [indexes](../user-guide/components/indexes.md#sharing-an-index).
 
 ## Best Practices
 
@@ -179,6 +178,5 @@ URL as the emulator and skips the cloud-only calls.
 ## Example Notebooks
 
 For complete examples, see:
-- [Pinecone Sync Routes](../indexes/pinecone-sync-routes.ipynb)
 - [Pinecone Async](../indexes/pinecone-async.ipynb)
 - [Pinecone Local Emulator](../indexes/pinecone-local.ipynb)

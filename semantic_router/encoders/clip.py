@@ -50,8 +50,6 @@ class CLIPEncoder(DenseEncoder):
         :param **data: Keyword arguments for the encoder.
         :type **data: Dict
         """
-        if data.get("score_threshold") is None:
-            data["score_threshold"] = 0.2
         super().__init__(**data)
         self._tokenizer, self._processor, self._model = self._initialize_hf_model()
 
@@ -84,7 +82,10 @@ class CLIPEncoder(DenseEncoder):
             else:
                 embeddings = self._encode_image(images=batch_docs)
             if normalize_embeddings:
-                embeddings = embeddings / np.linalg.norm(embeddings, axis=0)
+                # per vector, not across the batch
+                embeddings = embeddings / np.linalg.norm(
+                    embeddings, axis=1, keepdims=True
+                )
 
             embeddings = embeddings.tolist()
             all_embeddings.extend(embeddings)
@@ -171,7 +172,8 @@ class CLIPEncoder(DenseEncoder):
             # transformers >= 5 returns a model output whose pooler_output holds the
             # projected features; earlier versions return that tensor directly
             embeds = getattr(embeds, "pooler_output", embeds)
-            embeds = embeds.squeeze(0).cpu().detach().numpy()
+            # keep the batch dimension: a batch of one is still [[...]]
+            embeds = embeds.cpu().detach().numpy()
         return embeds
 
     def _encode_image(self, images: List[Any]) -> Any:
@@ -189,7 +191,7 @@ class CLIPEncoder(DenseEncoder):
         with self._torch.no_grad():
             embeds = self._model.get_image_features(pixel_values=inputs)
             embeds = getattr(embeds, "pooler_output", embeds)  # see _encode_text
-            embeds = embeds.squeeze(0).cpu().detach().numpy()
+            embeds = embeds.cpu().detach().numpy()
         return embeds
 
     def _ensure_rgb(self, img: Any):

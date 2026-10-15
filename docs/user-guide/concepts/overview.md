@@ -1,3 +1,8 @@
+---
+title: Overview
+description: How semantic routing works, from meaning as geometry to a calibrated decision.
+---
+
 Semantic routing sends an input — text, an image, audio — to the right handler based on what it *means*, not on keywords or hand-written rules. People say the same thing a hundred different ways. Semantic routing handles that variety without you enumerating every phrasing.
 
 ## Semantic space
@@ -49,34 +54,39 @@ Once everything is a vector, routing is a similarity calculation. The usual meas
 - **Euclidean distance**: d(A,B) = √(Σ(Aᵢ-Bᵢ)²)
 - **Dot product**: A·B = Σ(Aᵢ·Bᵢ)
 
-Semantic Router compares the incoming query against every route, where each route is represented by its example utterances. The route with the highest score above a configurable threshold wins.
+An `IndexedRouter` compares the incoming query against every route's example utterances and gives each route a score. Raw similarities are hard to act on, though: 0.8 means something different for every encoder and every set of routes. So the router can be *calibrated*. Fit it on some labelled queries and it learns to turn a score into the probability that the route is right. Then a threshold like 0.9 means "act only when you're 90% sure", and the best route above it wins.
+
+### When similarity isn't enough
+
+Some decisions depend on instructions, not resemblance: "refunds, but not pricing questions before a purchase". A `DecisionRouter` hands those to a small, fast decision model that reads your route descriptions and returns a probability for each route. You can chain the two, so the embedding router answers the easy queries in milliseconds and only the ambiguous ones go to the model.
 
 ## The workflow
 
-1. **Define routes** — example utterances for each category.
-2. **Pick an encoder** — based on content type and performance needs.
-3. **Configure the router** — connect encoder, routes, and an index.
-4. **Write handlers** — the logic for each route.
-5. **Route inputs** — encode, compare, dispatch.
+1. **Define routes**: example utterances for each decision, and a description if a decision model will read it.
+2. **Pick an encoder**: based on content type and performance needs.
+3. **Build the router**: connect the encoder, routes and an index.
+4. **Calibrate it**: fit on labelled queries the router hasn't seen, then set a threshold.
+5. **Write handlers**: the logic for each route, and a fallback for "no route".
+6. **Route inputs**: encode, score, decide, dispatch.
 
 ```mermaid
 flowchart TD
     subgraph Setup["Setup Phase"]
         A[Define Routes] --> |Example utterances| B[Select Encoder]
         B --> |Based on content type| C[Configure Router]
-        C --> |Connect components| D[Implement Handlers]
-        D --> E[Precompute Route Embeddings]
+        C --> |Connect components| E[Precompute Route Embeddings]
+        E --> D[Calibrate on Labelled Queries]
     end
     
     subgraph Runtime["Runtime Phase"]
         F[Receive Input] --> G[Encode Input]
         G --> H[Calculate Similarity]
-        H --> I{Best Match > Threshold?}
+        H --> I{Confidence > Threshold?}
         I -->|Yes| J[Execute Matched Handler]
         I -->|No| K[Execute Default Handler]
     end
     
-    E --> F
+    D --> F
     
     classDef setup fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef runtime fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
@@ -84,4 +94,4 @@ flowchart TD
     class F,G,H,I,J,K runtime
 ```
 
-Semantic Router handles the vector math, the similarity scoring, and the decision. You focus on defining good routes and writing the handlers.
+Semantic Router handles the vector math, the scoring, the calibration and the decision. You focus on defining good routes and writing the handlers.

@@ -15,13 +15,14 @@ Test tiers
 
 import os
 import socket
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
 
 # Env var -> tests that need it are skipped when it is unset.
-LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY")
+LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY", "JEV_API_KEY")
 
 
 def _reachable(host: str, port: int, timeout: float = 1.0) -> bool:
@@ -171,3 +172,28 @@ def _cleanup_qdrant_collections(monkeypatch):
             index.client.delete_collection(index.index_name)
         except Exception:
             pass  # already deleted by the test, or never created
+
+
+@pytest.fixture
+def make_index():
+    """Factory for a new, empty index of the given class with a unique name, so tests
+    can run in parallel. Pass ``name`` to open a second handle on the same index. No
+    dimensions are set: each backend creates itself on its first add."""
+
+    def make(index_cls, name: str | None = None):
+        from semantic_router.index import PineconeIndex, PostgresIndex, QdrantIndex
+
+        name = name or f"t{uuid.uuid4().hex[:12]}"
+        if index_cls is PineconeIndex:
+            if not os.environ["PINECONE_API_BASE_URL"].startswith("http://"):
+                pytest.skip("index backend tests run on pinecone-local")
+            return PineconeIndex(index_name=name)
+        if index_cls is PostgresIndex:
+            return PostgresIndex(index_name=name, index_prefix="")
+        if index_cls is QdrantIndex:
+            url = os.getenv("QDRANT_URL")
+            kwargs = {"location": None, "url": url} if url else {}
+            return QdrantIndex(index_name=name, **kwargs)
+        return index_cls()
+
+    return make

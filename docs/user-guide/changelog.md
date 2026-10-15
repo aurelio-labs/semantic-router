@@ -1,3 +1,46 @@
+---
+title: Changelog
+description: What changed in each Semantic Router release.
+---
+
+### v1.0.0
+
+The `1.0.0` release rebuilds the routing layer. A router is now anything that scores every route; the base class turns scores into calibrated confidence, and routers compose. It's a breaking release: the [migration guide](guides/migration-to-v1) covers every change, with before and after code.
+
+#### Feature: Router types
+
+- `IndexedRouter` replaces `SemanticRouter`. Passing a `sparse_encoder` makes it hybrid, which replaces `HybridRouter`. The hybrid `alpha` (the weight on the dense score) defaults to 0.7, not 0.3, and now weights the dense side on `HybridLocalIndex` too.
+- `DecisionRouter` routes with a decision model over TypeSafe's `/v1/systemone` API (Jev, Laya, Von), and `aask()` answers several `choice`, `noul` and `score` questions about one message in a single call.
+- `Chain` falls through from a fast router to a slower one when the fast one isn't confident. `Merge` takes a weighted average of several routers.
+- Subclass `BaseRouter` and implement one async method, `_scores`, to build your own router.
+- `DecisionRouter(concurrency=8)` sets how many requests a batch keeps in flight.
+
+#### Feature: Calibration
+
+- `fit()` learns a map from raw score to the probability that the top route is right (Platt or isotonic), and returns a `FitReport` with accuracy and calibration error. It replaces the random threshold search.
+- `confidence_threshold` replaces `score_threshold`, on the router and on each route. A per-call `threshold=` overrides both.
+- `RouteChoice` is now `name`, `confidence` and `calibrated`.
+
+#### Feature: The index is the source of truth
+
+- `router.routes` is a cached view of the index, filled on build and after the router's own `add`/`remove`. `refresh()` / `arefresh()` re-read it, and `refresh_interval` re-reads it during calls once it's that many seconds old. A query always searches the index itself.
+- An `IndexedRouter` can open an index that 0.x filled: `IndexedRouter(encoder=..., index=...)` with no routes reads them back.
+
+#### Feature: Config files
+
+- `router.to_yaml(path=)`, `router.to_json(path=)` and `load_router(path=)` save and load any router type, keyed on `router_type`, with the calibrator and without secrets.
+
+#### Removed
+
+- Index sync: `auto_sync`, `sync()`, `is_synced()`, `get_utterance_diff()`, and the hash, lock and config records. The index is the single source of truth.
+- Dynamic routes and the `semantic_router.llms` package, `function_schemas`, `RouteChoice.function_call` and `similarity_score`.
+- `route_filter`, `vector=` and `simulate_static=` on router calls.
+- The default `OpenAIEncoder()`: the encoder is now required.
+- `score_threshold` on encoders, and `llama-cpp-python` from the `[local]` extra.
+- Default thresholds: with no `confidence_threshold`, the best route always wins.
+
+---
+
 ### v0.1.12
 
 The `0.1.12` release brings Pinecone v7 support and AWS Bedrock boto3 client integration, improving compatibility and expanding cloud deployment options.

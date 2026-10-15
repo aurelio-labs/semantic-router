@@ -1,11 +1,13 @@
 import os
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
-from aurelio_sdk import AsyncAurelioClient, AurelioClient, EmbeddingResponse
 from pydantic import Field
 
 from semantic_router.encoders.base import AsymmetricSparseMixin, SparseEncoder
 from semantic_router.schema import SparseEmbedding
+
+if TYPE_CHECKING:
+    from aurelio_sdk import EmbeddingResponse
 
 
 class AurelioSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
@@ -14,10 +16,11 @@ class AurelioSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
     """
 
     model: Optional[Any] = None
-    client: AurelioClient = Field(default_factory=AurelioClient, exclude=True)
-    async_client: AsyncAurelioClient = Field(
-        default_factory=AsyncAurelioClient, exclude=True
-    )
+    # aurelio_sdk is imported in __init__, not at module level: importing it
+    # calls logging.basicConfig, which would configure the user's root logger
+    # whenever semantic_router is imported.
+    client: Any = Field(default=None, exclude=True)
+    async_client: Any = Field(default=None, exclude=True)
     type: str = "sparse"
 
     def __init__(
@@ -32,6 +35,8 @@ class AurelioSparseEncoder(SparseEncoder, AsymmetricSparseMixin):
         :param api_key: The API key to use.
         :type api_key: str | None
         """
+        from aurelio_sdk import AsyncAurelioClient, AurelioClient
+
         if name is None:
             name = "bm25"
         super().__init__(name=name)

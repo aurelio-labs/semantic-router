@@ -58,7 +58,6 @@ class TestCohereEncoderInit:
         enc = CohereEncoder("embed-english-v3.0", cohere_api_key="test_api_key")
         assert enc.name == "embed-english-v3.0"
         assert enc.type == "cohere"
-        assert enc.score_threshold == 0.3
 
     def test_initialization_with_env_api_key(self, mock_cohere, monkeypatch):
         monkeypatch.setenv("COHERE_API_KEY", "test_api_key")

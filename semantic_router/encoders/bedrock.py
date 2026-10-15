@@ -3,7 +3,7 @@ This module provides the BedrockEncoder class for generating embeddings using Am
 
 The BedrockEncoder class is a subclass of DenseEncoder and utilizes the TextEmbeddingModel from the
 Amazon's Bedrock Platform to generate embeddings for given documents. It requires an AWS Access Key ID
-and AWS Secret Access Key and supports customization of the pre-trained model, score threshold, and region.
+and AWS Secret Access Key and supports customization of the pre-trained model and region.
 
 Example usage:
 
@@ -34,8 +34,7 @@ class BedrockEncoder(DenseEncoder):
 
     The BedrockEncoder class is a subclass of DenseEncoder and utilizes the
     TextEmbeddingModel from the Amazon's Bedrock Platform to generate embeddings for
-    given documents. It supports customization of the pre-trained model, score
-    threshold, and region.
+    given documents. It supports customization of the pre-trained model and region.
 
     Example usage:
 
@@ -64,7 +63,6 @@ class BedrockEncoder(DenseEncoder):
         self,
         name: str = EncoderDefault.BEDROCK.value["embedding_model"],
         input_type: Optional[str] = "search_query",
-        score_threshold: float = 0.3,
         client: Optional[Any] = None,
         access_key_id: Optional[str] = None,
         secret_access_key: Optional[str] = None,
@@ -81,8 +79,6 @@ class BedrockEncoder(DenseEncoder):
             If not provided, the default input type specified in EncoderDefault will
             be used.
         :type input_type: str
-        :param score_threshold: The threshold for similarity scores.
-        :type score_threshold: float
         :param access_key_id: The AWS access key id for an IAM principle.
             If not provided, it will be retrieved from the access_key_id
             environment variable.
@@ -100,7 +96,7 @@ class BedrockEncoder(DenseEncoder):
         :type region: str
         :raises ValueError: If the Bedrock Platform client fails to initialize.
         """
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         self.input_type = input_type
         if client:
             self.client = client

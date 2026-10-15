@@ -3,20 +3,14 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple
 import numpy as np
 from pydantic import ConfigDict, Field
 
-from semantic_router.index.base import BaseIndex, IndexConfig
+from semantic_router.index.base import BaseIndex, IndexConfig, check_records
 from semantic_router.linear import similarity_matrix, top_scores
-from semantic_router.schema import ConfigParameter, SparseEmbedding, Utterance
-from semantic_router.utils.logger import logger
+from semantic_router.schema import SparseEmbedding, Utterance
 
 
 class LocalIndex(BaseIndex):
     type: str = "local"
     metadata: Optional[np.ndarray] = Field(default=None, exclude=True)
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        if self.metadata is None:
-            self.metadata = None
 
     # Stop pydantic from complaining about Optional[np.ndarray]type hints.
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
@@ -25,12 +19,13 @@ class LocalIndex(BaseIndex):
         self,
         embeddings: List[List[float]],
         routes: List[str],
-        utterances: List[str],
-        function_schemas: Optional[List[Dict[str, Any]]] = None,
-        metadata_list: List[Dict[str, Any]] = [],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
         **kwargs,
     ):
-        """Add embeddings to the index.
+        """Upsert records into the index, one per (route, utterance) pair. A pair
+        that is already stored has its embedding and metadata replaced.
 
         :param embeddings: List of embeddings to add to the index.
         :type embeddings: List[List[float]]
@@ -38,104 +33,109 @@ class LocalIndex(BaseIndex):
         :type routes: List[str]
         :param utterances: List of utterances to add to the index.
         :type utterances: List[str]
-        :param function_schemas: List of function schemas to add to the index.
-        :type function_schemas: Optional[List[Dict[str, Any]]]
         :param metadata_list: List of metadata to add to the index.
-        :type metadata_list: List[Dict[str, Any]]
+        :type metadata_list: Optional[List[Dict[str, Any]]]
+        :param sparse_embeddings: Not supported, use HybridLocalIndex.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
         """
-        if metadata_list and len(metadata_list) != len(embeddings):
+        if sparse_embeddings is not None:
             raise ValueError(
-                f"metadata_list length ({len(metadata_list)}) must match embeddings length ({len(embeddings)})."
+                f"{self.__class__.__name__} stores dense vectors only, use "
+                "HybridLocalIndex for sparse embeddings."
             )
-        embeds = np.array(embeddings)  # type: ignore
-        routes_arr = np.array(routes)
-        if isinstance(utterances[0], str):
-            utterances_arr = np.array(utterances)
-        else:
-            utterances_arr = np.array(utterances, dtype=object)
-        if self.index is None:
-            self.index = embeds  # type: ignore
-            self.routes = routes_arr
-            self.utterances = utterances_arr
-            self.metadata = (
-                np.array(metadata_list, dtype=object)
-                if metadata_list
-                else np.array([{} for _ in utterances], dtype=object)
-            )
-        else:
-            self.index = np.concatenate([self.index, embeds])
-            self.routes = np.concatenate([self.routes, routes_arr])
-            self.utterances = np.concatenate([self.utterances, utterances_arr])
-            if self.metadata is not None:
-                self.metadata = np.concatenate(
-                    [
-                        self.metadata,
-                        np.array(metadata_list, dtype=object)
-                        if metadata_list
-                        else np.array([{} for _ in utterances], dtype=object),
-                    ]
-                )
-            else:
-                self.metadata = (
-                    np.array(metadata_list, dtype=object)
-                    if metadata_list
-                    else np.array([{} for _ in utterances], dtype=object)
-                )
+        self._upsert(embeddings, routes, utterances, metadata_list)
 
-    def _remove_and_sync(self, routes_to_delete: dict) -> np.ndarray:
-        """Remove and sync the index.
-
-        :param routes_to_delete: Dictionary of routes to delete.
-        :type routes_to_delete: dict
-        :return: A numpy array of the removed route utterances.
-        :rtype: np.ndarray
+    async def aadd(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
+        **kwargs,
+    ):
+        """Upsert records into the index. Note that this just points to the sync add
+        method as async makes no difference for the local computations of the
+        LocalIndex.
         """
-        if self.index is None or self.routes is None or self.utterances is None:
-            raise ValueError("Index, routes, or utterances are not populated.")
-        # TODO JB: implement routes and utterances as a numpy array
-        route_utterances = np.array([self.routes, self.utterances]).T
-        # initialize our mask with all true values (ie keep all)
-        mask = np.ones(len(route_utterances), dtype=bool)
-        for route, utterances in routes_to_delete.items():
-            # TODO JB: we should be able to vectorize this?
-            for utterance in utterances:
-                mask &= ~(
-                    (route_utterances[:, 0] == route)
-                    & (route_utterances[:, 1] == utterance)
-                )
-        # apply the mask to index, routes, and utterances
-        self.index = self.index[mask]
-        self.routes = self.routes[mask]
-        self.utterances = self.utterances[mask]
-        if self.metadata is not None:
-            self.metadata = self.metadata[mask]
-        # return what was removed
-        return route_utterances[~mask]
+        self.add(
+            embeddings=embeddings,
+            routes=routes,
+            utterances=utterances,
+            metadata_list=metadata_list,
+            sparse_embeddings=sparse_embeddings,
+        )
 
-    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
-        """Gets a list of route and utterance objects currently stored in the index.
+    def _upsert(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[int]:
+        """Writes records in place by (route, utterance), appending pairs that are not
+        stored yet.
 
-        :param include_metadata: Whether to include function schemas and metadata in
-        the returned Utterance objects - LocalIndex now includes metadata if present.
+        :return: The row each record was written to.
+        :rtype: List[int]
+        """
+        metadata_list = check_records(embeddings, routes, utterances, metadata_list)
+        if not embeddings:
+            return []
+        vectors = list(self.index) if self.index is not None else []
+        names = list(self.routes) if self.routes is not None else []
+        texts = list(self.utterances) if self.utterances is not None else []
+        metas = list(self.metadata) if self.metadata is not None else []
+        # utterances may be non-string (e.g. images), so key on their string form
+        rows = {(r, str(u)): i for i, (r, u) in enumerate(zip(names, texts))}
+        positions = []
+        for vector, route, utterance, metadata in zip(
+            embeddings, routes, utterances, metadata_list
+        ):
+            key = (route, str(utterance))
+            if key in rows:
+                i = rows[key]
+                vectors[i], texts[i], metas[i] = vector, utterance, metadata
+            else:
+                i = rows[key] = len(vectors)
+                vectors.append(vector)
+                names.append(route)
+                texts.append(utterance)
+                metas.append(metadata)
+            positions.append(i)
+        self.index = np.array(vectors)
+        self.routes = np.array(names)
+        self.utterances = (
+            np.array(texts)
+            if all(isinstance(t, str) for t in texts)
+            else np.array(texts, dtype=object)
+        )
+        self.metadata = np.array(metas, dtype=object)
+        return positions
+
+    def get_utterances(self) -> List[Utterance]:
+        """Gets every record stored in the index as an Utterance.
+
         :return: A list of Utterance objects.
         :rtype: List[Utterance]
         """
-        if self.routes is None or self.utterances is None:
+        if self.routes is None or self.utterances is None or self.metadata is None:
             return []
-        if include_metadata and self.metadata is not None:
-            return [
-                Utterance(
-                    route=route,
-                    utterance=utterance,
-                    function_schemas=None,
-                    metadata=metadata,
-                )
-                for route, utterance, metadata in zip(
-                    self.routes, self.utterances, self.metadata
-                )
-            ]
-        else:
-            return [Utterance.from_tuple(x) for x in zip(self.routes, self.utterances)]
+        return [
+            Utterance(route=route, utterance=utterance, metadata=meta)
+            for route, utterance, meta in zip(
+                self.routes, self.utterances, self.metadata
+            )
+        ]
+
+    async def aget_utterances(self) -> List[Utterance]:
+        """Gets every record stored in the index as an Utterance. Note that this just
+        points to the sync get_utterances method.
+
+        :return: A list of Utterance objects.
+        :rtype: List[Utterance]
+        """
+        return self.get_utterances()
 
     def describe(self) -> IndexConfig:
         """Describe the index.
@@ -212,7 +212,8 @@ class LocalIndex(BaseIndex):
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
     ) -> Tuple[np.ndarray, List[str]]:
-        """Search the index for the query and return top_k results.
+        """Search the index for the query and return top_k results. Note that this
+        just points to the sync query method, the computation is local and CPU-bound.
 
         :param vector: The vector to search for.
         :type vector: np.ndarray
@@ -225,41 +226,12 @@ class LocalIndex(BaseIndex):
         :return: A tuple containing the query vector and a list of route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
-        if self.index is None or self.routes is None:
-            raise ValueError("Index or routes are not populated.")
-        if route_filter is not None:
-            filtered_index = []
-            filtered_routes = []
-            for route, vec in zip(self.routes, self.index):
-                if route in route_filter:
-                    filtered_index.append(vec)
-                    filtered_routes.append(route)
-            if not filtered_routes:
-                raise ValueError("No routes found matching the filter criteria.")
-            sim = similarity_matrix(vector, np.array(filtered_index))
-            scores, idx = top_scores(sim, top_k)
-            route_names = [filtered_routes[i] for i in idx]
-        else:
-            sim = similarity_matrix(vector, self.index)
-            scores, idx = top_scores(sim, top_k)
-            route_names = [self.routes[i] for i in idx]
-        return scores, route_names
-
-    async def aget_routes(self):
-        """Get all routes from the index.
-
-        :return: A list of routes.
-        :rtype: List[str]
-        """
-        logger.error("Async get routes is not implemented for LocalIndex.")
-
-    def _write_config(self, config: ConfigParameter):
-        """Write the config to the index.
-
-        :param config: The config to write to the index.
-        :type config: ConfigParameter
-        """
-        logger.warning("No config is written for LocalIndex.")
+        return self.query(
+            vector=vector,
+            top_k=top_k,
+            route_filter=route_filter,
+            sparse_vector=sparse_vector,
+        )
 
     def delete(self, route_name: str):
         """Delete all records of a specific route from the index.
@@ -267,22 +239,8 @@ class LocalIndex(BaseIndex):
         :param route_name: The name of the route to delete.
         :type route_name: str
         """
-        if (
-            self.index is not None
-            and self.routes is not None
-            and self.utterances is not None
-        ):
-            delete_idx = self._get_indices_for_route(route_name=route_name)
-            self.index = np.delete(self.index, delete_idx, axis=0)
-            self.routes = np.delete(self.routes, delete_idx, axis=0)
-            self.utterances = np.delete(self.utterances, delete_idx, axis=0)
-            if self.metadata is not None:
-                self.metadata = np.delete(self.metadata, delete_idx, axis=0)
-        else:
-            raise ValueError(
-                "Attempted to delete route records but either index, routes or "
-                "utterances is None."
-            )
+        if self.routes is not None:
+            self._keep(self.routes != route_name)
 
     async def adelete(self, route_name: str):
         """Delete all records of a specific route from the index. Note that this just points
@@ -293,6 +251,21 @@ class LocalIndex(BaseIndex):
         :type route_name: str
         """
         self.delete(route_name)
+
+    def _keep(self, mask: np.ndarray):
+        """Keeps only the rows where mask is True.
+
+        :param mask: A boolean mask, one entry per row.
+        :type mask: np.ndarray
+        """
+        if self.index is not None:
+            self.index = self.index[mask]
+        if self.routes is not None:
+            self.routes = self.routes[mask]
+        if self.utterances is not None:
+            self.utterances = self.utterances[mask]
+        if self.metadata is not None:
+            self.metadata = self.metadata[mask]
 
     def delete_index(self):
         """Deletes the index, effectively clearing it and setting it to None.
@@ -305,6 +278,14 @@ class LocalIndex(BaseIndex):
         self.utterances = None
         self.metadata = None
 
+    def delete_all(self):
+        """Deletes all records from the index.
+
+        :return: None
+        :rtype: None
+        """
+        self.delete_index()
+
     async def adelete_index(self):
         """Deletes the index, effectively clearing it and setting it to None. Note that this just points
         to the sync delete_index method as async makes no difference for the local computations
@@ -313,23 +294,7 @@ class LocalIndex(BaseIndex):
         :return: None
         :rtype: None
         """
-        self.index = None
-        self.routes = None
-        self.utterances = None
-        self.metadata = None
-
-    def _get_indices_for_route(self, route_name: str):
-        """Gets an array of indices for a specific route.
-
-        :param route_name: The name of the route to get indices for.
-        :type route_name: str
-        :return: An array of indices for the route.
-        :rtype: np.ndarray
-        """
-        if self.routes is None:
-            raise ValueError("Routes are not populated.")
-        idx = [i for i, route in enumerate(self.routes) if route == route_name]
-        return idx
+        self.delete_index()
 
     def __len__(self):
         if self.index is not None:

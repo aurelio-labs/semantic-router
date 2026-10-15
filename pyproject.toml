@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "1.0.0.dev0"
+version = "1.0.0"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.10,<3.14"
@@ -35,7 +35,6 @@ ollama = ["ollama>=0.1.7"]
 local = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
-    "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
     "torch>=2.6.0 ; python_version < '3.13'"
 ]
@@ -101,6 +100,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["I", "E501", "T201", "F404"]
+"benchmarks/*" = ["T201"]  # scripts report to stdout on purpose
 
 [tool.ruff]
 line-length = 88

@@ -3,32 +3,38 @@ title: Versions
 description: Which Semantic Router release line to use, and where its docs live.
 ---
 
-Semantic Router has two release lines. Pick the one that matches the version you have installed, and use the version switcher at the top of the sidebar to read the matching docs.
-
-## v0: the 0.x line
-
-The 0.x releases are the library as it has shipped since 2023: `SemanticRouter`, `HybridRouter`, utterance-based routes, `score_threshold`, and index synchronisation. The final release of this line is **0.2.0**, which is being finished on the `v0` branch. After that the line receives bug fixes only.
-
-Install it with an upper bound so an upgrade never moves you to 1.x by accident:
-
-```bash
-pip install "semantic-router<1"
-```
-
-The 0.x source lives on the [`v0` branch](https://github.com/aurelio-labs/semantic-router/tree/v0). Bug reports and fixes for 0.x should target that branch.
+Semantic Router has two release lines. Pick the one that matches the version you have installed, and use the version switcher to read the matching docs.
 
 ## v1: the 1.x line
 
-The 1.x line is a rewrite of the routing layer around calibrated confidence, decision-model backends, and composable routers. It is being developed on the [`main` branch](https://github.com/aurelio-labs/semantic-router) and will ship as **1.0.0**. It is a breaking change: route definitions, thresholds, and the router classes all move. A migration guide will be published with the release.
+You're reading the v1 docs. Version 1 rebuilds the routing layer around three ideas:
 
-Pre-releases, once available, install with:
+- **Calibrated confidence.** `fit()` turns raw scores into probabilities, so a threshold means what it says.
+- **More than one kind of router.** `IndexedRouter` matches by embedding, `DecisionRouter` asks a decision model, and every router follows the same contract.
+- **Composition.** `Chain` and `Merge` build routers out of routers.
+
+It's a breaking release: the router classes, thresholds and sync all change, and dynamic routes are gone. The [migration guide](../user-guide/guides/migration-to-v1) covers every change, with before and after code.
 
 ```bash
-pip install --pre "semantic-router>=1.0.0.dev0"
+pip install -qU "semantic-router>=1,<2"
 ```
+
+The 1.x source lives on the [`main` branch](https://github.com/aurelio-labs/semantic-router).
+
+## v0: the 0.x line
+
+The 0.x releases are the library as it shipped from 2023 to 2026: `SemanticRouter`, `HybridRouter`, `score_threshold`, dynamic routes and index sync. The final release of this line is **0.2.0**. From then on it gets bug fixes only, on the [`v0` branch](https://github.com/aurelio-labs/semantic-router/tree/v0).
+
+Install it with an upper bound, so an upgrade never moves you to 1.x by accident:
+
+```bash
+pip install -qU "semantic-router<1"
+```
+
+The [v0 docs](../../v0/get-started/introduction) stay online.
 
 ## Which one should I use?
 
-- **Running 0.x in production?** Stay on the v0 docs. Nothing changes for you until you choose to migrate.
-- **Starting something new?** Use 0.x today. Move to 1.x when 1.0.0 ships, unless you want to follow development on `main`.
+- **Starting something new?** Use 1.x.
+- **Running 0.x in production?** Nothing changes until you choose to upgrade. Pin `semantic-router<1`, keep using the v0 docs, and move over with the [migration guide](../user-guide/guides/migration-to-v1) when you're ready.
 - **Contributing?** Fixes for 0.x go to `v0`; everything else goes to `main`. See [Contributing](https://github.com/aurelio-labs/semantic-router/blob/main/CONTRIBUTING.md).
