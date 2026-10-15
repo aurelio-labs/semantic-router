@@ -1,12 +1,17 @@
-import datetime
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import Field, PrivateAttr
 
-from semantic_router.index.base import BaseIndex, IndexConfig
-from semantic_router.schema import ConfigParameter, Metric, SparseEmbedding, Utterance
+from semantic_router.index.base import (
+    SR_ROUTE,
+    SR_UTTERANCE,
+    BaseIndex,
+    IndexConfig,
+    check_records,
+)
+from semantic_router.schema import Metric, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 DEFAULT_COLLECTION_NAME = "semantic-router-index"
@@ -211,67 +216,66 @@ class QdrantIndex(BaseIndex):
 
         return models.Filter(must=[ns_condition, base_filter])
 
-    def _point_ids_for_utterances(self, routes_to_delete: dict) -> list:
-        """Compute deterministic point IDs for the given route→utterance mapping.
+    def _point_id(self, route: str, utterance: Any) -> str:
+        """Deterministic point id for a (route, utterance) pair, namespace-prefixed
+        when set to avoid cross-tenant collisions.
 
-        Uses the same uuid5 scheme as ``add()`` so IDs are derived without
-        a round-trip to Qdrant.
+        :param route: The route name.
+        :type route: str
+        :param utterance: The utterance.
+        :type utterance: Any
+        :return: The point id.
+        :rtype: str
         """
-        ids: list = []
-        for route, utterances in routes_to_delete.items():
-            for utterance in utterances:
-                key = (
-                    f"{self.namespace}:{route}:{utterance}"
-                    if self.namespace is not None
-                    else f"{route}:{utterance}"
-                )
-                ids.append(str(uuid.uuid5(uuid.NAMESPACE_DNS, key)))
-        return ids
+        key = (
+            f"{self.namespace}:{route}:{utterance}"
+            if self.namespace is not None
+            else f"{route}:{utterance}"
+        )
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, key))
 
-    def _remove_and_sync(self, routes_to_delete: dict):
-        """Remove specific utterances from the index.
+    def _points(
+        self,
+        embeddings: List[List[float]],
+        routes: List[str],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]],
+        sparse_embeddings: Optional[List[SparseEmbedding]],
+    ) -> Tuple[List[str], List[Dict[str, Any]]]:
+        """Builds the point ids and payloads for an upsert.
 
-        :param routes_to_delete: Dict mapping route name to list of utterances to remove.
-        :type routes_to_delete: dict
+        :return: A tuple of the point ids and their payloads.
+        :rtype: Tuple[List[str], List[Dict[str, Any]]]
         """
-        from qdrant_client import models
-
-        ids = self._point_ids_for_utterances(routes_to_delete)
-        if ids:
-            self.client.delete(
-                self.index_name,
-                points_selector=models.PointIdsList(points=ids),
+        if sparse_embeddings is not None:
+            raise ValueError(
+                "QdrantIndex stores dense vectors only, use HybridLocalIndex or "
+                "PineconeIndex for sparse embeddings."
             )
-
-    async def _async_remove_and_sync(self, routes_to_delete: dict):
-        """Asynchronously remove specific utterances from the index.
-
-        :param routes_to_delete: Dict mapping route name to list of utterances to remove.
-        :type routes_to_delete: dict
-        """
-        from qdrant_client import models
-
-        ids = self._point_ids_for_utterances(routes_to_delete)
-        if ids:
-            if self.aclient is not None:
-                await self.aclient.delete(
-                    self.index_name,
-                    points_selector=models.PointIdsList(points=ids),
-                )
-            else:
-                self._remove_and_sync(routes_to_delete)
+        metadata_list = check_records(embeddings, routes, utterances, metadata_list)
+        ids = [self._point_id(r, u) for r, u in zip(routes, utterances)]
+        payloads = [
+            {
+                SR_ROUTE_PAYLOAD_KEY: route,
+                SR_UTTERANCE_PAYLOAD_KEY: utterance,
+                "metadata": metadata,
+                **({"namespace": self.namespace} if self.namespace is not None else {}),
+            }
+            for route, utterance, metadata in zip(routes, utterances, metadata_list)
+        ]
+        return ids, payloads
 
     def add(
         self,
         embeddings: List[List[float]],
         routes: List[str],
-        utterances: List[str],
-        function_schemas: Optional[List[Dict[str, Any]]] = None,
-        metadata_list: List[Dict[str, Any]] = [],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
         **kwargs,
     ):
-        """Add records to the index.
+        """Upsert records into the index, one point per (route, utterance) pair.
 
         :param embeddings: The embeddings to add.
         :type embeddings: List[List[float]]
@@ -279,50 +283,60 @@ class QdrantIndex(BaseIndex):
         :type routes: List[str]
         :param utterances: The utterances to add.
         :type utterances: List[str]
-        :param function_schemas: The function schemas to add.
-        :type function_schemas: Optional[List[Dict[str, Any]]]
         :param metadata_list: The metadata to add.
-        :type metadata_list: List[Dict[str, Any]]
+        :type metadata_list: Optional[List[Dict[str, Any]]]
+        :param sparse_embeddings: Not supported, QdrantIndex is dense only.
+        :type sparse_embeddings: Optional[List[SparseEmbedding]]
         :param batch_size: The batch size to use for the upload.
         :type batch_size: int
         """
+        ids, payloads = self._points(
+            embeddings, routes, utterances, metadata_list, sparse_embeddings
+        )
+        if not ids:
+            return
         self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
-
-        # Deterministic UUIDs — namespace-prefixed when set to avoid cross-tenant collisions
-        ids = [
-            str(
-                uuid.uuid5(
-                    uuid.NAMESPACE_DNS,
-                    f"{self.namespace}:{route}:{utterance}"
-                    if self.namespace is not None
-                    else f"{route}:{utterance}",
-                )
-            )
-            for route, utterance in zip(routes, utterances)
-        ]
-
-        # Ensure metadata_list is the correct length
-        if not metadata_list or len(metadata_list) != len(utterances):
-            metadata_list = [{} for _ in utterances]
-
-        payloads = [
-            {
-                SR_ROUTE_PAYLOAD_KEY: route,
-                SR_UTTERANCE_PAYLOAD_KEY: utterance,
-                "metadata": metadata if metadata is not None else {},
-                **({"namespace": self.namespace} if self.namespace is not None else {}),
-            }
-            for route, utterance, metadata in zip(routes, utterances, metadata_list)
-        ]
-
-        # UUIDs are autogenerated by qdrant-client if not provided explicitly
         self.client.upload_collection(
             self.index_name,
             vectors=embeddings,
             payload=payloads,
             ids=ids,
             batch_size=batch_size,
+        )
+
+    def _records(self, results: list, include_metadata: bool) -> tuple[list, list]:
+        """Splits scrolled points into ids and flat record metadata, with the
+        ``sr_route`` and ``sr_utterance`` keys next to the stored metadata.
+        """
+        ids = [str(r.id) for r in results]
+        if not include_metadata:
+            return ids, []
+        metadata = []
+        for r in results:
+            payload = r.payload or {}
+            metadata.append(
+                {
+                    **(payload.get("metadata") or {}),
+                    SR_ROUTE: payload.get(SR_ROUTE_PAYLOAD_KEY, ""),
+                    SR_UTTERANCE: payload.get(SR_UTTERANCE_PAYLOAD_KEY, ""),
+                }
+            )
+        return ids, metadata
+
+    def _route_selector(self, route_name: str):
+        """Filter that selects every point of one route, by exact name."""
+        from qdrant_client import models
+
+        return self._build_filter(
+            models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key=SR_ROUTE_PAYLOAD_KEY,
+                        match=models.MatchValue(value=route_name),
+                    )
+                ]
+            )
         )
 
     def _get_all(
@@ -357,9 +371,7 @@ class QdrantIndex(BaseIndex):
             )
             results.extend(records)
 
-        ids = [str(r.id) for r in results]
-        metadata = [r.payload or {} for r in results] if include_metadata else []
-        return ids, metadata
+        return self._records(results, include_metadata)
 
     async def _async_get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
@@ -396,28 +408,7 @@ class QdrantIndex(BaseIndex):
             )
             results.extend(records)
 
-        ids = [str(r.id) for r in results]
-        metadata = [r.payload or {} for r in results] if include_metadata else []
-        return ids, metadata
-
-    def get_utterances(self, include_metadata: bool = False) -> List[Utterance]:
-        """Gets a list of route and utterance objects currently stored in the index.
-
-        :param include_metadata: Whether to include metadata in the returned Utterance objects.
-        :type include_metadata: bool
-        :return: A list of Utterance objects.
-        :rtype: List[Utterance]
-        """
-        _, payloads = self._get_all(include_metadata=True)
-        return [
-            Utterance(
-                route=p.get(SR_ROUTE_PAYLOAD_KEY, ""),
-                utterance=p.get(SR_UTTERANCE_PAYLOAD_KEY, ""),
-                function_schemas=None,
-                metadata=p.get("metadata", {}) if include_metadata else {},
-            )
-            for p in payloads
-        ]
+        return self._records(results, include_metadata)
 
     def delete(self, route_name: str):
         """Delete records from the index.
@@ -425,20 +416,8 @@ class QdrantIndex(BaseIndex):
         :param route_name: The name of the route to delete.
         :type route_name: str
         """
-        from qdrant_client import models
-
         self.client.delete(
-            self.index_name,
-            points_selector=self._build_filter(
-                models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key=SR_ROUTE_PAYLOAD_KEY,
-                            match=models.MatchText(text=route_name),
-                        )
-                    ]
-                )
-            ),
+            self.index_name, points_selector=self._route_selector(route_name)
         )
 
     def describe(self) -> IndexConfig:
@@ -563,29 +542,6 @@ class QdrantIndex(BaseIndex):
         ]
         return np.array(scores), route_names
 
-    def get_routes_tuples(self) -> list[tuple]:
-        """Synchronously get route and utterance objects as tuples.
-
-        :return: A list of (route_name, utterance, function_schemas, metadata) tuples.
-        :rtype: list[tuple]
-        """
-        utterances = self.get_utterances(include_metadata=True)
-        return [
-            (u.route, u.utterance, u.function_schemas, u.metadata) for u in utterances
-        ]
-
-    async def aget_routes(self) -> list[tuple]:
-        """Asynchronously get a list of route and utterance objects currently
-        stored in the index.
-
-        :return: A list of (route_name, utterance, function_schemas, metadata) tuples.
-        :rtype: list[tuple]
-        """
-        utterances = await self.aget_utterances(include_metadata=True)
-        return [
-            (u.route, u.utterance, u.function_schemas, u.metadata) for u in utterances
-        ]
-
     def delete_index(self):
         """Delete the index.
 
@@ -593,6 +549,7 @@ class QdrantIndex(BaseIndex):
         :rtype: None
         """
         self.client.delete_collection(self.index_name)
+        self._collection_initialized = False
 
     def convert_metric(self, metric: Metric):
         """Convert the metric to a Qdrant distance metric.
@@ -616,126 +573,6 @@ class QdrantIndex(BaseIndex):
 
         return mapping[metric]
 
-    def _init_config_collection(self):
-        """Ensure the config collection exists."""
-        from qdrant_client import models
-
-        if not self.client.collection_exists("sr_config"):
-            try:
-                # Use 1-dim vector for config points
-                self.client.create_collection(
-                    collection_name="sr_config",
-                    vectors_config=models.VectorParams(
-                        size=1, distance=self.convert_metric(self.metric)
-                    ),
-                )
-            except Exception:
-                # Another process created it between the check and the create
-                if not self.client.collection_exists("sr_config"):
-                    raise
-
-    def _config_point_id(self, field: str, scope: str | None = None) -> str:
-        """Generate a deterministic UUID string for config/hash/lock points."""
-        return str(
-            uuid.uuid5(uuid.NAMESPACE_DNS, f"{field}#{scope or self.index_name}")
-        )
-
-    def _write_config(self, config: ConfigParameter):
-        """Write a config parameter to the Qdrant config collection."""
-        self._init_config_collection()
-        from qdrant_client import models
-
-        point_id = self._config_point_id(config.field, config.scope)
-        payload = {
-            "field": config.field,
-            "scope": config.scope or self.index_name,
-            "value": config.value,
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
-        self.client.upsert(
-            collection_name="sr_config",
-            points=[
-                models.PointStruct(
-                    id=point_id,
-                    vector=[0.0],
-                    payload=payload,
-                )
-            ],
-        )
-        return config
-
-    def _read_config(self, field: str, scope: str | None = None) -> ConfigParameter:
-        """Read a config parameter from the Qdrant config collection."""
-        self._init_config_collection()
-        point_id = self._config_point_id(field, scope)
-        res = self.client.retrieve(
-            collection_name="sr_config",
-            ids=[point_id],
-            with_payload=True,
-        )
-        if res:
-            payload = res[0].payload
-            return ConfigParameter(
-                field=payload.get("field", field),
-                value=payload.get("value", ""),
-                created_at=payload.get("created_at"),
-                scope=payload.get("scope", scope or self.index_name),
-            )
-        else:
-            logger.warning(f"Configuration for {field} parameter not found in Qdrant.")
-            return ConfigParameter(
-                field=field, value="", scope=scope or self.index_name
-            )
-
-    async def _async_write_config(self, config: ConfigParameter):
-        self._init_config_collection()
-        from qdrant_client import models
-
-        point_id = self._config_point_id(config.field, config.scope)
-        payload = {
-            "field": config.field,
-            "scope": config.scope or self.index_name,
-            "value": config.value,
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
-        if self.aclient is None:
-            return self._write_config(config)
-        await self.aclient.upsert(
-            collection_name="sr_config",
-            points=[
-                models.PointStruct(
-                    id=point_id,
-                    vector=[0.0],
-                    payload=payload,
-                )
-            ],
-        )
-        return config
-
-    async def _async_read_config(self, field: str, scope: str | None = None):
-        self._init_config_collection()
-        point_id = self._config_point_id(field, scope)
-        if self.aclient is None:
-            return self._read_config(field, scope)
-        res = await self.aclient.retrieve(
-            collection_name="sr_config",
-            ids=[point_id],
-            with_payload=True,
-        )
-        if res:
-            payload = res[0].payload
-            return ConfigParameter(
-                field=payload.get("field", field),
-                value=payload.get("value", ""),
-                created_at=payload.get("created_at"),
-                scope=payload.get("scope", scope or self.index_name),
-            )
-        else:
-            logger.warning(f"Configuration for {field} parameter not found in Qdrant.")
-            return ConfigParameter(
-                field=field, value="", scope=scope or self.index_name
-            )
-
     def __len__(self):
         """Returns the total number of vectors in the index. If the index is not initialized
         returns 0.
@@ -755,8 +592,6 @@ class QdrantIndex(BaseIndex):
         :return: List of IDs of the vectors deleted (empty list, as Qdrant does not return IDs).
         :rtype: list[str]
         """
-        from qdrant_client import models
-
         if self.aclient is None:
             logger.warning(
                 "Cannot use async delete with an in-memory Qdrant instance; falling back to sync delete."
@@ -765,17 +600,7 @@ class QdrantIndex(BaseIndex):
             return []
 
         await self.aclient.delete(
-            self.index_name,
-            points_selector=self._build_filter(
-                models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key=SR_ROUTE_PAYLOAD_KEY,
-                            match=models.MatchText(text=route_name),
-                        )
-                    ]
-                )
-            ),
+            self.index_name, points_selector=self._route_selector(route_name)
         )
         return []
 
@@ -794,6 +619,7 @@ class QdrantIndex(BaseIndex):
             return
 
         await self.aclient.delete_collection(self.index_name)
+        self._collection_initialized = False
 
     async def ais_ready(self) -> bool:
         """Checks if the index is ready to be used asynchronously."""
@@ -810,51 +636,33 @@ class QdrantIndex(BaseIndex):
         self,
         embeddings: List[List[float]],
         routes: List[str],
-        utterances: List[str],
-        function_schemas: Optional[List[Dict[str, Any]]] = None,
-        metadata_list: List[Dict[str, Any]] = [],
+        utterances: List[Any],
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+        sparse_embeddings: Optional[List[SparseEmbedding]] = None,
         batch_size: int = DEFAULT_UPLOAD_BATCH_SIZE,
         **kwargs,
     ):
-        """Asynchronously add records to the index, including metadata in the payload."""
-        self.dimensions = self.dimensions or len(embeddings[0])
+        """Asynchronously upsert records into the index, one point per (route,
+        utterance) pair."""
         if self.aclient is None:
             logger.warning(
                 "Cannot use async add with an in-memory Qdrant instance; falling back to sync add."
             )
             return self.add(
-                embeddings,
-                routes,
-                utterances,
-                function_schemas,
-                metadata_list,
-                batch_size,
-                **kwargs,
+                embeddings=embeddings,
+                routes=routes,
+                utterances=utterances,
+                metadata_list=metadata_list,
+                sparse_embeddings=sparse_embeddings,
+                batch_size=batch_size,
             )
+        ids, payloads = self._points(
+            embeddings, routes, utterances, metadata_list, sparse_embeddings
+        )
+        if not ids:
+            return
+        self.dimensions = self.dimensions or len(embeddings[0])
         self._init_collection()
-        # Ensure metadata_list is the correct length
-        if not metadata_list or len(metadata_list) != len(utterances):
-            metadata_list = [{} for _ in utterances]
-        payloads = [
-            {
-                SR_ROUTE_PAYLOAD_KEY: route,
-                SR_UTTERANCE_PAYLOAD_KEY: utterance,
-                "metadata": metadata if metadata is not None else {},
-                **({"namespace": self.namespace} if self.namespace is not None else {}),
-            }
-            for route, utterance, metadata in zip(routes, utterances, metadata_list)
-        ]
-        ids = [
-            str(
-                uuid.uuid5(
-                    uuid.NAMESPACE_DNS,
-                    f"{self.namespace}:{route}:{utterance}"
-                    if self.namespace is not None
-                    else f"{route}:{utterance}",
-                )
-            )
-            for route, utterance in zip(routes, utterances)
-        ]
         # AsyncQdrantClient.upload_collection is not a coroutine; use batched upsert instead.
         from qdrant_client import models as qdrant_models
 
@@ -867,22 +675,3 @@ class QdrantIndex(BaseIndex):
                 collection_name=self.index_name,
                 points=points[i : i + batch_size],
             )
-
-    async def aget_utterances(self, include_metadata: bool = False) -> List[Utterance]:
-        """Asynchronously gets a list of route and utterance objects currently stored in the index.
-
-        :param include_metadata: Whether to include metadata in the returned Utterance objects.
-        :type include_metadata: bool
-        :return: A list of Utterance objects.
-        :rtype: List[Utterance]
-        """
-        _, payloads = await self._async_get_all(include_metadata=True)
-        return [
-            Utterance(
-                route=p.get(SR_ROUTE_PAYLOAD_KEY, ""),
-                utterance=p.get(SR_UTTERANCE_PAYLOAD_KEY, ""),
-                function_schemas=None,
-                metadata=p.get("metadata", {}) if include_metadata else {},
-            )
-            for p in payloads
-        ]
