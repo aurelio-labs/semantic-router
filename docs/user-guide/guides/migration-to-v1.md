@@ -275,6 +275,8 @@ router = IndexedRouter(
 
 Passing `routes=` adds or updates; it never deletes. Routes that are in the index but not in your list stay there, unlike `auto_sync="local"`. Remove a route with `router.remove(name=...)`.
 
+To connect to an index that's already filled, leave `routes` out: `IndexedRouter(encoder=encoder, index=index)` reads the routes from the index, which replaces `auto_sync="remote"`.
+
 Upgrading a remote index that 0.x filled? The cleanest path is to point 1.0 at a new index (or a new namespace) and let the router fill it from your routes. Reusing the old one also works:
 
 - Record ids use the same scheme as 0.x, so adding your routes again updates the old records rather than duplicating them.

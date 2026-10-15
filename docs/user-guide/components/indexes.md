@@ -103,33 +103,42 @@ index = PostgresIndex(
 
 ## Sharing an index
 
-Because the index holds the routes, several routers can share one. Pass the same index to each:
+Because the index holds the routes, several routers can share one. To connect to an index that's already filled, pass it without `routes`: the router reads them from the index.
 
 ```python
 shared = QdrantIndex(index_name="support", location=":memory:")
 encoder = FastEmbedEncoder(name="BAAI/bge-small-en-v1.5")
 
 writer = IndexedRouter(encoder=encoder, routes=routes, index=shared)
-reader = IndexedRouter(encoder=encoder, routes=[], index=shared)
+reader = IndexedRouter(encoder=encoder, index=shared)
 
-[r.name for r in reader.routes]
+sorted(r.name for r in reader.routes)
+```
+
+```
+[Out]: ['politics', 'weather']
 ```
 
 Every router on a shared index must use the same encoder: the stored vectors only mean something to the model that made them.
 
 ## Hybrid indexes
 
-For [hybrid search](routers#hybrid-search), the index has to store sparse vectors as well as dense ones. Without an `index`, a hybrid `IndexedRouter` uses `HybridLocalIndex`, which does that in memory. For a remote index, pick one that supports sparse vectors.
+For [hybrid search](routers#hybrid-search), the index has to store sparse vectors as well as dense ones. Two do:
+
+- `HybridLocalIndex`, in memory. A hybrid `IndexedRouter` uses it when you don't pass an index.
+- `PineconeIndex`, remote.
+
+`LocalIndex`, `QdrantIndex` and `PostgresIndex` are dense only: give a router one of them along with a `sparse_encoder` and it raises an error.
 
 ## Supported indexes
 
-| Index | What it is | Install |
-|-------|------------|---------|
-| [LocalIndex](../../client-reference/index/local) | In memory, for development and testing | base |
-| [HybridLocalIndex](../../client-reference/index/hybrid_local) | In memory, dense and sparse | base |
-| [PineconeIndex](../../client-reference/index/pinecone) | Pinecone vector database | `pip install -qU "semantic-router[pinecone]"` |
-| [QdrantIndex](../../client-reference/index/qdrant) | Qdrant vector database | `pip install -qU "semantic-router[qdrant]"` |
-| [PostgresIndex](../../client-reference/index/postgres) | PostgreSQL with pgvector | `pip install -qU "semantic-router[postgres]"` |
+| Index | What it is | Hybrid | Install |
+|-------|------------|--------|---------|
+| [LocalIndex](../../client-reference/index/local) | In memory, for development and testing | no | base |
+| [HybridLocalIndex](../../client-reference/index/hybrid_local) | In memory, dense and sparse | yes | base |
+| [PineconeIndex](../../client-reference/index/pinecone) | Pinecone vector database | yes | `pip install -qU "semantic-router[pinecone]"` |
+| [QdrantIndex](../../client-reference/index/qdrant) | Qdrant vector database | no | `pip install -qU "semantic-router[qdrant]"` |
+| [PostgresIndex](../../client-reference/index/postgres) | PostgreSQL with pgvector | no | `pip install -qU "semantic-router[postgres]"` |
 
 ## Choosing an index
 
@@ -138,7 +147,7 @@ For [hybrid search](routers#hybrid-search), the index has to store sparse vector
 3. **Scale.** Local is bounded by memory. Remote handles millions of vectors.
 4. **Latency.** Local is fastest. Remote adds a network hop to every query.
 5. **Setup and cost.** Local needs nothing and costs nothing. Remote needs a service.
-6. **Hybrid search.** Only some indexes store sparse vectors.
+6. **Hybrid search.** Only `HybridLocalIndex` and `PineconeIndex` store sparse vectors.
 
 ## Index methods
 

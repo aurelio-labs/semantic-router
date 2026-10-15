@@ -46,7 +46,7 @@ The constructor embeds the utterances and writes them to the index before it ret
 | Argument | Default | What it does |
 |---|---|---|
 | `encoder` | required | The dense encoder that embeds utterances and queries. |
-| `routes` | required | The routes to write to the index. |
+| `routes` | none | Routes to write to the index. Leave it out to use the routes already in the index. |
 | `index` | in memory | Where the vectors live: `LocalIndex`, `PineconeIndex`, `QdrantIndex`, `PostgresIndex`, ... See [indexes](indexes). |
 | `sparse_encoder` | `None` | Set it to make the router hybrid (below). |
 | `alpha` | `0.3` | Hybrid only: the weight on the dense score; the sparse score gets `1 - alpha`. |
@@ -72,7 +72,7 @@ hybrid = IndexedRouter(
 )
 ```
 
-Without an `index`, a hybrid router uses a `HybridLocalIndex`. For a remote index, pick one that stores sparse vectors too.
+Without an `index`, a hybrid router uses a `HybridLocalIndex`. The only remote index that stores sparse vectors is `PineconeIndex`; the dense-only indexes raise an error if you pair them with a `sparse_encoder`.
 
 `alpha` sets the balance: 1.0 is dense only, 0.0 is sparse only. A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your utterances, so `add()` refits it and rebuilds the index.
 
