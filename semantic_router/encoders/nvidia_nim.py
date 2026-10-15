@@ -52,7 +52,7 @@ class NimEncoder(DenseEncoder, AsymmetricDenseMixin):
         """Initialize the NimEncoder.
 
         :param name: The name of the embedding model to use such as
-            "nvidia/nv-embedqa-e5-v5".
+            "nvidia/nv-embedqa-mistral-7b-v2".
         :type name: str
         :param api_key: The Nim API key, can also be set via the NVIDIA_NIM_API_KEY
             environment variable.

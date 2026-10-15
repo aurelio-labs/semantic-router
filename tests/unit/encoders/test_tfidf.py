@@ -105,6 +105,35 @@ class TestTfidfEncoder:
         assert result[1].to_dict() == {0: 0.0}
         assert result[2].to_dict() == {0: 0.0}
 
+    def test_idf_is_positive_for_a_word_in_every_utterance(self, tfidf_encoder):
+        routes = [
+            Route(
+                name="test_route",
+                utterances=["some docs", "and more docs", "and even more docs"],
+            )
+        ]
+        tfidf_encoder.fit(routes)
+        # "docs" is in all three utterances
+        assert tfidf_encoder.idf[tfidf_encoder.word_index["docs"]] > 0
+        assert (tfidf_encoder.idf > 0).all()
+
+    def test_scores_are_bounded_to_unit_interval(self, tfidf_encoder):
+        utterances = ["some docs", "and more docs", "and even more docs", "docs docs"]
+        tfidf_encoder.fit([Route(name="test_route", utterances=utterances)])
+        docs = tfidf_encoder(utterances)
+        queries = tfidf_encoder(["more docs", "even more", "docs"])
+
+        def dot(a, b):
+            b_dict = b.to_dict()
+            return sum(v * b_dict.get(i, 0.0) for i, v in a.to_dict().items())
+
+        scores = [dot(q, d) for q in queries for d in docs]
+        assert min(scores) >= 0.0
+        assert max(scores) <= 1.0 + 1e-9
+        # an utterance scores exactly 1 against itself
+        for d in docs:
+            assert dot(d, d) == pytest.approx(1.0)
+
 
 def test_word_index_is_the_same_in_every_process():
     """Word ids end up in remote indexes, so they must not depend on the

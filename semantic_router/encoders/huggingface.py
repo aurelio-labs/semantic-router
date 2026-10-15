@@ -283,14 +283,18 @@ class HFEndpointEncoder(DenseEncoder):
                 else:
                     response.raise_for_status()
 
-            except requests.exceptions.RequestException:
-                if attempt < max_retries - 1:
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries:
                     logger.info(f"Retrying attempt: {attempt} for payload: {payload} ")
                     time.sleep(retry_interval)
                     retry_interval += attempt
-                else:
+                elif e.response is not None:
                     raise ValueError(
-                        f"Query failed with status {response.status_code}: {response.text}"
-                    )
+                        f"Query failed with status {e.response.status_code}: "
+                        f"{e.response.text}"
+                    ) from e
+                else:
+                    # no response at all, e.g. a DNS or connection error
+                    raise ValueError(f"Query failed: {e}") from e
 
         return response.json()
