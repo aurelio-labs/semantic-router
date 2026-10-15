@@ -122,9 +122,9 @@ class DecisionRouter(BaseRouter):
             return
         if self._loop is asyncio.get_running_loop():
             await self._session.close()
-        elif self._loop.is_closed():
-            # the loop that owned it is gone (an `asyncio.run` that returned); nothing to
-            # close gracefully, so drop it and let the sockets go with garbage collection
+        elif self._loop.is_closed() or not self._loop.is_running():
+            # the loop that owned it is gone or idle, so nothing can run a graceful close
+            # there from here: drop it and let the sockets go with garbage collection
             pass
         else:
             # the session lives on another live loop (the shared sync loop); close it there
@@ -133,4 +133,22 @@ class DecisionRouter(BaseRouter):
         self._session = None
 
     def close(self) -> None:
+        loop = self._loop
+        if self._session is None or self._session.closed or loop is None:
+            return
+        try:
+            running: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if loop is running:
+            # blocking here would stop the very loop that has to run the close
+            raise RuntimeError(
+                "this router's session belongs to the running event loop: "
+                "use `await router.aclose()` here"
+            )
+        if running is None and not loop.is_running() and not loop.is_closed():
+            # its loop is idle (a run_until_complete that returned), so close it there
+            loop.run_until_complete(self._session.close())
+            self._session = None
+            return
         run(self.aclose())

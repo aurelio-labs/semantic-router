@@ -152,8 +152,9 @@ class IndexedRouter(BaseRouter):
             # a stored utterance matches itself at ~1.0, so fitting on it teaches the
             # calibrator that real queries (which never score that high) are unsure
             logger.warning(
-                f"{overlap}/{len(X)} training queries are stored utterances; their scores are "
-                "self-matches and the calibrator will be overconfident. fit on held-out queries."
+                f"{overlap}/{len(X)} training queries are stored utterances; they match "
+                "themselves at ~1.0, so the calibrator will under-rate real queries, which "
+                "score lower. fit on held-out queries."
             )
         return await super().afit(X, y, method)
 

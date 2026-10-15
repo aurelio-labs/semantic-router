@@ -160,6 +160,34 @@ def test_sync_calls_reuse_one_session_across_calls(server):
     assert r._session is not None and not r._session.closed
 
 
+def test_close_after_async_calls_on_an_idle_loop_returns(server):
+    import concurrent.futures
+
+    url, _ = server
+    r = DecisionRouter(ROUTES, api_key="k", base_url=url, retries=1)
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(r.acall("hello there"))  # the session now belongs to `loop`
+    with concurrent.futures.ThreadPoolExecutor(1) as pool:
+        # this used to hang forever: the close was scheduled on a loop nothing was running
+        pool.submit(r.close).result(timeout=5)
+    assert r._session is None
+    loop.close()
+
+
+def test_sync_close_on_the_owning_loop_says_to_await(server):
+    url, _ = server
+    r = DecisionRouter(ROUTES, api_key="k", base_url=url, retries=1)
+
+    async def inside():
+        await r.acall("hello there")
+        with pytest.raises(RuntimeError, match="aclose"):
+            r.close()  # blocking would stop the loop that has to run the close
+        await r.aclose()
+
+    asyncio.run(inside())
+    assert r._session is None
+
+
 def test_missing_api_key_fails_at_construction(monkeypatch):
     monkeypatch.delenv("JEV_API_KEY", raising=False)
     with pytest.raises(ValueError, match="JEV_API_KEY"):
