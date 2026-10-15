@@ -28,6 +28,7 @@ from semantic_router.encoders import (
     HuggingFaceEncoder,
     JinaEncoder,
     LiteLLMEncoder,
+    LocalEncoder,
     MistralEncoder,
     NimEncoder,
     OllamaEncoder,
@@ -57,7 +58,7 @@ from semantic_router.routers.indexed import _AGG, Aggregation
 from semantic_router.schema import EncoderType
 
 MIGRATION_GUIDE = (
-    "https://docs.aurelio.ai/semantic-router/user-guide/guides/migration-to-v1"
+    "https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1"
 )
 
 # a file rebuilds encoders with AutoEncoder, so these are the classes it can save. matched
@@ -81,6 +82,7 @@ _ENCODERS: dict[type, EncoderType] = {
     BedrockEncoder: EncoderType.BEDROCK,
     LiteLLMEncoder: EncoderType.LITELLM,
     OllamaEncoder: EncoderType.OLLAMA,
+    LocalEncoder: EncoderType.LOCAL,
 }
 
 # index type -> its class and the constructor params a file may hold. secrets (api keys,

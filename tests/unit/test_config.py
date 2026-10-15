@@ -264,3 +264,28 @@ def test_unknown_extension(tmp_path):
     path.write_text("router_type = 'decision'")
     with pytest.raises(ValueError, match="use .yaml, .yml or .json"):
         load_router(path=path)
+
+
+def test_auto_encoder_knows_the_local_type():
+    # AutoEncoder had a LOCAL branch but EncoderType had no LOCAL, so "local" was refused
+    from semantic_router.config import _ENCODERS
+    from semantic_router.encoders import LocalEncoder
+    from semantic_router.schema import EncoderType
+
+    assert EncoderType("local") is EncoderType.LOCAL
+    assert _ENCODERS[LocalEncoder] is EncoderType.LOCAL
+
+
+def test_a_local_encoder_round_trips(tmp_path):
+    pytest.importorskip("sentence_transformers")
+    from semantic_router.encoders import LocalEncoder
+
+    router = IndexedRouter(
+        encoder=LocalEncoder(),
+        routes=[Route(name="billing", utterances=["refund please"])],
+    )
+    path = tmp_path / "router.yaml"
+    router.to_yaml(path=path)
+    loaded = load_router(path=path)
+    assert isinstance(loaded.encoder, LocalEncoder)
+    assert loaded.encoder.name == router.encoder.name
