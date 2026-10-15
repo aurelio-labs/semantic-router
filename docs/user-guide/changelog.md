@@ -13,12 +13,18 @@ The `1.0.0` release rebuilds the routing layer. A router is now anything that sc
 - `DecisionRouter` routes with a decision model over TypeSafe's `/v1/systemone` API (Jev, Laya, Von), and `aask()` answers several `choice`, `noul` and `score` questions about one message in a single call.
 - `Chain` falls through from a fast router to a slower one when the fast one isn't confident. `Merge` takes a weighted average of several routers.
 - Subclass `BaseRouter` and implement one async method, `_scores`, to build your own router.
+- `DecisionRouter(concurrency=8)` sets how many requests a batch keeps in flight.
 
 #### Feature: Calibration
 
 - `fit()` learns a map from raw score to the probability that the top route is right (Platt or isotonic), and returns a `FitReport` with accuracy and calibration error. It replaces the random threshold search.
 - `confidence_threshold` replaces `score_threshold`, on the router and on each route. A per-call `threshold=` overrides both.
 - `RouteChoice` is now `name`, `confidence` and `calibrated`.
+
+#### Feature: The index is the source of truth
+
+- `router.routes` is a cached view of the index, filled on build and after the router's own `add`/`remove`. `refresh()` / `arefresh()` re-read it, and `refresh_interval` re-reads it during calls once it's that many seconds old. A query always searches the index itself.
+- An `IndexedRouter` can open an index that 0.x filled: `IndexedRouter(encoder=..., index=...)` with no routes reads them back.
 
 #### Feature: Config files
 
@@ -30,6 +36,7 @@ The `1.0.0` release rebuilds the routing layer. A router is now anything that sc
 - Dynamic routes and the `semantic_router.llms` package, `function_schemas`, `RouteChoice.function_call` and `similarity_score`.
 - `route_filter`, `vector=` and `simulate_static=` on router calls.
 - The default `OpenAIEncoder()`: the encoder is now required.
+- `score_threshold` on encoders, and `llama-cpp-python` from the `[local]` extra.
 - Default thresholds: with no `confidence_threshold`, the best route always wins.
 
 ---
