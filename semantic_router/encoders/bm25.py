@@ -28,8 +28,10 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
 
     The reference formula is section 4.1 of the ATIRE paper:
 
-        RSV_d = Σ_{t ∈ q} log(N / df_t) · (k1 + 1) · tf_td
-                           / (k1 · ((1 - b) + b · L_d / L_avg) + tf_td)
+    ```
+    RSV_d = Σ_{t ∈ q} log(N / df_t) · (k1 + 1) · tf_td
+                       / (k1 · ((1 - b) + b · L_d / L_avg) + tf_td)
+    ```
 
     Deviations from the paper
     -------------------------
