@@ -6,6 +6,8 @@ from typing import Literal
 
 import numpy as np
 
+from semantic_router.utils.logger import logger
+
 Method = Literal["platt", "isotonic"]
 
 
@@ -55,6 +57,15 @@ def _platt(s: np.ndarray, y: np.ndarray) -> dict[str, list[float]]:
         a, b = a - step[0], b - step[1]
         if np.abs(step).max() < 1e-8:
             break
+    if a <= 0:
+        # a falling curve would rank a weaker match above a stronger one. on these points
+        # the score doesn't predict a right answer, so say the base rate for every score
+        base = float(t.mean())
+        logger.warning(
+            "calibration: higher scores weren't more often right on this data, so every "
+            f"confidence is the base rate ({base:.2f}). fit on more held-out queries."
+        )
+        a, b = 0.0, float(np.log(base / (1 - base)))
     return {"a": [float(a)], "b": [float(b)]}
 
 

@@ -56,3 +56,20 @@ def test_chain_checks_the_top_routes_own_bar():
     second = Canned({"a": 0.0, "b": 1.0})
     # 0.9 clears the router's 0.5 but not route a's own 0.99, so the chain falls through
     assert Chain(routers=[first, second])("q").name == "b" and second.calls == 1
+
+
+def test_chain_and_merge_read_their_routes_live():
+    first = Canned({"a": 1.0, "b": 0.0})
+    chain, merge = Chain(routers=[first]), Merge(routers=[first])
+    first.routes = [*first.routes, Route(name="c", utterances=["c"])]
+    assert [r.name for r in chain.routes] == ["a", "b", "c"]
+    assert [r.name for r in merge.routes] == ["a", "b", "c"]
+
+
+def test_a_flat_calibrator_never_reorders_routes():
+    from semantic_router.calibration import Calibrator
+
+    flat = Calibrator("platt", {"a": [0.0], "b": [0.0]})  # every score maps to 0.5
+    r = Canned({"a": 0.2, "b": 0.9}, calibrator=flat)
+    assert r("q").name == "b"
+    assert Chain(routers=[r])("q").name == "b"

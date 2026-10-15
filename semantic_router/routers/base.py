@@ -107,9 +107,12 @@ class BaseRouter(ABC):
     def _choose(
         self, scores: dict[str, float], limit: int | None, threshold: float | None
     ) -> RouteChoice | list[RouteChoice]:
-        ranked = sorted(self._probs(scores).items(), key=lambda kv: kv[1], reverse=True)
+        probs = self._probs(scores)
+        # rank by the raw score: calibration says how sure, it must never reorder routes
+        ranked = sorted(scores, key=scores.__getitem__, reverse=True)
         picks = []
-        for n, c in ranked:
+        for n in ranked:
+            c = probs[n]
             # a per-call threshold wins over the route's and the router's
             bar = self._bar(n) if threshold is None else threshold
             if bar is None or c >= bar:

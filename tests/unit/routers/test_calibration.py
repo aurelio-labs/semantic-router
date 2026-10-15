@@ -50,3 +50,13 @@ def test_ece_of_perfect_calibration_is_zero():
     p = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.8, 0.8, 0.8, 0.8, 0.8])
     y = np.array([1, 0, 0, 0, 0, 1, 1, 1, 1, 0], dtype=float)
     assert ece(p, y, bins=5) == pytest.approx(0.0)
+
+
+def test_platt_never_learns_a_falling_curve():
+    # higher scores are *less* often right here; a negative slope would reverse rankings
+    s = np.array([0.9, 0.85, 0.8, 0.3, 0.25, 0.2])
+    y = np.array([0, 0, 1, 1, 1, 0])
+    cal = Calibrator.fit(s, y, "platt")
+    assert cal.params["a"][0] >= 0
+    p = cal(s)
+    assert np.all(np.diff(p[np.argsort(s)]) >= 0)  # never decreasing in the score
