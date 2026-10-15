@@ -1,141 +1,154 @@
-You can save a router to a file and load it back later — useful for shipping the same routes between environments, or just for not rebuilding them every time.
+---
+title: Save and load routers
+description: Save any router, calibration included, to a YAML or JSON file, and load it back with one function.
+---
 
-JSON and YAML both work.
+You can save a router to a file and load it back later. That's useful for shipping the same routes and settings between environments, keeping them in version control, or skipping a refit every time you start up.
 
-```python
-# JSON
-router.to_json("router.json")
-new_router = SemanticRouter.from_json("router.json")
+One loader handles every kind of router. Each file says what it describes in a `router_type` field: `indexed`, `decision`, `chain` or `merge`.
 
-# YAML
-router.to_yaml("router.yaml")
-new_router = SemanticRouter.from_yaml("router.yaml")
-```
-
-The file holds everything needed to recreate the router. If you use a remote index, the [sync features](../features/sync) keep the loaded router and the index in step.
-
-## Full example
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb)
-[![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb)
-
-```bash
-!pip install -qU semantic-router
-```
-
-## Build a router
+## Save a router
 
 ```python
-from semantic_router import Route
+from semantic_router import IndexedRouter, Route
+from semantic_router.encoders import FastEmbedEncoder
 
-politics = Route(
-    name="politics",
-    utterances=[
-        "isn't politics the best thing ever",
-        "why don't you tell me about your political opinions",
-        "don't you just love the president",
-        "don't you just hate the president",
-        "they're going to destroy this country!",
-        "they will save the country!",
-    ],
+routes = [
+    Route(
+        name="politics",
+        utterances=["isn't politics the best thing ever", "why don't you tell me about your political opinions"],
+    ),
+    Route(
+        name="chitchat",
+        utterances=["how's the weather today?", "how are things going?"],
+        description="Small talk.",
+        confidence_threshold=0.9,
+    ),
+]
+router = IndexedRouter(
+    encoder=FastEmbedEncoder(name="BAAI/bge-small-en-v1.5"),
+    routes=routes,
+    confidence_threshold=0.5,
 )
-chitchat = Route(
-    name="chitchat",
-    utterances=[
-        "how's the weather today?",
-        "how are things going?",
-        "lovely weather today",
-        "the weather is horrendous",
-        "let's go to the chippy",
-    ],
+router.fit(
+    X=["who should I vote for?", "nice day isn't it", "what's 2+2?", "the election is rigged", "how have you been?", "translate cat to french"],
+    y=["politics", "chitchat", None, "politics", "chitchat", None],
 )
 
-routes = [politics, chitchat]
+router.to_yaml(path="router.yaml")
 ```
+
+`router.to_json(path="router.json")` writes the same thing as JSON. Here's the YAML:
+
+```yaml
+router_type: indexed
+encoder:
+  type: fastembed
+  name: BAAI/bge-small-en-v1.5
+sparse_encoder: null
+alpha: 0.3
+top_k: 5
+aggregation: mean
+index:
+  type: local
+confidence_threshold: 0.5
+calibrator:
+  method: platt
+  params:
+    a:
+    - 9.789179445243244
+    b:
+    - -4.871250211949403
+routes:
+- name: politics
+  utterances:
+  - isn't politics the best thing ever
+  - why don't you tell me about your political opinions
+  description: null
+  confidence_threshold: null
+  metadata: {}
+- name: chitchat
+  utterances:
+  - how's the weather today?
+  - how are things going?
+  description: Small talk.
+  confidence_threshold: 0.9
+  metadata: {}
+```
+
+The encoder is saved by type and model name, and the index by type and its settings. The fitted calibrator is saved too.
+
+## Load it back
 
 ```python
-import os
-from getpass import getpass
-from semantic_router import SemanticRouter
-from semantic_router.encoders import CohereEncoder
+from semantic_router import load_router
 
-# dashboard.cohere.ai
-os.environ["COHERE_API_KEY"] = os.getenv("COHERE_API_KEY") or getpass(
-    "Enter Cohere API Key: "
-)
-
-encoder = CohereEncoder()
-
-router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
-```
-
-Quick check that it works:
-
-```python
-router("isn't politics the best thing ever")
+router = load_router(path="router.yaml")
+router("don't you love politics?")
 ```
 
 ```
-RouteChoice(name='politics', function_call=None, similarity_score=None)
+[Out]: RouteChoice(name='politics', confidence=0.8947431378911611, calibrated=True)
 ```
 
-```python
-router("how's the weather today?")
+`load_router` returns the class the file's `router_type` names: an `IndexedRouter`, a `DecisionRouter`, a `Chain` or a `Merge`. It rebuilds the encoder and the index, writes the routes to the index, and restores the calibrator, so the loaded router routes exactly like the one you saved, with no refit.
+
+A loaded calibrator doesn't come with the labelled queries it was fitted on. If you `add()` or `remove()` a route on a loaded router, the calibrator is dropped with a warning: call `fit()` again.
+
+## No secrets in files
+
+Files never hold API keys or connection strings. Encoders are saved as their type and model name, and indexes keep only settings that aren't secret, such as `index_name`, `namespace` and `metric`. When you load a file, the encoder, index and decision model read their keys from the environment, as they do when you build them in code: `OPENAI_API_KEY`, `PINECONE_API_KEY`, `JEV_API_KEY` and so on.
+
+`load_router` refuses a file with an `api_key` written into it.
+
+## Other router types
+
+A `DecisionRouter` saves its model settings and routes:
+
+```yaml
+router_type: decision
+model: jev-latest
+base_url: https://api.typesafe.ai
+instructions: Which route does the user's message belong to?
+timeout: 10.0
+retries: 3
+confidence_threshold: null
+calibrator: null
+routes:
+- name: billing
+  utterances:
+  - i want a refund
+  description: 'Money already paid or owed: refunds, charges, invoices.'
+  confidence_threshold: null
+  metadata: {}
 ```
 
-```
-RouteChoice(name='chitchat', function_call=None, similarity_score=None)
-```
+A `Chain` or `Merge` nests the routers it's made of, under `routers`, each with its own `router_type`. A `Merge` adds its `weights`. Trimmed, a Chain looks like this:
 
-## Save it
-
-```python
-router.to_json("router.json")
-```
-
-## Load it
-
-Have a look at what got saved:
-
-```python
-import json
-
-with open("router.json", "r") as f:
-    router_json = json.load(f)
-
-print(router_json)
+```yaml
+router_type: chain
+confidence_threshold: null
+calibrator: null
+routers:
+- router_type: indexed
+  encoder:
+    type: fastembed
+    name: BAAI/bge-small-en-v1.5
+  index:
+    type: local
+  confidence_threshold: 0.85
+  routes: [...]
+- router_type: decision
+  model: jev-latest
+  routes: [...]
 ```
 
-Encoder type, encoder name, and the routes — everything a new router needs. Load it with `from_json`:
+## What can't be saved
 
-```python
-router = SemanticRouter.from_json("router.json")
-```
+Saving fails straight away, rather than on load, for anything the loader couldn't rebuild: a custom router or index, and encoders that can't be rebuilt from a type and a name (your own encoder classes, `HFEndpointEncoder`, `LocalSparseEncoder`). For those, build the router in code.
 
-Confirm it came back intact:
+Unknown fields are errors, so a typo in a hand-edited file fails loudly instead of being ignored.
 
-```python
-print(
-    f"""{router.encoder.type=}
-{router.encoder.name=}
-{router.routes=}"""
-)
-```
+## Files from 0.x
 
-And that it still routes:
-
-```python
-router("isn't politics the best thing ever")
-```
-
-```
-RouteChoice(name='politics', function_call=None, similarity_score=None)
-```
-
-```python
-router("how's the weather today?")
-```
-
-```
-RouteChoice(name='chitchat', function_call=None, similarity_score=None)
-```
+0.x files have no `router_type`, so `load_router` rejects them with an error that links the [migration guide](migration-to-v1#saving-and-loading). The guide shows how to rebuild the routes from an old file in a few lines and save them in the new format.
