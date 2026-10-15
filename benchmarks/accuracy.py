@@ -121,14 +121,14 @@ class Memo:
         LIVE[self.type] += 1
         _VECS.update(zip([(self.name, d) for d in docs], vecs))
 
-    def __call__(self, docs: list[str]) -> list[list[float]]:
+    def __call__(self, docs: list[str], *args, **kwargs) -> list[list[float]]:
         if miss := self._miss(docs):
-            self._keep(miss, super().__call__(miss))  # type: ignore[misc]
+            self._keep(miss, super().__call__(miss, *args, **kwargs))  # type: ignore[misc]
         return [_VECS[self.name, d] for d in docs]
 
-    async def acall(self, docs: list[str]) -> list[list[float]]:
+    async def acall(self, docs: list[str], *args, **kwargs) -> list[list[float]]:
         if miss := self._miss(docs):
-            self._keep(miss, await super().acall(miss))  # type: ignore[misc]
+            self._keep(miss, await super().acall(miss, *args, **kwargs))  # type: ignore[misc]
         return [_VECS[self.name, d] for d in docs]
 
 
@@ -276,7 +276,10 @@ async def chain_stops(chain: Chain, X: Sequence[str]) -> float:
     stops = []
     for scores in await first._scores_many(X):
         name, c = top(first._probs(scores))
-        stops.append(c >= first._bar(name))
+        # the bar Chain checks: the route's, else the router's, else the chain's; none means stop
+        bar = first._bar(name)
+        bar = chain.confidence_threshold if bar is None else bar
+        stops.append(bar is None or c >= bar)
     return float(np.mean(stops))
 
 
