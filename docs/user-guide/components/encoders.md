@@ -71,7 +71,7 @@ router = IndexedRouter(
     encoder=FastEmbedEncoder(name="BAAI/bge-small-en-v1.5"),
     sparse_encoder=BM25Encoder(),
     routes=routes,
-    alpha=0.3,  # 1.0 = dense only, 0.0 = sparse only
+    alpha=0.7,  # 1.0 = dense only, 0.0 = sparse only
 )
 ```
 

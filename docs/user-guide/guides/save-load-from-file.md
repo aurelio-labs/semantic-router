@@ -46,7 +46,7 @@ encoder:
   type: fastembed
   name: BAAI/bge-small-en-v1.5
 sparse_encoder: null
-alpha: 0.3
+alpha: 0.7
 top_k: 5
 aggregation: mean
 index:

@@ -49,7 +49,7 @@ The constructor embeds the utterances and writes them to the index before it ret
 | `routes` | none | Routes to write to the index. Leave it out to use the routes already in the index. |
 | `index` | in memory | Where the vectors live: `LocalIndex`, `PineconeIndex`, `QdrantIndex`, `PostgresIndex`, ... See [indexes](indexes). |
 | `sparse_encoder` | `None` | Set it to make the router hybrid (below). |
-| `alpha` | `0.3` | Hybrid only: the weight on the dense score; the sparse score gets `1 - alpha`. |
+| `alpha` | `0.7` | Hybrid only: the weight on the dense score; the sparse score gets `1 - alpha`. |
 | `top_k` | `5` | How many stored utterances to fetch per query. |
 | `aggregation` | `"mean"` | How a route's hits combine into its score: `"mean"`, `"max"` or `"sum"`. |
 | `confidence_threshold` | `None` | The router's default bar. See [thresholds](#thresholds). |
@@ -68,13 +68,24 @@ hybrid = IndexedRouter(
     encoder=FastEmbedEncoder(name="BAAI/bge-small-en-v1.5"),
     sparse_encoder=BM25Encoder(),
     routes=routes,
-    alpha=0.3,
+    alpha=0.7,
 )
 ```
 
 Without an `index`, a hybrid router uses a `HybridLocalIndex`. The only remote index that stores sparse vectors is `PineconeIndex`; the dense-only indexes raise an error if you pair them with a `sparse_encoder`.
 
-`alpha` sets the balance: 1.0 is dense only, 0.0 is sparse only. A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your utterances, so `add()` refits it and rebuilds the index.
+`alpha` sets the balance: 1.0 is dense only, 0.0 is sparse only. The default, 0.7, keeps meaning in charge and uses keywords as a boost. Top-1 accuracy with a local FastEmbed model (`bge-small-en-v1.5`) on `HybridLocalIndex`:
+
+| Queries | Sparse encoder | 0.0 | 0.3 | 0.5 | 0.7 | 0.9 | 1.0 |
+|---|---|---|---|---|---|---|---|
+| notebook 06, 59 queries | BM25 | .69 | .76 | .88 | **.93** | .95 | .95 |
+| notebook 06, 59 queries | TF-IDF | .51 | .51 | .56 | **.64** | .83 | .92 |
+| support benchmark, 15 queries | BM25 | .93 | 1.0 | 1.0 | **1.0** | 1.0 | 1.0 |
+| support benchmark, 15 queries | TF-IDF | .87 | .80 | .80 | **.87** | .93 | .93 |
+
+The dense encoder alone scores .95 and 1.0 on these sets, which have no keyword-heavy routes. Sparse earns its place when queries hinge on exact terms like product codes and names. Measure on your own queries with [`evaluate()`](../features/calibration#measure-it) before you lower `alpha`.
+
+A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your utterances, so `add()` refits it and rebuilds the index.
 
 ## DecisionRouter
 

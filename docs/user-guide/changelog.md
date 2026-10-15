@@ -9,7 +9,7 @@ The `1.0.0` release rebuilds the routing layer. A router is now anything that sc
 
 #### Feature: Router types
 
-- `IndexedRouter` replaces `SemanticRouter`. Passing a `sparse_encoder` makes it hybrid, which replaces `HybridRouter`.
+- `IndexedRouter` replaces `SemanticRouter`. Passing a `sparse_encoder` makes it hybrid, which replaces `HybridRouter`. The hybrid `alpha` (the weight on the dense score) defaults to 0.7, not 0.3, and now weights the dense side on `HybridLocalIndex` too.
 - `DecisionRouter` routes with a decision model over TypeSafe's `/v1/systemone` API (Jev, Laya, Von), and `aask()` answers several `choice`, `noul` and `score` questions about one message in a single call.
 - `Chain` falls through from a fast router to a slower one when the fast one isn't confident. `Merge` takes a weighted average of several routers.
 - Subclass `BaseRouter` and implement one async method, `_scores`, to build your own router.

@@ -14,7 +14,7 @@ Not ready to move? Pin `semantic-router<1`. The 0.x line gets bug fixes on the [
 | 0.x | 1.0 |
 |---|---|
 | `SemanticRouter` | `IndexedRouter` |
-| `HybridRouter` | `IndexedRouter(sparse_encoder=..., alpha=...)` |
+| `HybridRouter` | `IndexedRouter(sparse_encoder=..., alpha=...)`; `alpha` defaults to 0.7, not 0.3 |
 | `encoder` defaults to `OpenAIEncoder()` | `encoder` is required |
 | a default `score_threshold` on every encoder | removed: no threshold unless you set one |
 | `score_threshold` (route and router) | `confidence_threshold` (route and router) |
@@ -105,11 +105,17 @@ router = IndexedRouter(
     encoder=OpenAIEncoder(),
     sparse_encoder=BM25Encoder(),
     routes=routes,
-    alpha=0.3,
+    alpha=0.7,
 )
 ```
 
-`alpha` means what it did before: the weight on the dense score, with the rest on the sparse score. What's gone is the threshold rescaling: `HybridRouter` multiplied its threshold by `alpha`, and 1.0 doesn't. Calibration absorbs the difference.
+`alpha` is still the weight on the dense score, with the rest on the sparse score. Three things changed:
+
+- **The default is 0.7, not 0.3**, so meaning leads and keywords boost. On our test sets, 0.7 beat 0.3 by up to 17 points of top-1 accuracy (BM25: .93 against .76). The full table is on the [routers page](../components/routers#hybrid-search).
+- **On `HybridLocalIndex`, `alpha` now weights the dense side too.** In 0.x that index normalised the query vector, which cancelled `alpha` on the dense score, so only the sparse score was scaled. Expect hybrid scores to move.
+- **On Pinecone, `alpha` already weighted both sides.** To keep 0.x's weighting there, pass `alpha=0.3`.
+
+What's gone is the threshold rescaling: `HybridRouter` multiplied its threshold by `alpha`, and 1.0 doesn't. Calibration absorbs the difference, so refit after you upgrade.
 
 A *fitted* sparse encoder such as `BM25Encoder` changes its vocabulary whenever the routes change. So `add()` on a hybrid router refits the sparse encoder and rebuilds the whole index. On Pinecone, rebuilding deletes and recreates the remote index.
 
