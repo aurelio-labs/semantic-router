@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/local-execution), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 Plenty of reasons to run your own LLM instead of calling an API — cost, privacy, compliance. Semantic Router supports local LLMs through `llama.cpp`.
 
 `llama.cpp` also runs quantized GGUF models, which shrink memory use enough that even a 13B-parameter model runs with hardware acceleration on an Apple M1 Pro.
