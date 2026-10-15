@@ -219,10 +219,6 @@ class PineconeIndex(BaseIndex):
         self.namespace = namespace
         self.type = "pinecone"
 
-        logger.warning(
-            "Default region changed from us-west-2 to us-east-1 in v0.1.0.dev6"
-        )
-
         self.client = self._initialize_client(api_key=self.api_key)
 
         # If running against Pinecone Cloud and a shared index is provided via env,

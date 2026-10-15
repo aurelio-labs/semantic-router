@@ -161,8 +161,6 @@ class PostgresIndex(BaseIndex):
                 "You can install it with: `pip install 'semantic-router[postgres]'`"
             )
         super().__init__()
-        if index_prefix:
-            logger.warning("`index_prefix` is deprecated and will be removed in 0.2.0")
         if connection_string or (
             connection_string := os.getenv("POSTGRES_CONNECTION_STRING")
         ):
