@@ -1,4 +1,5 @@
 import pytest
+import requests
 
 from semantic_router.encoders.huggingface import HFEndpointEncoder
 
@@ -57,6 +58,27 @@ class TestHFEndpointEncoder:
         with pytest.raises(ValueError) as exc_info:
             encoder.query({"inputs": "Hello World!", "parameters": {}})
         assert "Query failed with status 400: Error" in str(exc_info.value)
+
+    def test_query_retries_max_retries_times(self, encoder, requests_mock, mocker):
+        mocker.patch("semantic_router.encoders.huggingface.time.sleep")
+        adapter = requests_mock.post(
+            "https://api-inference.huggingface.co/models/bert-base-uncased",
+            text="Error",
+            status_code=500,
+        )
+        with pytest.raises(ValueError):
+            encoder.query({"inputs": "Hello World!", "parameters": {}}, max_retries=3)
+        assert adapter.call_count == 3
+
+    def test_query_connection_error_is_reported(self, encoder, requests_mock, mocker):
+        mocker.patch("semantic_router.encoders.huggingface.time.sleep")
+        requests_mock.post(
+            "https://api-inference.huggingface.co/models/bert-base-uncased",
+            exc=requests.exceptions.ConnectionError("Name or service not known"),
+        )
+        with pytest.raises(ValueError, match="Name or service not known") as exc_info:
+            encoder.query({"inputs": "Hello World!", "parameters": {}})
+        assert isinstance(exc_info.value.__cause__, requests.exceptions.ConnectionError)
 
     def test_encode_documents_success(self, encoder, requests_mock):
         requests_mock.post(
