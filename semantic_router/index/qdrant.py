@@ -514,7 +514,9 @@ class QdrantIndex(BaseIndex):
 
         self.aclient: Optional[AsyncQdrantClient]
         if self.aclient is None:
-            logger.warning("Cannot use async query with an in-memory Qdrant instance")
+            # in-memory and on-disk qdrant have no async client (see _initialize_clients),
+            # so the async methods run the sync ones, like LocalIndex does
+            logger.debug("Cannot use async query with an in-memory Qdrant instance")
             return self.query(vector, top_k, route_filter)
 
         filter = None
@@ -593,7 +595,7 @@ class QdrantIndex(BaseIndex):
         :rtype: list[str]
         """
         if self.aclient is None:
-            logger.warning(
+            logger.debug(
                 "Cannot use async delete with an in-memory Qdrant instance; falling back to sync delete."
             )
             self.delete(route_name)
@@ -612,7 +614,7 @@ class QdrantIndex(BaseIndex):
         """
 
         if self.aclient is None:
-            logger.warning(
+            logger.debug(
                 "Cannot use async delete_index with an in-memory Qdrant instance; falling back to sync delete_index."
             )
             self.delete_index()
@@ -645,7 +647,7 @@ class QdrantIndex(BaseIndex):
         """Asynchronously upsert records into the index, one point per (route,
         utterance) pair."""
         if self.aclient is None:
-            logger.warning(
+            logger.debug(
                 "Cannot use async add with an in-memory Qdrant instance; falling back to sync add."
             )
             return self.add(

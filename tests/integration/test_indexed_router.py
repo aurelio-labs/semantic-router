@@ -214,8 +214,9 @@ def test_fit_and_evaluate(index, encoder, request):
         request.applymarker(
             pytest.mark.xfail(
                 strict=True,
-                reason="on these 5 points Platt learns a negative slope, which reverses "
-                "the route ranking (calibration.py, reported in thread 10714)",
+                reason="at the default alpha=0.3, TF-IDF carries 70% of the score and is "
+                "too noisy on this small corpus (raw top-1 4/6; 6/6 from alpha=0.7). "
+                "the default alpha is an open question in thread 10714",
             )
         )
     router = make_router(index, encoder)
