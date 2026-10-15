@@ -30,8 +30,6 @@ class VitEncoder(DenseEncoder):
         :param **data: Additional keyword arguments for the encoder.
         :type **data: dict
         """
-        if data.get("score_threshold") is None:
-            data["score_threshold"] = 0.5
         super().__init__(**data)
         self._processor, self._model = self._initialize_hf_model()
 

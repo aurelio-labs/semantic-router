@@ -10,7 +10,7 @@ class GoogleEncoder(DenseEncoder):
 
     The GoogleEncoder class is a subclass of DenseEncoder and utilizes the TextEmbeddingModel from the
     Google AI Platform to generate embeddings for given documents. It requires a Google Cloud project ID
-    and supports customization of the pre-trained model, score threshold, location, and API endpoint.
+    and supports customization of the pre-trained model, location, and API endpoint.
 
     Example usage:
 
@@ -32,7 +32,6 @@ class GoogleEncoder(DenseEncoder):
     def __init__(
         self,
         name: Optional[str] = None,
-        score_threshold: float = 0.75,
         project_id: Optional[str] = None,
         location: Optional[str] = None,
         api_endpoint: Optional[str] = None,
@@ -43,8 +42,6 @@ class GoogleEncoder(DenseEncoder):
             If not provided, the default model specified in EncoderDefault will
             be used.
         :type model_name: str
-        :param score_threshold: The threshold for similarity scores.
-        :type score_threshold: float
         :param project_id: The Google Cloud project ID.
             If not provided, it will be retrieved from the GOOGLE_PROJECT_ID
             environment variable.
@@ -63,7 +60,7 @@ class GoogleEncoder(DenseEncoder):
         if name is None:
             name = EncoderDefault.GOOGLE.value["embedding_model"]
 
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
 
         self.client = self._initialize_client(project_id, location, api_endpoint)
 

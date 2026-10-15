@@ -43,7 +43,6 @@ class MistralEncoder(DenseEncoder, AsymmetricDenseMixin):
         self,
         name: str | None = None,
         mistralai_api_key: str | None = None,  # TODO: rename to api_key in v0.2.0
-        score_threshold: float = 0.4,
     ):
         """Initialize the MistralEncoder.
 
@@ -51,12 +50,11 @@ class MistralEncoder(DenseEncoder, AsymmetricDenseMixin):
         :type name: str
         :param mistralai_api_key: The MistralAI API key.
         :type mistralai_api_key: str
-        :param score_threshold: The score threshold for the embeddings.
         """
         # get default model name if none provided
         if name is None:
             name = f"{EncoderDefault.MISTRAL.value['embedding_model']}"
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         if mistralai_api_key is None:
             mistralai_api_key = os.getenv("MISTRALAI_API_KEY")
         if mistralai_api_key is None:

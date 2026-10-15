@@ -52,7 +52,6 @@ class TestVitEncoder:
         vit_encoder = VitEncoder(name=test_model_name)
         assert vit_encoder.name == test_model_name
         assert vit_encoder.type == "huggingface"
-        assert vit_encoder.score_threshold == 0.5
         assert vit_encoder.device == device
 
     @pytest.mark.skipif(

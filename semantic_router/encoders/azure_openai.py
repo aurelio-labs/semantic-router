@@ -18,7 +18,6 @@ class AzureOpenAIEncoder(DenseEncoder):
     """Encoder for Azure OpenAI API.
 
     This class provides functionality to encode text documents using the Azure OpenAI API.
-    It supports customization of the score threshold for filtering or processing the embeddings.
     """
 
     client: Optional[openai.AzureOpenAI] = None
@@ -38,7 +37,6 @@ class AzureOpenAIEncoder(DenseEncoder):
         azure_ad_token_provider: Callable[[], str] | None = None,
         http_client_options: Optional[Dict[str, Any]] = None,
         deployment_name: str = EncoderDefault.AZURE.value["deployment_name"],
-        score_threshold: float = 0.82,
         dimensions: Union[int, NotGiven] = NotGiven(),
         max_retries: int = 3,
     ):
@@ -76,10 +74,6 @@ class AzureOpenAIEncoder(DenseEncoder):
         :param deployment_name: The name of the model deployment to use.
         :type deployment_name: str, optional
 
-        :param score_threshold: The score threshold for filtering embeddings.
-            Default is `0.82`.
-        :type score_threshold: float, optional
-
         :param dimensions: The number of dimensions for the embeddings. If not given, it defaults to the model's default setting.
         :type dimensions: int, optional
 
@@ -91,7 +85,7 @@ class AzureOpenAIEncoder(DenseEncoder):
             name = deployment_name
             if name is None:
                 name = EncoderDefault.AZURE.value["embedding_model"]
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
 
         azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         if not azure_endpoint:
