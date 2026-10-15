@@ -6,6 +6,7 @@ import asyncio
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Coroutine, Sequence, TypeVar
 
 import numpy as np
@@ -208,6 +209,18 @@ class BaseRouter(ABC):
                 f"refitted the calibrator, but {unlabelled} have no labelled queries; "
                 "fit() again with some so their confidence is honest"
             )
+
+    def to_yaml(self, path: str | Path) -> None:
+        """save the router to a yaml file; `load_router` reads it back. keys are never written."""
+        from semantic_router.config import save_router
+
+        save_router(router=self, path=path, format="yaml")
+
+    def to_json(self, path: str | Path) -> None:
+        """save the router to a json file; `load_router` reads it back. keys are never written."""
+        from semantic_router.config import save_router
+
+        save_router(router=self, path=path, format="json")
 
     async def _on_add(self, routes: list[Route]) -> None:
         """hook for routers that keep state per route (an index)."""
