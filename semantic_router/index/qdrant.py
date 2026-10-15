@@ -110,6 +110,11 @@ class QdrantIndex(BaseIndex):
     _collection_initialized: bool = PrivateAttr(default=False)
 
     def __init__(self, **kwargs):
+        if "location" not in kwargs and any(
+            kwargs.get(k) for k in ("url", "host", "path")
+        ):
+            # location defaults to in-memory, and the client takes only one of these
+            kwargs["location"] = None
         super().__init__(**kwargs)
         self.type = "qdrant"
         self.client, self.aclient = self._initialize_clients()
