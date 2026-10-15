@@ -1,4 +1,5 @@
 import asyncio
+from uuid import uuid4
 
 import numpy as np
 import pytest
@@ -121,6 +122,58 @@ def test_sync_call_from_inside_the_router_loop_fails_loudly(router):
     fut = asyncio.run_coroutine_threadsafe(naughty(), base._loop)
     with pytest.raises(RuntimeError, match="deadlock"):
         fut.result(timeout=5)
+
+
+X_FIT = ["refund", "charged", "invoice", "crash", "error", "bug"] * 20 + ["hello"] * 30
+Y_FIT = ["billing"] * 60 + ["technical"] * 60 + [None] * 30
+
+
+def test_an_empty_index_passed_in_is_the_one_used():
+    from semantic_router.index import LocalIndex
+
+    idx = LocalIndex()  # empty, so len() is 0 and falsy
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=idx)
+    assert r.index is idx
+    assert len(idx) == 6
+
+
+def test_an_empty_qdrant_index_passed_in_is_the_one_used():
+    pytest.importorskip("qdrant_client")
+    from semantic_router.index import QdrantIndex
+
+    idx = QdrantIndex(index_name=f"v2-{uuid4().hex[:8]}", dimensions=3)  # in memory
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=idx)
+    assert r.index is idx
+    assert len(idx) == 6
+    assert r("refund").name == "billing"
+
+
+def test_add_refits_the_calibrator(router):
+    router.fit(X_FIT, Y_FIT)
+    before = router.calibrator
+    router.add(Route(name="support", utterances=["call a human", "speak to a person"]))
+    assert router.calibrator is not None and router.calibrator is not before
+    assert router("can i call a human").calibrated
+
+
+def test_remove_refits_with_the_removed_routes_queries_as_no_route(router):
+    router.fit(X_FIT, Y_FIT)
+    before = router.calibrator
+    router.remove("technical")
+    assert router.calibrator is not None and router.calibrator is not before
+    assert "technical" not in router._fit_data[1]
+
+
+def test_a_route_change_drops_a_calibrator_it_cannot_refit(monkeypatch):
+    from semantic_router.v2 import Calibrator, base
+
+    warned: list[str] = []
+    monkeypatch.setattr(base.logger, "warning", warned.append)
+    given = Calibrator("platt", {"a": [10.0], "b": [-8.0]})  # fitted elsewhere
+    r = IndexedRouter(FakeEncoder(), ROUTES, calibrator=given)
+    r.add(Route(name="support", utterances=["call a human"]))
+    assert r.calibrator is None and not r("refund").calibrated
+    assert warned and "no labelled queries to refit" in warned[0]
 
 
 def test_fit_warns_when_training_on_stored_utterances(router, monkeypatch):

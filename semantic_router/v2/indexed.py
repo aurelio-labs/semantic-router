@@ -75,7 +75,10 @@ class IndexedRouter(BaseRouter):
         self.alpha = alpha
         self.top_k = top_k
         self.aggregate = _AGG[aggregation]
-        self.index = index or (HybridLocalIndex() if sparse_encoder else LocalIndex())
+        # `is None`, not `or`: an empty index has len 0, so `or` would swap it for a local one
+        if index is None:
+            index = HybridLocalIndex() if sparse_encoder else LocalIndex()
+        self.index = index
         # build synchronously so a constructed router is ready to call
         if isinstance(self.sparse_encoder, FittableMixin):
             self.sparse_encoder.fit(self.routes)

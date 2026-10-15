@@ -12,6 +12,7 @@ import numpy as np
 
 from semantic_router.route import Route
 from semantic_router.schema import RouteChoice
+from semantic_router.utils.logger import logger
 from semantic_router.v2.calibration import Calibrator, Method, ece
 
 T = TypeVar("T")
@@ -66,6 +67,8 @@ class BaseRouter(ABC):
         self.routes = list(routes)
         self.confidence_threshold = confidence_threshold
         self.calibrator = calibrator
+        # the labelled queries behind the calibrator, kept so a route change can refit it
+        self._fit_data: tuple[list[str], list[str | None], Method] | None = None
 
     @abstractmethod
     async def _scores(self, query: str) -> dict[str, float]:
@@ -126,6 +129,7 @@ class BaseRouter(ABC):
         raw = np.array([s[t] for s, t in zip(scored, top)])
         correct = np.array([t == truth for t, truth in zip(top, y)], dtype=float)
         self.calibrator = Calibrator.fit(raw, correct, method)
+        self._fit_data = (list(X), list(y), method)
         # accuracy over queries that have a route; a None label can only ever be a miss here
         labelled = np.array([truth is not None for truth in y])
         acc = float(correct[labelled].mean()) if labelled.any() else float("nan")
@@ -147,6 +151,7 @@ class BaseRouter(ABC):
     async def aadd(self, *routes: Route) -> None:
         self.routes.extend(routes)
         await self._on_add(list(routes))
+        await self._refit()
 
     def add(self, *routes: Route) -> None:
         run(self.aadd(*routes))
@@ -154,9 +159,44 @@ class BaseRouter(ABC):
     async def aremove(self, name: str) -> None:
         self.routes = [r for r in self.routes if r.name != name]
         await self._on_remove(name)
+        await self._refit()
 
     def remove(self, name: str) -> None:
         run(self.aremove(name))
+
+    async def _refit(self) -> None:
+        """the route set changed, so the calibrator no longer describes it: refit it or drop it.
+
+        refitting re-scores the stored training queries: one batched embed for an indexed
+        router, one call per query for a decision router.
+        """
+        if self.calibrator is None:
+            return
+        if self._fit_data is None:
+            # passed in or loaded, so there are no labelled queries here to refit on
+            logger.warning(
+                "routes changed and there are no labelled queries to refit the calibrator on; "
+                "it was dropped, so confidences are raw until you call fit() again"
+            )
+            self.calibrator = None
+            return
+        X, y, method = self._fit_data
+        names = {r.name for r in self.routes}
+        # a label for a route that is gone now means no route should match
+        y = [t if t in names else None for t in y]
+        try:
+            await self.afit(X, y, method)
+        except ValueError as e:
+            logger.warning(
+                f"could not refit the calibrator after a route change ({e}); it was dropped"
+            )
+            self.calibrator = None
+            return
+        if unlabelled := sorted(names - set(y)):
+            logger.warning(
+                f"refitted the calibrator, but {unlabelled} have no labelled queries; "
+                "fit() again with some so their confidence is honest"
+            )
 
     async def _on_add(self, routes: list[Route]) -> None:
         """hook for routers that keep state per route (an index)."""
