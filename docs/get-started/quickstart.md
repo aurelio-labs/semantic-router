@@ -166,7 +166,7 @@ router("I'm interested in learning about llama 2")
 ```
 
 ```
-[Out]: RouteChoice(name=None, confidence=None, calibrated=False)
+[Out]: RouteChoice(name=None, confidence=None, calibrated=True)
 ```
 
 No route cleared the bar, so `name` is `None`. Treat that as your fallback signal: pass the query through, send it to a default handler, whatever fits your app. The on-topic queries still route:

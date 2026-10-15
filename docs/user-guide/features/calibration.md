@@ -69,7 +69,7 @@ router("who won the football?")
 ```
 
 ```
-[Out]: RouteChoice(name=None, confidence=None, calibrated=False)
+[Out]: RouteChoice(name=None, confidence=None, calibrated=True)
 ```
 
 Thresholds live in up to three places. The first one that's set wins:
