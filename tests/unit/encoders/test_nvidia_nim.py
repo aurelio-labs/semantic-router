@@ -81,7 +81,7 @@ class TestNimEncoderInit:
     def test_default_model_name(self, mock_nim, monkeypatch):
         monkeypatch.setenv("NVIDIA_NIM_API_KEY", "test_api_key")
         # name must not carry the litellm "nvidia_nim/" prefix any more
-        assert NimEncoder().name == "nvidia/nv-embedqa-e5-v5"
+        assert NimEncoder().name == "nvidia/nv-embedqa-mistral-7b-v2"
 
     def test_clients_point_at_nim_endpoint(self, mock_nim, monkeypatch):
         """Both clients must target NVIDIA, not the default OpenAI endpoint."""
