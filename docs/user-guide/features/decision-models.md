@@ -7,6 +7,13 @@ Some routing decisions depend on instructions rather than resemblance: "refunds 
 
 `DecisionRouter` routes with one. The model is a component you pass in, the way you pass an encoder to an `IndexedRouter`. The models that ship speak the `/v1/systemone` API that TypeSafe's **Jev** introduced, which **Laya** and **Von** also implement.
 
+## Learn about decision models
+
+New to decision models? Two walkthroughs by James Briggs explain what they are and where they fit:
+
+- **Article:** [Understanding Jev and Where It Fits in the AI Stack](https://jamesbriggs.io/understanding-jev) covers what a decision model is and how it differs from an LLM, what a calibrated probability gives you, where to use one and where not to, and how open models such as GLiNER2.5 compare, with benchmarks.
+- **Video:** [I Tested Jev AI Against LLMs and Open Source](https://youtu.be/P-t4F_UlxkI) (34 min) covers the same ground with live tests. Jump to [the three types of decision](https://youtu.be/P-t4F_UlxkI?t=266), [calibrated probability](https://youtu.be/P-t4F_UlxkI?t=395), [open-source alternatives](https://youtu.be/P-t4F_UlxkI?t=999) or [GLiNER](https://youtu.be/P-t4F_UlxkI?t=1228).
+
 ## Route with a decision model
 
 ```python
