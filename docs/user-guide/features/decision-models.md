@@ -71,6 +71,50 @@ It sends a key only if you pass `api_key`, so a local server needs none.
 
 To plug in a different kind of model, subclass `DecisionModel` and implement `aask(state, questions)`, which returns an answer for each question.
 
+## Run a model on this machine
+
+`GLiNER2DecisionModel` runs [GLiNER2.5-Decide](https://huggingface.co/fastino/GLiNER2.5-Decide), Fastino's open decision model, in your own process. Nothing leaves the machine, and there's no API key.
+
+```bash
+pip install "semantic-router[local]"  # Python 3.10 to 3.12
+```
+
+```python
+from semantic_router import DecisionRouter
+from semantic_router.decision_models import GLiNER2DecisionModel
+
+router = DecisionRouter(model=GLiNER2DecisionModel(), routes=routes)
+router.fit(X=held_out_queries, y=held_out_labels)
+
+router("why was I charged twice this month?")
+```
+
+The first time it loads, it downloads the weights from Hugging Face (about 1.8 GB). It answers the same `choice`, `noul` and `score` questions as Jev, so `aask()` works the same way.
+
+| Argument | Default | What it does |
+|---|---|---|
+| `name` | `"fastino/GLiNER2.5-Decide"` | The model on the Hugging Face Hub, or a local directory. |
+| `device` | the first available | `"cuda"`, `"mps"` or `"cpu"`. |
+| `batch_size` | `8` | Queries per forward pass when scoring a batch (`fit`, `evaluate`, `Chain`, `Merge`). |
+| `classifier` | `None` | A `gliner2` classifier you loaded yourself, such as one with a fine-tuned adapter. |
+
+On the [benchmark](../concepts/benchmarks) (CLINC150, 15 routes), it comes close to Jev:
+
+| | Jev | GLiNER2.5-Decide |
+|---|---|---|
+| Top-1 accuracy | 99.3% | 97.6% |
+| End-to-end, at a 0.5 bar | 97.8% | 93.8% |
+| Out-of-scope queries turned away | 95.3% | 97.3% |
+| Calibration error, before / after `fit()` | 0.150 / 0.017 | 0.221 / 0.029 |
+
+Three things to know:
+
+- **Fit it before you set a threshold.** Its raw scores rank the routes well, but they aren't calibrated: a 0.8 isn't right 80% of the time. [`fit()`](calibration) on held-out queries fixes that.
+- **Its speed depends on your routes.** Every route's name and description go through the model in one pass with the query, so more routes and longer descriptions take longer. On an Apple M4 Max (MPS), a query takes about 50 ms with two short routes and about 210 ms with the benchmark's 15 described routes; on CPU, about 330 ms. Keep descriptions short, or put an `IndexedRouter` in front of it with a [Chain](composition).
+- **It needs Python 3.12 or earlier**, like the other models in the `local` extra.
+
+The [GLiNER chapter](https://youtu.be/P-t4F_UlxkI?t=1228) of the Jev video covers how it works and how it compares.
+
 ## Write literal descriptions
 
 The model reads each route's `description`, and it takes you at your word. Say what belongs in the route and, where it helps, what doesn't:
