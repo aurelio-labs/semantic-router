@@ -783,7 +783,8 @@ class PineconeIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query vector and return the top_k results.
 
         :param vector: The query vector to search for.
@@ -794,10 +795,11 @@ class PineconeIndex(BaseIndex):
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: An optional sparse vector to include in the query.
         :type sparse_vector: Optional[SparseEmbedding]
-        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
-        :type kwargs: Any
-        :return: A tuple containing an array of scores and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         :raises ValueError: If the index is not populated.
         """
         if self.index is None:
@@ -823,6 +825,12 @@ class PineconeIndex(BaseIndex):
         )
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
+        if return_utterances:
+            utterances = [
+                str(result["metadata"].get("sr_utterance", ""))
+                for result in results["matches"]
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
     async def aquery(
@@ -831,7 +839,8 @@ class PineconeIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Asynchronously search the index for the query vector and return the top_k results.
 
         :param vector: The query vector to search for.
@@ -840,12 +849,13 @@ class PineconeIndex(BaseIndex):
         :type top_k: int, optional
         :param route_filter: A list of route names to filter the search results, defaults to None.
         :type route_filter: Optional[List[str]], optional
-        :param kwargs: Additional keyword arguments for the query, including sparse_vector.
-        :type kwargs: Any
         :keyword sparse_vector: An optional sparse vector to include in the query.
         :type sparse_vector: Optional[dict]
-        :return: A tuple containing an array of scores and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         :raises ValueError: If the index is not populated.
         """
         if not (await self.ais_ready()):
@@ -875,6 +885,12 @@ class PineconeIndex(BaseIndex):
         )
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
+        if return_utterances:
+            utterances = [
+                str(result["metadata"].get("sr_utterance", ""))
+                for result in results["matches"]
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
     def delete_index(self):

@@ -453,7 +453,8 @@ class QdrantIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Query the index.
 
         :param vector: The vector to query.
@@ -464,8 +465,11 @@ class QdrantIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to query.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple of the scores and route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         from qdrant_client import QdrantClient, models
 
@@ -493,6 +497,12 @@ class QdrantIndex(BaseIndex):
         route_names = [
             result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
         ]
+        if return_utterances:
+            utterances = [
+                str(result.payload.get(SR_UTTERANCE_PAYLOAD_KEY, ""))
+                for result in results.points
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
     async def aquery(
@@ -501,7 +511,8 @@ class QdrantIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Asynchronously query the index.
 
         :param vector: The vector to query.
@@ -512,8 +523,11 @@ class QdrantIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to query.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple of the scores and route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         from qdrant_client import AsyncQdrantClient, models
 
@@ -522,7 +536,9 @@ class QdrantIndex(BaseIndex):
             # in-memory and on-disk qdrant have no async client (see _initialize_clients),
             # so the async methods run the sync ones, like LocalIndex does
             logger.debug("Cannot use async query with an in-memory Qdrant instance")
-            return self.query(vector, top_k, route_filter)
+            return self.query(
+                vector, top_k, route_filter, sparse_vector, return_utterances
+            )
 
         filter = None
         if route_filter is not None:
@@ -547,6 +563,12 @@ class QdrantIndex(BaseIndex):
         route_names = [
             result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
         ]
+        if return_utterances:
+            utterances = [
+                str(result.payload.get(SR_UTTERANCE_PAYLOAD_KEY, ""))
+                for result in results.points
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
     def delete_index(self):

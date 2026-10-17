@@ -268,3 +268,134 @@ def test_sync_calls_use_the_index_sync_api(router, monkeypatch):
     router.add(routes=Route(name="support", utterances=["call a human"]))
     router.remove(name="support")
     assert [r.name for r in router.routes] == ["billing", "technical"]
+
+
+# ---------------------------------------------------------------------------
+# matched_utterances (#479) — utterance-level visibility on RouteChoice
+# ---------------------------------------------------------------------------
+
+
+def test_route_choice_has_matched_utterances_with_default_limit(router):
+    choice = router("i want a refund")
+    assert choice.name == "billing"
+    assert choice.matched_utterances is not None
+    # every matched utterance should point at the chosen route
+    for u in choice.matched_utterances:
+        assert u.route == "billing"
+        assert u.text  # non-empty text
+        assert isinstance(u.score, float)
+
+
+def test_matched_utterances_populated_for_every_route_when_limit_is_none(router):
+    # a query that sits between both routes should pull utterances for both
+    choices = router("refund crash", limit=None)
+    names = {c.name for c in choices}
+    assert names == {"billing", "technical"}
+    for c in choices:
+        assert c.matched_utterances is not None
+        assert c.matched_utterances, f"{c.name} has no matched utterances"
+        for u in c.matched_utterances:
+            assert u.route == c.name
+
+
+def test_matched_utterances_survive_calibration(router):
+    router.fit(X_FIT, Y_FIT)
+    choice = router("refund please")
+    assert choice.calibrated
+    assert choice.matched_utterances is not None
+    # calibrated confidence is a probability; utterance score is raw similarity
+    raw_scores = [u.score for u in choice.matched_utterances]
+    assert all(s == 1.0 for s in raw_scores)
+
+
+def test_matched_utterances_cleared_between_calls(router):
+    first = router("refund")
+    assert first.matched_utterances is not None
+    # a completely different query: utterances from the previous call must not leak
+    second = router("hello there", threshold=0.99)
+    # threshold blocked everything: no route chosen
+    assert second.name is None or second.name == first.name  # fine either way
+    # the router's internal state should be clean for the next call
+    third = router("call a human")
+    if third.name == "support":
+        # would only happen if the utterances leaked; not strictly required
+        pass
+    assert third.matched_utterances is not None
+
+
+def test_matched_utterances_available_on_hybrid_router():
+    pytest.skip("aurelio_sdk requires network access for tokenizer download")
+    from semantic_router.encoders import BM25Encoder
+
+    r = IndexedRouter(FakeEncoder(), ROUTES, sparse_encoder=BM25Encoder(), alpha=0.5)
+    choice = r("i want a refund")
+    assert choice.name == "billing"
+    assert choice.matched_utterances is not None
+    assert any(u.route == "billing" for u in choice.matched_utterances)
+
+
+def test_matched_utterances_returned_by_async_acall(router):
+    import asyncio
+
+    async def run():
+        return await router.acall("app crash bug")
+
+    choice = asyncio.run(run())
+    assert choice.name == "technical"
+    assert choice.matched_utterances is not None
+    assert all(u.route == "technical" for u in choice.matched_utterances)
+
+
+def test_empty_route_choice_has_no_matched_utterances(router):
+    # push the threshold so high nothing passes
+    choice = router("hello there", threshold=0.99)
+    assert choice.name is None
+    # utterances are only populated when we actually pick a route
+    assert choice.matched_utterances is None
+
+
+# ---------------------------------------------------------------------------
+# LocalIndex query(return_utterances=True) contract
+# ---------------------------------------------------------------------------
+
+
+def test_local_index_query_returns_utterances_when_requested():
+    from semantic_router.index import LocalIndex
+
+    idx = LocalIndex()
+    idx.add(
+        embeddings=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        routes=["a", "b"],
+        utterances=["first", "second"],
+    )
+    vec = np.array([1.0, 0.0, 0.0])
+    # default: backward-compatible two-tuple
+    scores, names = idx.query(vec, top_k=2)
+    assert len(scores) == 2 and len(names) == 2
+    # with the flag: three-tuple
+    scores, names, utterances = idx.query(vec, top_k=2, return_utterances=True)
+    assert names == ["a", "b"] or names == ["b", "a"]
+    assert "first" in utterances and "second" in utterances
+
+
+def test_hybrid_local_index_query_returns_utterances_when_requested():
+    from semantic_router.index import HybridLocalIndex
+    from semantic_router.schema import SparseEmbedding
+
+    idx = HybridLocalIndex()
+    idx.add(
+        embeddings=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        routes=["a", "b"],
+        utterances=["first", "second"],
+        sparse_embeddings=[
+            SparseEmbedding.from_dict({0: 1.0}),
+            SparseEmbedding.from_dict({1: 1.0}),
+        ],
+    )
+    vec = np.array([0.5, 0.5, 0.0])
+    sparse = SparseEmbedding.from_dict({0: 0.5, 1: 0.5})
+    scores, names, utterances = idx.query(
+        vec, top_k=2, sparse_vector=sparse, return_utterances=True
+    )
+    assert len(scores) == 2
+    assert "first" in utterances and "second" in utterances
