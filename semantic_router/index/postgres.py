@@ -807,10 +807,17 @@ class PostgresIndex(BaseIndex):
         return isinstance(self.async_conn, psycopg.AsyncConnection)
 
     def _search_query(
-        self, vector: np.ndarray, top_k: int, route_filter: Optional[List[str]]
+        self,
+        vector: np.ndarray,
+        top_k: int,
+        route_filter: Optional[List[str]],
+        include_utterances: bool = False,
     ) -> Tuple[str, Tuple]:
         """Builds the nearest-neighbour query and its parameters.
 
+        :param include_utterances: If True, include the utterance column in the SELECT
+            so callers can read which stored utterance matched.
+        :type include_utterances: bool
         :return: The SQL query and its parameters.
         :rtype: Tuple[str, Tuple]
         """
@@ -818,8 +825,11 @@ class PostgresIndex(BaseIndex):
         score_query = self._get_score_query(vector_str)
         operator = self._get_metric_operator()
         filter_query = " AND route = ANY(%s)" if route_filter else ""
+        select_columns = (
+            "route, utterance, " if include_utterances else "route, "
+        ) + score_query
         query = (
-            f"SELECT route, {score_query} FROM {self._get_table_name()} "
+            f"SELECT {select_columns} FROM {self._get_table_name()} "
             f"WHERE true{filter_query} "
             f"ORDER BY vector {operator} {vector_str} LIMIT {int(top_k)}"
         )
@@ -831,7 +841,8 @@ class PostgresIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Searches the index for the query vector and returns the top_k results.
 
         :param vector: The query vector.
@@ -842,11 +853,16 @@ class PostgresIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: Not used, PostgresIndex is dense only.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing the scores and routes of the top_k results.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         conn = self._connect()
-        query, params = self._search_query(vector, top_k, route_filter)
+        query, params = self._search_query(
+            vector, top_k, route_filter, include_utterances=return_utterances
+        )
         try:
             with conn.cursor() as cur:
                 cur.execute(query, params)
@@ -855,9 +871,14 @@ class PostgresIndex(BaseIndex):
         except Exception:
             conn.rollback()
             raise
-        return np.array([result[1] for result in results]), [
-            result[0] for result in results
-        ]
+        if return_utterances:
+            # row = (route, utterance, score)
+            route_names = [row[0] for row in results]
+            utterances = [str(row[1]) for row in results]
+            scores = np.array([row[2] for row in results])
+            return scores, route_names, utterances
+        # row = (route, score)
+        return np.array([row[1] for row in results]), [row[0] for row in results]
 
     async def aquery(
         self,
@@ -865,7 +886,8 @@ class PostgresIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Asynchronously search the index for the query vector and return the top_k results.
 
         :param vector: The query vector to search for.
@@ -876,11 +898,16 @@ class PostgresIndex(BaseIndex):
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: Not used, PostgresIndex is dense only.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing an array of scores and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         conn = await self._aconnect()
-        query, params = self._search_query(vector, top_k, route_filter)
+        query, params = self._search_query(
+            vector, top_k, route_filter, include_utterances=return_utterances
+        )
         try:
             async with conn.cursor() as cur:
                 await cur.execute(query, params)
@@ -889,9 +916,14 @@ class PostgresIndex(BaseIndex):
         except Exception:
             await conn.rollback()
             raise
-        return np.array([result[1] for result in results]), [
-            result[0] for result in results
-        ]
+        if return_utterances:
+            # row = (route, utterance, score)
+            route_names = [row[0] for row in results]
+            utterances = [str(row[1]) for row in results]
+            scores = np.array([row[2] for row in results])
+            return scores, route_names, utterances
+        # row = (route, score)
+        return np.array([row[1] for row in results]), [row[0] for row in results]
 
     def _select_all_query(self, include_metadata: bool) -> str:
         columns = "id, route, utterance, metadata" if include_metadata else "id"

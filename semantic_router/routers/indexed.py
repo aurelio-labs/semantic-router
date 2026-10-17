@@ -18,7 +18,7 @@ from semantic_router.encoders.base import (
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
 from semantic_router.route import Route
 from semantic_router.routers.base import BaseRouter, FitReport, in_sync_call
-from semantic_router.schema import SparseEmbedding
+from semantic_router.schema import MatchedUtterance, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 Kind = Literal["queries", "documents"]
@@ -223,18 +223,39 @@ class IndexedRouter(BaseRouter):
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
         if in_sync_call():
-            scores, names = await asyncio.to_thread(
-                self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
+            result = await asyncio.to_thread(
+                self.index.query,
+                vector=vec,
+                top_k=self.top_k,
+                sparse_vector=sparse,
+                return_utterances=True,
             )
         else:
-            scores, names = await self.index.aquery(
-                vector=vec, top_k=self.top_k, sparse_vector=sparse
+            result = await self.index.aquery(
+                vector=vec,
+                top_k=self.top_k,
+                sparse_vector=sparse,
+                return_utterances=True,
             )
+        # result is either (scores, names) or (scores, names, utterances) depending on
+        # whether the index honours return_utterances; older implementations may ignore it
+        if len(result) == 3:
+            scores_arr, names, utterances = result
+        else:
+            scores_arr, names = result
+            utterances = []
+        scores = [float(s) for s in scores_arr]
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}
-        for n, s in zip(names, scores):
+        matched_utts: dict[str, list[MatchedUtterance]] = {}
+        for n, s, u in zip(names, scores, utterances):
             hits.setdefault(n, []).append(float(s))
+            matched_utts.setdefault(n, []).append(
+                MatchedUtterance(text=str(u), score=float(s), route=n)
+            )
+        # store per-route utterances for BaseRouter._choose to inject into RouteChoice
+        self._last_utterances = matched_utts if utterances else None
         return {n: self.aggregate(v) if v else 0.0 for n, v in hits.items()}
 
     async def afit(
