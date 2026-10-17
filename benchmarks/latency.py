@@ -15,9 +15,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from semantic_router.decision_models import TypeSafeDecisionModel, noul
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.routers import Chain, DecisionRouter, IndexedRouter, noul
+from semantic_router.routers import Chain, DecisionRouter, IndexedRouter
 
 load_dotenv(Path(__file__).parents[1] / ".env")
 
@@ -110,7 +111,7 @@ def row(name: str, ms: list[float]) -> dict:
 async def main(n: int) -> None:
     enc = OpenAIEncoder()
     indexed = IndexedRouter(enc, ROUTES)
-    decision = DecisionRouter(ROUTES)
+    decision = DecisionRouter(model=TypeSafeDecisionModel(), routes=ROUTES)
     rows = []
 
     # local math only: pre-embed once so the index query is isolated from the network

@@ -3,6 +3,18 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.0.1
+
+`1.0.1` makes the decision model a component you pass to `DecisionRouter`, the way you pass an encoder to `IndexedRouter`. It changes `DecisionRouter`'s arguments, so code and files written for `1.0.0` need a small edit.
+
+#### Breaking: decision models are a component
+
+- `DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)` replaces `DecisionRouter(routes=routes)`. The connection settings move to the model: `api_key`, `base_url`, `timeout`, `retries` and `concurrency`, and `model` becomes the model's `name`.
+- `SystemOneDecisionModel(name=..., base_url=...)` talks to any `/v1/systemone` server (Laya, Von or your own) and sends a key only if you pass one. `TypeSafeDecisionModel` is the same with TypeSafe's defaults, and reads `JEV_API_KEY`.
+- Subclass `DecisionModel` and implement `aask` to route with another kind of model.
+- `choice`, `noul` and `score` move to `semantic_router.decision_models`.
+- Files save the model as a block, `model: {type: typesafe, name: jev-latest}`. A `1.0.0` file, which wrote `model: jev-latest`, fails to load with an error that shows the new form.
+
 ### v1.0.0
 
 The `1.0.0` release rebuilds the routing layer. A router is now anything that scores every route; the base class turns scores into calibrated confidence, and routers compose. It's a breaking release: the [migration guide](guides/migration-to-v1) covers every change, with before and after code.
