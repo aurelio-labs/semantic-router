@@ -13,7 +13,7 @@ import numpy as np
 
 from semantic_router.calibration import Calibrator, Method, ece
 from semantic_router.route import Route
-from semantic_router.schema import RouteChoice
+from semantic_router.schema import MatchedUtterance, RouteChoice
 from semantic_router.utils.logger import logger
 
 T = TypeVar("T")
@@ -82,6 +82,9 @@ class BaseRouter(ABC):
         self.calibrator = calibrator
         # the labelled queries behind the calibrator, kept so a route change can refit it
         self._fit_data: tuple[list[str], list[str | None], Method] | None = None
+        # utterances matched by the last query, keyed by route name. populated by
+        # index-backed routers; other routers leave it as None. cleared on every acall.
+        self._last_utterances: dict[str, list[MatchedUtterance]] | None = None
 
     @abstractmethod
     async def _scores(self, query: str) -> dict[str, float]:
@@ -128,9 +131,12 @@ class BaseRouter(ABC):
             # a per-call threshold wins over the route's and the router's
             bar = self._bar(n) if threshold is None else threshold
             if bar is None or c >= bar:
-                picks.append(
-                    RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
-                )
+                pick = RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
+                if self._last_utterances is not None:
+                    utterances = self._last_utterances.get(n)
+                    if utterances:
+                        pick.matched_utterances = list(utterances)
+                picks.append(pick)
         picks = picks[:limit]
         if limit == 1:
             # an empty pick still says whether the bar it missed was a calibrated one
@@ -140,6 +146,7 @@ class BaseRouter(ABC):
     async def acall(
         self, query: str, limit: int | None = 1, threshold: float | None = None
     ) -> RouteChoice | list[RouteChoice]:
+        self._last_utterances = None
         return self._choose(await self._scores(query), limit, threshold)
 
     def __call__(

@@ -40,6 +40,27 @@ class EncoderInfo(BaseModel):
     token_limit: int
 
 
+class MatchedUtterance(BaseModel):
+    """One stored utterance that matched a query, with its raw similarity score.
+
+    Populated by index-backed routers so downstream code can see which training examples
+    pulled the route and tune thresholds or debug misrouting.
+
+    :param text: The stored utterance text.
+    :type text: str
+    :param score: The raw similarity score between the query embedding and this utterance.
+        Higher is more similar; the scale depends on the index metric (cosine, dotproduct,
+        etc.) and the aggregation method.
+    :type score: float
+    :param route: The route this utterance belongs to.
+    :type route: str
+    """
+
+    text: str
+    score: float
+    route: str
+
+
 class RouteChoice(BaseModel):
     """A route choice output by the routers."""
 
@@ -47,6 +68,8 @@ class RouteChoice(BaseModel):
     # the confidence behind the choice, and whether it is a probability
     confidence: Optional[float] = None
     calibrated: bool = False
+    # utterance-level match details; None when the router does not expose them
+    matched_utterances: Optional[list[MatchedUtterance]] = None
 
 
 class Utterance(BaseModel):
