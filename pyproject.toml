@@ -56,6 +56,10 @@ bedrock = [
 postgres = [
     "psycopg[binary]>=3.1.0,<4",
 ]
+mongodb = [
+    "pymongo>=4.6.0,<5",
+    "motor>=3.3.0,<4",
+]
 fastembed = ["fastembed>=0.7.0,<1"]
 all = [
     "semantic-router[local]",
@@ -65,6 +69,7 @@ all = [
     "semantic-router[google]",
     "semantic-router[bedrock]",
     "semantic-router[postgres]",
+    "semantic-router[mongodb]",
     "semantic-router[fastembed]",
     "semantic-router[litellm]",
     "semantic-router[ollama]",
