@@ -164,4 +164,6 @@ A calibrator you passed in yourself, or loaded from a file, has no labelled quer
 
 A `DecisionRouter` returns probabilities straight from its model, so its results say `calibrated=True` without a fit. You can still `fit()` one to correct a model that's systematically over- or under-confident on your traffic.
 
+The [calibrated probability](https://youtu.be/P-t4F_UlxkI?t=395) chapter of the Jev video shows what that means in practice, and [Understanding Jev](https://jamesbriggs.io/understanding-jev) measures the calibration error of Jev and the open models it compares.
+
 A `Chain` or `Merge` is calibrated only when every router in it is. Calibrate the parts first, so their confidences are on the same scale; otherwise a threshold or an average mixes raw similarities with probabilities.

@@ -109,7 +109,7 @@ router("why was I charged twice this month?")
 [Out]: RouteChoice(name='billing', confidence=1.0, calibrated=True)
 ```
 
-It's slower than an `IndexedRouter` (a network call of a few hundred milliseconds) but it understands instructions and edge cases that example utterances can't capture. It can also answer several questions about one message in a single call. See [decision models](../features/decision-models).
+It's slower than an `IndexedRouter` (a network call of a few hundred milliseconds) but it understands instructions and edge cases that example utterances can't capture. It can also answer several questions about one message in a single call. See [decision models](../features/decision-models), and for background on the models themselves, [Understanding Jev](https://jamesbriggs.io/understanding-jev) and [the video](https://youtu.be/P-t4F_UlxkI).
 
 ## Chain and Merge
 
