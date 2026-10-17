@@ -36,7 +36,9 @@ local = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
-    "torch>=2.6.0 ; python_version < '3.13'"
+    "torch>=2.6.0 ; python_version < '3.13'",
+    # GLiNER2DecisionModel: fastino/GLiNER2.5-Decide, a local decision model
+    "gliner2[local]>=2.1.0 ; python_version < '3.13'",
 ]
 pinecone = ["pinecone[asyncio]>=7.0.0,<8.0.0"]
 vision = [
