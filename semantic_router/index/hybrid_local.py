@@ -89,7 +89,8 @@ class HybridLocalIndex(LocalIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query and return top_k results.
 
         :param vector: The query vector to search for.
@@ -100,6 +101,8 @@ class HybridLocalIndex(LocalIndex):
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: The sparse vector to search for, must be provided.
         :type sparse_vector: dict[int, float]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
         """
         if route_filter:
             raise ValueError("Route filter is not supported for HybridLocalIndex.")
@@ -130,10 +133,21 @@ class HybridLocalIndex(LocalIndex):
             route_names = (
                 [self.routes[i] for i in idx] if self.routes is not None else []
             )
+            utterances = (
+                [str(self.utterances[i]) for i in idx]
+                if self.utterances is not None
+                else []
+            )
+            if return_utterances:
+                return scores, route_names, utterances
             return scores, route_names
         else:
             logger.warning("Index or sparse index is not populated.")
-            return np.array([]), []
+            empty_scores = np.array([])
+            empty_routes: list[str] = []
+            if return_utterances:
+                return empty_scores, empty_routes, []
+            return empty_scores, empty_routes
 
     async def aquery(
         self,
@@ -141,7 +155,8 @@ class HybridLocalIndex(LocalIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query and return top_k results. This method calls the
         sync `query` method as everything uses numpy computations which is CPU-bound
         and so no benefit can be gained from making this async.
@@ -154,12 +169,15 @@ class HybridLocalIndex(LocalIndex):
         :type route_filter: Optional[List[str]], optional
         :param sparse_vector: The sparse vector to search for, must be provided.
         :type sparse_vector: dict[int, float]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
         """
         return self.query(
             vector=vector,
             top_k=top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
+            return_utterances=return_utterances,
         )
 
     def _keep(self, mask: np.ndarray):

@@ -171,7 +171,8 @@ class LocalIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query and return top_k results.
 
         :param vector: The vector to search for.
@@ -182,27 +183,36 @@ class LocalIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to search for.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing the query vector and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
-        if self.index is None or self.routes is None:
+        if self.index is None or self.routes is None or self.utterances is None:
             raise ValueError("Index or routes are not populated.")
         if route_filter is not None:
             filtered_index = []
             filtered_routes = []
-            for route, vec in zip(self.routes, self.index):
+            filtered_utterances = []
+            for route, vec, utt in zip(self.routes, self.index, self.utterances):
                 if route in route_filter:
                     filtered_index.append(vec)
                     filtered_routes.append(route)
+                    filtered_utterances.append(utt)
             if not filtered_routes:
                 raise ValueError("No routes found matching the filter criteria.")
             sim = similarity_matrix(vector, np.array(filtered_index))
             scores, idx = top_scores(sim, top_k)
             route_names = [filtered_routes[i] for i in idx]
+            utterances = [str(filtered_utterances[i]) for i in idx]
         else:
             sim = similarity_matrix(vector, self.index)
             scores, idx = top_scores(sim, top_k)
             route_names = [self.routes[i] for i in idx]
+            utterances = [str(self.utterances[i]) for i in idx]
+        if return_utterances:
+            return scores, route_names, utterances
         return scores, route_names
 
     async def aquery(
@@ -211,7 +221,8 @@ class LocalIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query and return top_k results. Note that this
         just points to the sync query method, the computation is local and CPU-bound.
 
@@ -223,14 +234,18 @@ class LocalIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to search for.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing the query vector and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         return self.query(
             vector=vector,
             top_k=top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
+            return_utterances=return_utterances,
         )
 
     def delete(self, route_name: str):
