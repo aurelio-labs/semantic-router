@@ -64,6 +64,10 @@ encoder = HuggingFaceEncoder(name="sentence-transformers/all-MiniLM-L6-v2")
 
 Bigger models are usually more accurate and slower. Since every query is embedded on the hot path, start small and move up only if your [evaluation](../features/calibration#measure-it) says you need to.
 
+## A local decision model
+
+A `DecisionRouter` can run on your machine too: `GLiNER2DecisionModel` runs the open GLiNER2.5-Decide model in-process, from the same `local` extra. It reads your route descriptions instead of embedding utterances. See [run a model on this machine](../features/decision-models#run-a-model-on-this-machine).
+
 ## Pairing with a local LLM
 
 Semantic Router doesn't run LLMs any more: it decides, and your code acts. To pair it with a local model, route first, then call the model only when a route needs one. With [Ollama](https://ollama.com), for example:

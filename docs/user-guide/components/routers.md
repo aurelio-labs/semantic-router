@@ -5,6 +5,8 @@ description: IndexedRouter, DecisionRouter, Chain and Merge, and how to build yo
 
 A router takes a query, scores every route, and hands back a decision. Version 1 has several kinds of router, and they all share one contract: each scores the routes its own way, and the base class does the rest. Thresholds, calibration, evaluation, sync and async calling, and adding and removing routes all work the same on every router.
 
+For how they compare on accuracy, calibration and latency, see the [benchmarks](../concepts/benchmarks).
+
 ```python
 from semantic_router import Chain, DecisionRouter, IndexedRouter, Merge
 ```
