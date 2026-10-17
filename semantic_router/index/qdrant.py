@@ -633,11 +633,9 @@ class QdrantIndex(BaseIndex):
         if self.aclient is None:
             # In-memory or sync-only mode, treat as not ready for async
             return False
-        try:
-            return await self.aclient.collection_exists(self.index_name)
-        except Exception as e:
-            logger.warning(f"Async QdrantIndex readiness check failed: {e}")
-            return False
+        # A failed check raises, as is_ready() does. Callers treat False as "not set up yet"
+        # and initialise or sync the index, so it must not stand in for "could not check".
+        return await self.aclient.collection_exists(self.index_name)
 
     async def aadd(
         self,
