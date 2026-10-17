@@ -90,17 +90,18 @@ A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your 
 
 ## DecisionRouter
 
-The `DecisionRouter` asks a decision model which route a query belongs to. It needs no encoder and no index: the model reads each route's `description` and returns a probability for every route, so its confidences are calibrated from the start.
+The `DecisionRouter` asks a decision model which route a query belongs to. You pass it the model, as you pass an encoder to an `IndexedRouter`. It needs no encoder and no index: the model reads each route's `description` and returns a probability for every route, so its confidences are calibrated from the start.
 
 ```python
 from semantic_router import DecisionRouter, Route
+from semantic_router.decision_models import TypeSafeDecisionModel
 
 routes = [
     Route(name="billing", description="Money already paid or owed: refunds, charges, invoices."),
     Route(name="technical", description="Something in the product is broken or not working."),
 ]
 
-router = DecisionRouter(routes=routes)  # reads JEV_API_KEY
+router = DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)  # reads JEV_API_KEY
 router("why was I charged twice this month?")
 ```
 

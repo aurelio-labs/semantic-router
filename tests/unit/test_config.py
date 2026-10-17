@@ -15,6 +15,7 @@ from semantic_router import (
 )
 from semantic_router.calibration import Calibrator
 from semantic_router.config import from_config, to_config
+from semantic_router.decision_models import TypeSafeDecisionModel
 from semantic_router.encoders import DenseEncoder, OpenAIEncoder, TfidfEncoder
 from semantic_router.index import LocalIndex, PostgresIndex, QdrantIndex
 from semantic_router.schema import Metric
@@ -98,13 +99,15 @@ def hybrid():
 
 def decision():
     return DecisionRouter(
+        model=TypeSafeDecisionModel(
+            api_key="jev-arg-SECRET",
+            base_url="https://example.test/",
+            timeout=5.0,
+            retries=1,
+            concurrency=16,
+        ),
         routes=ROUTES,
-        api_key="jev-arg-SECRET",
-        base_url="https://example.test/",
         instructions="Which team should take this?",
-        timeout=5.0,
-        retries=1,
-        concurrency=16,
         confidence_threshold=0.8,
     )
 
@@ -147,7 +150,40 @@ def test_file_says_which_router_it_is(fmt, tmp_path):
         "name": "text-embedding-3-small",
     }
     assert data["routers"][0]["index"] == {"type": "local"}
-    assert data["routers"][1]["base_url"] == "https://example.test"
+    assert data["routers"][1]["model"] == {
+        "type": "typesafe",
+        "name": "jev-latest",
+        "base_url": "https://example.test/",
+        "timeout": 5.0,
+        "retries": 1,
+        "concurrency": 16,
+    }
+
+
+def test_a_default_model_writes_only_its_type_and_name():
+    router = DecisionRouter(model=TypeSafeDecisionModel(), routes=ROUTES)
+    config = to_config(router).model_dump(mode="json")
+    assert config["model"] == {"type": "typesafe", "name": "jev-latest"}
+
+
+def test_a_1_0_0_decision_file_says_what_changed():
+    old = {"router_type": "decision", "model": "jev-latest", "routes": []}
+    with pytest.raises(ValueError, match="model: {type: typesafe"):
+        from_config(config=old)
+
+
+def test_an_unknown_decision_model_is_refused():
+    config = to_config(decision()).model_dump(mode="json")
+    config["model"] = {"type": "oracle", "name": "x"}
+    with pytest.raises(ValueError, match="unknown decision model type"):
+        from_config(config=config)
+
+
+def test_a_key_in_the_decision_model_config_is_refused():
+    config = to_config(decision()).model_dump(mode="json")
+    config["model"]["api_key"] = "jev-key"
+    with pytest.raises(ValueError, match="environment"):
+        from_config(config=config)
 
 
 def test_loaded_indexed_router_routes_the_same(tmp_path):

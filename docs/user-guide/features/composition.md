@@ -14,6 +14,7 @@ The classic pairing is an `IndexedRouter`, which answers in milliseconds, in fro
 
 ```python
 from semantic_router import Chain, DecisionRouter, IndexedRouter, Route
+from semantic_router.decision_models import TypeSafeDecisionModel
 from semantic_router.encoders import FastEmbedEncoder
 
 routes = [
@@ -35,7 +36,7 @@ fast = IndexedRouter(
     confidence_threshold=0.85,
 )
 fast.fit(X=held_out_queries, y=held_out_labels)  # so 0.85 means 85%
-smart = DecisionRouter(routes=routes)
+smart = DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)
 
 router = Chain(routers=[fast, smart])
 router("I was billed for a plan I cancelled")

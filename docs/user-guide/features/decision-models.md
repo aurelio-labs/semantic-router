@@ -5,19 +5,20 @@ description: Route with a decision model, and ask several typed questions about 
 
 Some routing decisions depend on instructions rather than resemblance: "refunds and charges, but not pricing questions before a purchase". Example utterances struggle to draw lines like that. A decision model can: it's a small, fast model trained to answer typed questions about a piece of text, with a probability for every answer.
 
-`DecisionRouter` routes with one. It speaks the `/v1/systemone` API that TypeSafe's **Jev** introduced, which **Laya** and **Von** also implement.
+`DecisionRouter` routes with one. The model is a component you pass in, the way you pass an encoder to an `IndexedRouter`. The models that ship speak the `/v1/systemone` API that TypeSafe's **Jev** introduced, which **Laya** and **Von** also implement.
 
 ## Route with a decision model
 
 ```python
 from semantic_router import DecisionRouter, Route
+from semantic_router.decision_models import TypeSafeDecisionModel
 
 routes = [
     Route(name="billing", description="Money already paid or owed: refunds, charges, invoices."),
     Route(name="technical", description="Something in the product is broken or not working."),
 ]
 
-router = DecisionRouter(routes=routes)  # reads JEV_API_KEY
+router = DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)  # reads JEV_API_KEY
 
 router("why was I charged twice this month?")
 ```
@@ -28,17 +29,40 @@ router("why was I charged twice this month?")
 
 There's no encoder and no index. The router turns your routes into one multiple-choice question, sends it with the query, and gets back a probability for every route. Those are already probabilities, so results say `calibrated=True` without a `fit()`.
 
+The router takes:
+
 | Argument | Default | What it does |
 |---|---|---|
-| `routes` | required | The routes to choose between. |
-| `api_key` | `JEV_API_KEY` | Your API key. |
-| `model` | `"jev-latest"` | The model to ask. |
-| `base_url` | `"https://api.typesafe.ai"` | Point it at any server that speaks `/v1/systemone`, such as a Laya or Von deployment. |
+| `model` | required | The decision model that answers. |
+| `routes` | `()` | The routes to choose between. |
 | `instructions` | `"Which route does the user's message belong to?"` | The question asked about each query. |
+| `confidence_threshold` | `None` | The router's default bar, as on every router. |
+
+The model holds the connection settings:
+
+| Argument | Default | What it does |
+|---|---|---|
+| `name` | `"jev-latest"` | The model to ask. |
+| `api_key` | `JEV_API_KEY` | Your API key. |
+| `base_url` | `"https://api.typesafe.ai"` | The server; requests go to `{base_url}/v1/systemone`. |
 | `timeout` | `10.0` | Seconds per request. |
 | `retries` | `3` | Retries on rate limits (429, 529), server errors and timeouts, with exponential backoff and jitter. |
 | `concurrency` | `8` | Requests in flight when scoring a batch (`fit`, `evaluate`, `Chain`, `Merge`). Each query is one request, so this caps a batch's throughput: raise it as far as your rate limit allows. |
-| `confidence_threshold` | `None` | The router's default bar, as on every router. |
+
+## Use another server
+
+`TypeSafeDecisionModel` is TypeSafe's Jev with its defaults filled in. For a Laya or Von deployment, or a server of your own that speaks `/v1/systemone`, use `SystemOneDecisionModel` and say where it is:
+
+```python
+from semantic_router.decision_models import SystemOneDecisionModel
+
+model = SystemOneDecisionModel(name="my-model", base_url="http://localhost:8080")
+router = DecisionRouter(model=model, routes=routes)
+```
+
+It sends a key only if you pass `api_key`, so a local server needs none.
+
+To plug in a different kind of model, subclass `DecisionModel` and implement `aask(state, questions)`, which returns an answer for each question.
 
 ## Write literal descriptions
 
@@ -58,7 +82,7 @@ A route with no description falls back to its first five utterances, joined toge
 A decision model can answer several questions about the same message in one pass, for about the cost of one. `aask()` sends the message (the `state`) once, with a dict of named questions, and returns an answer for each.
 
 ```python
-from semantic_router.routers import choice, noul, score
+from semantic_router.decision_models import choice, noul, score
 
 answers = await router.aask(
     state="my card was charged twice and I need it fixed today or I'm cancelling",
@@ -114,7 +138,7 @@ A decision model is a network call. Measured against Jev (p50, after warm-up):
 
 ## Close the session
 
-A `DecisionRouter` keeps a pooled HTTP session, so repeated calls reuse the connection. Close it when you're done. After async calls (`acall`, `aask`), prefer:
+A `DecisionRouter`'s model keeps a pooled HTTP session, so repeated calls reuse the connection. Close it when you're done. After async calls (`acall`, `aask`), prefer:
 
 ```python
 await router.aclose()

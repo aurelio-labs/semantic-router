@@ -37,6 +37,7 @@ import numpy as np
 from dotenv import load_dotenv
 
 from semantic_router.calibration import ece
+from semantic_router.decision_models import TypeSafeDecisionModel
 from semantic_router.encoders import FastEmbedEncoder, OpenAIEncoder, TfidfEncoder
 from semantic_router.route import Route
 from semantic_router.routers import (
@@ -148,12 +149,13 @@ class LiveOpenAIEncoder(OpenAIEncoder):
         return await super().acall(docs, truncate)
 
 
-def jev_key(router: DecisionRouter, state: object, questions: dict) -> str:
-    body = [router.url, router.model, state, questions]
+def jev_key(model: TypeSafeDecisionModel, state: object, questions: dict) -> str:
+    # the same key as when the router was the HTTP client, so cached answers stay valid
+    body = [model.url, model.name, state, questions]
     return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
-class CachedDecisionRouter(DecisionRouter):
+class CachedJev(TypeSafeDecisionModel):
     """answers from the disk cache when the exact request was asked before."""
 
     async def aask(self, state: object, questions: dict) -> dict:
@@ -164,8 +166,8 @@ class CachedDecisionRouter(DecisionRouter):
         return _JEV[key]
 
 
-class LiveDecisionRouter(DecisionRouter):
-    """the real router, counting requests."""
+class LiveJev(TypeSafeDecisionModel):
+    """the real model, counting requests."""
 
     async def aask(self, state: object, questions: dict) -> dict:
         LIVE["jev"] += 1
@@ -369,9 +371,10 @@ async def main(args: argparse.Namespace) -> None:
     lat_queries = [q for q, _ in rng.sample(test, args.n + WARMUP)]
     batch = [q for q, _ in rng.sample(test, args.batch)]
 
-    decision = CachedDecisionRouter(routes)
+    cached = CachedJev()
+    decision = DecisionRouter(model=cached, routes=routes)
     question = {"route": decision.route_question()}
-    missing = {q for q, _ in fit + test if jev_key(decision, q, question) not in _JEV}
+    missing = {q for q, _ in fit + test if jev_key(cached, q, question) not in _JEV}
     timed = (
         ROUTERS
         if args.latency == "all"
@@ -489,7 +492,7 @@ async def main(args: argparse.Namespace) -> None:
             if need & {f"chain{tag}", f"merge{tag}"}:
                 need |= {base, "decision_jev"}
         live = LiveOpenAIEncoder(name=OPENAI_MODEL)
-        jev = LiveDecisionRouter(routes)
+        jev = DecisionRouter(model=LiveJev(), routes=routes)
         builds = {
             "indexed_openai": lambda: IndexedRouter(encoder=live, routes=routes),
             "indexed_hybrid": lambda: IndexedRouter(
@@ -554,7 +557,7 @@ async def main(args: argparse.Namespace) -> None:
             "models": {
                 "openai": OPENAI_MODEL,
                 "fastembed": FASTEMBED_MODEL,
-                "jev": decision.model,
+                "jev": decision.model.name,
             },
             "git": git_sha(),
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
