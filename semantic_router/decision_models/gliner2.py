@@ -1,4 +1,4 @@
-"""GLiNER2 decision models on this machine: fastino/GLiNER2.5-Decide by default."""
+"""GLiNER2 decision models, run locally: fastino/GLiNER2.5-Decide by default."""
 
 from __future__ import annotations
 
@@ -120,8 +120,8 @@ class _Task:
 class GLiNER2DecisionModel(DecisionModel):
     """A GLiNER2 decision model run in-process with the gliner2 library.
 
-    Answers choice, noul and score questions on this machine, with no network calls
-    and no key. Requires the `local` extra: `pip install "semantic-router[local]"`.
+    Answers choice, noul and score questions locally, with no network calls and no
+    key. Requires the `local` extra: `pip install "semantic-router[local]"`.
 
     :param name: The model on the Hugging Face Hub, or a local directory.
     :param device: `"cuda"`, `"mps"` or `"cpu"`. Left out, the first available.

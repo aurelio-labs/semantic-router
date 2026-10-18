@@ -71,9 +71,9 @@ It sends a key only if you pass `api_key`, so a local server needs none.
 
 To plug in a different kind of model, subclass `DecisionModel` and implement `aask(state, questions)`, which returns an answer for each question.
 
-## Run a model on this machine
+## Run a decision model locally
 
-`GLiNER2DecisionModel` runs [GLiNER2.5-Decide](https://huggingface.co/fastino/GLiNER2.5-Decide), Fastino's open decision model, in your own process. Nothing leaves the machine, and there's no API key.
+`GLiNER2DecisionModel` runs [GLiNER2.5-Decide](https://huggingface.co/fastino/GLiNER2.5-Decide), Fastino's open decision model, in your own process. Your queries never leave your infrastructure, and there's no API key.
 
 ```bash
 pip install "semantic-router[local]"  # Python 3.10 to 3.12
