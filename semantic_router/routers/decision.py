@@ -18,8 +18,8 @@ from semantic_router.routers.base import BaseRouter
 class DecisionRouter(BaseRouter):
     """routes by asking a decision model one choice question: which route applies.
 
-    :param model: The decision model that answers, e.g. `GLiNER2DecisionModel()` on
-        this machine or `TypeSafeDecisionModel()` over HTTP.
+    :param model: The decision model that answers, e.g. `GLiNER2DecisionModel()`
+        locally or `TypeSafeDecisionModel()` over HTTP.
     :param routes: The routes to choose between.
     :param instructions: The question asked about each query.
     :param confidence_threshold: The confidence a route needs, unless it sets its own.

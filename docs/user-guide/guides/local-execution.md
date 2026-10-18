@@ -66,7 +66,7 @@ Bigger models are usually more accurate and slower. Since every query is embedde
 
 ## A local decision model
 
-A `DecisionRouter` can run on your machine too: `GLiNER2DecisionModel` runs the open GLiNER2.5-Decide model in-process, from the same `local` extra. It reads your route descriptions instead of embedding utterances. See [run a model on this machine](../features/decision-models#run-a-model-on-this-machine).
+A `DecisionRouter` can run locally too: `GLiNER2DecisionModel` runs the open GLiNER2.5-Decide model in-process, from the same `local` extra. It reads your route descriptions instead of embedding utterances. See [run a decision model locally](../features/decision-models#run-a-decision-model-locally).
 
 ## Pairing with a local LLM
 

@@ -5,9 +5,9 @@ description: What changed in each Semantic Router release.
 
 ### v1.0.2
 
-`1.0.2` adds a decision model that runs on your own machine. Code and files written for `1.0.1` work unchanged.
+`1.0.2` adds a decision model that runs locally. Code and files written for `1.0.1` work unchanged.
 
-#### Feature: GLiNER2.5-Decide on this machine
+#### Feature: GLiNER2.5-Decide, a local decision model
 
 - `GLiNER2DecisionModel` runs fastino/GLiNER2.5-Decide in-process, so `DecisionRouter(model=GLiNER2DecisionModel(), routes=routes)` routes with no network call and no API key.
 - It answers `choice`, `noul` and `score` questions like the HTTP models, batches states (`batch_size`, default 8) and runs off the event loop. It uses CUDA, then MPS, then CPU, unless you pass `device`.
