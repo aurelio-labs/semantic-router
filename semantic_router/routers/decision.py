@@ -12,18 +12,14 @@ from semantic_router.decision_models.base import (
     choice,
 )
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter
+from semantic_router.routers.base import BaseRouter, QueryResult
 
 
 class DecisionRouter(BaseRouter):
-    """routes by asking a decision model one choice question: which route applies.
+    """routes by asking a decision model which route applies. one call answers many questions.
 
-    :param model: The decision model that answers, e.g. `GLiNER2DecisionModel()`
-        locally or `TypeSafeDecisionModel()` over HTTP.
-    :param routes: The routes to choose between.
-    :param instructions: The question asked about each query.
-    :param confidence_threshold: The confidence a route needs, unless it sets its own.
-    :param calibrator: A fitted score -> probability map; `fit()` makes one.
+    ``DecisionRouter`` asks an external decision model; it never runs an index query,
+    so ``matched_utterances`` on each ``RouteChoice`` is always ``None``.
     """
 
     def __init__(
@@ -62,14 +58,22 @@ class DecisionRouter(BaseRouter):
             raise RuntimeError(f"decision model answer has no probabilities: {answer}")
         return {r.name: float(probs.get(r.name, 0.0)) for r in self.routes}
 
-    async def _scores(self, query: str) -> dict[str, float]:
-        return (await self._scores_many([query]))[0]
+    async def _scores(
+        self, query: str, return_utterances: bool = False
+    ) -> QueryResult:
+        return (
+            await self._scores_many([query], return_utterances=return_utterances)
+        )[0]
 
-    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+    async def _scores_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # one call into the model for the whole batch: fit, evaluate, Chain and Merge
         question = {"route": self.route_question()}
         answers = await self.model.aask_many(list(queries), question)
-        return [self._route_scores(a["route"]) for a in answers]
+        return [
+            QueryResult(scores=self._route_scores(a["route"])) for a in answers
+        ]
 
     async def aclose(self) -> None:
         await self.model.aclose()

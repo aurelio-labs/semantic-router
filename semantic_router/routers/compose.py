@@ -6,11 +6,17 @@ import asyncio
 from typing import Sequence
 
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter
+from semantic_router.routers.base import BaseRouter, QueryResult
 
 
 class Chain(BaseRouter):
-    """try routers in order; the first whose best confidence clears its bar answers."""
+    """try routers in order; the first whose best confidence clears its bar answers.
+
+    ``Chain`` routes by delegating to its sub-routers in sequence. Because it never
+    runs an index query itself, ``matched_utterances`` on each ``RouteChoice`` is
+    always ``None`` — utterance-level matches only surface on the
+    ``IndexedRouter`` directly.
+    """
 
     def __init__(
         self,
@@ -33,16 +39,23 @@ class Chain(BaseRouter):
     def calibrated(self) -> bool:
         return all(r.calibrated for r in self.routers)
 
-    async def _scores(self, query: str) -> dict[str, float]:
-        return (await self._scores_many([query]))[0]
+    async def _scores(
+        self, query: str, return_utterances: bool = False
+    ) -> QueryResult:
+        return (
+            await self._scores_many([query], return_utterances=return_utterances)
+        )[0]
 
-    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+    async def _scores_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # each router scores, in one batch, only the queries the routers before it
         # weren't sure of
         out: dict[int, dict[str, float]] = {}
         pending = list(range(len(queries)))
         for r in self.routers:
-            raws = await r._scores_many([queries[i] for i in pending])
+            raw_qrs = await r._scores_many([queries[i] for i in pending])
+            raws = [qr.scores for qr in raw_qrs]
             unsure = []
             for i, raw in zip(pending, raws):
                 probs = r._probs(raw)
@@ -61,11 +74,17 @@ class Chain(BaseRouter):
             pending = unsure
             if not pending:
                 break
-        return [out[i] for i in range(len(queries))]
+        return [QueryResult(scores=out[i]) for i in range(len(queries))]
 
 
 class Merge(BaseRouter):
-    """ask every router at once and take a weighted mean of their confidences per route."""
+    """ask every router at once and take a weighted mean of their confidences per route.
+
+    ``Merge`` routes by blending confidences from its sub-routers. Because it never
+    runs an index query itself, ``matched_utterances`` on each ``RouteChoice`` is
+    always ``None`` — utterance-level matches only surface on the
+    ``IndexedRouter`` directly.
+    """
 
     def __init__(
         self,
@@ -90,23 +109,32 @@ class Merge(BaseRouter):
     def calibrated(self) -> bool:
         return all(r.calibrated for r in self.routers)
 
-    async def _scores(self, query: str) -> dict[str, float]:
-        return (await self._scores_many([query]))[0]
+    async def _scores(
+        self, query: str, return_utterances: bool = False
+    ) -> QueryResult:
+        return (
+            await self._scores_many([query], return_utterances=return_utterances)
+        )[0]
 
-    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+    async def _scores_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # every router scores the whole batch at once, so an indexed router makes one
         # embed call for it rather than one per query
         results = await asyncio.gather(*(r._scores_many(queries) for r in self.routers))
         total = sum(self.weights)
         out = []
         for per_router in zip(*results):
-            probs = [r._probs(s) for r, s in zip(self.routers, per_router)]
+            per_router_scores = [qr.scores for qr in per_router]
+            probs = [r._probs(s) for r, s in zip(self.routers, per_router_scores)]
             names = dict.fromkeys(n for p in probs for n in p)
             out.append(
-                {
-                    n: sum(w * p.get(n, 0.0) for w, p in zip(self.weights, probs))
-                    / total
-                    for n in names
-                }
+                QueryResult(
+                    scores={
+                        n: sum(w * p.get(n, 0.0) for w, p in zip(self.weights, probs))
+                        / total
+                        for n in names
+                    }
+                )
             )
         return out
