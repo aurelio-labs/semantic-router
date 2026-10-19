@@ -4,9 +4,10 @@ import asyncio
 
 import pytest
 
+from semantic_router.decision_models import TypeSafeDecisionModel, noul
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.routers import Chain, DecisionRouter, IndexedRouter, noul
+from semantic_router.routers import Chain, DecisionRouter, IndexedRouter
 
 ROUTES = [
     Route(
@@ -63,7 +64,7 @@ def test_indexed_router_routes_and_calibrates():
 
 @pytest.mark.live("JEV_API_KEY")
 def test_decision_router_routes():
-    r = DecisionRouter(ROUTES)
+    r = DecisionRouter(model=TypeSafeDecisionModel(), routes=ROUTES)
     try:
         for q, want in CASES:
             pick = r(q)
@@ -74,7 +75,7 @@ def test_decision_router_routes():
 
 @pytest.mark.live("JEV_API_KEY")
 def test_decision_router_batches_questions():
-    r = DecisionRouter(ROUTES)
+    r = DecisionRouter(model=TypeSafeDecisionModel(), routes=ROUTES)
     try:
         out = asyncio.run(
             r.aask(
@@ -95,7 +96,7 @@ def test_decision_router_batches_questions():
 @pytest.mark.live("OPENAI_API_KEY", "JEV_API_KEY")
 def test_chain_semantic_then_decision():
     fast = IndexedRouter(OpenAIEncoder(), ROUTES, confidence_threshold=0.9)
-    slow = DecisionRouter(ROUTES)
+    slow = DecisionRouter(model=TypeSafeDecisionModel(), routes=ROUTES)
     try:
         assert Chain(routers=[fast, slow])(
             "how do i export everything before i leave"

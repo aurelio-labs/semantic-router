@@ -1,6 +1,8 @@
 """accuracy, calibration and latency of the v1 routers on a fixed slice of CLINC150. writes json.
 
 usage: uv run python benchmarks/accuracy.py [--seed 0] [--n 30] [--batch 50] [--latency all]
+       decision_gliner (GLiNER2.5-Decide, local) needs the local extra, so Python < 3.13:
+       uv run --python 3.12 --extra local --extra fastembed python benchmarks/accuracy.py
        --latency chain,merge re-times only those routers; the others keep their last timing.
        --latency none measures accuracy alone. the table shows the change since the last run.
 
@@ -37,6 +39,7 @@ import numpy as np
 from dotenv import load_dotenv
 
 from semantic_router.calibration import ece
+from semantic_router.decision_models import GLiNER2DecisionModel, TypeSafeDecisionModel
 from semantic_router.encoders import FastEmbedEncoder, OpenAIEncoder, TfidfEncoder
 from semantic_router.route import Route
 from semantic_router.routers import (
@@ -71,6 +74,7 @@ ROUTERS = [
     "indexed_hybrid",
     "indexed_fastembed",
     "decision_jev",
+    "decision_gliner",
     "chain",
     "merge",
     "chain_fastembed",
@@ -78,6 +82,7 @@ ROUTERS = [
 ]
 OPENAI_MODEL = "text-embedding-3-small"
 FASTEMBED_MODEL = "BAAI/bge-small-en-v1.5"
+GLINER_MODEL = "fastino/GLiNER2.5-Decide"
 # written from the intent name alone, before looking at val or test. an intent the seed picks
 # that is not here gets no description, and DecisionRouter falls back to its utterances
 DESCRIPTIONS = {
@@ -148,12 +153,13 @@ class LiveOpenAIEncoder(OpenAIEncoder):
         return await super().acall(docs, truncate)
 
 
-def jev_key(router: DecisionRouter, state: object, questions: dict) -> str:
-    body = [router.url, router.model, state, questions]
+def jev_key(model: TypeSafeDecisionModel, state: object, questions: dict) -> str:
+    # the same key as when the router was the HTTP client, so cached answers stay valid
+    body = [model.url, model.name, state, questions]
     return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
-class CachedDecisionRouter(DecisionRouter):
+class CachedJev(TypeSafeDecisionModel):
     """answers from the disk cache when the exact request was asked before."""
 
     async def aask(self, state: object, questions: dict) -> dict:
@@ -164,8 +170,8 @@ class CachedDecisionRouter(DecisionRouter):
         return _JEV[key]
 
 
-class LiveDecisionRouter(DecisionRouter):
-    """the real router, counting requests."""
+class LiveJev(TypeSafeDecisionModel):
+    """the real model, counting requests."""
 
     async def aask(self, state: object, questions: dict) -> dict:
         LIVE["jev"] += 1
@@ -369,9 +375,10 @@ async def main(args: argparse.Namespace) -> None:
     lat_queries = [q for q, _ in rng.sample(test, args.n + WARMUP)]
     batch = [q for q, _ in rng.sample(test, args.batch)]
 
-    decision = CachedDecisionRouter(routes)
+    cached = CachedJev()
+    decision = DecisionRouter(model=cached, routes=routes)
     question = {"route": decision.route_question()}
-    missing = {q for q, _ in fit + test if jev_key(decision, q, question) not in _JEV}
+    missing = {q for q, _ in fit + test if jev_key(cached, q, question) not in _JEV}
     timed = (
         ROUTERS
         if args.latency == "all"
@@ -417,6 +424,9 @@ async def main(args: argparse.Namespace) -> None:
         ),
         "indexed_fastembed": lambda: IndexedRouter(encoder=memo_local, routes=routes),
         "decision_jev": lambda: decision,
+        "decision_gliner": lambda: DecisionRouter(
+            model=GLiNER2DecisionModel(name=GLINER_MODEL), routes=routes
+        ),
     }
     try:
         for name, build in candidates.items():
@@ -489,7 +499,7 @@ async def main(args: argparse.Namespace) -> None:
             if need & {f"chain{tag}", f"merge{tag}"}:
                 need |= {base, "decision_jev"}
         live = LiveOpenAIEncoder(name=OPENAI_MODEL)
-        jev = LiveDecisionRouter(routes)
+        jev = DecisionRouter(model=LiveJev(), routes=routes)
         builds = {
             "indexed_openai": lambda: IndexedRouter(encoder=live, routes=routes),
             "indexed_hybrid": lambda: IndexedRouter(
@@ -508,6 +518,13 @@ async def main(args: argparse.Namespace) -> None:
                 build_s[name] = time.perf_counter() - t
         if "decision_jev" in need and "decision_jev" in fitted:
             lat_routers["decision_jev"] = like("decision_jev", jev)
+        if "decision_gliner" in need and "decision_gliner" in fitted:
+            # local: a fresh router on the model already loaded, so timing skips the load
+            gliner = fitted["decision_gliner"]
+            assert isinstance(gliner, DecisionRouter)
+            lat_routers["decision_gliner"] = like(
+                "decision_gliner", DecisionRouter(model=gliner.model, routes=routes)
+            )
         for base, tag in (("indexed_openai", ""), ("indexed_fastembed", "_fastembed")):
             if f"chain{tag}" in need and f"chain{tag}" in fitted:
                 first = like(base, copy.copy(lat_routers[base]))
@@ -554,7 +571,8 @@ async def main(args: argparse.Namespace) -> None:
             "models": {
                 "openai": OPENAI_MODEL,
                 "fastembed": FASTEMBED_MODEL,
-                "jev": decision.model,
+                "jev": decision.model.name,
+                "gliner": GLINER_MODEL,
             },
             "git": git_sha(),
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),

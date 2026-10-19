@@ -5,6 +5,8 @@ description: IndexedRouter, DecisionRouter, Chain and Merge, and how to build yo
 
 A router takes a query, scores every route, and hands back a decision. Version 1 has several kinds of router, and they all share one contract: each scores the routes its own way, and the base class does the rest. Thresholds, calibration, evaluation, sync and async calling, and adding and removing routes all work the same on every router.
 
+For how they compare on accuracy, calibration and latency, see the [benchmarks](../concepts/benchmarks).
+
 ```python
 from semantic_router import Chain, DecisionRouter, IndexedRouter, Merge
 ```
@@ -90,17 +92,18 @@ A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your 
 
 ## DecisionRouter
 
-The `DecisionRouter` asks a decision model which route a query belongs to. It needs no encoder and no index: the model reads each route's `description` and returns a probability for every route, so its confidences are calibrated from the start.
+The `DecisionRouter` asks a decision model which route a query belongs to. You pass it the model, as you pass an encoder to an `IndexedRouter`. It needs no encoder and no index: the model reads each route's `description` and returns a probability for every route, so its confidences are calibrated from the start.
 
 ```python
 from semantic_router import DecisionRouter, Route
+from semantic_router.decision_models import TypeSafeDecisionModel
 
 routes = [
     Route(name="billing", description="Money already paid or owed: refunds, charges, invoices."),
     Route(name="technical", description="Something in the product is broken or not working."),
 ]
 
-router = DecisionRouter(routes=routes)  # reads JEV_API_KEY
+router = DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)  # reads JEV_API_KEY
 router("why was I charged twice this month?")
 ```
 
@@ -108,7 +111,7 @@ router("why was I charged twice this month?")
 [Out]: RouteChoice(name='billing', confidence=1.0, calibrated=True)
 ```
 
-It's slower than an `IndexedRouter` (a network call of a few hundred milliseconds) but it understands instructions and edge cases that example utterances can't capture. It can also answer several questions about one message in a single call. See [decision models](../features/decision-models).
+It's slower than an `IndexedRouter` (a network call of a few hundred milliseconds) but it understands instructions and edge cases that example utterances can't capture. It can also answer several questions about one message in a single call. See [decision models](../features/decision-models), and for background on the models themselves, [Understanding Jev](https://jamesbriggs.io/understanding-jev) and [the video](https://youtu.be/P-t4F_UlxkI).
 
 ## Chain and Merge
 

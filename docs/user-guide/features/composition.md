@@ -14,6 +14,7 @@ The classic pairing is an `IndexedRouter`, which answers in milliseconds, in fro
 
 ```python
 from semantic_router import Chain, DecisionRouter, IndexedRouter, Route
+from semantic_router.decision_models import TypeSafeDecisionModel
 from semantic_router.encoders import FastEmbedEncoder
 
 routes = [
@@ -35,7 +36,7 @@ fast = IndexedRouter(
     confidence_threshold=0.85,
 )
 fast.fit(X=held_out_queries, y=held_out_labels)  # so 0.85 means 85%
-smart = DecisionRouter(routes=routes)
+smart = DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)
 
 router = Chain(routers=[fast, smart])
 router("I was billed for a plan I cancelled")
@@ -49,6 +50,8 @@ For each query, the Chain:
 4. Otherwise moves on to `smart`. The last router always answers.
 
 Measured with an OpenAI encoder and Jev, a confident query that stopped at the index took 265 ms at p50; an ambiguous one that fell through to Jev took 610 ms. Only the traffic that needs the decision model pays for it.
+
+The same fast-then-slow split, with a decision model making the quick calls and an LLM setting the strategy, is the [thinking fast and slow](https://youtu.be/P-t4F_UlxkI?t=1542) chapter of the Jev video.
 
 Two things to get right:
 

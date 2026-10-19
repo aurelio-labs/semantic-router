@@ -60,6 +60,8 @@ An `IndexedRouter` compares the incoming query against every route's example utt
 
 Some decisions depend on instructions, not resemblance: "refunds, but not pricing questions before a purchase". A `DecisionRouter` hands those to a small, fast decision model that reads your route descriptions and returns a probability for each route. You can chain the two, so the embedding router answers the easy queries in milliseconds and only the ambiguous ones go to the model.
 
+To learn what decision models are and where they fit, read [Understanding Jev and Where It Fits in the AI Stack](https://jamesbriggs.io/understanding-jev) or watch [I Tested Jev AI Against LLMs and Open Source](https://youtu.be/P-t4F_UlxkI).
+
 ## The workflow
 
 1. **Define routes**: example utterances for each decision, and a description if a decision model will read it.

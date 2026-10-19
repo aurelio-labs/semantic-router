@@ -2,6 +2,7 @@
 
 keys and secrets are never written: a loaded router reads them from the environment
 (`OPENAI_API_KEY`, `JEV_API_KEY`, `PINECONE_API_KEY`...), as it would if built in code.
+a decision router's model is saved like an index: its type, and its non-default params.
 
 an indexed router on a remote index (pinecone, postgres, a qdrant server) is saved without
 its routes: the index holds them and stays the single source of truth, so the file only
@@ -15,9 +16,22 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    model_serializer,
+    model_validator,
+)
 
 from semantic_router.calibration import Calibrator, Method
+from semantic_router.decision_models import (
+    DecisionModel,
+    GLiNER2DecisionModel,
+    SystemOneDecisionModel,
+    TypeSafeDecisionModel,
+)
 from semantic_router.encoders import (
     AurelioSparseEncoder,
     AutoEncoder,
@@ -132,8 +146,14 @@ _INDEXES: dict[str, tuple[type[BaseIndex], tuple[str, ...]]] = {
     ),
 }
 
-# DecisionRouter keeps the full endpoint; the file holds the base url it was built from
-_SYSTEMONE_PATH = "/v1/systemone"
+# decision model type -> its class and the params a file may hold. keys are left out:
+# the model reads them from the environment
+_SYSTEMONE_FIELDS = ("name", "base_url", "timeout", "retries", "concurrency")
+_DECISION_MODELS: dict[str, tuple[type[DecisionModel], tuple[str, ...]]] = {
+    "gliner2": (GLiNER2DecisionModel, ("name", "device", "batch_size")),
+    "typesafe": (TypeSafeDecisionModel, _SYSTEMONE_FIELDS),
+    "systemone": (SystemOneDecisionModel, _SYSTEMONE_FIELDS),
+}
 
 
 class _Strict(BaseModel):
@@ -180,14 +200,30 @@ class IndexedConfig(_Strict):
         return data
 
 
+class DecisionModelConfig(BaseModel):
+    # the params depend on the type, so they ride as extra fields and are checked on build
+    model_config = ConfigDict(extra="allow")
+
+    type: str
+    name: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _not_a_name(cls, data: Any) -> Any:
+        if isinstance(data, str):
+            # 1.0.0 wrote the model as a bare name, with the HTTP params beside it
+            raise ValueError(
+                f"model is {data!r}, a bare model name as semantic-router 1.0.0 wrote it. "
+                "write a block instead, e.g. model: {type: typesafe, name: jev-latest} "
+                "or model: {type: gliner2}"
+            )
+        return data
+
+
 class DecisionConfig(_Strict):
     router_type: Literal["decision"] = "decision"
-    model: str = "jev-latest"
-    base_url: str = "https://api.typesafe.ai"
+    model: DecisionModelConfig
     instructions: str = "Which route does the user's message belong to?"
-    timeout: float = 10.0
-    retries: int = 3
-    concurrency: int = 8
     confidence_threshold: float | None = None
     calibrator: CalibratorConfig | None = None
     routes: list[Route]
@@ -247,12 +283,8 @@ def to_config(router: BaseRouter) -> RouterConfig:
         )
     if isinstance(router, DecisionRouter):
         return DecisionConfig(
-            model=router.model,
-            base_url=router.url.removesuffix(_SYSTEMONE_PATH),
+            model=_decision_model_config(router.model),
             instructions=router.instructions,
-            timeout=router.timeout,
-            retries=router.retries,
-            concurrency=router.concurrency,
             confidence_threshold=router.confidence_threshold,
             calibrator=calibrator,
             routes=_routes(router),
@@ -310,13 +342,9 @@ def from_config(config: RouterConfig | dict[str, Any]) -> BaseRouter:
         )
     if isinstance(cfg, DecisionConfig):
         return DecisionRouter(
+            model=_build_decision_model(cfg.model),
             routes=cfg.routes,
-            model=cfg.model,
-            base_url=cfg.base_url,
             instructions=cfg.instructions,
-            timeout=cfg.timeout,
-            retries=cfg.retries,
-            concurrency=cfg.concurrency,
             confidence_threshold=cfg.confidence_threshold,
             calibrator=calibrator,
         )
@@ -431,6 +459,38 @@ def _index_config(index: BaseIndex) -> IndexConfig:
         f"{type(index).__name__} can't be saved to a file; "
         f"supported indexes: {', '.join(_INDEXES)}"
     )
+
+
+def _decision_model_config(model: DecisionModel) -> DecisionModelConfig:
+    for kind, (cls, fields) in _DECISION_MODELS.items():
+        if type(model) is cls:
+            # the name always, so a file says which model it runs; the rest when changed
+            params = model.model_dump(
+                mode="json", include=set(fields) - {"name"}, exclude_defaults=True
+            )
+            return DecisionModelConfig(type=kind, name=model.name, **params)
+    raise ValueError(
+        f"{type(model).__name__} can't be saved to a file; "
+        f"supported decision models: {', '.join(_DECISION_MODELS)}"
+    )
+
+
+def _build_decision_model(cfg: DecisionModelConfig) -> DecisionModel:
+    if cfg.type not in _DECISION_MODELS:
+        raise ValueError(
+            f"unknown decision model type {cfg.type!r}; "
+            f"supported: {', '.join(_DECISION_MODELS)}"
+        )
+    cls, fields = _DECISION_MODELS[cfg.type]
+    params = dict(cfg.model_extra or {})
+    if cfg.name is not None:
+        params["name"] = cfg.name
+    if unknown := sorted(set(params) - set(fields)):
+        raise ValueError(
+            f"decision model type {cfg.type!r} doesn't take {unknown} from a file "
+            f"(it takes {list(fields)}); keys come from the environment"
+        )
+    return cls(**params)
 
 
 def _build_index(cfg: IndexConfig) -> BaseIndex:

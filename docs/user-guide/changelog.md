@@ -3,6 +3,30 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.0.2
+
+`1.0.2` adds a decision model that runs locally. Code and files written for `1.0.1` work unchanged.
+
+#### Feature: GLiNER2.5-Decide, a local decision model
+
+- `GLiNER2DecisionModel` runs fastino/GLiNER2.5-Decide in-process, so `DecisionRouter(model=GLiNER2DecisionModel(), routes=routes)` routes with no network call and no API key.
+- It answers `choice`, `noul` and `score` questions like the HTTP models, batches states (`batch_size`, default 8) and runs off the event loop. It uses CUDA, then MPS, then CPU, unless you pass `device`.
+- `classifier=` takes a `gliner2` classifier you loaded yourself, such as one with a fine-tuned adapter.
+- It needs the `local` extra, which now includes `gliner2` (Python < 3.13, like the other torch-based models): `pip install "semantic-router[local]"`.
+- Files save it as `model: {type: gliner2, name: fastino/GLiNER2.5-Decide}`, plus `device` and `batch_size` when you set them.
+
+### v1.0.1
+
+`1.0.1` makes the decision model a component you pass to `DecisionRouter`, the way you pass an encoder to `IndexedRouter`. It changes `DecisionRouter`'s arguments, so code and files written for `1.0.0` need a small edit.
+
+#### Breaking: decision models are a component
+
+- `DecisionRouter(model=TypeSafeDecisionModel(), routes=routes)` replaces `DecisionRouter(routes=routes)`. The connection settings move to the model: `api_key`, `base_url`, `timeout`, `retries` and `concurrency`, and `model` becomes the model's `name`.
+- `SystemOneDecisionModel(name=..., base_url=...)` talks to any `/v1/systemone` server (Laya, Von or your own) and sends a key only if you pass one. `TypeSafeDecisionModel` is the same with TypeSafe's defaults, and reads `JEV_API_KEY`.
+- Subclass `DecisionModel` and implement `aask` to route with another kind of model.
+- `choice`, `noul` and `score` move to `semantic_router.decision_models`.
+- Files save the model as a block, `model: {type: typesafe, name: jev-latest}`. A `1.0.0` file, which wrote `model: jev-latest`, fails to load with an error that shows the new form.
+
 ### v1.0.0
 
 The `1.0.0` release rebuilds the routing layer. A router is now anything that scores every route; the base class turns scores into calibrated confidence, and routers compose. It's a breaking release: the [migration guide](guides/migration-to-v1) covers every change, with before and after code.

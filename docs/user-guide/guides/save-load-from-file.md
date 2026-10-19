@@ -130,16 +130,14 @@ Files never hold API keys or connection strings. Encoders are saved as their typ
 
 ## Other router types
 
-A `DecisionRouter` saves its model settings and routes:
+A `DecisionRouter` saves its model as a block, the way an `IndexedRouter` saves its encoder, and its routes. The block always has the model's `type` and `name`; other settings appear only when you changed them from their defaults:
 
 ```yaml
 router_type: decision
-model: jev-latest
-base_url: https://api.typesafe.ai
+model:
+  type: typesafe
+  name: jev-latest
 instructions: Which route does the user's message belong to?
-timeout: 10.0
-retries: 3
-concurrency: 8
 confidence_threshold: null
 calibrator: null
 routes:
@@ -167,7 +165,9 @@ routers:
   confidence_threshold: 0.85
   routes: [...]
 - router_type: decision
-  model: jev-latest
+  model:
+    type: typesafe
+    name: jev-latest
   routes: [...]
 ```
 
