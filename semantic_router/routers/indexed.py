@@ -17,7 +17,12 @@ from semantic_router.encoders.base import (
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter, FitReport, QueryResult, in_sync_call
+from semantic_router.routers.base import (
+    BaseRouter,
+    FitReport,
+    QueryResult,
+    in_sync_call,
+)
 from semantic_router.schema import MatchedUtterance, SparseEmbedding
 from semantic_router.utils.logger import logger
 
