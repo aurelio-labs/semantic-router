@@ -88,8 +88,8 @@ def test_aask_passes_every_question_through():
 
 def test_a_route_the_model_leaves_out_scores_zero():
     model = FakeModel(table={"q": {"billing": 1.0, "unknown": 0.4}})
-    scores = asyncio.run(DecisionRouter(model=model, routes=ROUTES)._scores_many(["q"]))
-    assert scores == [{"billing": 1.0, "technical": 0.0}]
+    scored = asyncio.run(DecisionRouter(model=model, routes=ROUTES)._scores_many(["q"]))
+    assert [qr.scores for qr in scored] == [{"billing": 1.0, "technical": 0.0}]
 
 
 def test_an_answer_without_probabilities_is_an_error():
