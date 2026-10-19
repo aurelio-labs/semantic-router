@@ -245,13 +245,16 @@ async def measure_accuracy(router: BaseRouter, fit: Labelled, test: Labelled) ->
     Xt, yt = [q for q, _ in test], [y for _, y in test]
     report = await router.afit(Xf, yf)
     router.confidence_threshold = BAR
-    scored = await router._scores_many(Xt)
-    tops, raw = [top(router._probs(s)) for s in scored], [top(s) for s in scored]
+    qr_many = await router._scores_many(Xt)
+    tops, raw = (
+        [top(router._probs(qr.scores)) for qr in qr_many],
+        [top(qr.scores) for qr in qr_many],
+    )
     inscope = np.array([y is not None for y in yt])
     picks = [n if c >= BAR else None for n, c in tops]
     correct = np.array([n == y for (n, _), y in zip(tops, yt)], dtype=float)
     # the threshold a person would pick from val, applied to test
-    val_tops = [top(router._probs(s)) for s in await router._scores_many(Xf)]
+    val_tops = [top(router._probs(qr.scores)) for qr in await router._scores_many(Xf)]
     grid = [round(t, 2) for t in np.arange(0, 1.0001, 0.05)]
     tuned = max(grid, key=lambda t: (e2e_at(val_tops, yf, t), -abs(t - BAR)))
     e2e = await router.aevaluate(Xt, yt)
@@ -265,7 +268,7 @@ async def measure_accuracy(router: BaseRouter, fit: Labelled, test: Labelled) ->
         "ece": ece(np.array([c for _, c in tops]), correct),
         # the same, on the raw scores: only a probabilistic router's mean much here
         "ece_raw": ece(np.clip([c for _, c in raw], 0, 1), correct),
-        "nan_scores": sum(any(map(math.isnan, s.values())) for s in scored),
+        "nan_scores": sum(any(map(math.isnan, qr.scores.values())) for qr in qr_many),
         "fit": {"accuracy": report.accuracy, "ece": report.ece, "n": report.n},
         "tuned": {"threshold": tuned, "e2e": e2e_at(tops, yt, tuned)},
         "curve": [[t, e2e_at(tops, yt, t)] for t in grid],
@@ -276,7 +279,8 @@ async def chain_stops(chain: Chain, X: Sequence[str]) -> float:
     """the share of queries the first stage answers without asking the next."""
     first = chain.routers[0]
     stops = []
-    for scores in await first._scores_many(X):
+    for qr in await first._scores_many(X):
+        scores = qr.scores
         name, c = top(first._probs(scores))
         # the bar Chain checks: the route's, else the router's, else the chain's; none means stop
         bar = first._bar(name)

@@ -282,13 +282,17 @@ class MongoDbIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index with ``$vectorSearch``.
 
         :param vector: The query vector.
         :param top_k: The number of results to return.
         :param route_filter: Only search these routes.
         :param sparse_vector: Not used: MongoDbIndex is dense only.
+        :param return_utterances: If True, also return matched utterance texts.
+            MongoDB Atlas records do not store the original utterance text, so
+            this is accepted for API compatibility but does not add utterances.
         :return: The scores and route names of the top_k results.
         """
         extra = {ROUTE_FIELD: {"$in": route_filter}} if route_filter is not None else {}
@@ -305,7 +309,8 @@ class MongoDbIndex(BaseIndex):
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Async :meth:`query`."""
         return await asyncio.to_thread(
             self.query,
@@ -313,6 +318,7 @@ class MongoDbIndex(BaseIndex):
             top_k=top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
+            return_utterances=return_utterances,
         )
 
     # --------------------------------------------------------------- delete

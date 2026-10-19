@@ -99,9 +99,7 @@ class BaseRouter(ABC):
         self._fit_data: tuple[list[str], list[str | None], Method] | None = None
 
     @abstractmethod
-    async def _scores(
-        self, query: str, return_utterances: bool = False
-    ) -> QueryResult:
+    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
         """score every route for ``query``; higher is more likely.
 
         routers that cannot expose utterance-level matches (e.g. ``DecisionRouter``,
@@ -199,9 +197,7 @@ class BaseRouter(ABC):
         return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
         return run(
-            self.acall(
-                query, limit, threshold, return_utterances=return_utterances
-            )
+            self.acall(query, limit, threshold, return_utterances=return_utterances)
         )
 
     async def afit(

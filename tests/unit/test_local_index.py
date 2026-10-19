@@ -70,7 +70,7 @@ def hybrid_index() -> HybridLocalIndex:
 
 def hybrid_query(index: HybridLocalIndex, dense, sparse: dict, alpha: float):
     """query the way IndexedRouter does: alpha on dense, the rest on sparse"""
-    scores, routes = index.query(
+    scores, routes = index.query(  # type: ignore[misc]
         vector=np.array(dense) * alpha,
         sparse_vector={k: v * (1 - alpha) for k, v in sparse.items()},
         top_k=3,
