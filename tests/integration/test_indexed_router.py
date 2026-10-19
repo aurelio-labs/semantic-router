@@ -12,6 +12,7 @@ from semantic_router.index import (
     BaseIndex,
     HybridLocalIndex,
     LocalIndex,
+    MongoDbIndex,
     PineconeIndex,
     PostgresIndex,
     QdrantIndex,
@@ -68,7 +69,14 @@ def encoder() -> LocalTestEncoder:
 
 
 @pytest.fixture(
-    params=[LocalIndex, HybridLocalIndex, PineconeIndex, PostgresIndex, QdrantIndex],
+    params=[
+        LocalIndex,
+        HybridLocalIndex,
+        PineconeIndex,
+        PostgresIndex,
+        QdrantIndex,
+        MongoDbIndex,
+    ],
     ids=lambda cls: cls.__name__,
 )
 def index_cls(request):
@@ -90,7 +98,7 @@ def make_router(index: BaseIndex, encoder, routes=ROUTES, **kwargs) -> IndexedRo
 def second_handle(index: BaseIndex, make_index) -> BaseIndex:
     """Another index object on the same stored index, as a second process would open
     it. The in-memory indexes can only be shared as the same object."""
-    if isinstance(index, (PineconeIndex, PostgresIndex, QdrantIndex)):
+    if isinstance(index, (PineconeIndex, PostgresIndex, QdrantIndex, MongoDbIndex)):
         return make_index(type(index), name=index.index_name)
     return index
 

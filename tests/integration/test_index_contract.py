@@ -14,6 +14,7 @@ from semantic_router.index import (
     BaseIndex,
     HybridLocalIndex,
     LocalIndex,
+    MongoDbIndex,
     PineconeIndex,
     PostgresIndex,
     QdrantIndex,
@@ -73,7 +74,14 @@ def as_dicts(routes: list[Route]) -> dict:
 
 
 @pytest.fixture(
-    params=[LocalIndex, HybridLocalIndex, PineconeIndex, PostgresIndex, QdrantIndex],
+    params=[
+        LocalIndex,
+        HybridLocalIndex,
+        PineconeIndex,
+        PostgresIndex,
+        QdrantIndex,
+        MongoDbIndex,
+    ],
     ids=lambda cls: cls.__name__,
 )
 def index(request, make_index) -> BaseIndex:
@@ -212,7 +220,9 @@ def test_delete_index_then_add_recreates_it(index):
 
 
 @pytest.mark.parametrize(
-    "index_cls", [LocalIndex, PostgresIndex, QdrantIndex], ids=lambda c: c.__name__
+    "index_cls",
+    [LocalIndex, PostgresIndex, QdrantIndex, MongoDbIndex],
+    ids=lambda c: c.__name__,
 )
 def test_dense_only_index_rejects_sparse_embeddings(index_cls, make_index):
     index = make_index(index_cls)

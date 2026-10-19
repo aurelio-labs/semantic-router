@@ -60,6 +60,7 @@ from semantic_router.index import (
     BaseIndex,
     HybridLocalIndex,
     LocalIndex,
+    MongoDbIndex,
     PineconeIndex,
     PostgresIndex,
     QdrantIndex,
@@ -123,6 +124,18 @@ _INDEXES: dict[str, tuple[type[BaseIndex], tuple[str, ...]]] = {
     "postgres": (
         PostgresIndex,
         ("index_name", "index_prefix", "namespace", "dimensions", "metric"),
+    ),
+    "mongodb": (
+        MongoDbIndex,
+        (
+            "index_name",
+            "database_name",
+            "vector_index_name",
+            "namespace",
+            "dimensions",
+            "metric",
+            "sync_timeout",
+        ),
     ),
     "qdrant": (
         QdrantIndex,
