@@ -859,7 +859,9 @@ class PineconeIndex(BaseIndex):
         sparse_vector_obj: dict[str, Any] | None = None
         if sparse_vector is not None:
             if isinstance(sparse_vector, dict):
-                sparse_vector_obj = SparseEmbedding.from_dict(sparse_vector)
+                sparse_vector_obj = SparseEmbedding.from_dict(
+                    sparse_vector
+                ).to_pinecone()
             if isinstance(sparse_vector, SparseEmbedding):
                 # unnecessary if-statement but mypy didn't like this otherwise
                 sparse_vector_obj = sparse_vector.to_pinecone()
