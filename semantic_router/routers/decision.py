@@ -58,12 +58,10 @@ class DecisionRouter(BaseRouter):
             raise RuntimeError(f"decision model answer has no probabilities: {answer}")
         return {r.name: float(probs.get(r.name, 0.0)) for r in self.routes}
 
-    async def _scores(
-        self, query: str, return_utterances: bool = False
-    ) -> QueryResult:
-        return (
-            await self._scores_many([query], return_utterances=return_utterances)
-        )[0]
+    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
+        return (await self._scores_many([query], return_utterances=return_utterances))[
+            0
+        ]
 
     async def _scores_many(
         self, queries: Sequence[str], return_utterances: bool = False
@@ -71,9 +69,7 @@ class DecisionRouter(BaseRouter):
         # one call into the model for the whole batch: fit, evaluate, Chain and Merge
         question = {"route": self.route_question()}
         answers = await self.model.aask_many(list(queries), question)
-        return [
-            QueryResult(scores=self._route_scores(a["route"])) for a in answers
-        ]
+        return [QueryResult(scores=self._route_scores(a["route"])) for a in answers]
 
     async def aclose(self) -> None:
         await self.model.aclose()

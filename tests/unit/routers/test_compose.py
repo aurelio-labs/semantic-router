@@ -105,7 +105,11 @@ def test_chain_batches_and_only_passes_on_the_unsure_queries():
     chain = Chain(routers=[first, second])
     scored = asyncio.run(chain._scores_many(["q1", "q2", "q3"]))
     assert first.batches == [3] and second.batches == [1]  # one batch each
-    assert [max(s.scores, key=s.scores.get) for s in scored] == ["a", "b", "a"]  # order kept
+    assert [max(s.scores, key=s.scores.get) for s in scored] == [
+        "a",
+        "b",
+        "a",
+    ]  # order kept
     assert chain("q2").name == "b"  # a single query takes the same path
 
 

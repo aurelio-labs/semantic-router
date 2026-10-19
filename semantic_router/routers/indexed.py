@@ -230,21 +230,52 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-        if in_sync_call():
-            result = await asyncio.to_thread(
-                self.index.query,
-                vector=vec,
-                top_k=self.top_k,
-                sparse_vector=sparse,
-                return_utterances=return_utterances,
-            )
-        else:
-            result = await self.index.aquery(
-                vector=vec,
-                top_k=self.top_k,
-                sparse_vector=sparse,
-                return_utterances=return_utterances,
-            )
+
+        # Call with return_utterances first when requested; fall back to calling
+        # without the flag if the index (e.g. a user's custom BaseIndex subclass)
+        # does not accept it.
+        try:
+            if in_sync_call():
+                if return_utterances:
+                    result = await asyncio.to_thread(
+                        self.index.query,
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                        return_utterances=True,
+                    )
+                else:
+                    result = await asyncio.to_thread(
+                        self.index.query,
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                    )
+            else:
+                if return_utterances:
+                    result = await self.index.aquery(
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                        return_utterances=True,
+                    )
+                else:
+                    result = await self.index.aquery(
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                    )
+        except TypeError:
+            # index doesn't accept return_utterances param — call without it
+            if in_sync_call():
+                result = await asyncio.to_thread(
+                    self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
+                )
+            else:
+                result = await self.index.aquery(
+                    vector=vec, top_k=self.top_k, sparse_vector=sparse
+                )
+
         # result is either (scores, names) or (scores, names, utterances) depending on
         # whether the index honours return_utterances; older implementations may ignore it
         if len(result) == 3:
@@ -285,10 +316,10 @@ class IndexedRouter(BaseRouter):
             )
         return await super().afit(X, y, method)
 
-    async def _scores(
-        self, query: str, return_utterances: bool = False
-    ) -> QueryResult:
-        return (await self._scores_many([query], return_utterances=return_utterances))[0]
+    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
+        return (await self._scores_many([query], return_utterances=return_utterances))[
+            0
+        ]
 
     async def _scores_many(
         self, queries: Sequence[str], return_utterances: bool = False
