@@ -101,6 +101,20 @@ index = PostgresIndex(
 )
 ```
 
+MongoDB Atlas works through Atlas Vector Search. The index creates its collection and vector search index on the first `add`, so there's nothing to set up in Atlas first:
+
+```python
+from semantic_router.index import MongoDbIndex
+
+index = MongoDbIndex(
+    connection_uri="mongodb+srv://user:password@cluster.mongodb.net/",  # or set MONGO_CONNECTION_URI
+    database_name="semantic_router",
+    index_name="routes",
+)
+```
+
+Atlas makes new records searchable a moment after they're written, so `add` waits until they are (up to `sync_timeout`, 30 seconds by default). For local development, the `mongodb/mongodb-atlas-local` Docker image supports the same vector search.
+
 ## Sharing an index
 
 Because the index holds the routes, several routers can share one. To connect to an index that's already filled, pass it without `routes`: the router reads them from the index.
@@ -151,7 +165,7 @@ For [hybrid search](routers#hybrid-search), the index has to store sparse vector
 - `HybridLocalIndex`, in memory. A hybrid `IndexedRouter` uses it when you don't pass an index.
 - `PineconeIndex`, remote.
 
-`LocalIndex`, `QdrantIndex` and `PostgresIndex` are dense only: give a router one of them along with a `sparse_encoder` and it raises an error.
+`LocalIndex`, `QdrantIndex`, `PostgresIndex` and `MongoDbIndex` are dense only: give a router one of them along with a `sparse_encoder` and it raises an error.
 
 ## Supported indexes
 
@@ -162,6 +176,7 @@ For [hybrid search](routers#hybrid-search), the index has to store sparse vector
 | [PineconeIndex](../../client-reference/index/pinecone) | Pinecone vector database | yes | `pip install -qU "semantic-router[pinecone]"` |
 | [QdrantIndex](../../client-reference/index/qdrant) | Qdrant vector database | no | `pip install -qU "semantic-router[qdrant]"` |
 | [PostgresIndex](../../client-reference/index/postgres) | PostgreSQL with pgvector | no | `pip install -qU "semantic-router[postgres]"` |
+| [MongoDbIndex](../../client-reference/index/mongodb) | MongoDB Atlas Vector Search | no | `pip install -qU "semantic-router[mongodb]"` |
 
 ## Choosing an index
 

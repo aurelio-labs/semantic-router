@@ -34,3 +34,14 @@ services:
     ports:
       - "6333:6333"
       - "6334:6334"
+
+  mongodb:
+    # MongoDB with Atlas Search, so vector search indexes and $vectorSearch work locally
+    image: docker.io/mongodb/mongodb-atlas-local:8
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/runner", "healthcheck"]
+      interval: 2s
+      timeout: 10s
+      retries: 30
