@@ -14,6 +14,7 @@ from semantic_router.index import (
     BaseIndex,
     HybridLocalIndex,
     LocalIndex,
+    MongoDbIndex,
     PineconeIndex,
     PostgresIndex,
     QdrantIndex,
@@ -73,7 +74,14 @@ def as_dicts(routes: list[Route]) -> dict:
 
 
 @pytest.fixture(
-    params=[LocalIndex, HybridLocalIndex, PineconeIndex, PostgresIndex, QdrantIndex],
+    params=[
+        LocalIndex,
+        HybridLocalIndex,
+        PineconeIndex,
+        PostgresIndex,
+        QdrantIndex,
+        MongoDbIndex,
+    ],
     ids=lambda cls: cls.__name__,
 )
 def index(request, make_index) -> BaseIndex:
@@ -178,6 +186,30 @@ async def test_aquery_finds_the_nearest_route(index):
     assert names == ["chitchat"]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "index_cls", [HybridLocalIndex, PineconeIndex], ids=lambda c: c.__name__
+)
+async def test_query_and_aquery_take_a_sparse_vector_as_a_dict(index_cls, make_index):
+    index = make_index(index_cls)
+    kwargs = records(index, ROUTES)
+    kwargs["sparse_embeddings"] = [
+        SparseEmbedding.from_dict({_seed(u) % 50: 1.0}) for u in kwargs["utterances"]
+    ]
+    index.add(**kwargs)
+    i = kwargs["utterances"].index("how's the weather today?")
+    query: dict = {
+        "vector": np.array(kwargs["embeddings"][i]),
+        "top_k": 1,
+        "sparse_vector": kwargs["sparse_embeddings"][i].to_dict(),
+    }
+
+    _, names = index.query(**query)
+    _, anames = await index.aquery(**query)
+
+    assert names == anames == ["chitchat"]
+
+
 def test_delete_index_then_add_recreates_it(index):
     # IndexedRouter rebuilds the index this way when a fitted sparse encoder refits
     index.add(**records(index, ROUTES))
@@ -188,7 +220,9 @@ def test_delete_index_then_add_recreates_it(index):
 
 
 @pytest.mark.parametrize(
-    "index_cls", [LocalIndex, PostgresIndex, QdrantIndex], ids=lambda c: c.__name__
+    "index_cls",
+    [LocalIndex, PostgresIndex, QdrantIndex, MongoDbIndex],
+    ids=lambda c: c.__name__,
 )
 def test_dense_only_index_rejects_sparse_embeddings(index_cls, make_index):
     index = make_index(index_cls)

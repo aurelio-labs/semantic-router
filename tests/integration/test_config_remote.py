@@ -6,7 +6,12 @@ import yaml
 
 from semantic_router import IndexedRouter, Route, load_router
 from semantic_router.encoders import FastEmbedEncoder
-from semantic_router.index import PineconeIndex, PostgresIndex, QdrantIndex
+from semantic_router.index import (
+    MongoDbIndex,
+    PineconeIndex,
+    PostgresIndex,
+    QdrantIndex,
+)
 
 pytest.importorskip("fastembed")
 
@@ -34,7 +39,9 @@ def encoder() -> FastEmbedEncoder:
 
 
 @pytest.mark.parametrize(
-    "index_cls", [PineconeIndex, PostgresIndex, QdrantIndex], ids=lambda c: c.__name__
+    "index_cls",
+    [PineconeIndex, PostgresIndex, QdrantIndex, MongoDbIndex],
+    ids=lambda c: c.__name__,
 )
 def test_a_remote_router_file_reads_its_routes_from_the_index(
     index_cls, make_index, encoder, tmp_path
@@ -46,6 +53,8 @@ def test_a_remote_router_file_reads_its_routes_from_the_index(
     data = yaml.safe_load(path.read_text())
     assert "routes" not in data
     assert data["index"]["index_name"] == router.index.index_name
+    # connection strings are secrets: the index reads them from the environment
+    assert "connection_uri" not in data["index"]
 
     loaded = load_router(path=path)
     assert isinstance(loaded, IndexedRouter)
