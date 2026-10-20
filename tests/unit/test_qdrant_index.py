@@ -1,6 +1,7 @@
 """Unit tests for QdrantIndex — uses in-memory Qdrant, no server needed."""
 
 import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
@@ -498,3 +499,38 @@ class TestScrollFailureIsNotEmptiness:
 
         with pytest.raises(ValueError, match="Unexpected response"):
             await idx._async_get_all(include_metadata=True)
+
+
+# ---------------------------------------------------------------------------
+# Readiness
+# ---------------------------------------------------------------------------
+
+
+class TestReadiness:
+    """ais_ready() and is_ready() must give the same answer for the same backend state."""
+
+    def test_is_ready_raises_when_qdrant_is_unreachable(self):
+        idx = make_index()
+        idx.client = MagicMock()
+        idx.client.collection_exists.side_effect = ConnectionError("qdrant unreachable")
+        with pytest.raises(ConnectionError):
+            idx.is_ready()
+
+    @pytest.mark.asyncio
+    async def test_ais_ready_raises_when_qdrant_is_unreachable(self):
+        idx = make_index()
+        idx.aclient = MagicMock()
+        idx.aclient.collection_exists = AsyncMock(
+            side_effect=ConnectionError("qdrant unreachable")
+        )
+        with pytest.raises(ConnectionError):
+            await idx.ais_ready()
+
+    @pytest.mark.asyncio
+    async def test_ais_ready_reports_whether_the_collection_exists(self):
+        idx = make_index()
+        idx.aclient = MagicMock()
+        idx.aclient.collection_exists = AsyncMock(return_value=True)
+        assert await idx.ais_ready() is True
+        idx.aclient.collection_exists = AsyncMock(return_value=False)
+        assert await idx.ais_ready() is False
