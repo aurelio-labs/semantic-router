@@ -2,7 +2,11 @@ Semantic Router integrates with Jina AI's embedding models through the `JinaEnco
 
 ## Overview
 
-The `JinaEncoder` is a subclass of `LiteLLMEncoder` that provides access to Jina's embedding models. It supports both synchronous and asynchronous encoding operations, making it suitable for various use cases.
+The `JinaEncoder` provides access to Jina's embedding models. Jina exposes an
+OpenAI-compatible embeddings endpoint, so the encoder drives it with the OpenAI SDK
+pointed at `https://api.jina.ai/v1` — it does not depend on LiteLLM. It supports both
+synchronous and asynchronous encoding operations, making it suitable for various use
+cases.
 
 ## Getting Started
 
@@ -24,15 +28,40 @@ import os
 from semantic_router.encoders import JinaEncoder
 
 # Set your Jina API key
-os.environ["JINA_AI_API_KEY"] = "your-api-key"
+os.environ["JINA_API_KEY"] = "your-api-key"
 
 # Initialize the encoder
 encoder = JinaEncoder(
     name="jina-embeddings-v3",  # or any other supported Jina model
     score_threshold=0.4,  # optional: set your desired similarity threshold
-    api_key=os.environ["JINA_AI_API_KEY"]
+    api_key=os.environ["JINA_API_KEY"]
 )
 ```
+
+The key may come from the `api_key` parameter, or from either the `JINA_API_KEY` or
+`JINA_AI_API_KEY` environment variable — the latter is still read for compatibility with
+earlier releases. If none of them is set, the constructor raises a `ValueError`.
+
+### Passing Jina Options
+
+Standard OpenAI embedding parameters such as `dimensions` are forwarded as-is. Options
+specific to Jina — `task`, `late_chunking` — travel in `extra_body`:
+
+```python
+embeddings = encoder.encode_queries(
+    ["your text here"],
+    dimensions=256,
+    extra_body={"task": "retrieval.query"},
+)
+```
+
+Note that `input` and `model` are set by the encoder and cannot be overridden this way.
+
+### Custom Endpoint
+
+Point the encoder at a different host with the `base_url` parameter, or the
+`JINA_BASE_URL` / `JINA_AI_API_BASE` environment variable — the latter is still read for
+compatibility with earlier releases.
 
 ## Features
 

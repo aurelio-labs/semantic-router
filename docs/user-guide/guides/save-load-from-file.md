@@ -1,41 +1,31 @@
-Route layers can be saved to and loaded from files. This can be useful if we want to save a route layer to a file for later use, or if we want to load a route layer from a file.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/save-load-from-file), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-We can save and load route layers to/from YAML or JSON files. For JSON we do:
+You can save a router to a file and load it back later — useful for shipping the same routes between environments, or just for not rebuilding them every time.
+
+JSON and YAML both work.
 
 ```python
-# save to JSON
+# JSON
 router.to_json("router.json")
-# load from JSON
 new_router = SemanticRouter.from_json("router.json")
-```
 
-For YAML we do:
-
-```python
-# save to YAML
+# YAML
 router.to_yaml("router.yaml")
-# load from YAML
 new_router = SemanticRouter.from_yaml("router.yaml")
 ```
 
-The saved files contain all the information needed to initialize new semantic routers. If you are using a remote index, you can use the [sync features](../features/sync) to keep the router in sync with the index.
+The file holds everything needed to recreate the router. If you use a remote index, the [sync features](../features/sync) keep the loaded router and the index in step.
 
-## Full Example
+## Full example
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb)
 [![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb)
-
-Here we will show how to save routers to YAML or JSON files, and how to load a router from file.
-
-We start by installing the library:
 
 ```bash
 !pip install -qU semantic-router
 ```
 
-## Define Route
-
-First let's create a list of routes:
+## Build a router
 
 ```python
 from semantic_router import Route
@@ -65,8 +55,6 @@ chitchat = Route(
 routes = [politics, chitchat]
 ```
 
-We define a semantic router using these routes and using the Cohere encoder.
-
 ```python
 import os
 from getpass import getpass
@@ -83,13 +71,12 @@ encoder = CohereEncoder()
 router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
 ```
 
-## Test Route
+Quick check that it works:
 
 ```python
 router("isn't politics the best thing ever")
 ```
 
-Output:
 ```
 RouteChoice(name='politics', function_call=None, similarity_score=None)
 ```
@@ -98,22 +85,19 @@ RouteChoice(name='politics', function_call=None, similarity_score=None)
 router("how's the weather today?")
 ```
 
-Output:
 ```
 RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
-## Save To JSON
-
-To save our semantic router we call the `to_json` method:
+## Save it
 
 ```python
 router.to_json("router.json")
 ```
 
-## Loading from JSON
+## Load it
 
-We can view the router file we just saved to see what information is stored.
+Have a look at what got saved:
 
 ```python
 import json
@@ -124,13 +108,13 @@ with open("router.json", "r") as f:
 print(router_json)
 ```
 
-It tells us our encoder type, encoder name, and routes. This is everything we need to initialize a new router. To do so, we use the `from_json` method.
+Encoder type, encoder name, and the routes — everything a new router needs. Load it with `from_json`:
 
 ```python
 router = SemanticRouter.from_json("router.json")
 ```
 
-We can confirm that our router has been initialized with the expected attributes by viewing the `SemanticRouter` object:
+Confirm it came back intact:
 
 ```python
 print(
@@ -140,15 +124,12 @@ print(
 )
 ```
 
----
-
-## Test Route Again
+And that it still routes:
 
 ```python
 router("isn't politics the best thing ever")
 ```
 
-Output:
 ```
 RouteChoice(name='politics', function_call=None, similarity_score=None)
 ```
@@ -157,7 +138,6 @@ RouteChoice(name='politics', function_call=None, similarity_score=None)
 router("how's the weather today?")
 ```
 
-Output:
 ```
 RouteChoice(name='chitchat', function_call=None, similarity_score=None)
-``` 
+```

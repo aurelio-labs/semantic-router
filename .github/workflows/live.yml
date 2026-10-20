@@ -1,0 +1,146 @@
+name: Live tests
+
+# Tests marked `live` call paid third-party APIs (OpenAI, Cohere), so they
+# need real keys and don't run on ordinary pull requests. They run:
+#
+#   * on every push to main
+#   * on a weekday schedule (06:00 UTC), so drift in the hosted APIs is caught
+#     even when nothing is pushed
+#   * on demand via "Run workflow" (optionally against a PR number)
+#   * on a pull request once a maintainer adds the `run-live-tests` label.
+#     This uses pull_request_target so fork PRs can use the repo's secrets.
+#     The label is the approval step: review the diff before adding it. The
+#     label is removed automatically when new commits are pushed, so each
+#     revision needs a fresh approval.
+#
+# Secrets live in the `live` environment. Adding required reviewers to that
+# environment adds a second approval prompt on top of the label if you want it.
+
+on:
+  push:
+    branches: [main, v0]
+  schedule:
+    - cron: "0 6 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to test (leave empty for the current branch)"
+        required: false
+        type: string
+  pull_request_target:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # New commits on a labeled PR drop the label: the code that was approved
+  # is no longer the code that would run.
+  revoke-approval:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label run-live-tests || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+
+  live:
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'run-live-tests')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: live
+    # The PR's own code runs in this job, so it gets no write token. The only
+    # secrets it can see are the two API keys in the `live` environment.
+    permissions:
+      contents: read
+
+    services:
+      pinecone:
+        image: ghcr.io/pinecone-io/pinecone-local:latest
+        env:
+          PORT: "5080"
+          PINECONE_HOST: localhost
+        ports:
+          - 5080-5199:5080-5199
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+      qdrant:
+        image: qdrant/qdrant:v1.19.0
+        ports:
+          - 6333:6333
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      PINECONE_API_KEY: pclocal
+      PINECONE_API_BASE_URL: http://localhost:5080
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      QDRANT_URL: http://localhost:6333
+
+    steps:
+      - name: Resolve ref
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            echo "ref=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.pr }}" ]; then
+            echo "ref=refs/pull/${{ inputs.pr }}/head" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          persist-credentials: false
+          # actions/checkout refuses fork code under pull_request_target unless
+          # told otherwise. Running a fork's code with the two API keys is the
+          # point of this workflow; the `run-live-tests` label applied after a
+          # human review is the safeguard (see the comment at the top).
+          allow-unsafe-pr-checkout: true
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked --all-extras --no-extra all --no-extra local --no-extra vision
+
+      - name: Wait for pinecone-local
+        run: |
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:5080/indexes -H "Api-Key: pclocal" >/dev/null && exit 0
+            sleep 1
+          done
+          echo "pinecone-local did not become ready" >&2
+          exit 1
+
+      - name: Live tests
+        run: make test_live
+        env:
+          PYTEST_ADDOPTS: -v --durations=15

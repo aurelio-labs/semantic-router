@@ -1,18 +1,20 @@
 import os
 
-import litellm
 import pytest
-from litellm.types.utils import Embedding
 
-from semantic_router.encoders import (
-    CohereEncoder,
-    JinaEncoder,
-    LiteLLMEncoder,
-    MistralEncoder,
-    NimEncoder,
-    VoyageEncoder,
-)
+# litellm is an optional extra, so skip rather than break collection without it
+pytest.importorskip("litellm")
 
+import litellm  # noqa: E402
+from litellm.types.utils import Embedding  # noqa: E402
+
+from semantic_router.encoders import LiteLLMEncoder  # noqa: E402
+
+# NOTE: the provider-specific encoders no longer appear here — CohereEncoder,
+# MistralEncoder, VoyageEncoder, JinaEncoder and NimEncoder all talk to their provider
+# directly rather than through litellm, so they are covered by their own modules
+# (test_cohere.py, test_mistral.py, test_voyage.py, test_jina.py, test_nvidia_nim.py).
+# Only the generic LiteLLMEncoder is exercised through this matrix.
 matrix = [
     [
         "openai",
@@ -20,41 +22,6 @@ matrix = [
         "text-embedding-3-small",
         "OPENAI_API_KEY",
         LiteLLMEncoder,
-    ],
-    [
-        "cohere",
-        "embed-english-v3.0",
-        "embed-english-v3.0",
-        "COHERE_API_KEY",
-        CohereEncoder,
-    ],
-    [
-        "mistral",
-        "mistral-embed",
-        "mistral-embed",
-        "MISTRAL_API_KEY",
-        MistralEncoder,
-    ],
-    [
-        "jina_ai",
-        "jina-embeddings-v3",
-        "jina-embeddings-v3",
-        "JINA_AI_API_KEY",
-        JinaEncoder,
-    ],
-    [
-        "voyage",
-        "voyage-3",
-        "voyage-3",
-        "VOYAGE_API_KEY",
-        VoyageEncoder,
-    ],
-    [
-        "nvidia_nim",
-        "nv-embedqa-e5-v5",
-        "nv-embedqa-e5-v5",
-        "NVIDIA_NIM_API_KEY",
-        NimEncoder,
     ],
 ]
 

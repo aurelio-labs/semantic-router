@@ -1,37 +1,33 @@
-The `SemanticRouter` class is the main class in the semantic router package. It contains the routes and allows us to interact with the underlying index. Both the `SemanticRouter` and the various index classes support synchronization strategies that allow us to synchronize the routes and utterances in the layer with the underlying index.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 removes sync: the index is the single source of truth. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1#sync-is-gone) covers the change, and [indexes](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/indexes) how it works now.
 
-This functionality becomes increasingly important when using the semantic router in a distributed environment. For example, when using one of the *remote instances*, such as `PineconeIndex` or `QdrantIndex`. Deciding the correct synchronization strategy for these remote indexes will save application time and reduce the risk of errors.
+When you use a remote index like `PineconeIndex` or `QdrantIndex`, there are two copies of your routes: the ones in your `SemanticRouter` object, and the ones stored in the index. They can drift. Sync strategies decide which copy wins when they do.
 
-Semantic router supports several synchronization strategies. Those strategies are:
+Getting this right matters most in distributed setups, where several processes share one index. Pick the right strategy and you avoid both wasted startup time and subtle routing bugs.
 
-* `error`: Raise an error if local and remote are not synchronized.
+## The strategies
 
-* `remote`: Take remote as the source of truth and update local to align.
+- **`error`** — raise if local and remote differ. Use this when drift should never happen silently.
+- **`remote`** — remote is the source of truth. Overwrite local to match.
+- **`local`** — local is the source of truth. Overwrite remote to match.
+- **`merge-force-local`** — merge, with local winning. Remote utterances survive only if their route also exists locally; everything else is dropped. Where a route exists on both sides with different `function_schemas` or `metadata`, local's version wins and is written to remote.
+- **`merge-force-remote`** — the mirror image. Remote wins; local utterances survive only if their route exists remotely.
+- **`merge`** — merge both, combining utterances where a route name appears on both sides. On a conflict in `function_schemas` or `metadata`, local wins.
 
-* `local`: Take local as the source of truth and update remote to align.
+You can apply a strategy two ways: automatically at startup with `auto_sync`, or on demand with `SemanticRouter.sync`.
 
-* `merge-force-local`: Merge both local and remote keeping local as the priority. Remote utterances are only merged into local *if* a matching route for the utterance is found in local, all other route-utterances are dropped. Where a route exists in both local and remote, but each contains different `function_schema` or `metadata` information, the local version takes priority and local `function_schemas` and `metadata` is propagated to all remote utterances belonging to the given route.
+## `auto_sync` at startup
 
-* `merge-force-remote`: Merge both local and remote keeping remote as the priority. Local utterances are only merged into remote *if* a matching route for the utterance is found in the remote, all other route-utterances are dropped. Where a route exists in both local and remote, but each contains different `function_schema` or `metadata` information, the remote version takes priority and remote `function_schemas` and `metadata` are propagated to all local routes.
-
-* `merge`: Merge both local and remote, merging also local and remote utterances when a route with same route name is present both locally and remotely. If a route exists in both local and remote but contains different `function_schemas` or `metadata` information, the local version takes priority and local `function_schemas` and `metadata` are propagated to all remote routes.
-
-There are two ways to specify the synchronization strategy. The first is to specify the strategy when initializing the `SemanticRouter` object via the `auto_sync` parameter. The second is to trigger synchronization directly via the `SemanticRouter.sync` method.
-
----
-
-## Using the `auto_sync` parameter
-
-The `auto_sync` parameter is used to specify the synchronization strategy when initializing the `SemanticRouter` object. Depending on the chosen strategy, the `SemanticRouter` object will automatically synchronize with the defined index. As this happens on initialization, this will often increase the initialization time of the `SemanticRouter` object.
-
-Let's see an example of `auto_sync` in action.
+Pass `auto_sync` when you create the router, and it reconciles with the index immediately. Note this adds to initialization time, since it has to compare and possibly write.
 
 ```python
+import os
 from semantic_router import Route, SemanticRouter
 from semantic_router.encoders import OpenAIEncoder
-from semantic_router.indexes import PineconeIndex
+from semantic_router.index import PineconeIndex
 
-# we could use this as a guide for our chatbot to avoid political conversations
+os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
+os.environ["PINECONE_API_KEY"] = "<YOUR_API_KEY>"
+
 politics = Route(
     name="politics",
     utterances=[
@@ -44,8 +40,6 @@ politics = Route(
     ],
 )
 
-# this could be used as an indicator to our chatbot to switch to a more
-# conversational prompt
 chitchat = Route(
     name="chitchat",
     utterances=[
@@ -57,63 +51,48 @@ chitchat = Route(
     ],
 )
 
-# we place both of our decisions together into single list
 routes = [politics, chitchat]
 
-encoder = OpenAIEncoder(openai_api_key=openai_api_key)
+encoder = OpenAIEncoder()
 
 pc_index = PineconeIndex(
-    api_key=pinecone_api_key,
     region="us-east-1",
     index_name="sync-example",
 )
-# before initializing the SemanticRouter with auto_sync we should initialize
-# the index
+# make sure the index exists before the router tries to sync with it
 pc_index.index = pc_index._init_index(force_create=True)
 
-# now we can initialize the SemanticRouter with local auto_sync
 sr = SemanticRouter(
     encoder=encoder, routes=routes, index=pc_index,
-    auto_sync="local"
+    auto_sync="local",
 )
 ```
 
-Now we can run `sr.is_synced()` to confirm that our local and remote instances are synchronized.
+Confirm the two sides agree:
 
 ```python
 sr.is_synced()
 ```
 
-## Checking for Synchronization
+## Checking sync
 
-To verify whether the local and remote instances are synchronized, you can use the `SemanticRouter.is_synced` method. This method checks if the routes, utterances, and associated metadata in the local instance match those stored in the remote index.
+`is_synced()` compares the routes, utterances, and metadata in your router against what's in the index. It works in two passes.
 
-The `is_synced` method works in two steps. The first is our *fast* sync check. The fast check creates a hash of our local route layer which is constructed from:
+**The fast check** hashes your local router — built from the encoder type and name, plus each route's name, utterances, description, function schemas, LLM, score threshold, and metadata — and compares it to the hash stored in the index. Matching hashes mean you're in sync, and it returns `True` straight away.
 
-- `encoder_type` and `encoder_name`
-- `route` names
-- `route` utterances
-- `route` description
-- `route` function schemas (if any)
-- `route` llm (if any)
-- `route` score threshold
-- `route` metadata (if any)
+**The slow check** only runs if the hashes differ. It rebuilds a `LayerConfig` from the remote index and compares it to the local one field by field. If those match, you're in sync after all. If not, something has genuinely drifted.
 
-The fast check then compares this hash to the hash of the remote index. If the hashes match, we know that the local and remote instances are synchronized and we can return `True`. If the hashes do not match, we need to perform a *slow* sync check.
-
-The slow sync check works by creating a `LayerConfig` object from the remote index and then comparing this to our local `LayerConfig` object. If the two objects match, we know that the local and remote instances are synchronized and we can return `True`. If the two objects do not match, we must investigate and decide how to synchronize the two instances.
-
-To quickly sync the local and remote instances we can use the `SemanticRouter.sync` method. This method is equivalent to the `auto_sync` strategy specified when initializing the `SemanticRouter` object. So, if we assume our local `SemanticRouter` object contains the ground truth routes, we would use the `local` strategy to copy our local routes to the remote instance.
+To fix drift on demand, call `sync` with a strategy. It does exactly what `auto_sync` would do at startup. If your local router holds the ground truth, push it to the index:
 
 ```python
 sr.sync(sync_mode="local")
 ```
 
-After running the above code, we can check whether the local and remote instances are synchronized by rerunning `sr.is_synced()`, which should now return `True`.
+Run `sr.is_synced()` again and it should now return `True`.
 
-## Investigating Synchronization Differences
+## Seeing what drifted
 
-We may often need to further investigate and understand *why* our local and remote instances have become desynchronized. The first step in further investigation and resolution of synchronization differences is to see the differences. We can get a readable diff using the `SemanticRouter.get_utterance_diff` method.
+Often you'll want to know *why* things diverged before you overwrite anything. `get_utterance_diff` gives you a readable diff:
 
 ```python
 diff = sr.get_utterance_diff()
@@ -133,72 +112,43 @@ diff = sr.get_utterance_diff()
 '+ chitchat: let\'s go to the chippy']
 ```
 
-The diff works by creating a list of all the routes in the remote index and then comparing these to the routes in our local instance. Any differences between the remote and local routes are shown in the above diff.
+It lists every route in the remote index and compares it against your local routes. Anything that differs shows up here.
 
-Now, to resolve these differences we will need to initialize an `UtteranceDiff` object. This object will contain the differences between the remote and local utterances. We can then use this object to decide how to synchronize the two instances. To initialize the `UtteranceDiff` object we need to get our local and remote utterances.
+For finer control, build an `UtteranceDiff` object from the two sets of utterances:
 
 ```python
 local_utterances = sr.to_config().to_utterances()
 remote_utterances = sr.index.get_utterances()
-```
 
-We create an utterance diff object like so:
-
-```python
 diff = UtteranceDiff.from_utterances(
     local_utterances=local_utterances, remote_utterances=remote_utterances
 )
 ```
 
-`UtteranceDiff` objects include all diff information inside the `diff` attribute (which is a list of `Utterance` objects). Each of our `Utterance` objects inside `UtteranceDiff.diff` now contain a populated `diff_tag` attribute, where:
+Every `Utterance` in `diff.diff` carries a `diff_tag`:
 
-- `diff_tag='+'` indicates the utterance exists in the remote instance *only*.
-- `diff_tag='-'` indicates the utterance exists in the local instance *only*.
-- `diff_tag=' '` indicates the utterance exists in both the local and remote instances.
+- `'+'` — exists in remote only.
+- `'-'` — exists in local only.
+- `' '` — exists in both.
 
-After initializing an `UtteranceDiff` object we can get all utterances with each diff tag like so:
+Pull out whichever set you want to inspect:
 
 ```python
-# all utterances that exist only in remote
-diff.get_tag("+")
-
-# all utterances that exist only in local
-diff.get_tag("-")
-
-# all utterances that exist in both local and remote
-diff.get_tag(" ")
+diff.get_tag("+")  # remote only
+diff.get_tag("-")  # local only
+diff.get_tag(" ")  # both
 ```
 
-These can be investigated if needed. Once we're happy with our understanding of the issues we can resolve them by executing a synchronization by running the `SemanticRouter._execute_sync_strategy` method:
+Once you understand the drift and know which side should win, apply a strategy:
 
 ```python
 sr._execute_sync_strategy(sync_mode="local")
 ```
 
-Once complete, we can confirm that our local and remote instances are synchronized by running `sr.is_synced()`:
+Then confirm:
 
 ```python
 sr.is_synced()
 ```
 
-If the above returns `True` we are now synchronized!
-
-```
-                  .=                
-                 :%%*               
-                -%%%%#              
-               =%%%%%%#.            
-              +%%%%%%%+             
-             *%%%%%%%=              
-           .#%%%%%%%-               
-          .#%%%%%%%: -%:            
-         :%%%%%%%#. =%%%=           
-        -%%%%%%%#  *%%%%%+          
-       =%%%%%%%*  -%%%%%%%*         
-      .-------:    -%%%%%%%#        
-:*****************+ :%%%%%%%#.      
--%%%%%%%%%%%%%%%%%%%* .#%%%%%%%:     
-=%%%%%%%%%%%%%%%%%%%%%#..#%%%%%%%-    
-+%%%%%%%%%%%%%%%%%%%%%%%#. *%%%%%%%=   
-                         +%%%%%%%+  
-                          =#######+ 
+`True` means the two sides match again.

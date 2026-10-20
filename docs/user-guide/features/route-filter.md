@@ -1,25 +1,25 @@
-We can filter the routes that the `SemanticRouter` considers when making a classification. This can be useful if we want to restrict the scope of possible routes based on some context.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 removes `route_filter`. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1#route_filter-is-gone) shows what to do instead.
 
-For example, we may have a router with several routes, `politics`, `weather`, `chitchat`, etc. We may want to restrict the scope of the classification to only consider the `chitchat` route. We can do this by passing a `route_filter` argument to our `SemanticRouter` calls like so:
+Sometimes you only want the router to consider *some* of its routes. Maybe context tells you the user is mid-conversation about one topic, or a certain route shouldn't fire in this part of your app. `route_filter` lets you narrow the field per call.
+
+Say your router has `politics`, `weather`, and `chitchat`. To consider only `chitchat` for one query:
 
 ```python
 sr("don't you love politics?", route_filter=["chitchat"])
 ```
 
-In this case, the `SemanticRouter` will only consider the `chitchat` route for the classification.
+The router ignores every route not in the list.
 
-## Full Example
+## Full example
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/docs/09-route-filter.ipynb)
-[![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb)
-
-We start by installing the library:
+[![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/09-route-filter.ipynb)
 
 ```python
 !pip install -qU semantic-router
 ```
 
-We start by defining a dictionary mapping routes to example phrases that should trigger those routes.
+Two routes to work with:
 
 ```python
 from semantic_router import Route
@@ -35,11 +35,7 @@ politics = Route(
         "they will save the country!",
     ],
 )
-```
 
-Let's define another for good measure:
-
-```python
 chitchat = Route(
     name="chitchat",
     utterances=[
@@ -54,7 +50,7 @@ chitchat = Route(
 routes = [politics, chitchat]
 ```
 
-Now we initialize our embedding model:
+An encoder:
 
 ```python
 import os
@@ -72,15 +68,15 @@ encoder = CohereEncoder()
 # encoder = OpenAIEncoder()
 ```
 
-Now we define the `SemanticRouter`. When called, the router will consume text (a query) and output the category (`Route`) it belongs to — to initialize a `SemanticRouter` we need our `encoder` model and a list of `routes`.
+And the router:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import SemanticRouter
 
 sr = SemanticRouter(encoder=encoder, routes=routes)
 ```
 
-Now we can test it:
+Without a filter it behaves as usual:
 
 ```python
 sr("don't you love politics?")
@@ -98,7 +94,7 @@ sr("how's the weather today?")
 RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
-Both are classified accurately, what if we send a query that is unrelated to our existing `Route` objects?
+And an unrelated query returns `None`:
 
 ```python
 sr("I'm interested in learning about llama 2")
@@ -108,13 +104,9 @@ sr("I'm interested in learning about llama 2")
 RouteChoice(name=None, function_call=None, similarity_score=None)
 ```
 
-In this case, we return `None` because no matches were identified.
+## Filtering
 
-## Demonstrating the Filter Feature
-
-Now, let's demonstrate the filter feature. We can specify a subset of routes to consider when making a classification. This can be useful if we want to restrict the scope of possible routes based on some context.
-
-For example, let's say we only want to consider the "chitchat" route for a particular query:
+Now restrict the router to `chitchat` and send it a political query:
 
 ```python
 sr("don't you love politics?", route_filter=["chitchat"])
@@ -124,9 +116,9 @@ sr("don't you love politics?", route_filter=["chitchat"])
 RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
-Even though the query might be more related to the "politics" route, it will be classified as "chitchat" because we've restricted the routes to consider.
+It comes back as `chitchat` — the query would normally match `politics`, but that route wasn't allowed, and `chitchat` still cleared its threshold.
 
-Similarly, we can restrict it to the "politics" route:
+The other way round:
 
 ```python
 sr("how's the weather today?", route_filter=["politics"])
@@ -136,4 +128,4 @@ sr("how's the weather today?", route_filter=["politics"])
 RouteChoice(name=None, function_call=None, similarity_score=None)
 ```
 
-In this case, it will return `None` because the query doesn't match the "politics" route well enough to pass the threshold. 
+`None` this time. The weather query is nowhere near `politics`, so nothing passed the threshold. A filter narrows the candidates; it doesn't force a match.

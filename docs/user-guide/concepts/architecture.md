@@ -1,8 +1,10 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/concepts/architecture), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 # Semantic Router: Technical Architecture
 
-## System Overview
+## System overview
 
-Semantic Router is built around three core components that work together to enable intelligent routing of inputs based on semantic meaning.
+Three components do the work. An **encoder** turns the input into a vector. An **index** stores your route vectors. A **router** compares the two and picks a match.
 
 ```mermaid
 graph TD
@@ -15,11 +17,11 @@ graph TD
     G --> H[Response Handler]
 ```
 
-## Core Components
+## Core components
 
 ### 1. Encoders
 
-Encoders transform inputs into vector representations in semantic space.
+Encoders map inputs into semantic space.
 
 ```mermaid
 classDiagram
@@ -43,14 +45,13 @@ classDiagram
     SparseEncoder <|-- TFIDFEncoder
 ```
 
-**Types of Encoders:**
-- **Dense encoders**: Generate continuous vectors (OpenAI, HuggingFace, etc.)
-- **Sparse encoders**: Generate sparse vectors (BM25, TFIDF, AurelioSparse, etc.)
-- **Multimodal encoders**: Handle images and text (CLIP, ViT)
+- **Dense encoders** produce continuous vectors (OpenAI, Hugging Face, …).
+- **Sparse encoders** produce mostly-zero vectors (BM25, TF-IDF, AurelioSparse, …).
+- **Multimodal encoders** handle images as well as text (CLIP, ViT).
 
 ### 2. Routes
 
-Routes define patterns to match against, with examples of inputs that should trigger them.
+A route is a pattern to match, defined by example inputs that should trigger it.
 
 ```mermaid
 classDiagram
@@ -64,15 +65,14 @@ classDiagram
     }
 ```
 
-**Key properties:**
-- **name**: Identifier for the route
-- **utterances**: Example inputs that should match this route
-- **function_schemas**: Optional specifications for function calling
-- **score_threshold**: Minimum similarity score required to match
+- **name** — the route's identifier.
+- **utterances** — example inputs that should match.
+- **function_schemas** — optional. Set this and the route becomes *dynamic*, able to call functions.
+- **score_threshold** — the minimum similarity needed to match.
 
-### 3. Indexing Systems
+### 3. Indexes
 
-Indexes store and retrieve route vectors efficiently.
+Indexes store route vectors and search them efficiently.
 
 ```mermaid
 classDiagram
@@ -88,13 +88,12 @@ classDiagram
     LocalIndex <|-- HybridLocalIndex
 ```
 
-**Index types:**
-- **LocalIndex**: In-memory vector storage for dense embeddings
-- **HybridLocalIndex**: In-memory storage supporting both dense and sparse vectors
-- **PineconeIndex/QdrantIndex**: Cloud-based vector DBs
-- **PostgresIndex**: SQL-based vector storage
+- **LocalIndex** — in-memory, dense vectors.
+- **HybridLocalIndex** — in-memory, dense *and* sparse.
+- **PineconeIndex / QdrantIndex** — cloud vector databases.
+- **PostgresIndex** — SQL storage via pgvector.
 
-## Data Flow
+## Data flow
 
 ```mermaid
 sequenceDiagram
@@ -110,13 +109,13 @@ sequenceDiagram
     Router->>User: return best matched route
 ```
 
-1. **Input Reception**: The system receives an input (text, image)
-2. **Encoding**: The input is transformed into a vector representation
-3. **Retrieval**: The vector is compared against stored route vectors
-4. **Matching**: The best matching route is selected based on similarity
-5. **Response**: The system returns the matched route, enabling appropriate handling
+1. An input arrives (text, an image).
+2. The encoder turns it into a vector.
+3. The router searches the index for similar route vectors.
+4. The best match above threshold is selected.
+5. The matched route comes back, ready for your handler.
 
-## Router Types
+## Router types
 
 ```mermaid
 classDiagram
@@ -130,10 +129,10 @@ classDiagram
     BaseRouter <|-- HybridRouter
 ```
 
-- **SemanticRouter**: Uses dense vector embeddings for semantic matching
-- **HybridRouter**: Combines both dense and sparse vectors for enhanced accuracy
+- **SemanticRouter** — dense embeddings, pure semantic matching.
+- **HybridRouter** — dense *and* sparse, for better accuracy when exact keywords matter.
 
-## Integration Example
+## Putting it together
 
 ```python
 from semantic_router import Route, SemanticRouter
@@ -143,21 +142,20 @@ from semantic_router.encoders import OpenAIEncoder
 weather_route = Route(name="weather", utterances=["What's the weather like?"])
 greeting_route = Route(name="greeting", utterances=["Hello there!", "Hi!"])
 
-# 2. Initialize encoder
+# 2. Pick an encoder
 encoder = OpenAIEncoder()
 
-# 3. Create router with routes
+# 3. Build the router
 router = SemanticRouter(encoder=encoder, routes=[weather_route, greeting_route])
 
-# 4. Route an incoming query
+# 4. Route a query
 result = router("What's the forecast for tomorrow?")
 print(result.name)  # "weather"
 ```
 
-## Performance Considerations
+## Performance notes
 
-- **In-memory vs. Vector DB**: Choose based on scale and latency requirements
-- **Encoder selection**: Balance accuracy vs. speed based on use case
-- **Batch processing**: Use batch methods for higher throughput
-- **Async support**: Available for high-concurrency environments and applications relying
-on heavy network use
+- **In-memory vs. vector DB** — pick by scale and latency needs.
+- **Encoder choice** — trade accuracy against speed for your use case.
+- **Batching** — use the batch methods for higher throughput.
+- **Async** — available for high-concurrency and network-heavy workloads.

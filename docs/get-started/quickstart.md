@@ -1,24 +1,29 @@
-*Semantic-router* is a lightweight library that helps you intelligently route text to the right handlers based on meaning rather than exact keyword matching. It's perfect for building chatbots, classification systems, or any application that needs to understand user intent.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/quickstart), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-To get started with *semantic-router* we install it like so:
+Semantic Router sends text to the right handler based on *meaning*, not keywords. That makes it a good fit for chatbots, intent classification, guardrails — anything that needs to understand what a user is actually asking.
+
+Install it:
 
 ```bash
 pip install -qU semantic-router
 ```
 
-> **Warning**
-> If wanting to use a fully local version of semantic router you can use `HuggingFaceEncoder` and `LlamaCppLLM` (`pip install -qU "semantic-router[local]"`, see [here](../user-guide/guides/local-execution)). To use the `HybridRouteLayer` you must `pip install -qU "semantic-router[hybrid]"`.
+Want everything to run locally, with no API calls? Install the `local` extra and use `HuggingFaceEncoder` with `LlamaCppLLM`. The [local execution guide](../user-guide/guides/local-execution) walks through it.
 
-## Defining Routes
+```bash
+pip install -qU "semantic-router[local]"
+```
 
-We begin by defining a set of `Route` objects. A Route represents a specific topic or intent that you want to detect in user input. Each Route is defined by example utterances that serve as a semantic reference point.
+## Define your routes
 
-Let's try two simple routes for now — one for talk on *politics* and another for *chitchat*:
+A `Route` is a topic or intent you want to detect. You describe it with example utterances — a few phrases a user might say. Those examples become the route's semantic reference point.
+
+Let's start with two: one for *politics*, one for *chitchat*.
 
 ```python
 from semantic_router import Route
 
-# we could use this as a guide for our chatbot to avoid political conversations
+# use this to steer a chatbot away from political conversation
 politics = Route(
     name="politics",
     utterances=[
@@ -30,8 +35,7 @@ politics = Route(
     ],
 )
 
-# this could be used as an indicator to our chatbot to switch to a more
-# conversational prompt
+# and this to switch the chatbot into a more conversational mode
 chitchat = Route(
     name="chitchat",
     utterances=[
@@ -43,75 +47,72 @@ chitchat = Route(
     ],
 )
 
-# we place both of our decisions together into single list
 routes = [politics, chitchat]
 ```
 
-## Setting Up an Encoder
+## Pick an encoder
 
-With our routes ready, now we initialize an embedding / encoder model. The encoder converts text into numerical vectors, allowing the system to measure semantic similarity. We currently support `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon.
+An encoder turns text into a vector, so we can measure how similar two pieces of text are. Semantic Router supports a lot of them — OpenAI, Cohere, Hugging Face, FastEmbed, and more. The [encoders guide](../user-guide/components/encoders) has the full list.
 
-To initialize them:
+We'll use Cohere or OpenAI here:
 
 ```python
 import os
 from semantic_router.encoders import CohereEncoder, OpenAIEncoder
 
-# for Cohere
+# Cohere
 os.environ["COHERE_API_KEY"] = "<YOUR_API_KEY>"
 encoder = CohereEncoder()
 
-# or for OpenAI
+# or OpenAI
 os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
 encoder = OpenAIEncoder()
 ```
 
-## Creating a RouteLayer
+## Create the router
 
-With our `routes` and `encoder` defined we now create a `SemanticRouter`. The SemanticRouter is the decision-making engine that compares incoming text against your routes to find the best semantic match.
+The `SemanticRouter` is the decision engine. Hand it your encoder and routes:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import SemanticRouter
 
-rl = SemanticRouter(encoder=encoder, routes=routes)
+sr = SemanticRouter(encoder=encoder, routes=routes)
 ```
 
-## Making Routing Decisions
+## Route a query
 
-We can now use our route layer to make super fast routing decisions based on user queries. Behind the scenes, the system converts both your example utterances and the incoming query into vectors and finds the closest match.
-
-Let's try with two queries that should trigger our route decisions:
+Now call it. Under the hood, the router embeds your query and finds the closest route.
 
 ```python
-rl("don't you love politics?").name
+sr("don't you love politics?").name
 ```
 
 ```
 [Out]: 'politics'
 ```
 
-Correct decision, let's try another:
+Right answer. One more:
 
 ```python
-rl("how's the weather today?").name
+sr("how's the weather today?").name
 ```
 
 ```
 [Out]: 'chitchat'
 ```
 
-We get both decisions correct! The power of semantic routing is that it works even when queries don't exactly match your examples but are similar in meaning.
+Both correct. Notice the queries don't match any utterance word for word — they just mean the same thing. That's the whole point.
 
-## Handling Unmatched Queries
+## When nothing matches
 
-Now let's try sending an unrelated query:
+Send something unrelated:
 
 ```python
-rl("I'm interested in learning about llama 2").name
+sr("I'm interested in learning about llama 2").name
 ```
 
 ```
 [Out]:
 ```
 
-In this case, no decision could be made as we had no semantic matches — so our route layer returned `None`! This feature is useful for creating fallback behavior or passthroughs in your applications when no intent is clearly matched.
+No route was close enough, so the router returns `None`. Treat that as your fallback signal: pass the query through, hand it to a default handler, whatever fits your app.

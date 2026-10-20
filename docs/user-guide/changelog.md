@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 ### v0.1.12
 
 The `0.1.12` release brings Pinecone v7 support and AWS Bedrock boto3 client integration, improving compatibility and expanding cloud deployment options.
@@ -95,7 +97,7 @@ The `0.1.10` release was primarily focused on expanding async support for `Qdran
 
 ### v0.1.9
 
-The `0.1.9` update focuses on improving support for our local deployment options. We have standardized the `PostgresIndex` to bring it in line with other index options and prepare it for future feature releases. For `local` extras (inclusing `transformers` and `llama_cpp` support) and `postgres` extras we have resolved issues making those extras unusable with Python 3.13.
+The `0.1.9` update focuses on improving support for our local deployment options. We have standardized the `PostgresIndex` to bring it in line with other index options and prepare it for future feature releases. For `local` extras (including `transformers` and `llama_cpp` support) and `postgres` extras we have resolved issues making those extras unusable with Python 3.13.
 
 Continue reading below for more detail.
 

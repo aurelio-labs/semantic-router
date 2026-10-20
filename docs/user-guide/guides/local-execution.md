@@ -1,40 +1,42 @@
-There are many reasons users might choose to roll their own LLMs rather than use a third-party service. Whether it's due to cost, privacy or compliance, Semantic Router supports the use of "local" LLMs through `llama.cpp`.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/local-execution), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-Using `llama.cpp` also enables the use of quantized GGUF models, reducing the memory footprint of deployed models, allowing even 13-billion parameter models to run with hardware acceleration on an Apple M1 Pro chip.
+Plenty of reasons to run your own LLM instead of calling an API — cost, privacy, compliance. Semantic Router supports local LLMs through `llama.cpp`.
 
-## Full Example
+`llama.cpp` also runs quantized GGUF models, which shrink memory use enough that even a 13B-parameter model runs with hardware acceleration on an Apple M1 Pro.
+
+## Full example
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb)
 [![Open nbviewer](https://raw.githubusercontent.com/pinecone-io/examples/master/assets/nbviewer-shield.svg)](https://nbviewer.org/github/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb)
 
-Below is an example of using semantic router with **Mistral-7B-Instruct**, quantized to reduce memory footprint.
+We'll use **Mistral-7B-Instruct**, quantized to 4-bit to keep the memory footprint small.
 
-## Installing the library
+## Install
 
-> Note: if you require hardware acceleration via BLAS, CUDA, Metal, etc. please refer to the [abetlen/llama-cpp-python](https://github.com/abetlen/llama-cpp-python#installation-with-specific-hardware-acceleration-blas-cuda-metal-etc) repository README.md
+> For hardware acceleration (BLAS, CUDA, Metal, and so on), see the [llama-cpp-python README](https://github.com/abetlen/llama-cpp-python#installation-with-specific-hardware-acceleration-blas-cuda-metal-etc).
 
 ```python
 pip install -qU "semantic-router[local]"
 ```
 
-If you're running on Apple silicon you can run the following to compile with Metal hardware acceleration:
+On Apple silicon, compile with Metal acceleration:
 
 ```bash
 CMAKE_ARGS="-DLLAMA_METAL=on" pip install -qU "semantic-router[local]"
 ```
 
-## Download the Mistral 7B Instruct 4-bit GGUF files
+## Download the model
 
-We will be using Mistral 7B Instruct, quantized as a 4-bit GGUF file, a good balance between performance and ability to deploy on consumer hardware
+Mistral 7B Instruct as a 4-bit GGUF is a good balance of quality and consumer-hardware friendliness:
 
 ```python
 !curl -L "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_0.gguf?download=true" -o ./mistral-7b-instruct-v0.2.Q4_0.gguf
 !ls mistral-7b-instruct-v0.2.Q4_0.gguf
 ```
 
-## Initializing Dynamic Routes
+## Define the routes
 
-Similar to dynamic routes in other examples, we will be initializing some dynamic routes that make use of LLMs for function calling
+We'll include a dynamic route so the local LLM has some function calling to do:
 
 ```python
 from datetime import datetime
@@ -74,7 +76,8 @@ politics = Route(
     utterances=[
         "isn't politics the best thing ever",
         "why don't you tell me about your political opinions",
-        "don't you just love the president" "don't you just hate the president",
+        "don't you just love the president",
+        "don't you just hate the president",
         "they're going to destroy this country!",
         "they will save the country!",
     ],
@@ -93,9 +96,9 @@ chitchat = Route(
 routes = [politics, chitchat, time]
 ```
 
-## Encoders
+## Encoder
 
-You can use alternative Encoders, however, in this example we want to showcase a fully-local Semantic Router execution, so we are going to use a `HuggingFaceEncoder` with `sentence-transformers/all-MiniLM-L6-v2` (the default) as an embedding model.
+To stay fully local we'll use `HuggingFaceEncoder`, which defaults to `sentence-transformers/all-MiniLM-L6-v2`:
 
 ```python
 from semantic_router.encoders import HuggingFaceEncoder
@@ -103,26 +106,23 @@ from semantic_router.encoders import HuggingFaceEncoder
 encoder = HuggingFaceEncoder()
 ```
 
-## `llama.cpp` LLM
+## The `llama.cpp` LLM
 
-From here, we can go ahead and instantiate our `llama-cpp-python` `llama_cpp.Llama` LLM, and then pass it to the `semantic_router.llms.LlamaCppLLM` wrapper class.
+Create a `llama_cpp.Llama` and wrap it in `LlamaCppLLM`. Three parameters worth knowing:
 
-For `llama_cpp.Llama`, there are a couple of parameters you should pay attention to:
+- `n_gpu_layers` — how many layers to offload to the GPU. `-1` for the whole model, `0` for CPU only.
+- `n_ctx` — the context window. Capped by the model's own limit (8000 tokens for Mistral-7B-Instruct).
+- `verbose` — set `False` to quiet `llama.cpp`'s output.
 
-- `n_gpu_layers`: how many LLM layers to offload to the GPU (if you want to offload the entire model, pass `-1`, and for CPU execution, pass `0`)
-- `n_ctx`: context size, limit the number of tokens that can be passed to the LLM (this is bounded by the model's internal maximum context size, in this case for Mistral-7B-Instruct, 8000 tokens)
-- `verbose`: if `False`, silences output from `llama.cpp`
-
-> For other parameter explanation, refer to the `llama-cpp-python` [API Reference](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/)
+> The [llama-cpp-python API reference](https://llama-cpp-python.readthedocs.io/en/latest/api-reference/) covers the rest.
 
 ```python
-# In semantic-router v0.1.0, RouteLayer has been replaced with SemanticRouter
 from semantic_router import SemanticRouter
 
 from llama_cpp import Llama
 from semantic_router.llms.llamacpp import LlamaCppLLM
 
-enable_gpu = True  # offload LLM layers to the GPU (must fit in memory)
+enable_gpu = True  # offload to GPU (the model must fit in memory)
 
 _llm = Llama(
     model_path="./mistral-7b-instruct-v0.2.Q4_0.gguf",
@@ -132,22 +132,22 @@ _llm = Llama(
 _llm.verbose = False
 llm = LlamaCppLLM(name="Mistral-7B-v0.2-Instruct", llm=_llm, max_tokens=None)
 
-# Initialize SemanticRouter with our encoder, routes, and LLM
 router = SemanticRouter(encoder=encoder, routes=routes, llm=llm)
 ```
 
-Let's test our router with some queries:
+## Try it
+
+A static route first:
 
 ```python
 router("how's the weather today?")
 ```
 
-This should output:
 ```
 RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
-Now let's try a time-related query that will trigger our function calling:
+Now a time question, which triggers the dynamic route and the local LLM:
 
 ```python
 out = router("what's the time in New York right now?")
@@ -155,13 +155,12 @@ print(out)
 get_time(**out.function_call[0])
 ```
 
-This should output something like:
 ```
 name='get_time' function_call=[{'timezone': 'America/New_York'}] similarity_score=None
 '07:50'
 ```
 
-Let's try more examples:
+A couple more:
 
 ```python
 out = router("what's the time in Rome right now?")
@@ -169,7 +168,6 @@ print(out)
 get_time(**out.function_call[0])
 ```
 
-Output:
 ```
 name='get_time' function_call=[{'timezone': 'Europe/Rome'}] similarity_score=None
 '13:51'
@@ -181,16 +179,17 @@ print(out)
 get_time(**out.function_call[0])
 ```
 
-Output:
 ```
 name='get_time' function_call=[{'timezone': 'Asia/Bangkok'}] similarity_score=None
 '18:51'
 ```
 
+All local, no API calls.
+
 ## Cleanup
 
-Once done, if you'd like to delete the downloaded model you can do so with the following:
+Delete the model when you're done:
 
 ```bash
 rm ./mistral-7b-instruct-v0.2.Q4_0.gguf
-``` 
+```

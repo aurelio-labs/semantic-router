@@ -26,12 +26,52 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
     - we train a BM25 encoder's normalization parameters on a sufficiently large corpus to capture target language distribution
     - these trained parameter allow us to balance TF & IDF of query & documents for retrieval (read more on how BM25 fixes issues with TF-IDF)
 
+    The reference formula is section 4.1 of the ATIRE paper:
+
+        RSV_d = Σ_{t ∈ q} log(N / df_t) · (k1 + 1) · tf_td
+                           / (k1 · ((1 - b) + b · L_d / L_avg) + tf_td)
+
+    Deviations from the paper
+    -------------------------
+    This implementation is faithful to the formula above on the document side,
+    but deviates from it in three documented ways. Each is deliberate; see the
+    inline comments at the point of use for the details.
+
+    1. IDF smoothing. We compute `log((N + 1) / (df_t + 0.5))` rather than
+       `log(N / df_t)`, to avoid a division by zero for unseen terms. This
+       preserves the strictly-positive IDF that the ATIRE variant exists for.
+
+    2. Query weight normalization. The paper produces an unbounded relevance
+       score, which is fine for a search engine that only ranks within a single
+       query. A router instead compares scores against a fixed
+       `score_threshold`, so scores must be comparable *across* queries. We
+       therefore L1-normalize the query weights and scale them by
+       `1 / (k1 + 1)`, which bounds the query·document dot product to [0, 1] --
+       the same range as the cosine similarity returned by the dense encoders,
+       so the two can be blended in `HybridRouter` and thresholded alike.
+
+       This is ranking-neutral within a query (it is a single positive constant
+       per query) but it does discard cross-query IDF magnitude: two queries
+       with different total IDF mass can produce the same score.
+
+    3. Parameter defaults. We default to `k1=1.5, b=0.75` rather than the
+       paper's `k1=0.9, b=0.4`. See the `k1` and `b` parameter docs below.
+
     ATIRE Paper: https://www.cs.otago.ac.nz/research/student-publications/atire-opensource.pdf
     Pinecone Implementation: https://github.com/pinecone-io/pinecone-text/blob/8399f9ff28c4652766c35165c0db9b0eff309077/pinecone_text/sparse/bm25_encoder.py
 
-    :param k1: normalizer parameter that limits how much a single query term `q_i ∈ q` can affect score for document `D_n`
+    :param k1: normalizer parameter that limits how much a single query term `q_i ∈ q` can affect score for document `D_n`.
+        Defaults to 1.5, the standard Robertson value, *not* the 0.9 reported in the ATIRE paper. The paper's value was
+        trained on the INEX 2008 Wikipedia collection, whose documents average 878 words (paper table 5), whereas this
+        encoder is fitted on route utterances averaging on the order of ten tokens. Transferring the paper's parameters
+        to utterance-length text is not obviously more correct, and changing the default would silently shift the scores
+        that existing `score_threshold` values were tuned against.
     :type k1: float
-    :param b: normalizer parameter that balances the effect of a single document length compared to the average document length
+    :param b: normalizer parameter that balances the effect of a single document length compared to the average document
+        length. Defaults to 0.75 rather than the paper's 0.4, for the same reason as `k1`. Note that `b` is considerably
+        more influential on short text: over utterances spanning 0.3x to 2.2x the average length, `b=0.75` spreads the
+        document factor by ~2.2x versus ~1.4x for `b=0.4`. Lower it towards the paper's value if length is over-weighted
+        for your route set.
     :type b: float
     :param corpus_size: number of documents in the trained corpus
     :type corpus_size: int, optional
@@ -193,16 +233,55 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
             raise ValueError("No documents provided for encoding")
 
         # Convert queries to token counts
-        queries_ids = self._tokenizer.tokenize(queries)
+        queries_ids = self._tokenizer.tokenize(queries, pad=True)
         df = self._df(queries_ids)  # (batch_size, vocab_size)
         N = self.corpus_size
+
+        # DEVIATION FROM THE ATIRE PAPER: the paper specifies `log(N / df_t)`,
+        # whereas we compute `log((N + 1) / (df_t + 0.5))`. The `+ 0.5` avoids a
+        # division by zero and the `+ 1` keeps the numerator above the
+        # denominator, so the result is strictly positive. This preserves the
+        # property the ATIRE variant was introduced for (IDF is never negative,
+        # see footnote 1 of the paper) and stays monotonically decreasing in
+        # `df_t`, but it is a smoothed variant rather than the paper's formula.
+        # It weights common terms slightly less harshly than `log(N / df_t)`.
         df = df + np.where(df > 0, 0.5, 0)
         idf = np.divide(N + 1, df, out=np.zeros_like(df), where=df != 0)
         idf = np.log(
             idf, out=np.zeros_like(df), where=df != 0
         )  # (batch_size, vocab_size)
+
+        # The paper sums over the query terms `t ∈ q`, so a term repeated in the
+        # query contributes once per occurrence. Weighting IDF by the query term
+        # frequency is equivalent, and keeps the operation vectorised.
+        qtf = self._tf(queries_ids)  # (batch_size, vocab_size)
+        weighted_idf = idf * qtf
+
+        # DEVIATION FROM THE ATIRE PAPER: the paper's RSV is an unbounded sum,
+        # which is fine when only ranking within one query. A router compares
+        # scores against a fixed `score_threshold`, so they must be comparable
+        # across queries too. Two steps make that so:
+        #
+        #   1. L1-normalize, so the weights sum to 1 regardless of how long the
+        #      query is or how rare its terms are.
+        #   2. Divide by `k1 + 1`, so the weights sum to `1 / (k1 + 1)`.
+        #
+        # `encode_documents` returns values in (0, k1 + 1] (it keeps the paper's
+        # `(k1 + 1)` numerator), so the dot product of the two is bounded to
+        # [0, 1] -- the same range as the cosine similarity produced by the
+        # dense encoders. That lets `HybridRouter` blend the two and lets one
+        # threshold apply to both. Without the `k1 + 1` divisor the sparse score
+        # would reach `k1 + 1` (2.5 at the default `k1`) and would dominate the
+        # dense component of the hybrid score.
+        #
+        # Both steps are a single positive constant per query, so neither
+        # changes the ranking of documents for that query.
+        denominator = weighted_idf.sum(axis=1)[:, np.newaxis] * (self.k1 + 1.0)
         idf_norm = np.divide(
-            idf, idf.sum(axis=1)[:, np.newaxis], out=np.zeros_like(idf), where=idf != 0
+            weighted_idf,
+            denominator,
+            out=np.zeros_like(weighted_idf),
+            where=weighted_idf != 0,
         )
 
         return self._array_to_sparse_embeddings(idf_norm)
@@ -215,7 +294,7 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         r"""Returns document term frequency normed by itself & average trained corpus length
         (This is the right-hand side of the BM25 equation, which gets matmul-ed with the query IDF component)
 
-        LaTeX: $\frac{f(d_i, D)}{f(d_i, D) + k_1 \times (1 - b + b \times \frac{|D|}{avgdl})}$
+        LaTeX: $\frac{(k_1 + 1) \times f(d_i, D)}{f(d_i, D) + k_1 \times (1 - b + b \times \frac{|D|}{avgdl})}$
         where:
             f(d_i, D) is frequency of term `d_i ∈ D`
             |D| is the document length
@@ -244,9 +323,9 @@ class BM25Encoder(SparseEncoder, FittableMixin, AsymmetricSparseMixin):
         queries_ids = self._tokenizer.tokenize(documents, pad=True)
         tf = self._tf(queries_ids)  # (batch_size, vocab_size)
         tf_sum = tf.sum(axis=1)  # (batch_size, 1)
-        tf_normed = tf / (
+        tf_normed = ((self.k1 + 1.0) * tf) / (
             self.k1
-            * (1.0 - self.b * self.b * (tf_sum[:, np.newaxis] / self._avg_doc_len))
+            * ((1.0 - self.b) + self.b * (tf_sum[:, np.newaxis] / self._avg_doc_len))
             + tf
         )  # (batch_size, vocab_size)
 

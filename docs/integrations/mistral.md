@@ -2,7 +2,9 @@ Semantic Router integrates with Mistral AI's embedding models through the `Mistr
 
 ## Overview
 
-The `MistralEncoder` is a subclass of `LiteLLMEncoder` that enables semantic routing using Mistral's embedding models. It supports both synchronous and asynchronous operations with built-in cost tracking.
+The `MistralEncoder` enables semantic routing using Mistral's embedding models. It calls the
+Mistral Python SDK directly — a single `mistralai.Mistral` client serving both
+`embeddings.create()` and `embeddings.create_async()` — so it does not depend on LiteLLM.
 
 ## Getting Started
 
@@ -32,6 +34,10 @@ encoder = MistralEncoder(
 )
 ```
 
+The key may come from the `mistralai_api_key` parameter, or from either the
+`MISTRALAI_API_KEY` or `MISTRAL_API_KEY` environment variable. If none of them is set, the
+constructor raises a `ValueError`.
+
 ## Features
 
 ### Supported Models
@@ -51,12 +57,20 @@ embeddings = encoder(["your text here"])
 embeddings = await encoder.acall(["your text here"])
 ```
 
-### Cost Tracking
+Mistral embeddings are symmetric, so `encode_documents()` and `encode_queries()` issue the
+same request — there is no separate query/document input type as there is for Cohere.
 
-Built-in cost tracking via LiteLLM integration:
-- Automatic token counting
-- Per-request cost calculation
-- Model-specific pricing
+### Passing Mistral Options
+
+Extra keyword arguments are forwarded to the Mistral SDK, so model-specific options are
+available directly:
+
+```python
+embeddings = encoder.encode_queries(["your text here"], output_dimension=256)
+```
+
+Note that `model`, `inputs` and `encoding_format` are set by the encoder and cannot be
+overridden this way.
 
 ## Integration with Routers
 
@@ -104,7 +118,7 @@ router = SemanticRouter(
 
 - **High Quality**: State-of-the-art embedding quality
 - **European Provider**: GDPR-compliant, European data residency options
-- **Cost Effective**: Competitive pricing with transparent cost tracking
+- **Direct SDK Access**: Talks to the official Mistral SDK, with native async support and no extra abstraction layer
 - **1024 Dimensions**: Balanced dimensionality for quality and efficiency
 
 ## Example Usage

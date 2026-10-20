@@ -12,6 +12,8 @@ venv/
 
 
 # local env files
+**/*.env
+*.env
 .env*.local
 .env
 my.secrets
@@ -34,3 +36,6 @@ test_sync.ipynb
 
 # docs
 docs/build
+
+# fastembed model cache used by CI
+.fastembed_cache/

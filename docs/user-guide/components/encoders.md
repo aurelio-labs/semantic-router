@@ -1,127 +1,122 @@
-Encoders are essential components in Semantic Router that transform text (or other data) into numerical representations that capture semantic meaning. These numerical representations, called embeddings, allow the system to measure semantic similarity between texts, which is the core functionality of the routing process.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/encoders), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-## Understanding Encoders
+An encoder turns text (or images, or other data) into a vector — a list of numbers that captures meaning. Those vectors are what let Semantic Router measure how similar two inputs are. Every routing decision starts here.
 
-In Semantic Router, an encoder serves two primary purposes:
+## What an encoder does
 
-1. **Convert utterances from routes into embeddings** during initialization
-2. **Convert incoming user queries into embeddings** during routing
+An encoder does two jobs:
 
-By comparing these embeddings, Semantic Router can determine which route(s) best match the user's intent, even when the exact wording differs.
+1. **At setup**, it embeds the example utterances in your routes.
+2. **At runtime**, it embeds each incoming query.
 
-## Dense vs. Sparse Encoders
+The router compares the two and picks the closest route — even when the wording is completely different.
 
-Semantic Router supports two main types of encoders:
+## Dense vs. sparse
 
-### Dense Encoders
+Semantic Router supports two kinds of encoder. They see text very differently, and each has its strengths.
 
-Dense encoders generate embeddings where every dimension has a value, resulting in a "dense" vector. These encoders typically:
+### Dense encoders
 
-- Produce fixed-size vectors (e.g., 1536 dimensions for OpenAI's text-embedding-3-small)
-- Capture complex semantic relationships in the text
-- Perform well on tasks requiring understanding of context and meaning
+Dense encoders fill every dimension of the vector. They:
 
-**Example usage**:
+- Produce fixed-size vectors (1536 dimensions for OpenAI's `text-embedding-3-small`, for example).
+- Capture rich semantic relationships.
+- Do well when context and meaning matter more than exact words.
 
 ```python
-from semantic_router.encoders import OpenAIEncoder
 import os
+from semantic_router.encoders import OpenAIEncoder
 
-# Set up API key
 os.environ["OPENAI_API_KEY"] = "your-api-key"
 
-# Initialize the encoder
 encoder = OpenAIEncoder()
-
-# Generate dense embeddings for documents
 embeddings = encoder(["How's the weather today?", "Tell me about politics"])
 ```
 
-### Sparse Encoders
+### Sparse encoders
 
-Sparse encoders generate embeddings where most dimensions are zero, with only a few dimensions having non-zero values. These encoders typically:
+Sparse encoders leave most dimensions at zero, with only a few non-zero values. They:
 
-- Focus on specific words or tokens in the text
-- Excel at keyword matching and term frequency
-- Can be more interpretable than dense encoders (non-zero dimensions often correspond to specific words)
-
-**Example usage**:
+- Key off specific words and tokens.
+- Excel at exact keyword matching and term frequency.
+- Are more interpretable — a non-zero dimension usually maps to a specific word.
 
 ```python
-from semantic_router.encoders import AurelioSparseEncoder
-from semantic_router import Route
 import os
+from semantic_router.encoders import AurelioSparseEncoder
 
-# Set up API key
 os.environ["AURELIO_API_KEY"] = "your-api-key"
 
-# Create some routes for routing
-routes = [
-    Route(name="weather", utterances=["How's the weather?", "Is it raining?"]),
-    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"])
-]
-
-# Initialize the sparse encoder
 encoder = AurelioSparseEncoder()
-
-# Generate sparse embeddings for documents
 embeddings = encoder(["How's the weather today?", "Tell me about politics"])
 ```
 
-## Hybrid Approaches
+## Using both: hybrid routing
 
-Semantic Router also allows combining both dense and sparse encoders in a hybrid approach through the `HybridRouter`. This can leverage the strengths of both encoding methods:
+You don't have to choose. The `HybridRouter` takes a dense and a sparse encoder together, so you get semantic understanding *and* keyword precision. The `alpha` parameter sets the balance.
 
 ```python
+import os
+from semantic_router import Route
 from semantic_router.routers import HybridRouter
 from semantic_router.encoders import OpenAIEncoder, AurelioSparseEncoder
-import os
 
-# Set up API keys
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 os.environ["AURELIO_API_KEY"] = "your-aurelio-api-key"
 
-# Create dense and sparse encoders
-dense_encoder = OpenAIEncoder()
-sparse_encoder = AurelioSparseEncoder()
+routes = [
+    Route(name="weather", utterances=["How's the weather?", "Is it raining?"]),
+    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"]),
+]
 
-# Initialize the hybrid router
 router = HybridRouter(
-    encoder=dense_encoder,
-    sparse_encoder=sparse_encoder,
+    encoder=OpenAIEncoder(),
+    sparse_encoder=AurelioSparseEncoder(),
     routes=routes,
-    alpha=0.5  # Balance between dense (0) and sparse (1) embeddings
+    alpha=0.5,  # 0 = all dense, 1 = all sparse
 )
 ```
 
-## Supported Encoders
+## Supported encoders
 
-### Dense Encoders
+Most encoders ship with the base install. The ones that run models locally need the `local` extra:
 
-| Encoder | Description | Installation |
-|---------|-------------|-------------|
-| [OpenAIEncoder](https://semantic-router.aurelio.ai/api/encoders/openai) | Uses OpenAI's text embedding models | `pip install -qU semantic-router` |
-| [AzureOpenAIEncoder](https://semantic-router.aurelio.ai/api/encoders/azure_openai) | Uses Azure OpenAI's text embedding models | `pip install -qU semantic-router` |
-| [CohereEncoder](https://semantic-router.aurelio.ai/api/encoders/cohere) | Uses Cohere's text embedding models | `pip install -qU semantic-router` |
-| [HuggingFaceEncoder](https://semantic-router.aurelio.ai/api/encoders/huggingface) | Uses local Hugging Face models | `pip install -qU "semantic-router[local]"` |
-| [HFEndpointEncoder](https://semantic-router.aurelio.ai/api/encoders/huggingface) | Uses Hugging Face Inference API | `pip install -qU semantic-router` |
-| [FastEmbedEncoder](https://semantic-router.aurelio.ai/api/encoders/fastembed) | Uses FastEmbed for local embeddings | `pip install -qU "semantic-router[local]"` |
-| [MistralEncoder](https://semantic-router.aurelio.ai/api/encoders/mistral) | Uses Mistral's text embedding models | `pip install -qU semantic-router` |
-| [GoogleEncoder](https://semantic-router.aurelio.ai/api/encoders/google) | Uses Google's text embedding models | `pip install -qU semantic-router` |
-| [BedrockEncoder](https://semantic-router.aurelio.ai/api/encoders/bedrock) | Uses AWS Bedrock embedding models | `pip install -qU semantic-router` |
-| [VitEncoder](https://semantic-router.aurelio.ai/api/encoders/vit) | Vision Transformer for image embeddings | `pip install -qU semantic-router` |
-| [CLIPEncoder](https://semantic-router.aurelio.ai/api/encoders/clip) | Uses CLIP for image embeddings | `pip install -qU semantic-router` |
+```bash
+pip install -qU "semantic-router[local]"
+```
 
-### Sparse Encoders
+### Dense encoders
 
-| Encoder | Description | Installation |
-|---------|-------------|-------------|
-| [BM25Encoder](https://semantic-router.aurelio.ai/api/encoders/bm25) | Implements BM25 algorithm for sparse embeddings | `pip install -qU semantic-router` |
-| [TfidfEncoder](https://semantic-router.aurelio.ai/api/encoders/tfidf) | Implements TF-IDF for sparse embeddings | `pip install -qU semantic-router` |
-| [AurelioSparseEncoder](https://semantic-router.aurelio.ai/api/encoders/aurelio) | Uses Aurelio's API for BM25 sparse embeddings | `pip install -qU semantic-router` |
-| **LocalSparseEncoder** | Uses local sentence-transformers SPLADE/CSR models for neural sparse embeddings | `pip install -qU "semantic-router[local]"` |
+| Encoder | What it uses | Install |
+|---------|--------------|---------|
+| [OpenAIEncoder](../../client-reference/encoders/openai) | OpenAI embedding models | base |
+| [AzureOpenAIEncoder](../../client-reference/encoders/azure_openai) | Azure OpenAI embedding models | base |
+| [CohereEncoder](../../client-reference/encoders/cohere) | Cohere embedding models | base |
+| [MistralEncoder](../../client-reference/encoders/mistral) | Mistral embedding models | base |
+| [GoogleEncoder](../../client-reference/encoders/google) | Google embedding models | base |
+| [BedrockEncoder](../../client-reference/encoders/bedrock) | AWS Bedrock embedding models | base |
+| [JinaEncoder](../../client-reference/encoders/jina) | Jina embedding models | base |
+| [VoyageEncoder](../../client-reference/encoders/voyage) | Voyage embedding models | base |
+| [NimEncoder](../../client-reference/encoders/nvidia_nim) | NVIDIA NIM embedding models | base |
+| [LiteLLMEncoder](../../client-reference/encoders/litellm) | Any provider supported by LiteLLM | base |
+| [OllamaEncoder](../../client-reference/encoders/ollama) | Embedding models served by a local Ollama instance | base |
+| [HFEndpointEncoder](../../client-reference/encoders/huggingface) | Hugging Face Inference API | base |
+| [HuggingFaceEncoder](../../client-reference/encoders/huggingface) | Hugging Face models, run locally | `local` |
+| [LocalEncoder](../../client-reference/encoders/local) | Any sentence-transformers model, run locally | `local` |
+| [FastEmbedEncoder](../../client-reference/encoders/fastembed) | FastEmbed models, run locally | `local` |
+| [VitEncoder](../../client-reference/encoders/vit) | Vision Transformer, for image embeddings | `local` |
+| [CLIPEncoder](../../client-reference/encoders/clip) | CLIP, for image and text embeddings | `local` |
 
-**Example usage:**
+### Sparse encoders
+
+| Encoder | What it uses | Install |
+|---------|--------------|---------|
+| [BM25Encoder](../../client-reference/encoders/bm25) | BM25 | base |
+| [TfidfEncoder](../../client-reference/encoders/tfidf) | TF-IDF | base |
+| [AurelioSparseEncoder](../../client-reference/encoders/aurelio) | Aurelio's API for BM25 sparse embeddings | base |
+| [LocalSparseEncoder](../../client-reference/encoders/local) | Neural sparse models (SPLADE, CSR) via sentence-transformers, run locally | `local` |
+
+`LocalSparseEncoder` is worth a closer look if you want sparse vectors without an API. It uses the sentence-transformers `SparseEncoder` API (v5+), runs on CPU, CUDA, or MPS, and works with any compatible model from the Hugging Face Hub:
 
 ```python
 from semantic_router.encoders import LocalSparseEncoder
@@ -130,33 +125,26 @@ encoder = LocalSparseEncoder(name="naver/splade-v3")
 embeddings = encoder(["How's the weather today?", "Tell me about politics"])
 ```
 
-- This encoder uses sentence-transformers >=v5's SparseEncoder API to generate high-dimensional sparse vectors (e.g., SPLADE, CSR).
-- No API key required; all computation is local (CPU, CUDA, or MPS).
-- You can use any compatible sparse model from the Hugging Face Hub (e.g., naver/splade-v3, mixedbread-ai/mxbai-embed-large-v1, etc.).
+## AutoEncoder
 
-## Using AutoEncoder
-
-Semantic Router provides an `AutoEncoder` class that automatically selects the appropriate encoder based on the specified type:
+If you'd rather pick an encoder by name at runtime, `AutoEncoder` resolves the right class for you:
 
 ```python
 from semantic_router.encoders import AutoEncoder
 from semantic_router.schema import EncoderType
 
-# Create an encoder based on type
 encoder = AutoEncoder(type=EncoderType.OPENAI.value, name="text-embedding-3-small").model
-
-# Use the encoder
 embeddings = encoder(["How can I help you today?"])
 ```
 
-## Considerations for Choosing an Encoder
+## Choosing an encoder
 
-When selecting an encoder for your application, consider:
+A few questions to ask:
 
-1. **Accuracy**: Dense encoders typically provide better semantic understanding but may miss exact keyword matches
-2. **Speed**: Local encoders are faster but may be less accurate than cloud-based ones
-3. **Cost**: Cloud-based encoders (OpenAI, Cohere, Aurelio AI) incur API costs
-4. **Privacy**: Local encoders keep data within your environment
-5. **Use case**: Hybrid approaches may work best for balanced retrieval
+1. **Accuracy.** Dense encoders understand meaning better but can miss exact keywords. Sparse encoders are the reverse.
+2. **Speed.** Local encoders avoid network round-trips, though cloud models are often more accurate.
+3. **Cost.** Cloud encoders (OpenAI, Cohere, Aurelio) bill per call. Local ones don't.
+4. **Privacy.** Local encoders keep your data on your machine.
+5. **Both?** When you're unsure, a hybrid setup often gives the best balance.
 
-For more detailed information on specific encoders, refer to their respective documentation pages. 
+Each encoder's reference page covers its specific options.

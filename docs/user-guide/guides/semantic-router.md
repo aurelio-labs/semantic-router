@@ -1,11 +1,10 @@
-The `SemanticRouter` is the main class of the semantic router. It is responsible
-for making decisions about which route to take based on an input utterance.
-A `SemanticRouter` consists of an `encoder`, an `index`, and a list of `routes`.
-Route layers that include dynamic routes (i.e. routes that can generate dynamic
-decision outputs) also include an `llm`.
+> **You're reading the docs for Semantic Router 0.x.** `SemanticRouter` is now `IndexedRouter` in version 1.0: read [the v1 page](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/routers), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-To use a `SemanticRouter` we first need some `routes`. We can initialize them like
-so:
+The `SemanticRouter` is the heart of the library. Give it a query and it decides which route to take. It's built from three things: an `encoder`, an `index`, and a list of `routes`. If any of your routes are dynamic (they produce function calls), it also holds an `llm`.
+
+## Routes
+
+Start with some routes:
 
 ```python
 from semantic_router import Route
@@ -32,10 +31,13 @@ chitchat = Route(
         "let's go to the chippy",
     ],
 )
+
+routes = [politics, chitchat]
 ```
 
-We initialize an encoder — there are many options available here, from local
-to API-based. For now we'll use the `OpenAIEncoder`.
+## Encoder
+
+There are plenty of encoders to choose from, local and API-based. We'll use `OpenAIEncoder` here:
 
 ```python
 import os
@@ -46,17 +48,15 @@ os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
 encoder = OpenAIEncoder()
 ```
 
-Now we define the `RouteLayer`. When called, the route layer will consume text
-(a query) and output the category (`Route`) it belongs to — to initialize a
-`RouteLayer` we need our `encoder` model and a list of `routes`.
+## The router
+
+Pass in the encoder and routes. When you call the router with a query, it returns the `Route` the query belongs to.
 
 ```python
 from semantic_router import SemanticRouter
 
 sr = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
 ```
-
-Now we can call the `RouteLayer` with an input query:
 
 ```python
 sr("don't you love politics?")
@@ -66,11 +66,7 @@ sr("don't you love politics?")
 [Out]: RouteChoice(name='politics', function_call=None, similarity_score=None)
 ```
 
-The output is a `RouteChoice` object, which contains the name of the route,
-the function call (if any), and the similarity score that triggered the route
-choice.
-
-We can try another query:
+You get back a `RouteChoice`. It holds the route name, any function call (for dynamic routes), and the similarity score that triggered the match.
 
 ```python
 sr("how's the weather today?")
@@ -80,8 +76,7 @@ sr("how's the weather today?")
 [Out]: RouteChoice(name='chitchat', function_call=None, similarity_score=None)
 ```
 
-Both are classified accurately, what if we send a query that is unrelated to
-our existing Route objects?
+Both right. Now something that matches neither route:
 
 ```python
 sr("I'm interested in learning about llama 3")
@@ -91,14 +86,14 @@ sr("I'm interested in learning about llama 3")
 [Out]: RouteChoice(name=None, function_call=None, similarity_score=None)
 ```
 
-In this case, the `RouteLayer` is unable to find a route that matches the
-input query and so returns a `RouteChoice` with `name=None`.
+No route cleared its threshold, so `name` is `None`.
 
-We can also retrieve multiple routes with their associated score using
-`retrieve_multiple_routes`:
+## Getting more than one route
+
+By default the router returns the single best match. Pass `limit` to get several, each with its score. `limit=None` returns every route that passes its threshold; `limit=3` returns the top three.
 
 ```python
-sr.retrieve_multiple_routes("Hi! How are you doing in politics??")
+sr("Hi! How are you doing in politics??", limit=None)
 ```
 
 ```
@@ -106,15 +101,16 @@ sr.retrieve_multiple_routes("Hi! How are you doing in politics??")
         RouteChoice(name='chitchat', function_call=None, similarity_score=0.835)]
 ```
 
-If `retrieve_multiple_routes` is called with a query that does not match any
-routes, it will return an empty list:
+If nothing passes, you get an empty list:
 
 ```python
-sr.retrieve_multiple_routes("I'm interested in learning about llama 3")
+sr("I'm interested in learning about llama 3", limit=None)
 ```
 
 ```
 [Out]: []
 ```
 
-You can find an introductory notebook for the [route layer here](https://github.com/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb). 
+> One thing to watch: `top_k` (default 5) caps how many routes are considered, independently of `limit`. If you're using `limit > 1` or `limit=None`, raise `top_k` — for example `SemanticRouter(..., top_k=100)`.
+
+The [introductory notebook](https://github.com/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb) walks through all of this end to end.

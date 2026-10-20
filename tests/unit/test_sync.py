@@ -1,5 +1,7 @@
+import hashlib
 import importlib
 import os
+import uuid
 from datetime import datetime
 from platform import python_version
 from typing import Optional
@@ -14,11 +16,18 @@ from semantic_router.index import (
     PostgresIndex,
     QdrantIndex,
 )
+from semantic_router.index.base import BaseIndex
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, SemanticRouter
 from semantic_router.schema import Utterance
 
 PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
+
+
+def qdrant_kwargs() -> dict:
+    """Use a real Qdrant server when QDRANT_URL is set, otherwise in-memory."""
+    url = os.getenv("QDRANT_URL")
+    return {"location": None, "url": url} if url else {}
 
 
 def mock_encoder_call(utterances):
@@ -39,6 +48,13 @@ TEST_ID = (
 )
 
 
+def per_test_id() -> str:
+    """Short id that is unique per test but stable within one test, so parallel
+    workers never share a Pinecone index while a test can still re-open its own."""
+    current = os.environ.get("PYTEST_CURRENT_TEST", TEST_ID)
+    return "t-" + hashlib.md5(current.encode()).hexdigest()[:10]
+
+
 def init_index(
     index_cls,
     dimensions: Optional[int] = 3,
@@ -49,6 +65,7 @@ def init_index(
     """We use this function to initialize indexes with different names to avoid
     issues during testing.
     """
+    index: BaseIndex
     if index_cls is PineconeIndex:
         # In cloud mode, require a shared index to avoid creation quota failures
         if os.getenv("PINECONE_API_BASE_URL", "").startswith(
@@ -64,13 +81,20 @@ def init_index(
             elif not dimensions and "CohereEncoder" in index_name:
                 dimensions = 1024
 
-        index_name = TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+        test_id = per_test_id()
+        index_name = test_id if not index_name else f"{test_id}-{index_name.lower()}"
         index = index_cls(
             index_name=index_name,
             dimensions=dimensions,
             namespace=namespace,
             init_async_index=init_async_index,
             base_url=PINECONE_BASE_URL,
+        )
+    elif index_cls is QdrantIndex:
+        index = QdrantIndex(
+            index_name=f"test_{uuid.uuid4().hex}",
+            init_async_index=init_async_index,
+            **qdrant_kwargs(),
         )
     else:
         index = index_cls()

@@ -219,10 +219,10 @@ class PostgresIndex(BaseIndex):
         if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
         try:
+            self._ensure_vector_extension()
             with self.conn.cursor() as cur:
                 cur.execute(
                     f"""
-                    CREATE EXTENSION IF NOT EXISTS vector;
                     CREATE TABLE IF NOT EXISTS {table_name} (
                         id VARCHAR(255) PRIMARY KEY,
                         route VARCHAR(255),
@@ -270,11 +270,11 @@ class PostgresIndex(BaseIndex):
         if not isinstance(self.async_conn, psycopg.AsyncConnection):
             raise TypeError("Index has not established a connection to async Postgres")
         try:
+            await self._async_ensure_vector_extension()
             async with self.async_conn.cursor() as cur:
                 logging.warning(f"[DEBUG] Creating extension/table for {table_name}")
                 await cur.execute(
                     f"""
-                    CREATE EXTENSION IF NOT EXISTS vector;
                     CREATE TABLE IF NOT EXISTS {table_name} (
                         id VARCHAR(255) PRIMARY KEY,
                         route VARCHAR(255),
@@ -296,6 +296,34 @@ class PostgresIndex(BaseIndex):
             raise e
         logging.warning("[DEBUG] Exiting _init_async_index for PostgresIndex")
         return self
+
+    def _ensure_vector_extension(self) -> None:
+        """Create the pgvector extension if it is missing.
+
+        ``CREATE EXTENSION IF NOT EXISTS`` is not atomic: two connections that
+        both see the extension missing will both try to create it, and the
+        loser fails on the extension catalog's unique index. Treat that as
+        "already exists".
+        """
+        if not isinstance(self.conn, psycopg.Connection):
+            raise TypeError("Index has not established a connection to Postgres")
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            self.conn.commit()
+        except (psycopg.errors.UniqueViolation, psycopg.errors.DuplicateObject):
+            self.conn.rollback()
+
+    async def _async_ensure_vector_extension(self) -> None:
+        """Async version of :meth:`_ensure_vector_extension`."""
+        if not isinstance(self.async_conn, psycopg.AsyncConnection):
+            raise TypeError("Index has not established a connection to async Postgres")
+        try:
+            async with self.async_conn.cursor() as cur:
+                await cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            await self.async_conn.commit()
+        except (psycopg.errors.UniqueViolation, psycopg.errors.DuplicateObject):
+            await self.async_conn.rollback()
 
     def _get_table_name(self) -> str:
         """
@@ -481,10 +509,10 @@ class PostgresIndex(BaseIndex):
             )
         if not isinstance(self.conn, psycopg.Connection):
             raise TypeError("Index has not established a connection to Postgres")
+        self._ensure_vector_extension()
         with self.conn.cursor() as cur:
             cur.execute(
                 f"""
-                CREATE EXTENSION IF NOT EXISTS vector;
                 CREATE TABLE IF NOT EXISTS {table_name} (
                     id VARCHAR(255) PRIMARY KEY,
                     route VARCHAR(255),
@@ -1115,16 +1143,6 @@ class PostgresIndex(BaseIndex):
             raise TypeError("Index has not established a connection to Postgres")
         try:
             with self.conn.cursor() as cur:
-                # Forcibly terminate other connections to the database (CI safety)
-                cur.execute(
-                    """
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = current_database()
-                      AND pid <> pg_backend_pid();
-                    """
-                )
-                self.conn.commit()
                 cur.execute(f"DROP TABLE IF EXISTS {table_name}")
                 self.conn.commit()
         except Exception:

@@ -49,7 +49,8 @@ class TestHFEndpointEncoder:
         response = encoder.query({"inputs": "Hello World!", "parameters": {}})
         assert response == [0.1, 0.2, 0.3]
 
-    def test_query_failure(self, encoder, requests_mock):
+    def test_query_failure(self, encoder, requests_mock, mocker):
+        mocker.patch("semantic_router.encoders.huggingface.time.sleep")
         requests_mock.post(
             "https://api-inference.huggingface.co/models/bert-base-uncased",
             text="Error",

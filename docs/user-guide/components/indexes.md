@@ -1,182 +1,154 @@
-Indexes are critical components in Semantic Router that store and retrieve embeddings efficiently. They act as the search backend that enables Semantic Router to find the most relevant routes for incoming queries.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/indexes), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-## Understanding Indexes
+An index is where Semantic Router stores your route embeddings and searches them. It's the search backend behind every routing decision.
 
-In Semantic Router, an index serves several key purposes:
+## What an index does
 
-1. **Store embeddings** of route utterances
-2. **Search for similar vectors** when routing queries
-3. **Persist route configurations** across sessions
-4. **Scale to handle large numbers** of routes and utterances
+An index handles four things:
 
-The choice of index can significantly impact the performance, scalability, and persistence capabilities of your semantic routing system.
+1. **Stores** the embeddings of your route utterances.
+2. **Searches** for the most similar vectors when a query comes in.
+3. **Persists** your routes across sessions (remote indexes only).
+4. **Scales** to large numbers of routes and utterances.
 
-## Local vs. Remote Indexes
+Your choice of index shapes performance, scale, and whether your routes survive a restart.
 
-Semantic Router supports both local (in-memory) and remote (cloud-based) indexes:
+## Local vs. remote
 
-### Local Indexes
+### Local indexes
 
-Local indexes store embeddings in memory, making them fast but ephemeral. They're perfect for development, testing, or applications with a small number of routes.
-
-**Example usage**:
+A local index keeps embeddings in memory. It's fast and needs zero setup, but it's gone when your process exits. Ideal for development, testing, and small route sets.
 
 ```python
-from semantic_router.index import LocalIndex
-from semantic_router.routers import SemanticRouter
-from semantic_router.encoders import OpenAIEncoder
 import os
+from semantic_router import Route, SemanticRouter
+from semantic_router.encoders import OpenAIEncoder
+from semantic_router.index import LocalIndex
 
-# Set up API key
 os.environ["OPENAI_API_KEY"] = "your-api-key"
 
-# Create routes
-from semantic_router import Route
 routes = [
     Route(name="weather", utterances=["How's the weather?", "Is it raining?"]),
-    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"])
+    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"]),
 ]
 
-# Initialize the local index
-index = LocalIndex()
-
-# Create a router with the local index
 router = SemanticRouter(
     encoder=OpenAIEncoder(),
     routes=routes,
-    index=index
+    index=LocalIndex(),
 )
 
-# Use the router
 result = router("What's the weather like today?")
 print(result.name)  # "weather"
 ```
 
-### Remote Indexes
+### Remote indexes
 
-Remote indexes store embeddings in cloud-based vector databases, making them persistent and scalable. They're ideal for production applications or systems with many routes.
+A remote index stores embeddings in a vector database. Your routes persist, and you can scale to millions of vectors. This is what you want in production.
 
-**Example usage with Pinecone**:
+Here's Pinecone:
 
 ```python
-from semantic_router.index import PineconeIndex
-from semantic_router.routers import SemanticRouter
-from semantic_router.encoders import OpenAIEncoder
 import os
+from semantic_router import Route, SemanticRouter
+from semantic_router.encoders import OpenAIEncoder
+from semantic_router.index import PineconeIndex
 
-# Set up API keys
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 os.environ["PINECONE_API_KEY"] = "your-pinecone-api-key"
 
-# Create routes
-from semantic_router import Route
 routes = [
     Route(name="weather", utterances=["How's the weather?", "Is it raining?"]),
-    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"])
+    Route(name="politics", utterances=["Tell me about politics", "Who's the president?"]),
 ]
 
-# Initialize the Pinecone index
 index = PineconeIndex(
     index_name="semantic-router",
-    dimensions=1536  # Must match your encoder's dimension
+    dimensions=1536,  # must match your encoder
 )
 
-# Create a router with the Pinecone index
 router = SemanticRouter(
     encoder=OpenAIEncoder(),
     routes=routes,
     index=index,
-    auto_sync="remote"  # Automatically sync routes to remote index
+    auto_sync="remote",  # push local routes to the remote index
 )
 
-# Use the router
 result = router("What's the weather like today?")
 print(result.name)  # "weather"
 ```
 
-## Hybrid Indexes
+## Hybrid indexes
 
-For advanced use cases, Semantic Router also provides a hybrid index that combines both dense and sparse embeddings:
+For hybrid routing, you need an index that stores both dense and sparse vectors. `HybridLocalIndex` does that in memory:
 
 ```python
-from semantic_router.index import HybridLocalIndex
+import os
 from semantic_router.routers import HybridRouter
 from semantic_router.encoders import OpenAIEncoder, AurelioSparseEncoder
-import os
+from semantic_router.index import HybridLocalIndex
 
-# Set up API keys
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 os.environ["AURELIO_API_KEY"] = "your-aurelio-api-key"
 
-# Initialize dense and sparse encoders
-dense_encoder = OpenAIEncoder()
-sparse_encoder = AurelioSparseEncoder()
-
-# Create a hybrid index
-index = HybridLocalIndex()
-
-# Create a hybrid router
 router = HybridRouter(
-    encoder=dense_encoder,
-    sparse_encoder=sparse_encoder,
+    encoder=OpenAIEncoder(),
+    sparse_encoder=AurelioSparseEncoder(),
     routes=routes,
-    index=index,
-    alpha=0.5  # Balance between dense (0) and sparse (1) embeddings
+    index=HybridLocalIndex(),
+    alpha=0.5,  # 0 = all dense, 1 = all sparse
 )
 ```
 
-## Supported Indexes
+## Supported indexes
 
-| Index | Description | Installation |
-|-------|-------------|-------------|
-| [LocalIndex](https://semantic-router.aurelio.ai/api/index/local) | In-memory index for development and testing | `pip install -qU semantic-router` |
-| [HybridLocalIndex](https://semantic-router.aurelio.ai/api/index/hybrid_local) | In-memory index supporting hybrid search | `pip install -qU "semantic-router[hybrid]"` |
-| [PineconeIndex](https://semantic-router.aurelio.ai/api/index/pinecone) | Pinecone vector database integration | `pip install -qU "semantic-router[pinecone]"` |
-| [QdrantIndex](https://semantic-router.aurelio.ai/api/index/qdrant) | Qdrant vector database integration | `pip install -qU "semantic-router[qdrant]"` |
-| [PostgresIndex](https://semantic-router.aurelio.ai/api/index/postgres) | PostgreSQL with pgvector extension | `pip install -qU "semantic-router[postgres]"` |
+| Index | What it is | Install |
+|-------|------------|---------|
+| [LocalIndex](../../client-reference/index/local) | In-memory, for development and testing | base |
+| [HybridLocalIndex](../../client-reference/index/hybrid_local) | In-memory, dense and sparse | base |
+| [PineconeIndex](../../client-reference/index/pinecone) | Pinecone vector database | `pip install -qU "semantic-router[pinecone]"` |
+| [QdrantIndex](../../client-reference/index/qdrant) | Qdrant vector database | `pip install -qU "semantic-router[qdrant]"` |
+| [PostgresIndex](../../client-reference/index/postgres) | PostgreSQL with pgvector | `pip install -qU "semantic-router[postgres]"` |
 
-## Auto-Sync Feature
+## Keeping local and remote in sync
 
-Semantic Router provides an auto-sync feature that keeps your routes in sync between local and remote indexes:
+With a remote index, your in-memory routes and the stored ones can drift. The `auto_sync` parameter tells the router how to reconcile them at startup:
 
 ```python
-# Initialize router with auto-sync to remote index
 router = SemanticRouter(
     encoder=encoder,
     routes=routes,
     index=remote_index,
-    auto_sync="remote"  # Options: "local", "remote", None
+    auto_sync="remote",  # "local", "remote", or None
 )
 
-# Add a new route - it will be automatically synced to the remote index
-new_route = Route(name="greetings", utterances=["Hello there", "Hi, how are you?"])
-router.add(new_route)
+# adding a route syncs it automatically
+router.add(Route(name="greetings", utterances=["Hello there", "Hi, how are you?"]))
 ```
 
-Auto-sync modes:
-- `"local"`: Sync from remote to local (pull)
-- `"remote"`: Sync from local to remote (push)
-- `None`: No automatic syncing
+- `"local"` — local is the source of truth; push it to remote.
+- `"remote"` — remote is the source of truth; pull it into local.
+- `None` — don't sync.
 
-## Considerations for Choosing an Index
+There are more strategies, including merges. The [sync guide](../features/sync) covers them all.
 
-When selecting an index for your application, consider:
+## Choosing an index
 
-1. **Persistence**: Local indexes are lost when your application restarts; remote indexes persist
-2. **Scalability**: Remote indexes can handle millions of vectors; local indexes are limited by memory
-3. **Latency**: Local indexes have lower latency; remote indexes add network overhead
-4. **Setup complexity**: Local indexes require no setup; remote indexes require account creation and configuration
-5. **Cost**: Local indexes are free; remote indexes may incur usage costs
-6. **Hybrid search**: Only certain indexes support combined dense and sparse search
+1. **Persistence.** Local indexes vanish on restart. Remote ones don't.
+2. **Scale.** Local is bounded by memory. Remote handles millions of vectors.
+3. **Latency.** Local is fastest. Remote adds a network hop.
+4. **Setup.** Local needs nothing. Remote needs an account and config.
+5. **Cost.** Local is free. Remote may bill for usage.
+6. **Hybrid search.** Only some indexes store both dense and sparse vectors.
 
-## Index Methods
+## Index methods
 
-All indexes in Semantic Router inherit from `BaseIndex` and implement these key methods:
+Every index inherits from `BaseIndex` and implements:
 
-- `add()`: Add embeddings to the index
-- `query()`: Search for similar vectors
-- `delete()`: Remove routes from the index
-- `describe()`: Get information about the index
-- `is_ready()`: Check if the index is initialized and ready for use
+- `add()` — add embeddings.
+- `query()` — search for similar vectors.
+- `delete()` — remove a route.
+- `describe()` — get index info.
+- `is_ready()` — check it's initialized.
 
-For detailed information on specific indexes and their configuration options, refer to their respective documentation pages. 
+Each index's reference page covers its configuration options.
