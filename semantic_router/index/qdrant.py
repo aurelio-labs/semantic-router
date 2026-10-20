@@ -631,10 +631,10 @@ class QdrantIndex(BaseIndex):
     async def ais_ready(self) -> bool:
         """Checks if the index is ready to be used asynchronously."""
         if self.aclient is None:
-            # In-memory or sync-only mode, treat as not ready for async
-            return False
-        # A failed check raises, as is_ready() does. Callers treat False as "not set up yet"
-        # and initialise or sync the index, so it must not stand in for "could not check".
+            # In-memory Qdrant has no async client; fall back to the sync check
+            return self.is_ready()
+        # a failed check raises, as is_ready() does, so "could not check" never reads
+        # as "not set up yet"
         return await self.aclient.collection_exists(self.index_name)
 
     async def aadd(

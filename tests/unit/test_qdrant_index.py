@@ -519,12 +519,6 @@ class TestReadiness:
             await idx.ais_ready()
 
     @pytest.mark.asyncio
-    async def test_ais_ready_is_false_without_an_async_client(self):
-        idx = make_index()
-        idx.aclient = None
-        assert await idx.ais_ready() is False
-
-    @pytest.mark.asyncio
     async def test_ais_ready_reports_whether_the_collection_exists(self):
         idx = make_index()
         idx.aclient = MagicMock()
