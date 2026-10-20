@@ -70,9 +70,10 @@ class RouteChoice(BaseModel):
         calibrator is fitted, otherwise the raw score.
     :param calibrated: whether ``confidence`` is a calibrated probability.
     :param matched_utterances: utterance-level match details when the caller opts
-        in via ``router(..., return_utterances=True)``. Only ``IndexedRouter``
-        populates this; ``DecisionRouter``, ``Chain`` and ``Merge`` always leave
-        it as ``None`` because they never run an index query themselves.
+        in via ``router(..., return_utterances=True)``. Populated by
+        ``IndexedRouter``, and forwarded by ``Chain`` and ``Merge`` from their
+        index-backed sub-routers. ``DecisionRouter`` leaves this as ``None``
+        because it never runs an index query itself.
     """
 
     name: Optional[str] = None
@@ -80,7 +81,8 @@ class RouteChoice(BaseModel):
     confidence: Optional[float] = None
     calibrated: bool = False
     # utterance-level match details; None unless the caller asked and the router
-    # supports it (currently only IndexedRouter with return_utterances=True)
+    # supports it (DecisionRouter cannot expose matches; Chain/Merge forward from
+    # their sub-routers; IndexedRouter populates directly when return_utterances=True)
     matched_utterances: Optional[list[MatchedUtterance]] = None
 
 
