@@ -1,7 +1,9 @@
+import hashlib
 import importlib
 import os
 import tempfile
 import time
+import uuid
 from datetime import datetime
 from functools import wraps
 from platform import python_version
@@ -11,6 +13,7 @@ import pytest
 
 from semantic_router.encoders import (
     CohereEncoder,
+    FastEmbedEncoder,
     OpenAIEncoder,
 )
 from semantic_router.index.base import BaseIndex
@@ -23,8 +26,29 @@ from semantic_router.routers import HybridRouter, SemanticRouter
 from semantic_router.schema import RouteChoice
 from semantic_router.utils.logger import logger
 
-PINECONE_SLEEP = 8
+# The retry delay only applies when an assertion fails and is retried.
+# pinecone-local is consistent immediately, so retries never need to wait
+# there; the cloud service needs a moment after writes.
+PINECONE_LOCAL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080").startswith(
+    "http://"
+)
+PINECONE_SLEEP = 0 if PINECONE_LOCAL else 8
 RETRY_COUNT = 10
+
+
+HAS_FASTEMBED = importlib.util.find_spec("fastembed") is not None
+
+
+class LocalTestEncoder(FastEmbedEncoder):
+    """Small real embedding model that runs in-process (all-MiniLM-L6-v2 via
+    fastembed, ~90MB, downloaded once and cached).
+
+    Lets the router/index integration tests run end-to-end against real vector
+    stores (pinecone-local, pgvector, qdrant) without any API keys. Hosted
+    encoders are still exercised by the `live` parametrizations below.
+    """
+
+    name: str = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 # retry decorator for PineconeIndex cases (which need delay)
@@ -62,6 +86,13 @@ TEST_ID = (
 )
 
 
+def per_test_id() -> str:
+    """Short id that is unique per test but stable within one test, so parallel
+    workers never share a Pinecone index while a test can still re-open its own."""
+    current = os.environ.get("PYTEST_CURRENT_TEST", TEST_ID)
+    return "t-" + hashlib.md5(current.encode()).hexdigest()[:10]
+
+
 def init_index(
     index_cls,
     dimensions: Optional[int] = None,
@@ -85,6 +116,8 @@ def init_index(
                 dimensions = 1536
             elif not dimensions and "CohereEncoder" in index_name:
                 dimensions = 1024
+            elif not dimensions and "LocalTestEncoder" in index_name:
+                dimensions = 384
         # Use a stable shared index if provided via env to avoid creation/quota issues in CI
         # Append encoder name to create separate indexes per encoder dimension
         shared_index = os.environ.get("PINECONE_INDEX_NAME", "").strip()
@@ -96,18 +129,25 @@ def init_index(
             if not namespace:
                 namespace = TEST_ID
         else:
-            # Fallback: unique index name per test run
+            # Unique index name per test so parallel workers never collide
+            test_id = per_test_id()
             effective_index_name = (
-                TEST_ID if not index_name else f"{TEST_ID}-{index_name.lower()}"
+                test_id if not index_name else f"{test_id}-{index_name.lower()}"
             )
 
         index = index_cls(
             index_name=effective_index_name, dimensions=dimensions, namespace=namespace
         )
     elif index_cls is PostgresIndex:
+        # Unique table per test so tests can run in parallel against one database.
         index = index_cls(
-            index_name=index_name or "index", index_prefix="", namespace=namespace
+            index_name=f"test_{uuid.uuid4().hex}", index_prefix="", namespace=namespace
         )
+    elif index_cls is QdrantIndex:
+        # Use a real Qdrant server when QDRANT_URL is set, otherwise in-memory.
+        url = os.getenv("QDRANT_URL")
+        kwargs = {"location": None, "url": url} if url else {}
+        index = QdrantIndex(index_name=f"test_{uuid.uuid4().hex}", **kwargs)
     else:
         index = index_cls()
     return index
@@ -237,7 +277,7 @@ def get_test_indexes():
 
 
 def get_test_encoders():
-    encoders = [OpenAIEncoder]
+    encoders = [LocalTestEncoder, OpenAIEncoder]
     if importlib.util.find_spec("cohere") is not None:
         encoders.append(CohereEncoder)
     return encoders
@@ -248,19 +288,35 @@ def get_test_routers():
     return routers
 
 
-@pytest.mark.parametrize(
-    "index_cls,encoder_cls,router_cls",
-    [
-        (index, encoder, router)
-        for index in get_test_indexes()
-        for encoder in get_test_encoders()
+def router_params(encoders, indexes=None):
+    """Every (index, encoder, router) combination. Combinations that use a
+    hosted encoder are marked `live` so they only run when keys are present."""
+    marks = {
+        LocalTestEncoder: [
+            pytest.mark.skipif(not HAS_FASTEMBED, reason="needs the [fastembed] extra")
+        ],
+        OpenAIEncoder: [pytest.mark.live("OPENAI_API_KEY")],
+        CohereEncoder: [pytest.mark.live("COHERE_API_KEY")],
+    }
+    return [
+        pytest.param(index, encoder, router, marks=marks[encoder])
+        for index in (indexes if indexes is not None else get_test_indexes())
+        for encoder in encoders
         for router in get_test_routers()
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "index_cls,encoder_cls,router_cls", router_params(get_test_encoders())
 )
 class TestIndexEncoders:
     def test_initialization(self, routes, index_cls, encoder_cls, router_cls):
-        # If Pinecone is selected but no shared index is provided, skip to avoid quota failures
-        if index_cls is PineconeIndex and not os.environ.get("PINECONE_INDEX_NAME"):
+        # In cloud mode a shared index is required to avoid quota failures
+        if (
+            index_cls is PineconeIndex
+            and not PINECONE_LOCAL
+            and not os.environ.get("PINECONE_INDEX_NAME")
+        ):
             pytest.skip(
                 "Skipping Pinecone test: set PINECONE_INDEX_NAME to an existing index to run."
             )
@@ -303,6 +359,7 @@ class TestIndexEncoders:
         else:
             assert score_threshold == encoder.score_threshold
 
+    @pytest.mark.live("OPENAI_API_KEY")  # encoder=None falls back to OpenAIEncoder
     def test_initialization_no_encoder(self, index_cls, encoder_cls, router_cls):
         route_layer_none = router_cls(encoder=None)
         score_threshold = route_layer_none.score_threshold
@@ -314,12 +371,7 @@ class TestIndexEncoders:
 
 @pytest.mark.parametrize(
     "index_cls,encoder_cls,router_cls",
-    [
-        (index, encoder, router)
-        for index in get_test_indexes()
-        for encoder in [OpenAIEncoder]
-        for router in get_test_routers()
-    ],
+    router_params([LocalTestEncoder, OpenAIEncoder]),
 )
 class TestSemanticRouter:
     def test_initialization_dynamic_route(
@@ -374,7 +426,7 @@ class TestSemanticRouter:
             index=index,
             auto_sync="local",
         )
-        if index_cls is PineconeIndex:
+        if index_cls is PineconeIndex and not PINECONE_LOCAL:
             time.sleep(PINECONE_SLEEP)  # allow for index to be updated
         route_layer.add(routes=route_single_utterance)
         score_threshold = route_layer.score_threshold
@@ -674,12 +726,8 @@ class TestSemanticRouter:
 
 @pytest.mark.parametrize(
     "index_cls,encoder_cls,router_cls",
-    [
-        (index, encoder, router)
-        for index in [LocalIndex]  # no need to test with multiple indexes
-        for encoder in [OpenAIEncoder]  # no need to test with multiple encoders
-        for router in get_test_routers()
-    ],
+    # router-only behaviour: one index is enough
+    router_params([LocalTestEncoder, OpenAIEncoder], indexes=[LocalIndex]),
 )
 class TestRouterOnly:
     def test_semantic_classify(self, routes, index_cls, encoder_cls, router_cls):
@@ -745,10 +793,14 @@ class TestRouterOnly:
             index=index,
             auto_sync="local",
         )
+        # the router adopts the encoder's default threshold
         if router_cls is HybridRouter:
-            assert route_layer.score_threshold == 0.3 * route_layer.alpha
+            assert (
+                route_layer.score_threshold
+                == encoder.score_threshold * route_layer.alpha
+            )
         else:
-            assert route_layer.score_threshold == 0.3
+            assert route_layer.score_threshold == encoder.score_threshold
 
     def test_json(self, routes, index_cls, encoder_cls, router_cls):
         temp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
@@ -832,7 +884,11 @@ class TestRouterOnly:
                 "Route 2": target,
             }
         else:
-            assert route_layer.get_thresholds() == {"Route 1": 0.3, "Route 2": 0.3}
+            target = encoder.score_threshold
+            assert route_layer.get_thresholds() == {
+                "Route 1": target,
+                "Route 2": target,
+            }
 
     def test_with_multiple_routes_passing_threshold(
         self, routes, index_cls, encoder_cls, router_cls
@@ -900,7 +956,7 @@ class TestRouterOnly:
         unsupported_aggregation = "unsupported_aggregation_method"
         with pytest.raises(
             ValueError,
-            match=f"Unsupported aggregation method chosen: {unsupported_aggregation}. Choose either 'SUM', 'MEAN', or 'MAX'.",
+            match=f"Unsupported aggregation method chosen: {unsupported_aggregation}. Choose either 'sum', 'mean', or 'max'.",
         ):
             route_layer._set_aggregation_method(unsupported_aggregation)
 
@@ -965,14 +1021,10 @@ class TestRouterOnly:
             route_layer.update(name="Route 1", utterances=["New utterance"])
 
 
+# Fitting thresholds only makes sense with a real embedding model, so this
+# class is live-only.
 @pytest.mark.parametrize(
-    "index_cls,encoder_cls,router_cls",
-    [
-        (index, encoder, router)
-        for index in get_test_indexes()
-        for encoder in [OpenAIEncoder]
-        for router in get_test_routers()
-    ],
+    "index_cls,encoder_cls,router_cls", router_params([OpenAIEncoder])
 )
 class TestLayerFit:
     def test_eval(self, routes, test_data, index_cls, encoder_cls, router_cls):

@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 removes dynamic routes. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1#dynamic-routes-and-the-llm-classes-are-gone) shows what to do instead.
+
 There are two kinds of route. A *static* route tells you which route matched — you get back its name, like `"math"`. A *dynamic* route does that too, but it also pulls the details out of the query and hands them to a function.
 
 Say you have a route with utterances like these:

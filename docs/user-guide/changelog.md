@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 ### v0.1.12
 
 The `0.1.12` release brings Pinecone v7 support and AWS Bedrock boto3 client integration, improving compatibility and expanding cloud deployment options.

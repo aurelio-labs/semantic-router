@@ -1,0 +1,36 @@
+# Local services used by the test suite. Start with `make services`.
+#
+# Nothing here needs an API key. The same three services run in CI
+# (see .github/workflows/ci.yml), so `make test` locally exercises the
+# exact same backends as a pull request does.
+services:
+  pinecone:
+    # In-memory Pinecone emulator. Each index gets its own data-plane port,
+    # allocated upwards from 5081, so publish a range rather than one port.
+    image: ghcr.io/pinecone-io/pinecone-local:latest
+    platform: linux/amd64
+    environment:
+      PORT: "5080"
+      PINECONE_HOST: localhost
+    ports:
+      - "5080-5199:5080-5199"
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    ports:
+      - "6333:6333"
+      - "6334:6334"

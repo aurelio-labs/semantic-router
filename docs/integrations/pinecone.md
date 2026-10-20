@@ -154,20 +154,27 @@ Common errors and solutions:
 - **404 (Not Found)**: Index or namespace doesn't exist yet (will be created)
 - **Dimension Mismatch**: Ensure encoder dimensions match index dimensions
 
-## CI/CD Configuration
+## Testing without Pinecone cloud
 
-Example GitHub Actions configuration:
+Pinecone's local emulator lets you run your own test suite against `PineconeIndex`
+with no API key and no quota:
 
-```yaml
-env:
-  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-  PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
-
-steps:
-  - name: Run tests
-    run: |
-      PINECONE_API_BASE_URL="https://api.pinecone.io" pytest
+```bash
+docker run -d --name pinecone-local \
+  -e PORT=5080 -e PINECONE_HOST=localhost \
+  -p 5080-5199:5080-5199 \
+  ghcr.io/pinecone-io/pinecone-local:latest
 ```
+
+```bash
+export PINECONE_API_KEY=pclocal
+export PINECONE_API_BASE_URL=http://localhost:5080
+```
+
+The emulator opens one extra port per index, counting up from 5081, so publish a
+range wide enough for the number of indexes your tests create, and delete
+indexes when you are done with them. `PineconeIndex` treats any `http://` base
+URL as the emulator and skips the cloud-only calls.
 
 ## Example Notebooks
 
