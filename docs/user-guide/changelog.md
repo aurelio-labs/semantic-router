@@ -3,6 +3,24 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.1.0
+
+`1.1.0` adds a MongoDB Atlas index and fixes four bugs. Code and files written for `1.0.2` work unchanged, apart from the `QdrantIndex.ais_ready()` change below.
+
+#### Feature: MongoDB Atlas Vector Search
+
+- `MongoDbIndex` stores routes in MongoDB and searches them with Atlas Vector Search: `pip install "semantic-router[mongodb]"`.
+- The first `add` creates the collection and its vector search index, so there's nothing to set up in Atlas first. Atlas makes new records searchable a moment after they're written, so `add` waits until they are (up to `sync_timeout`, 30 seconds by default).
+- Cosine and dot product scores are the raw similarity, the same scale as the other indexes. `namespace` keeps tenants apart in one collection.
+- The connection string comes from `connection_uri` or `MONGO_CONNECTION_URI`, and is never written to a file. Files save the rest, so a router on it saves and loads like any other.
+
+#### Fixes
+
+- `BedrockEncoder` now retries a failed call (throttling, an expired session token), making up to three attempts with backoff. It used to raise on the first error.
+- `PineconeIndex.aquery()` accepts a sparse vector as a dict, as `query()` does.
+- `QdrantIndex.ais_ready()` falls back to the sync check for an in-memory index, so it agrees with `is_ready()`.
+- `QdrantIndex.ais_ready()` now raises when the check itself fails (Qdrant unreachable), as `is_ready()` does. It used to log a warning and return `False`. **If you call it yourself, handle the exception** where you used to treat `False` as "not ready".
+
 ### v1.0.2
 
 `1.0.2` adds a decision model that runs locally. Code and files written for `1.0.1` work unchanged.
