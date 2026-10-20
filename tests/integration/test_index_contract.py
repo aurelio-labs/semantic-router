@@ -240,7 +240,12 @@ def test_postgres_adds_the_metadata_column_to_an_older_table(make_index):
     assert isinstance(index, PostgresIndex)
     # a table as 0.x created it, with no metadata column
     with psycopg.connect(index.connection_string) as conn:
-        conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        # CREATE EXTENSION IF NOT EXISTS is not atomic under parallel pytest workers;
+        # the loser hits the unique index on pg_extension. Treat it as "already exists".
+        try:
+            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        except psycopg.errors.UniqueViolation:
+            conn.rollback()
         conn.execute(
             f"CREATE TABLE {index._get_table_name()} (id VARCHAR(255) PRIMARY KEY, "
             f"route VARCHAR(255), utterance TEXT, vector VECTOR({DIMS}))"
