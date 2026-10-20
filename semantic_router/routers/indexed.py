@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Callable, Literal, Sequence
+from typing import Callable, List, Literal, Sequence, Tuple
 
 import numpy as np
 
@@ -234,6 +234,7 @@ class IndexedRouter(BaseRouter):
         # Call with return_utterances first when requested; fall back to calling
         # without the flag if the index (e.g. a user's custom BaseIndex subclass)
         # does not accept it.
+        result: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         try:
             if in_sync_call():
                 if return_utterances:

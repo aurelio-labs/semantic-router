@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, overload
 
 import numpy as np
 from pydantic import ConfigDict, Field
@@ -165,6 +165,35 @@ class LocalIndex(BaseIndex):
         """
         return self.index is not None and self.routes is not None
 
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
     def query(
         self,
         vector: np.ndarray,
@@ -215,6 +244,35 @@ class LocalIndex(BaseIndex):
             return scores, route_names, utterances
         return scores, route_names
 
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
     async def aquery(
         self,
         vector: np.ndarray,

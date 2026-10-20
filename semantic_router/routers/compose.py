@@ -12,10 +12,11 @@ from semantic_router.routers.base import BaseRouter, QueryResult
 class Chain(BaseRouter):
     """try routers in order; the first whose best confidence clears its bar answers.
 
-    ``Chain`` routes by delegating to its sub-routers in sequence. Because it never
-    runs an index query itself, ``matched_utterances`` on each ``RouteChoice`` is
-    always ``None`` — utterance-level matches only surface on the
-    ``IndexedRouter`` directly.
+    ``Chain`` routes by delegating to its sub-routers in sequence. It never runs
+    an index query itself, but when the caller opts in via
+    ``return_utterances=True``, it forwards ``matched_utterances`` from whichever
+    sub-router produced the winning choice. Sub-routers that are not
+    index-backed (e.g. ``DecisionRouter``) still leave it as ``None``.
     """
 
     def __init__(
@@ -89,10 +90,11 @@ class Chain(BaseRouter):
 class Merge(BaseRouter):
     """ask every router at once and take a weighted mean of their confidences per route.
 
-    ``Merge`` routes by blending confidences from its sub-routers. Because it never
-    runs an index query itself, ``matched_utterances`` on each ``RouteChoice`` is
-    always ``None`` — utterance-level matches only surface on the
-    ``IndexedRouter`` directly.
+    ``Merge`` routes by blending confidences from its sub-routers. It never runs
+    an index query itself, but when the caller opts in via
+    ``return_utterances=True``, it collects and merges ``matched_utterances`` from
+    every index-backed sub-router that exposes them. Sub-routers that cannot
+    expose matches (e.g. ``DecisionRouter``) contribute nothing.
     """
 
     def __init__(
