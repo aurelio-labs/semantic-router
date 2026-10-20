@@ -277,6 +277,7 @@ class BedrockEncoder(DenseEncoder):
                             ) from e
                     sleep(2**attempt)
                     logger.warning(f"Retrying in {2**attempt} seconds...")
+                    continue
                 raise ValueError(
                     f"Retries exhausted, Bedrock call failed. Error: {error}"
                 ) from error

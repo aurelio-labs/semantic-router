@@ -142,7 +142,7 @@ class TestBedrockEncoder:
         error_response = {"Error": {"Code": "ExpiredTokenException"}}
         mocker.patch(
             "semantic_router.encoders.bedrock.BedrockEncoder._initialize_client",
-            return_value=None,
+            return_value=bedrock_encoder.client,
         )
 
         def invoke_model_side_effect(*args, **kwargs):
@@ -159,8 +159,7 @@ class TestBedrockEncoder:
         invoke_model_side_effect.expired_token_raised = False
         bedrock_encoder.client.invoke_model.side_effect = invoke_model_side_effect
 
-        with pytest.raises(ValueError):
-            bedrock_encoder(["test"])
+        assert bedrock_encoder(["test"]) == [[0.1, 0.2, 0.3]]
 
         bedrock_encoder._initialize_client.assert_called_once_with(
             bedrock_encoder.access_key_id,
@@ -168,6 +167,32 @@ class TestBedrockEncoder:
             None,
             bedrock_encoder.region,
         )
+
+    def test_call_retries_client_error(self, mocker, bedrock_encoder):
+        from botocore.exceptions import ClientError
+
+        sleep = mocker.patch("semantic_router.encoders.bedrock.sleep")
+        throttled = ClientError(
+            {"Error": {"Code": "ThrottlingException"}}, "invoke_model"
+        )
+        ok = {"body": BytesIO(json.dumps({"embedding": [0.1, 0.2]}).encode())}
+        bedrock_encoder.client.invoke_model.side_effect = [throttled, throttled, ok]
+
+        assert bedrock_encoder(["test"]) == [[0.1, 0.2]]
+        assert bedrock_encoder.client.invoke_model.call_count == 3
+        assert [c.args for c in sleep.call_args_list] == [(1,), (2,)]
+
+    def test_call_raises_after_retries_exhausted(self, mocker, bedrock_encoder):
+        from botocore.exceptions import ClientError
+
+        mocker.patch("semantic_router.encoders.bedrock.sleep")
+        bedrock_encoder.client.invoke_model.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException"}}, "invoke_model"
+        )
+
+        with pytest.raises(ValueError, match="Retries exhausted"):
+            bedrock_encoder(["test"])
+        assert bedrock_encoder.client.invoke_model.call_count == 3
 
     def test_raises_value_error_if_call_to_bedrock_fails(self, bedrock_encoder):
         bedrock_encoder.client.invoke_model.side_effect = Exception(
