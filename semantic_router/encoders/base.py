@@ -1,7 +1,7 @@
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, List
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding
@@ -9,21 +9,9 @@ from semantic_router.schema import SparseEmbedding
 
 class DenseEncoder(BaseModel):
     name: str
-    score_threshold: Optional[float] = None
     type: str = Field(default="base")
 
     model_config: ClassVar[ConfigDict] = ConfigDict(arbitrary_types_allowed=True)
-
-    @field_validator("score_threshold")
-    def set_score_threshold(cls, v: float | None) -> float | None:
-        """Set the score threshold. If None, the score threshold is not used.
-
-        :param v: The score threshold.
-        :type v: float | None
-        :return: The score threshold.
-        :rtype: float | None
-        """
-        return float(v) if v is not None else None
 
     def __call__(self, docs: List[Any]) -> List[List[float]]:
         """Encode a list of documents. Documents can be any type, but the encoder must
@@ -98,16 +86,18 @@ class SparseEncoder(BaseModel):
             sparse_arrays = sparse_arrays.to_dense().cpu().numpy()
         if sparse_arrays.ndim != 2:
             raise ValueError(f"Expected a 2D array, got a {sparse_arrays.ndim}D array.")
-        # get coordinates of non-zero values
-        coords = np.nonzero(sparse_arrays)
-        if coords[0].size == 0:
-            # Sparse Embeddings can be all zero, if query tokens do not appear in corpus at all
-            return [SparseEmbedding(embedding=np.empty((1, 2)))]
-        # create compact array
-        compact_array = np.array([coords[0], coords[1], sparse_arrays[coords]]).T
-        arr_range = range(compact_array[:, 0].max().astype(int) + 1)
-        arrs = [compact_array[compact_array[:, 0] == i, :][:, 1:3] for i in arr_range]
-        return [SparseEmbedding.from_compact_array(arr) for arr in arrs]
+        embeddings = []
+        for row in sparse_arrays:
+            # get positions of non-zero values
+            (idx,) = np.nonzero(row)
+            if idx.size == 0:
+                # a row can be all zero if none of its tokens are in the corpus:
+                # keep a single zero entry, so there is one embedding per row
+                embeddings.append(SparseEmbedding(embedding=np.zeros((1, 2))))
+            else:
+                compact_array = np.array([idx, row[idx]]).T
+                embeddings.append(SparseEmbedding.from_compact_array(compact_array))
+        return embeddings
 
 
 class FittableMixin:

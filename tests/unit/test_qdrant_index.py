@@ -66,6 +66,18 @@ def shared_pair():
 
 
 class TestConstruction:
+    def test_url_alone_needs_no_location(self):
+        # location defaults to in-memory; a url must replace it, not clash with it
+        idx = QdrantIndex(index_name="x", url="http://localhost:6333")
+        assert idx.location is None
+        assert idx.url == "http://localhost:6333"
+
+    def test_an_unknown_keyword_is_an_error(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="collection_name"):
+            QdrantIndex(collection_name="x")
+
     def test_defaults(self):
         idx = make_index()
         assert idx.namespace is None

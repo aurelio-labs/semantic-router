@@ -55,7 +55,6 @@ from semantic_router.encoders import LiteLLMEncoder
 encoder = LiteLLMEncoder(
     name="jina_ai/jina-embeddings-v3",
     api_key="your-jina-api-key",  # or set JINA_AI_API_KEY
-    score_threshold=0.4,
 )
 embeddings = encoder(["your text here"])
 ```
@@ -104,7 +103,6 @@ from semantic_router.encoders import LiteLLMEncoder
 # names must be "<provider>/<model>" - a bare model name raises a ValueError
 encoder = LiteLLMEncoder(
     name="openai/text-embedding-ada-002",
-    score_threshold=0.4
 )
 ```
 
@@ -115,7 +113,7 @@ The API key is taken from the `api_key` argument, or from `<PROVIDER>_API_KEY` i
 `LiteLLMEncoder` plugs into a router like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -123,10 +121,9 @@ routes = [
     Route(name="sales", utterances=["buy", "purchase"])
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 
@@ -165,18 +162,18 @@ instance `JinaEncoder` also reads `JINA_API_KEY`.
 
 ```python
 from semantic_router.encoders import LiteLLMEncoder
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 # routed through LiteLLM, so requests are cost-tracked
-encoder = LiteLLMEncoder(name="openai/text-embedding-3-small", score_threshold=0.3)
+encoder = LiteLLMEncoder(name="openai/text-embedding-3-small")
 
 routes = [
     Route(name="greeting", utterances=["hello", "hi"]),
     Route(name="goodbye", utterances=["bye", "goodbye"])
 ]
 
-router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+router = IndexedRouter(encoder=encoder, routes=routes)
 
 # LiteLLM automatically tracks costs
 result = router("hi there")

@@ -1,4 +1,7 @@
-# Configuration
+---
+title: Configuration
+description: Control Semantic Router's logging with environment variables.
+---
 
 ## Logging
 
@@ -36,8 +39,8 @@ Set the variable *before* importing the library:
 import os
 os.environ["SEMANTIC_ROUTER_LOG_LEVEL"] = "DEBUG"
 
-from semantic_router import Route, SemanticRouter
+from semantic_router import IndexedRouter, Route
 # debug logs now show
 ```
 
-Turn on `DEBUG` when you're chasing an encoder or index problem, want to see why a query matched the route it did, or need to understand what the library is doing under the hood.
+Turn on `DEBUG` when you're chasing an encoder or index problem, want to see what a router is doing on each call, or need to understand what the library is doing under the hood.

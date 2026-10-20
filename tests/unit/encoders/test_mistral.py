@@ -66,7 +66,6 @@ class TestMistralEncoderInit:
         enc = MistralEncoder("mistral-embed", mistralai_api_key="test_api_key")
         assert enc.name == "mistral-embed"
         assert enc.type == "mistral"
-        assert enc.score_threshold == 0.4
 
     def test_initialization_with_mistralai_env_key(self, mock_mistral, monkeypatch):
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)

@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "1.0.0.dev0"
+version = "1.0.2"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.10,<3.14"
@@ -35,9 +35,10 @@ ollama = ["ollama>=0.1.7"]
 local = [
     "transformers>=4.36.2 ; python_version < '3.13'",
     "tokenizers>=0.19 ; python_version < '3.13'",
-    "llama-cpp-python>=0.2.28,<0.2.86 ; python_version < '3.13'",
     "sentence-transformers>=5.0.0 ; python_version < '3.13'",
-    "torch>=2.6.0 ; python_version < '3.13'"
+    "torch>=2.6.0 ; python_version < '3.13'",
+    # GLiNER2DecisionModel: fastino/GLiNER2.5-Decide, a local decision model
+    "gliner2[local]>=2.1.0 ; python_version < '3.13'",
 ]
 pinecone = ["pinecone[asyncio]>=7.0.0,<8.0.0"]
 vision = [
@@ -55,6 +56,7 @@ bedrock = [
 postgres = [
     "psycopg[binary]>=3.1.0,<4",
 ]
+mongodb = ["pymongo>=4.13.0,<5"]
 fastembed = ["fastembed>=0.7.0,<1"]
 all = [
     "semantic-router[local]",
@@ -64,6 +66,7 @@ all = [
     "semantic-router[google]",
     "semantic-router[bedrock]",
     "semantic-router[postgres]",
+    "semantic-router[mongodb]",
     "semantic-router[fastembed]",
     "semantic-router[litellm]",
     "semantic-router[ollama]",
@@ -101,6 +104,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["I", "E501", "T201", "F404"]
+"benchmarks/*" = ["T201"]  # scripts report to stdout on purpose
 
 [tool.ruff]
 line-length = 88

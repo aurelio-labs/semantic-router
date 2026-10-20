@@ -3,8 +3,7 @@ This module provides the HFEndpointEncoder class to embeddings models using Hugg
 
 The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified Huggingface
 endpoint to generate embeddings for given documents. It requires the URL of the Huggingface
-API endpoint and an API key for authentication. The class supports customization of the score
-threshold for filtering or processing the embeddings.
+API endpoint and an API key for authentication.
 
 Example usage:
 
@@ -36,8 +35,7 @@ from semantic_router.utils.logger import logger
 
 class HuggingFaceEncoder(DenseEncoder):
     """HuggingFace encoder class for local embedding models. Models can be trained and
-    loaded from private repositories, or from the Huggingface Hub. The class supports
-    customization of the score threshold for filtering or processing the embeddings.
+    loaded from private repositories, or from the Huggingface Hub.
 
     Example usage:
 
@@ -62,8 +60,6 @@ class HuggingFaceEncoder(DenseEncoder):
     _torch: Any = PrivateAttr()
 
     def __init__(self, **data):
-        if data.get("score_threshold") is None:
-            data["score_threshold"] = 0.5
         super().__init__(**data)
         self._tokenizer, self._model = self._initialize_hf_model()
 
@@ -176,8 +172,7 @@ class HFEndpointEncoder(DenseEncoder):
 
     The HFEndpointEncoder class is a subclass of DenseEncoder and utilizes a specified
     Huggingface endpoint to generate embeddings for given documents. It requires the URL
-    of the Huggingface API endpoint and an API key for authentication. The class supports
-    customization of the score threshold for filtering or processing the embeddings.
+    of the Huggingface API endpoint and an API key for authentication.
 
     Example usage:
 
@@ -201,7 +196,6 @@ class HFEndpointEncoder(DenseEncoder):
         name: Optional[str] = "hugging_face_custom_endpoint",
         huggingface_url: Optional[str] = None,
         huggingface_api_key: Optional[str] = None,
-        score_threshold: float = 0.8,
     ):
         """Initializes the HFEndpointEncoder with the specified parameters.
 
@@ -211,16 +205,12 @@ class HFEndpointEncoder(DenseEncoder):
         :type huggingface_url: str
         :param huggingface_api_key: The API key for the Hugging Face API.
         :type huggingface_api_key: str
-        :param score_threshold: A threshold for processing the embeddings.
-        :type score_threshold: float
         :raise ValueError: If either `huggingface_url` or `huggingface_api_key` is None.
         """
         huggingface_url = huggingface_url or os.getenv("HF_API_URL")
         huggingface_api_key = huggingface_api_key or os.getenv("HF_API_KEY")
-        if score_threshold is None:
-            score_threshold = 0.8
 
-        super().__init__(name=name, score_threshold=score_threshold)  # type: ignore
+        super().__init__(name=name)  # type: ignore
 
         if huggingface_url is None:
             raise ValueError("HuggingFace endpoint url cannot be 'None'.")
@@ -293,14 +283,18 @@ class HFEndpointEncoder(DenseEncoder):
                 else:
                     response.raise_for_status()
 
-            except requests.exceptions.RequestException:
-                if attempt < max_retries - 1:
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries:
                     logger.info(f"Retrying attempt: {attempt} for payload: {payload} ")
                     time.sleep(retry_interval)
                     retry_interval += attempt
-                else:
+                elif e.response is not None:
                     raise ValueError(
-                        f"Query failed with status {response.status_code}: {response.text}"
-                    )
+                        f"Query failed with status {e.response.status_code}: "
+                        f"{e.response.text}"
+                    ) from e
+                else:
+                    # no response at all, e.g. a DNS or connection error
+                    raise ValueError(f"Query failed: {e}") from e
 
         return response.json()

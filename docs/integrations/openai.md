@@ -76,10 +76,10 @@ embeddings = await encoder.acall(["your text here"])
 
 ## Integration with Routers
 
-The `OpenAIEncoder` works with both `SemanticRouter` and `HybridRouter`:
+The `OpenAIEncoder` plugs into an `IndexedRouter` like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -93,10 +93,9 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 

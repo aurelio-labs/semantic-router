@@ -66,7 +66,6 @@ class TestClipEncoder:
         clip_encoder = CLIPEncoder(name=test_model_name)
         assert clip_encoder.name == test_model_name
         assert clip_encoder.type == "huggingface"
-        assert clip_encoder.score_threshold == 0.2
         assert clip_encoder.device == device
 
     @pytest.mark.skipif(
@@ -78,6 +77,28 @@ class TestClipEncoder:
 
         assert len(embeddings) == 2
         assert len(embeddings[0]) == embed_dim
+
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
+    def test_clip_encoder_batch_of_one_keeps_the_batch_dim(self, dummy_pil_image):
+        clip_encoder = CLIPEncoder(name=test_model_name)
+        # a single query is how routers call it; it must not come back flat
+        assert np.array(clip_encoder(["shrek"])).shape == (1, embed_dim)
+        assert np.array(clip_encoder([dummy_pil_image])).shape == (1, embed_dim)
+
+    @pytest.mark.skipif(
+        os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"
+    )
+    def test_clip_encoder_normalises_each_vector(self, dummy_pil_image):
+        clip_encoder = CLIPEncoder(name=test_model_name)
+        for embeddings in (
+            clip_encoder(["hello", "world", "shrek"]),
+            clip_encoder([dummy_pil_image, dummy_pil_image.rotate(90)]),
+        ):
+            np.testing.assert_allclose(
+                np.linalg.norm(embeddings, axis=1), 1.0, rtol=1e-5
+            )
 
     @pytest.mark.skipif(
         os.environ.get("RUN_HF_TESTS") is None, reason="Set RUN_HF_TESTS=1 to run"

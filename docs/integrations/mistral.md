@@ -29,7 +29,6 @@ os.environ["MISTRAL_API_KEY"] = "your-api-key"
 
 encoder = MistralEncoder(
     name="mistral-embed",
-    score_threshold=0.4,
     mistralai_api_key=os.environ["MISTRAL_API_KEY"]
 )
 ```
@@ -74,10 +73,10 @@ overridden this way.
 
 ## Integration with Routers
 
-The `MistralEncoder` works with both `SemanticRouter` and `HybridRouter`:
+The `MistralEncoder` plugs into an `IndexedRouter` like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -97,10 +96,9 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 
@@ -125,17 +123,17 @@ router = SemanticRouter(
 
 ```python
 from semantic_router.encoders import MistralEncoder
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
-encoder = MistralEncoder(name="mistral-embed", score_threshold=0.4)
+encoder = MistralEncoder(name="mistral-embed")
 
 routes = [
     Route(name="greeting", utterances=["hello", "hi", "hey"]),
     Route(name="goodbye", utterances=["bye", "goodbye", "see you"])
 ]
 
-router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+router = IndexedRouter(encoder=encoder, routes=routes)
 
 print(router("hi there").name)  # -> greeting
 ```

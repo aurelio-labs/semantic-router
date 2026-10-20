@@ -39,3 +39,4 @@ docs/build
 
 # fastembed model cache used by CI
 .fastembed_cache/
+benchmarks/.cache/

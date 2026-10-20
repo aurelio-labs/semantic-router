@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -85,3 +89,71 @@ class TestTfidfEncoder:
     def test_compute_idf_no_word_index(self, tfidf_encoder):
         with pytest.raises(ValueError, match="Word index is not initialized."):
             tfidf_encoder._compute_idf(["some docs"])
+
+    def test_out_of_vocabulary_query_has_no_nan(self, tfidf_encoder):
+        routes = [
+            Route(
+                name="test_route",
+                utterances=["some docs", "and more docs", "and even more docs"],
+            )
+        ]
+        tfidf_encoder.fit(routes)
+        result = tfidf_encoder(["docs", "gta5jabcxyz", "zzz qqq"])
+        assert len(result) == 3
+        for sparse_emb in result:
+            assert not np.isnan(sparse_emb.embedding).any()
+        assert result[1].to_dict() == {0: 0.0}
+        assert result[2].to_dict() == {0: 0.0}
+
+    def test_idf_is_positive_for_a_word_in_every_utterance(self, tfidf_encoder):
+        routes = [
+            Route(
+                name="test_route",
+                utterances=["some docs", "and more docs", "and even more docs"],
+            )
+        ]
+        tfidf_encoder.fit(routes)
+        # "docs" is in all three utterances
+        assert tfidf_encoder.idf[tfidf_encoder.word_index["docs"]] > 0
+        assert (tfidf_encoder.idf > 0).all()
+
+    def test_scores_are_bounded_to_unit_interval(self, tfidf_encoder):
+        utterances = ["some docs", "and more docs", "and even more docs", "docs docs"]
+        tfidf_encoder.fit([Route(name="test_route", utterances=utterances)])
+        docs = tfidf_encoder(utterances)
+        queries = tfidf_encoder(["more docs", "even more", "docs"])
+
+        def dot(a, b):
+            b_dict = b.to_dict()
+            return sum(v * b_dict.get(i, 0.0) for i, v in a.to_dict().items())
+
+        scores = [dot(q, d) for q in queries for d in docs]
+        assert min(scores) >= 0.0
+        assert max(scores) <= 1.0 + 1e-9
+        # an utterance scores exactly 1 against itself
+        for d in docs:
+            assert dot(d, d) == pytest.approx(1.0)
+
+
+def test_word_index_is_the_same_in_every_process():
+    """Word ids end up in remote indexes, so they must not depend on the
+    PYTHONHASHSEED of the process that fitted the encoder."""
+    code = (
+        "from semantic_router.encoders import TfidfEncoder\n"
+        "from semantic_router.route import Route\n"
+        "enc = TfidfEncoder()\n"
+        "enc.fit([Route(name='a', utterances=['the quick brown fox', 'jumps over',"
+        " 'the lazy dog', 'hello world', 'pack my box with five dozen jugs'])])\n"
+        "print(enc.word_index)\n"
+    )
+    indexes = {
+        subprocess.run(
+            [sys.executable, "-c", code],
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        for seed in ["0", "1", "2", "3"]
+    }
+    assert len(indexes) == 1, indexes

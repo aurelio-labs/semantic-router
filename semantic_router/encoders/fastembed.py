@@ -24,14 +24,9 @@ class FastEmbedEncoder(DenseEncoder):
     threads: Optional[int] = None
     _client: Any = PrivateAttr()
 
-    def __init__(self, score_threshold: float = 0.5, **data):
-        """Initialize the FastEmbed encoder.
-
-        :param score_threshold: The threshold for the score of the embedding.
-        :type score_threshold: float
-        """
-        # TODO default score_threshold not thoroughly tested, should optimize
-        super().__init__(score_threshold=score_threshold, **data)
+    def __init__(self, **data):
+        """Initialize the FastEmbed encoder."""
+        super().__init__(**data)
         self._client = self._initialize_client()
 
     def _initialize_client(self):

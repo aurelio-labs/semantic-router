@@ -4,7 +4,7 @@ Test tiers
 ----------
 * default (``make test``): unit tests plus integration tests that run against
   the local service containers in ``compose.yaml`` (pinecone-local, pgvector,
-  qdrant). No API keys are needed, so this is what CI runs on every pull
+  qdrant, mongodb-atlas-local). No API keys are needed, so this is what CI runs on every pull
   request, including ones from forks.
 * ``live`` (``make test_live``): tests marked ``@pytest.mark.live`` call paid
   third-party APIs (OpenAI, Cohere). They are excluded from the default run.
@@ -15,13 +15,14 @@ Test tiers
 
 import os
 import socket
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
 
 # Env var -> tests that need it are skipped when it is unset.
-LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY")
+LIVE_KEYS = ("OPENAI_API_KEY", "COHERE_API_KEY", "JEV_API_KEY")
 
 
 def _reachable(host: str, port: int, timeout: float = 1.0) -> bool:
@@ -51,6 +52,9 @@ def pytest_configure(config):
     os.environ.setdefault("POSTGRES_DB", "postgres")
     os.environ.setdefault("POSTGRES_USER", "postgres")
     os.environ.setdefault("POSTGRES_PASSWORD", "postgres")
+    os.environ.setdefault(
+        "MONGO_CONNECTION_URI", "mongodb://localhost:27017/?directConnection=true"
+    )
     # Qdrant falls back to the in-memory client when no server is listening.
     if "QDRANT_URL" not in os.environ and _reachable("localhost", 6333):
         os.environ["QDRANT_URL"] = "http://localhost:6333"
@@ -76,6 +80,16 @@ def pytest_collection_modifyitems(config, items):
                 f"Postgres is not reachable at {host}:{port}. "
                 "Start the local services with `make services`, or deselect "
                 "these tests with `-k 'not PostgresIndex'`.",
+                returncode=2,
+            )
+
+    if any("MongoDbIndex" in i for i in ids):
+        url = urlparse(os.environ["MONGO_CONNECTION_URI"])
+        if url.hostname and not _reachable(url.hostname, url.port or 27017):
+            pytest.exit(
+                f"MongoDB is not reachable at {url.hostname}:{url.port or 27017}. "
+                "Start the local services with `make services`, or deselect "
+                "these tests with `-k 'not MongoDbIndex'`.",
                 returncode=2,
             )
 
@@ -171,3 +185,60 @@ def _cleanup_qdrant_collections(monkeypatch):
             index.client.delete_collection(index.index_name)
         except Exception:
             pass  # already deleted by the test, or never created
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_mongodb_collections(monkeypatch):
+    """Drop every MongoDB collection a test creates once the test finishes."""
+    try:
+        from semantic_router.index.mongodb import MongoDbIndex
+    except ImportError:
+        yield
+        return
+
+    created: list = []
+    original_init = MongoDbIndex.__init__
+
+    def tracking_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        created.append(self)
+
+    monkeypatch.setattr(MongoDbIndex, "__init__", tracking_init)
+    yield
+    for index in created:
+        try:
+            index.delete_index()
+        except Exception:
+            pass  # already deleted by the test, or never connected
+
+
+@pytest.fixture
+def make_index():
+    """Factory for a new, empty index of the given class with a unique name, so tests
+    can run in parallel. Pass ``name`` to open a second handle on the same index. No
+    dimensions are set: each backend creates itself on its first add."""
+
+    def make(index_cls, name: str | None = None):
+        from semantic_router.index import (
+            MongoDbIndex,
+            PineconeIndex,
+            PostgresIndex,
+            QdrantIndex,
+        )
+
+        name = name or f"t{uuid.uuid4().hex[:12]}"
+        if index_cls is PineconeIndex:
+            if not os.environ["PINECONE_API_BASE_URL"].startswith("http://"):
+                pytest.skip("index backend tests run on pinecone-local")
+            return PineconeIndex(index_name=name)
+        if index_cls is PostgresIndex:
+            return PostgresIndex(index_name=name, index_prefix="")
+        if index_cls is MongoDbIndex:
+            return MongoDbIndex(index_name=name)
+        if index_cls is QdrantIndex:
+            url = os.getenv("QDRANT_URL")
+            kwargs = {"location": None, "url": url} if url else {}
+            return QdrantIndex(index_name=name, **kwargs)
+        return index_cls()
+
+    return make

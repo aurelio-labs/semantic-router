@@ -43,7 +43,6 @@ class JinaEncoder(DenseEncoder, AsymmetricDenseMixin):
         self,
         name: str | None = None,
         api_key: str | None = None,
-        score_threshold: float = 0.4,
         base_url: str | None = None,
     ):
         """Initialize the JinaEncoder.
@@ -54,8 +53,6 @@ class JinaEncoder(DenseEncoder, AsymmetricDenseMixin):
         :param api_key: The Jina API key, can also be set via the JINA_API_KEY or
             JINA_AI_API_KEY environment variable.
         :type api_key: str
-        :param score_threshold: The score threshold for the embeddings.
-        :type score_threshold: float
         :param base_url: Override the Jina API base URL, can also be set via the
             JINA_BASE_URL or JINA_AI_API_BASE environment variable.
         :type base_url: str
@@ -64,7 +61,7 @@ class JinaEncoder(DenseEncoder, AsymmetricDenseMixin):
         # get default model name if none provided
         if name is None:
             name = f"{EncoderDefault.JINA.value['embedding_model']}"
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         if api_key is None:
             api_key = os.getenv("JINA_API_KEY")
         if api_key is None:

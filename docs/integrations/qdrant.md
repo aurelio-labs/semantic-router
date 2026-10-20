@@ -26,13 +26,13 @@ from semantic_router.index.qdrant import QdrantIndex
 index = QdrantIndex(
     url="https://your-cluster.qdrant.io",
     api_key="your-api-key",
-    collection_name="semantic_router"
+    index_name="semantic_router"
 )
 
 # Self-hosted Qdrant
 index = QdrantIndex(
     url="http://localhost:6333",
-    collection_name="semantic_router"
+    index_name="semantic_router"
 )
 ```
 
@@ -40,20 +40,20 @@ index = QdrantIndex(
 
 ### Cloud and Self-Hosted
 
-Supports both Qdrant Cloud and self-hosted deployments:
+Supports both Qdrant Cloud and self-hosted deployments. Pass the server's address as `url` and the collection name as `index_name`:
 
 ```python
 # Cloud deployment
 index = QdrantIndex(
     url="https://xyz-example.qdrant.io",
     api_key="your-api-key",
-    collection_name="routes"
+    index_name="routes"
 )
 
 # Local/self-hosted
 index = QdrantIndex(
     url="http://localhost:6333",
-    collection_name="routes"
+    index_name="routes"
 )
 ```
 
@@ -65,7 +65,7 @@ Automatic collection creation and management:
 # Specify dimensions for new collection
 index = QdrantIndex(
     url="http://localhost:6333",
-    collection_name="my_routes",
+    index_name="my_routes",
     dimensions=1536  # Must match encoder dimensions
 )
 ```
@@ -86,12 +86,12 @@ asyncio.run(main())
 
 ## Integration with Routers
 
-The `QdrantIndex` works with both `SemanticRouter` and `HybridRouter`:
+The `QdrantIndex` is where an `IndexedRouter` keeps its routes. It stores dense vectors only, so it can't back a hybrid router (one with a `sparse_encoder`):
 
 ```python
 from semantic_router.encoders import OpenAIEncoder
 from semantic_router.route import Route
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
 encoder = OpenAIEncoder()
 
@@ -106,11 +106,10 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
     index=index,
-    auto_sync="local"
 )
 ```
 
@@ -128,7 +127,7 @@ print(result.name)  # -> technical
 
 ```python
 # Delete a specific route
-router.delete(route_name="support")
+router.remove(name="support")
 ```
 
 ### Get Routes

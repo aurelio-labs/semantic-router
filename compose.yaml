@@ -16,7 +16,7 @@ services:
       - "5080-5199:5080-5199"
 
   postgres:
-    image: pgvector/pgvector:pg17
+    image: docker.io/pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -30,7 +30,18 @@ services:
       retries: 15
 
   qdrant:
-    image: qdrant/qdrant:v1.19.0
+    image: docker.io/qdrant/qdrant:v1.19.0
     ports:
       - "6333:6333"
       - "6334:6334"
+
+  mongodb:
+    # MongoDB with Atlas Search, so vector search indexes and $vectorSearch work locally
+    image: docker.io/mongodb/mongodb-atlas-local:8
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/runner", "healthcheck"]
+      interval: 2s
+      timeout: 10s
+      retries: 30

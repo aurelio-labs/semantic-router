@@ -33,7 +33,6 @@ os.environ["JINA_API_KEY"] = "your-api-key"
 # Initialize the encoder
 encoder = JinaEncoder(
     name="jina-embeddings-v3",  # or any other supported Jina model
-    score_threshold=0.4,  # optional: set your desired similarity threshold
     api_key=os.environ["JINA_API_KEY"]
 )
 ```
@@ -87,10 +86,10 @@ embeddings = await encoder.acall(["your text here"])
 
 ## Integration with Routers
 
-The `JinaEncoder` can be used with both `SemanticRouter` and `HybridRouter`:
+The `JinaEncoder` plugs into an `IndexedRouter` like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
 # Create routes
 routes = [
@@ -105,10 +104,9 @@ routes = [
 ]
 
 # Initialize router with Jina encoder
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 

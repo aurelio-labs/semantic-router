@@ -10,35 +10,34 @@
 <a href="https://github.com/aurelio-labs/semantic-router/blob/main/LICENSE"><img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </p>
 
-Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
+Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, it decides in milliseconds: it compares the _semantic_ meaning of a request against your routes in vector space, or asks a small decision model in a single fast call. Every decision comes with a confidence you can calibrate into a real probability.
 
-#### [Read the Docs](https://docs.aurelio.ai/semantic-router/get-started/introduction)
+#### [Read the Docs](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/introduction)
 
 ---
 
 ## Versions
 
-Semantic Router has two release lines. The **0.x line** (`v0` branch) is the current stable library and finishes at 0.2.0, after which it receives bug fixes only. The **1.x line** (`main` branch) is a breaking rewrite of the routing layer and ships as 1.0.0. Pin to the line you are on:
+Semantic Router has two release lines. The **1.x line** (`main` branch) rebuilds the routing layer around calibrated confidence, decision models and composable routers. The **0.x line** (`v0` branch) finishes at 0.2.0 and receives bug fixes only.
 
 ```
-pip install "semantic-router<1"   # 0.x
+pip install -qU "semantic-router>=1,<2"   # 1.x
+pip install -qU "semantic-router<1"       # 0.x
 ```
 
-This branch (`main`) is the 1.x line, in development; the quickstart below still describes 0.x until the rewrite lands. Details, and the docs for each line, are on the [versions page](https://docs.aurelio.ai/semantic-router/v0/get-started/versions).
+Upgrading from 0.x? The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) covers every change, with before and after code. The 0.x docs stay on the [versions page](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/versions).
 
 ---
 
 ## Quickstart
 
-To get started with _semantic-router_ we install it like so:
+This quickstart runs entirely on your machine, with a small local embedding model and no API keys:
 
 ```
-pip install -qU semantic-router
+pip install -qU "semantic-router[fastembed]"
 ```
 
-❗️ _If wanting to use a fully local version of semantic router you can use `HuggingFaceEncoder` and `LlamaCppLLM` (`pip install -qU "semantic-router[local]"`, see [here](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb)). To use the `HybridRouteLayer` you must `pip install -qU "semantic-router[hybrid]"`._
-
-We begin by defining a set of `Route` objects. These are the decision paths that the semantic router can decide to use, let's try two simple routes for now — one for talk on _politics_ and another for _chitchat_:
+We begin by defining a set of `Route` objects. These are the decisions the router can make. Let's try two simple routes for now, one for talk on _politics_ and another for _chitchat_:
 
 ```python
 from semantic_router import Route
@@ -72,33 +71,26 @@ chitchat = Route(
 routes = [politics, chitchat]
 ```
 
-We have our routes ready, now we initialize an embedding / encoder model. We currently support a `CohereEncoder` and `OpenAIEncoder` — more encoders will be added soon. To initialize them we do:
+Next we pick an encoder, the model that turns text into vectors. We use a local FastEmbed model here; OpenAI, Cohere, Hugging Face and [many more](https://github.com/aurelio-labs/semantic-router/tree/main/semantic_router/encoders) work the same way.
 
 ```python
-import os
-from semantic_router.encoders import CohereEncoder, OpenAIEncoder
+from semantic_router.encoders import FastEmbedEncoder
 
-# for Cohere
-os.environ["COHERE_API_KEY"] = "<YOUR_API_KEY>"
-encoder = CohereEncoder()
-
-# or for OpenAI
-os.environ["OPENAI_API_KEY"] = "<YOUR_API_KEY>"
-encoder = OpenAIEncoder()
+encoder = FastEmbedEncoder(name="BAAI/bge-small-en-v1.5")
 ```
 
-With our `routes` and `encoder` defined we now create a `RouteLayer`. The route layer handles our semantic decision making.
+With our `routes` and `encoder` defined, we create an `IndexedRouter`. It embeds every utterance once and matches each query against them.
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 
-rl = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
+router = IndexedRouter(encoder=encoder, routes=routes)
 ```
 
-We can now use our route layer to make super fast decisions based on user queries. Let's try with two queries that should trigger our route decisions:
+Now we can make super fast decisions based on user queries:
 
 ```python
-rl("don't you love politics?").name
+router("don't you love politics?").name
 ```
 
 ```
@@ -108,30 +100,45 @@ rl("don't you love politics?").name
 Correct decision, let's try another:
 
 ```python
-rl("how's the weather today?").name
+router("how's the weather today?").name
 ```
 
 ```
 [Out]: 'chitchat'
 ```
 
-We get both decisions correct! Now lets try sending an unrelated query:
+We get both decisions correct! By default the best route always wins, so to let the router say "none of these" we calibrate it on a few labelled queries it hasn't seen (`None` means no route should match) and set a confidence threshold:
 
 ```python
-rl("I'm interested in learning about llama 2").name
+router.fit(
+    X=[
+        "who should I vote for in the election?", "what do you think of the prime minister?", "is the government doing a good job?",
+        "tell me your opinion on the new tax law", "are you left wing or right wing?", "the opposition party is a joke",
+        "nice day out, isn't it?", "it's freezing outside", "how was your weekend?",
+        "fancy grabbing some fish and chips?", "what a lovely sunny afternoon", "how have you been?",
+        "how do I reset my password?", "what's the capital of australia?", "write me a python function to sort a list",
+        "what is the boiling point of water?", "recommend a good sci-fi book", "how many legs does a spider have?",
+    ],
+    y=["politics"] * 6 + ["chitchat"] * 6 + [None] * 6,
+)
+router.confidence_threshold = 0.5  # now a probability: act only when it's more likely right than wrong
+
+router("I'm interested in learning about llama 2").name
 ```
 
 ```
 [Out]:
 ```
 
-In this case, no decision could be made as we had no matches — so our route layer returned `None`!
+No route cleared the bar, so the router returned `None`!
 
-## Integrations
+## Beyond embeddings
 
-The _encoders_ of semantic router include easy-to-use integrations with [Cohere](https://github.com/aurelio-labs/semantic-router/blob/main/semantic_router/encoders/cohere.py), [OpenAI](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/openai-embed-3.ipynb), [Hugging Face](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/huggingface.ipynb), [FastEmbed](https://github.com/aurelio-labs/semantic-router/blob/main/docs/encoders/fastembed.ipynb), and [more](https://github.com/aurelio-labs/semantic-router/tree/main/semantic_router/encoders) — we even support [multi-modality](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb)!.
-
-Our utterance vector space also integrates with [Pinecone](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb) and [Qdrant](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb)!
+- **`DecisionRouter`** asks a decision model (TypeSafe's Jev, Laya or Von) which route applies, and can answer several yes/no, choice and score questions about one message in a single call. New to decision models? Read [Understanding Jev](https://jamesbriggs.io/understanding-jev) or watch [the video](https://youtu.be/P-t4F_UlxkI).
+- **`Chain`** answers easy queries from a fast router and falls through to a slower one only when it isn't sure. **`Merge`** averages several routers.
+- **Hybrid search**: give `IndexedRouter` a `sparse_encoder` to weigh exact keywords alongside meaning.
+- **Production indexes**: keep your routes in [Pinecone](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb), [Qdrant](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb) or Postgres.
+- **Multi-modal**: route on [images](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb) as well as text.
 
 ---
 
@@ -141,14 +148,13 @@ Our utterance vector space also integrates with [Pinecone](https://github.com/au
 
 | Notebook | Description |
 | -------- | ----------- |
-| [Introduction](https://github.com/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb) | Introduction to Semantic Router and static routes |
-| [Dynamic Routes](https://github.com/aurelio-labs/semantic-router/blob/main/docs/02-dynamic-routes.ipynb) | Dynamic routes for parameter generation and functionc calls |
-| [Save/Load Layers](https://github.com/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb) | How to save and load `RouteLayer` from file |
+| [Introduction](https://github.com/aurelio-labs/semantic-router/blob/main/docs/00-introduction.ipynb) | Introduction to Semantic Router and the `IndexedRouter` |
+| [Save/Load Routers](https://github.com/aurelio-labs/semantic-router/blob/main/docs/01-save-load-from-file.ipynb) | Save any router to YAML or JSON and load it back, calibration included |
 | [LangChain Integration](https://github.com/aurelio-labs/semantic-router/blob/main/docs/03-basic-langchain-agent.ipynb) | How to integrate Semantic Router with LangChain Agents |
-| [Local Execution](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb) | Fully local Semantic Router with dynamic routes — *local models such as Mistral 7B outperform GPT-3.5 in most tests* |
-| [Route Optimization](https://github.com/aurelio-labs/semantic-router/blob/main/docs/06-threshold-optimization.ipynb) | How to train route layer thresholds to optimize performance |
+| [Local Execution](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb) | Fully local routing with FastEmbed, no API keys |
+| [Calibration](https://github.com/aurelio-labs/semantic-router/blob/main/docs/06-calibration.ipynb) | Turn raw scores into probabilities with `fit()`, and set thresholds that mean what they say |
 | [Multi-Modal Routes](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb) | Using multi-modal routes to identify Shrek vs. not-Shrek pictures |
-| [Healthcare Administrative Routing](https://github.com/aurelio-labs/semantic-router/blob/main/docs/examples/healthcare-routing/healthcare-administrative-routing.ipynb) | Fully local routing, threshold optimization, and evaluation across seven synthetic healthcare administrative workflows |
+| [Healthcare Administrative Routing](https://github.com/aurelio-labs/semantic-router/blob/main/docs/examples/healthcare-routing/healthcare-administrative-routing.ipynb) | Fully local routing, calibration, and evaluation across seven synthetic healthcare administrative workflows |
 
 ### Online Course
 

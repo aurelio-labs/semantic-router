@@ -25,7 +25,6 @@ from semantic_router.encoders import BedrockEncoder
 
 encoder = BedrockEncoder(
     name="amazon.titan-embed-text-v1",  # or amazon.titan-embed-text-v2, cohere.embed-english-v3
-    score_threshold=0.5,
     access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
     secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     session_token=os.getenv("AWS_SESSION_TOKEN"),
@@ -64,10 +63,10 @@ embeddings = await encoder.acall(["your text here"])
 
 ## Integration with Routers
 
-The `BedrockEncoder` can be used with both `SemanticRouter` and `HybridRouter`:
+The `BedrockEncoder` plugs into an `IndexedRouter` like any other encoder:
 
 ```python
-from semantic_router.routers import SemanticRouter
+from semantic_router import IndexedRouter
 from semantic_router.route import Route
 
 routes = [
@@ -81,10 +80,9 @@ routes = [
     )
 ]
 
-router = SemanticRouter(
+router = IndexedRouter(
     encoder=encoder,
     routes=routes,
-    auto_sync="local"
 )
 ```
 

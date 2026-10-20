@@ -38,7 +38,6 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
         self,
         name: str | None = None,
         cohere_api_key: str | None = None,  # TODO: rename to api_key in v0.2.0
-        score_threshold: float = 0.3,
     ):
         """Initialize the Cohere encoder.
 
@@ -48,14 +47,12 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
         :param cohere_api_key: The API key for the Cohere client, can also
             be set via the COHERE_API_KEY environment variable.
         :type cohere_api_key: str
-        :param score_threshold: The threshold for the score of the embedding.
-        :type score_threshold: float
         :raises ValueError: If no API key is provided or found in the environment.
         """
         # get default model name if none provided
         if name is None:
             name = f"{EncoderDefault.COHERE.value['embedding_model']}"
-        super().__init__(name=name, score_threshold=score_threshold)
+        super().__init__(name=name)
         if cohere_api_key is None:
             cohere_api_key = os.getenv("COHERE_API_KEY")
         if cohere_api_key is None:
