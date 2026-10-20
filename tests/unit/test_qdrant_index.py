@@ -361,6 +361,14 @@ class TestAsync:
         assert len(await idx.aget_utterances()) == 2
 
     @pytest.mark.asyncio
+    async def test_ais_ready_matches_is_ready_in_memory(self):
+        idx = make_index()
+        assert await idx.ais_ready() == idx.is_ready()
+        await idx.aadd(rand_vecs(2), ["r", "r"], ["x", "y"])
+        assert idx.is_ready()
+        assert await idx.ais_ready()
+
+    @pytest.mark.asyncio
     async def test_adelete_removes_route(self):
         idx = make_index()  # no namespace
         await idx.aadd(rand_vecs(3), ["r1", "r1", "r2"], ["a", "b", "c"])

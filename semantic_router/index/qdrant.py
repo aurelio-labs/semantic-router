@@ -631,8 +631,8 @@ class QdrantIndex(BaseIndex):
     async def ais_ready(self) -> bool:
         """Checks if the index is ready to be used asynchronously."""
         if self.aclient is None:
-            # In-memory or sync-only mode, treat as not ready for async
-            return False
+            # In-memory Qdrant has no async client; fall back to the sync check
+            return self.is_ready()
         try:
             return await self.aclient.collection_exists(self.index_name)
         except Exception as e:
