@@ -15,7 +15,7 @@ import pytest
 
 pytest.importorskip("redis", reason="redis not installed")
 
-from semantic_router.index.redis import RedisIndex, _tag
+from semantic_router.index.redis import RedisIndex, _missing_index, _tag
 from semantic_router.schema import Metric
 
 DIMS = 4
@@ -276,3 +276,29 @@ class TestWithoutRediSearch:
         ft.return_value.info.side_effect = ResponseError("Unknown index name")
         scores, routes = idx.query(vector=np.zeros(DIMS), top_k=1)
         assert routes == []
+
+
+class TestMissingIndex:
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            "Unknown index name",  # Redis Stack 7.x
+            "Unknown Index name",  # older RediSearch 2.x
+            "SEARCH_INDEX_NOT_FOUND Index not found: idx",  # Redis 8.x
+            "idx: no such index",  # FT.SEARCH on Redis Stack 7.x
+        ],
+    )
+    def test_missing_index_replies(self, reply):
+        assert _missing_index(Exception(reply))
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            "unknown command 'FT.INFO', with args beginning with: 'idx' ",
+            "this user has no permissions to run the 'FT.INFO' command",
+            "LOADING Redis is loading the dataset in memory",
+            "unknown command 'FT.INFO', with args beginning with: 'no such index' ",
+        ],
+    )
+    def test_other_errors_are_not_a_missing_index(self, reply):
+        assert not _missing_index(Exception(reply))

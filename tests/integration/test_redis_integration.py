@@ -12,6 +12,7 @@ import pytest
 pytest.importorskip("redis", reason="redis not installed")
 
 from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import NoPermissionError
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.index.redis import RedisIndex
@@ -284,3 +285,61 @@ def test_an_index_named_like_the_config_keys_is_refused():
     # its key prefix would pick up every other index's sync state
     with pytest.raises(ValueError, match="sr_config"):
         RedisIndex(index_name="sr_config")
+
+
+def test_a_missing_index_reads_as_empty():
+    # the one server error that means "no index yet", in each Redis's wording
+    index = _index()
+    query = np.array(_vectors(1)[0])
+    assert index.query(vector=query, top_k=1)[1] == []
+    assert not index.is_ready()
+    assert len(index) == 0
+
+    async def run():
+        assert (await index.aquery(vector=query, top_k=1))[1] == []
+        assert not await index.ais_ready()
+        assert await index.alen() == 0
+
+    asyncio.run(run())
+
+
+@pytest.fixture
+def no_ft_info_user():
+    """A Redis user that may run every command except FT.INFO."""
+    admin = _index()
+    name = f"test-{uuid.uuid4().hex}"
+    admin.client.acl_setuser(
+        name,
+        enabled=True,
+        passwords=["+pw"],
+        keys=["*"],
+        channels=["*"],
+        commands=["+@all", "-ft.info"],
+    )
+    yield name
+    admin.client.acl_deluser(name)
+
+
+def test_other_server_errors_raise_instead_of_looking_empty(no_ft_info_user):
+    # a permission error used to read as "no index", so query returned [],
+    # is_ready() False and len() 0
+    index = _index(username=no_ft_info_user, password="pw")
+    query = np.array(_vectors(1)[0])
+    for call in (
+        lambda: index.query(vector=query, top_k=1),
+        index.is_ready,
+        lambda: len(index),
+    ):
+        with pytest.raises(NoPermissionError):
+            call()
+
+    async def run():
+        for acall in (
+            lambda: index.aquery(vector=query, top_k=1),
+            index.ais_ready,
+            index.alen,
+        ):
+            with pytest.raises(NoPermissionError):
+                await acall()
+
+    asyncio.run(run())

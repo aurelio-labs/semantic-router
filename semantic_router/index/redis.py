@@ -58,16 +58,21 @@ def _tag(value: str) -> str:
 def _missing_index(error: Exception) -> bool:
     """Whether a ResponseError from FT.INFO means the index doesn't exist.
 
-    Redis versions word that differently ("Unknown index name", "no such index",
-    "SEARCH_INDEX_NOT_FOUND"), but a server without RediSearch always answers
-    "unknown command", and that should raise rather than read as "no index".
+    Only the replies Redis gives for a missing index count: "Unknown index name"
+    (Redis Stack 7.x, "Unknown Index name" in older RediSearch), "SEARCH_INDEX_NOT_FOUND
+    Index not found: <name>" (Redis 8.x) and "<name>: no such index". Anything
+    else (no RediSearch, no permission, a server still loading) raises rather
+    than reads as an empty index.
 
     :param error: The ResponseError raised by FT.INFO.
     :type error: Exception
     :return: True if the error means the index doesn't exist.
     :rtype: bool
     """
-    return not str(error).lower().startswith("unknown command")
+    message = str(error).strip().lower()
+    return message.startswith(
+        ("unknown index name", "search_index_not_found")
+    ) or message.endswith(": no such index")
 
 
 def _import_index_definition():
