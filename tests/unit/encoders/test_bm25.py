@@ -1,11 +1,12 @@
 import os
+import sys
 
 import numpy as np
 import pytest
 
 from semantic_router.encoders import BM25Encoder
 from semantic_router.route import Route
-from semantic_router.tokenizers import BaseTokenizer
+from semantic_router.tokenizers import BaseTokenizer, PretrainedTokenizer
 
 UTTERANCES = [
     "Hello we need this text to be a little longer for our sparse encoders",
@@ -40,6 +41,39 @@ def routes():
         Route(name="Route 1", utterances=[UTTERANCES[0], UTTERANCES[1]]),
         Route(name="Route 2", utterances=[UTTERANCES[2], UTTERANCES[3], UTTERANCES[4]]),
     ]
+
+
+def test_default_initialization_does_not_require_nltk(mocker):
+    """Regression test for https://github.com/aurelio-labs/semantic-router/issues/466
+
+    `BM25Encoder` used to default to an NLTK-backed tokenizer, and raised a long,
+    unhelpful error when NLTK's `punkt` corpus hadn't been downloaded yet. The
+    default tokenizer was since rewritten to use a HuggingFace `PretrainedTokenizer`
+    instead (see `semantic_router.tokenizers.PretrainedTokenizer`), so the encoder
+    no longer touches nltk at all, and `nltk` isn't even a project dependency
+    anymore. This guards against a regression back to that behaviour.
+    """
+    # patching Tokenizer needs the package importable; it is only declared in
+    # the `local` extra, and reaches py3.13 transitively through cohere
+    pytest.importorskip("tokenizers")
+
+    # avoid a real network call to the Hugging Face hub, we only care which
+    # tokenizer the encoder reaches for
+    mocker.patch(
+        "tokenizers.Tokenizer.from_pretrained", return_value=mocker.MagicMock()
+    )
+    # whether some other test already imported nltk is not this test's business,
+    # only whether constructing the encoder imports it
+    nltk_already_imported = "nltk" in sys.modules
+
+    encoder = BM25Encoder(use_default_params=True)
+
+    # the tokenizer it chose is the real guard: a regression to an nltk-backed
+    # default fails here, and names what changed
+    assert isinstance(encoder._tokenizer, PretrainedTokenizer)
+    assert ("nltk" in sys.modules) == nltk_already_imported, (
+        "constructing BM25Encoder imported nltk"
+    )
 
 
 @pytest.mark.skipif(

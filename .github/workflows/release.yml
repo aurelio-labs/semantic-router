@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - '*'
+    - 'v*'
 
 jobs:
   build:
@@ -13,6 +13,15 @@ jobs:
         python-version: [ '3.10' ]
     steps:
     - uses: actions/checkout@v4
+    - name: Check the tag matches the package version
+      # releases come from two branches (v0 -> 0.x, main -> 1.x); this stops a tag
+      # publishing whatever version the other line happens to be on
+      run: |
+        version=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
+        if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          echo "tag $GITHUB_REF_NAME does not match pyproject version $version"
+          exit 1
+        fi
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:

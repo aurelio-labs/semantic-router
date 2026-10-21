@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 removes sync: the index is the single source of truth. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1#sync-is-gone) covers the change, and [indexes](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/indexes) how it works now.
+
 When you use a remote index like `PineconeIndex` or `QdrantIndex`, there are two copies of your routes: the ones in your `SemanticRouter` object, and the ones stored in the index. They can drift. Sync strategies decide which copy wins when they do.
 
 Getting this right matters most in distributed setups, where several processes share one index. Pick the right strategy and you avoid both wasted startup time and subtle routing bugs.

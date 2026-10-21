@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Threshold optimization is now calibration in version 1.0: read [the v1 page](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/features/calibration), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 A route matches only if its similarity score beats its `score_threshold`. Score above it and the route is chosen. Fall below and either another route wins, or nothing does.
 
 That one number decides a lot, so it's worth getting right — but tuning it by hand is slow and fiddly. Instead, hand the router a few *(utterance, target route)* examples and let `fit` find the thresholds for you. It usually takes seconds and the improvement can be dramatic. `evaluate` tells you how well you're doing before and after.

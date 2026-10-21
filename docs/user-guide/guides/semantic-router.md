@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** `SemanticRouter` is now `IndexedRouter` in version 1.0: read [the v1 page](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/routers), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 The `SemanticRouter` is the heart of the library. Give it a query and it decides which route to take. It's built from three things: an `encoder`, an `index`, and a list of `routes`. If any of your routes are dynamic (they produce function calls), it also holds an `llm`.
 
 ## Routes

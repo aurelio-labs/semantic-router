@@ -617,13 +617,12 @@ class TestSemanticRouter:
         )
 
         @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
-        def check_raises_value_error():
-            try:
-                route_layer(text="Hello", route_filter=["Route 8"]).name
-            except ValueError:
-                assert True
+        def check_missing_route_returns_none():
+            # every index returns no matches for a filter on a missing route
+            query_result = route_layer(text="Hello", route_filter=["Route 8"]).name
+            assert query_result is None
 
-        check_raises_value_error()
+        check_missing_route_returns_none()
 
         @retry(max_retries=RETRY_COUNT, delay=PINECONE_SLEEP)
         def check_query_result():
