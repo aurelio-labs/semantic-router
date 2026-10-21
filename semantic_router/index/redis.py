@@ -1002,9 +1002,15 @@ class RedisIndex(BaseIndex):
         ft = self.client.ft(self.index_name)
         result = ft.aggregate(self._aggregate_request(filter_query, fields or []))
         rows = list(result.rows)
-        while result.cursor and result.cursor.cid:
-            result = ft.aggregate(result.cursor)
-            rows.extend(result.rows)
+        try:
+            while result.cursor and result.cursor.cid:
+                result = ft.aggregate(result.cursor)
+                rows.extend(result.rows)
+        finally:
+            # a read that fails midway leaves its cursor open (idle for 300 s,
+            # 128 per index by default); a finished one has cid 0
+            if result.cursor and result.cursor.cid:
+                self._delete_cursor(result.cursor.cid)
         return self._rows(rows)
 
     async def _aread_all(
@@ -1014,10 +1020,33 @@ class RedisIndex(BaseIndex):
         ft = self.aclient.ft(self.index_name)
         result = await ft.aggregate(self._aggregate_request(filter_query, fields or []))
         rows = list(result.rows)
-        while result.cursor and result.cursor.cid:
-            result = await ft.aggregate(result.cursor)
-            rows.extend(result.rows)
+        try:
+            while result.cursor and result.cursor.cid:
+                result = await ft.aggregate(result.cursor)
+                rows.extend(result.rows)
+        finally:
+            if result.cursor and result.cursor.cid:
+                await self._adelete_cursor(result.cursor.cid)
         return self._rows(rows)
+
+    def _delete_cursor(self, cid: int) -> None:
+        """Delete a cursor a failed or cancelled read left open, best effort,
+        so the read's own error is the one that propagates.
+
+        :param cid: The cursor id.
+        :type cid: int
+        """
+        try:
+            self.client.execute_command("FT.CURSOR", "DEL", self.index_name, cid)
+        except Exception as e:
+            logger.warning(f"Could not delete Redis cursor {cid}: {e}")
+
+    async def _adelete_cursor(self, cid: int) -> None:
+        """Async version of :meth:`_delete_cursor`."""
+        try:
+            await self.aclient.execute_command("FT.CURSOR", "DEL", self.index_name, cid)
+        except Exception as e:
+            logger.warning(f"Could not delete Redis cursor {cid}: {e}")
 
     def _search_ids(self, filter_query: str) -> List[str]:
         """Collect every document ID matching a filter query.
