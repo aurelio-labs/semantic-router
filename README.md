@@ -18,7 +18,7 @@ Semantic Router is a superfast decision-making layer for your LLMs and agents. R
 
 ## Versions
 
-Semantic Router has two release lines. The **1.x line** (`main` branch) rebuilds the routing layer around calibrated confidence, decision models and composable routers. The **0.x line** (`v0` branch) finishes at 0.2.0 and receives bug fixes only.
+Semantic Router has two release lines. The **1.x line** (`main` branch) rebuilds the routing layer around calibrated confidence, decision models and composable routers. The **0.x line** (`v0` branch) finishes at 0.3.0 and receives bug fixes only.
 
 ```
 pip install -qU "semantic-router>=1,<2"   # 1.x
