@@ -203,7 +203,11 @@ def _cleanup_redis_indexes(monkeypatch):
     monkeypatch.setattr(RedisIndex, "__init__", tracking_init)
     yield
     for index in created:
+        if not index._index_initialized:
+            # it never created or found an index, so skip the round trip (some
+            # tests point at hosts that would only time out)
+            continue
         try:
             index.delete_index()
         except Exception:
-            pass  # already deleted by the test, or never created
+            pass  # already deleted by the test
