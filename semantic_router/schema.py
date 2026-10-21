@@ -31,7 +31,6 @@ class EncoderType(Enum):
     OLLAMA = "ollama"
     JINA = "jina_ai"
     VOYAGE = "voyage"
-    MINIMAX = "minimax"
     NIM = "nvidia_nim"
 
 

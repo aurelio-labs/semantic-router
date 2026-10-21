@@ -1,8 +1,8 @@
-Semantic Router integrates with MiniMax's embedding and language models through the `MiniMaxEncoder` and `MiniMaxLLM` classes. Chat completions go through MiniMax's OpenAI-compatible API, and embeddings through MiniMax's own embeddings endpoint.
+Semantic Router integrates with MiniMax's language models through the `MiniMaxLLM` class, for dynamic routes with parameter extraction.
 
 ## Overview
 
-MiniMax serves its language models through an OpenAI-compatible API at `https://api.minimax.io/v1`, so `MiniMaxLLM` is a preset of `OpenAICompatibleLLM`. Embeddings come from MiniMax's own `/embeddings` endpoint on the same host. The `MiniMaxEncoder` generates dense embeddings for semantic routing, while `MiniMaxLLM` enables dynamic routes with parameter extraction.
+MiniMax serves its language models through an OpenAI-compatible API at `https://api.minimax.io/v1`, so `MiniMaxLLM` is a preset of `OpenAICompatibleLLM`: a default base URL, the `MINIMAX_API_KEY` environment variable and a default model.
 
 ## Getting Started
 
@@ -19,93 +19,51 @@ pip install "semantic-router"
 
 ### Basic Usage
 
-#### Encoder
-
 ```python
 import os
-from semantic_router.encoders import MiniMaxEncoder
+from semantic_router.llms import MiniMaxLLM
 
 os.environ["MINIMAX_API_KEY"] = "your-api-key"
 
-encoder = MiniMaxEncoder()
-# or with a custom model
-encoder = MiniMaxEncoder(name="embo-01", score_threshold=0.3)
-```
-
-#### LLM
-
-```python
-from semantic_router.llms import MiniMaxLLM
-
 llm = MiniMaxLLM()
 # or with a custom model
-llm = MiniMaxLLM(name="MiniMax-M2.5-highspeed")
+llm = MiniMaxLLM(name="MiniMax-M3")
 ```
 
 ## Features
 
 ### Supported Models
 
-**Embedding Models:**
-- `embo-01` — 1536-dimensional embeddings (default)
+- `MiniMax-M3.1-Flash` (default): always thinks, and returns its thinking in a separate field
+- `MiniMax-M3`: thinks by default, inside `<think>` tags in the reply
 
-**Language Models:**
-- `MiniMax-M2.5` — Latest flagship model (default)
-- `MiniMax-M2.5-highspeed` — Fast inference variant
+Any model name MiniMax's OpenAI-compatible API accepts works through `name=` or `MINIMAX_CHAT_MODEL_NAME`. MiniMax has retired its M2 models, so names such as `MiniMax-M2.5` no longer work.
 
 ### Asynchronous Support
 
-Full async/await support for both encoder and LLM:
-
 ```python
+from semantic_router.schema import Message
+
+messages = [Message(role="user", content="Hi, how are you?")]
+
 # Synchronous
-embeddings = encoder(docs=["your text here"])
+reply = llm(messages=messages)
 
 # Asynchronous
-embeddings = await encoder.acall(docs=["your text here"])
+reply = await llm.acall(messages=messages)
 ```
 
-### Temperature Clamping
+### Thinking
 
-MiniMax requires temperature in the range (0.0, 1.0]. The `MiniMaxLLM` automatically clamps the temperature to this range.
+MiniMax models think before they answer. `MiniMaxLLM` returns only the answer: it strips `<think>...</think>` blocks from the reply and ignores thinking returned in its own field.
 
-### Think-Tag Stripping
+Thinking counts towards `max_tokens`, so `MiniMaxLLM` defaults to `max_tokens=4096` rather than the 200 the other LLMs use. If a reply still runs out of tokens while the model is thinking, `MiniMaxLLM` raises an error rather than returning the thinking; raise `max_tokens` if that happens.
 
-MiniMax models may include `<think>...</think>` tags in responses. The `MiniMaxLLM` automatically strips these to return clean output.
+### Temperature
 
-Thinking counts towards `max_tokens` (200 by default). If a reply runs out of tokens while the model is still thinking, `MiniMaxLLM` raises an error rather than returning the thinking, so give longer tasks more room, for example `MiniMaxLLM(max_tokens=1024)`.
+Current MiniMax models ignore `temperature`. `MiniMaxLLM` still clamps it to (0.0, 1.0], the range older MiniMax models required.
 
-## Integration with Routers
-
-### Semantic Router with MiniMax Encoder
-
-```python
-import os
-from semantic_router import Route
-from semantic_router.encoders import MiniMaxEncoder
-from semantic_router.routers import SemanticRouter
-
-os.environ["MINIMAX_API_KEY"] = "your-api-key"
-
-encoder = MiniMaxEncoder()
-
-routes = [
-    Route(
-        name="greeting",
-        utterances=["hello", "hi there", "good morning"],
-    ),
-    Route(
-        name="farewell",
-        utterances=["goodbye", "see you later", "bye"],
-    ),
-]
-
-router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
-result = router(text="hey, how are you?")
-print(result.name)  # "greeting"
-```
-
-### Dynamic Routes with MiniMax LLM
+## Dynamic Routes with MiniMax LLM
 
 ```python
 from semantic_router import Route
@@ -130,20 +88,9 @@ weather_route = Route(
 )
 ```
 
-## AutoEncoder Support
-
-MiniMax is also available through the `AutoEncoder` factory:
-
-```python
-from semantic_router.encoders import AutoEncoder
-
-encoder = AutoEncoder(type="minimax", name="embo-01")
-```
-
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `MINIMAX_API_KEY` | MiniMax API key (required) |
-| `MINIMAX_MODEL_NAME` | Default embedding model name |
 | `MINIMAX_CHAT_MODEL_NAME` | Default chat model name |

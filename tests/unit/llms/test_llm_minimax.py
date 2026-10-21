@@ -36,20 +36,23 @@ class TestMiniMaxLLM:
         assert minimax_llm._async_client is not None, (
             "Async client should be initialized"
         )
-        assert minimax_llm.name == "MiniMax-M2.5", "Default name not set correctly"
+        assert minimax_llm.name == "MiniMax-M3.1-Flash", (
+            "Default name not set correctly"
+        )
+        assert minimax_llm.max_tokens == 4096, "Thinking needs room in max_tokens"
 
     def test_initialization_with_custom_name(self, mocker):
         mocker.patch("openai.OpenAI")
         mocker.patch("openai.AsyncOpenAI")
-        llm = MiniMaxLLM(name="MiniMax-M2.5-highspeed", minimax_api_key="test_api_key")
-        assert llm.name == "MiniMax-M2.5-highspeed"
+        llm = MiniMaxLLM(name="MiniMax-M3", minimax_api_key="test_api_key")
+        assert llm.name == "MiniMax-M3"
 
     def test_model_from_env_var(self, mocker, monkeypatch):
         mocker.patch("openai.OpenAI")
         mocker.patch("openai.AsyncOpenAI")
-        monkeypatch.setenv("MINIMAX_CHAT_MODEL_NAME", "MiniMax-M2.5-highspeed")
+        monkeypatch.setenv("MINIMAX_CHAT_MODEL_NAME", "MiniMax-M3")
         llm = MiniMaxLLM(minimax_api_key="test_api_key")
-        assert llm.name == "MiniMax-M2.5-highspeed"
+        assert llm.name == "MiniMax-M3"
 
     def test_initialization_without_api_key(self, monkeypatch):
         monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
@@ -154,8 +157,34 @@ class TestMiniMaxLLM:
         assert str(request.url) == "https://api.minimax.io/v1/chat/completions"
         assert request.headers["Authorization"] == "Bearer env-api-key"
         body = json.loads(request.content)
-        assert body["model"] == "MiniMax-M2.5"
+        assert body["model"] == "MiniMax-M3.1-Flash"
+        assert body["max_tokens"] == 4096
         assert body["temperature"] == 0.01, "Temperature should be clamped"
+
+    def test_call_ignores_separate_reasoning(self, mocker, monkeypatch):
+        # MiniMax-M3.1-Flash returns its thinking in reasoning_content
+        monkeypatch.setenv("MINIMAX_API_KEY", "env-api-key")
+        completion = {
+            **CHAT_COMPLETION,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "the answer",
+                        "reasoning_content": "first, think it through",
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+
+        def send(self, request, **kwargs):
+            return httpx.Response(200, json=completion, request=request)
+
+        mocker.patch.object(httpx.Client, "send", send)
+        llm = MiniMaxLLM()
+        assert llm([Message(role="user", content="test")]) == "the answer"
 
     def test_strip_think_tags_multiline(self):
         text = "<think>\nsome\nmultiline\nthinking\n</think>Hello world"

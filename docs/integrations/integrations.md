@@ -11,7 +11,6 @@ Encoder integrations allow Semantic Router to use various embedding models for s
 - [Cohere](cohere.md) - Cohere's embedding models
 - [Voyage](voyage.md) - Voyage AI embeddings
 - [Mistral](mistral.md) - Mistral AI embeddings
-- [MiniMax](minimax.md) - MiniMax embeddings and language models
 - [NVIDIA](nvidia.md) - NVIDIA NIM embedding models
 - [Bedrock](bedrock.md) - AWS Bedrock embedding models (Titan, Cohere)
 - [Aurelio](aurelio.md) - Aurelio's semantic embeddings
@@ -54,7 +53,7 @@ Currently supported LLM providers:
 - **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
 - **Azure OpenAI** - OpenAI models via Azure
 - **Mistral** - Mistral AI language models
-- **MiniMax** - MiniMax language models (M2.5, M2.5-highspeed)
+- [MiniMax](minimax.md) - MiniMax language models (M3.1-Flash, M3)
 - **Bedrock** - AWS Bedrock LLMs (Claude, Titan, etc.)
 - **LiteLLM** - Unified interface to 100+ LLM providers
 

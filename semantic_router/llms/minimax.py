@@ -15,9 +15,13 @@ class MiniMaxLLM(OpenAICompatibleLLM):
     OpenAI-compatible API (https://api.minimax.io/v1) and reading the API key
     from MINIMAX_API_KEY. Create a key at https://platform.minimax.io.
 
-    MiniMax only accepts a temperature in (0.0, 1.0], so it is clamped to that
-    range, and its models can think in <think> tags inside the reply, which are
-    stripped from the output."""
+    MiniMax's models think before they answer. MiniMax-M3 puts its thinking in
+    <think> tags inside the reply, which are stripped from the output, and
+    MiniMax-M3.1-Flash returns it in a separate field, which is ignored. Thinking
+    counts towards max_tokens, so the default leaves room for it.
+
+    Current MiniMax models ignore temperature. It is still clamped to
+    (0.0, 1.0], the range older MiniMax models required."""
 
     _async_client: Optional[openai.AsyncOpenAI] = PrivateAttr(default=None)
 
@@ -27,12 +31,12 @@ class MiniMaxLLM(OpenAICompatibleLLM):
         minimax_api_key: Optional[str] = None,
         base_url: str = "https://api.minimax.io/v1",
         temperature: float = 0.01,
-        max_tokens: int = 200,
+        max_tokens: int = 4096,
     ):
         """Initialize the MiniMaxLLM.
 
         :param name: The name of the MiniMax model to use. Defaults to the
-            MINIMAX_CHAT_MODEL_NAME environment variable or MiniMax-M2.5.
+            MINIMAX_CHAT_MODEL_NAME environment variable or MiniMax-M3.1-Flash.
         :type name: Optional[str]
         :param minimax_api_key: The MiniMax API key. Defaults to the
             MINIMAX_API_KEY environment variable.
@@ -41,12 +45,12 @@ class MiniMaxLLM(OpenAICompatibleLLM):
         :type base_url: str
         :param temperature: The temperature of the LLM, clamped to (0.0, 1.0].
         :type temperature: float
-        :param max_tokens: The maximum number of tokens to generate. Thinking
-            counts towards it.
+        :param max_tokens: The maximum number of tokens to generate, thinking
+            included.
         :type max_tokens: int
         """
         if name is None:
-            name = os.getenv("MINIMAX_CHAT_MODEL_NAME", "MiniMax-M2.5")
+            name = os.getenv("MINIMAX_CHAT_MODEL_NAME", "MiniMax-M3.1-Flash")
         api_key = minimax_api_key or os.getenv("MINIMAX_API_KEY")
         super().__init__(
             name=name,

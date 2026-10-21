@@ -3,7 +3,6 @@ import time
 
 import pytest
 
-from semantic_router.encoders.minimax import MiniMaxEncoder
 from semantic_router.llms.minimax import MiniMaxLLM
 from semantic_router.schema import Message
 
@@ -18,43 +17,10 @@ def has_valid_minimax_api_key():
 
 
 @pytest.fixture
-def minimax_encoder():
-    if not has_valid_minimax_api_key():
-        pytest.skip("MINIMAX_API_KEY not set")
-    return MiniMaxEncoder()
-
-
-@pytest.fixture
 def minimax_llm():
     if not has_valid_minimax_api_key():
         pytest.skip("MINIMAX_API_KEY not set")
     return MiniMaxLLM()
-
-
-class TestMiniMaxEncoderIntegration:
-    @pytest.mark.skipif(
-        not has_valid_minimax_api_key(), reason="MINIMAX_API_KEY required"
-    )
-    def test_encoder_init_success(self, minimax_encoder):
-        assert minimax_encoder._api_key is not None
-        assert minimax_encoder.name == "embo-01"
-
-    @pytest.mark.skipif(
-        not has_valid_minimax_api_key(), reason="MINIMAX_API_KEY required"
-    )
-    def test_encoder_dims(self, minimax_encoder):
-        time.sleep(2)
-        embeddings = minimax_encoder(["test document"])
-        assert len(embeddings) == 1
-        assert len(embeddings[0]) == 1536
-
-    @pytest.mark.skipif(
-        not has_valid_minimax_api_key(), reason="MINIMAX_API_KEY required"
-    )
-    def test_encoder_multiple_docs(self, minimax_encoder):
-        time.sleep(2)
-        embeddings = minimax_encoder(["hello world", "foo bar baz"])
-        assert len(embeddings) == 2
 
 
 class TestMiniMaxLLMIntegration:
@@ -63,7 +29,7 @@ class TestMiniMaxLLMIntegration:
     )
     def test_llm_init_success(self, minimax_llm):
         assert minimax_llm._client is not None
-        assert minimax_llm.name == "MiniMax-M2.5"
+        assert minimax_llm.name == "MiniMax-M3.1-Flash"
 
     @pytest.mark.skipif(
         not has_valid_minimax_api_key(), reason="MINIMAX_API_KEY required"
