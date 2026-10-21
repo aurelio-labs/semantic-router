@@ -7,7 +7,15 @@ from semantic_router.llms.openai_compatible import OpenAICompatibleLLM
 class OrcaRouterLLM(OpenAICompatibleLLM):
     """LLM for OrcaRouter, a preset of OpenAICompatibleLLM pointing at the
     OrcaRouter gateway (https://api.orcarouter.ai/v1) and reading the API key
-    from ORCAROUTER_API_KEY. See https://www.orcarouter.ai for more information."""
+    from ORCAROUTER_API_KEY. See https://www.orcarouter.ai for more information.
+
+    Limits inherited from semantic-router 0.x:
+
+    - Dynamic routes extract function inputs only when called synchronously;
+      an async call returns the route with function_call=None.
+    - A router config file saves only the class and model name. Reloading one
+      uses the default base_url and ORCAROUTER_API_KEY, so a custom base_url or
+      a key passed in code is lost."""
 
     def __init__(
         self,
