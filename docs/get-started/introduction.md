@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/introduction), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 Semantic Router is a superfast decision layer for LLMs and agents. Most tools make routing decisions by asking an LLM and waiting for it to answer. That's slow. Semantic Router skips the wait — it compares the *meaning* of an input against your routes in vector space and picks a match in milliseconds.
 
 The payoff is simple. Decisions land in milliseconds, not seconds. You skip an LLM call, so you cut cost. And because routes are explicit, you stay in control of what happens next.
@@ -27,7 +29,7 @@ You choose how much runs on your machine:
 
 New to Semantic Router? The [quickstart](quickstart) gets you routing in a few minutes.
 
-Upgrading from a 0.0.x release? v0.1 introduced breaking changes — the [migration guide](../user-guide/guides/migration-to-v1) walks you through them.
+Upgrading from a 0.0.x release? v0.1 introduced breaking changes — the [migration guide](../user-guide/guides/migration-to-v0-1) walks you through them.
 
 ## Resources
 

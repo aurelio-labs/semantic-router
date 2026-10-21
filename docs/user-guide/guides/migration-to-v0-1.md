@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** This guide covers 0.0.x to 0.1. The [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) covers upgrading from 0.x to 1.0.
+
 v0.1 reworked the API and added new capabilities. Some of those changes are breaking. This guide covers what moved, what got renamed, and how to update your code.
 
 ## Key API changes

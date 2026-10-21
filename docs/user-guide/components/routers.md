@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/components/routers), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 The router is the part you actually talk to. It takes a query, finds the best-matching route, and hands back a decision. Under the hood it wires together an encoder, an index, and your routes.
 
 ## What a router does
