@@ -1,9 +1,9 @@
 import copy
-from typing import List
+from typing import Any, Dict, List
 
 import httpx
 
-CHAT_COMPLETION = {
+CHAT_COMPLETION: Dict[str, Any] = {
     "id": "chatcmpl-test",
     "object": "chat.completion",
     "created": 0,
