@@ -7,8 +7,8 @@
 #### Breaking changes
 
 - **Python 3.10 or later.** Python 3.9 is no longer supported, and dependency floors are raised to patched versions.
-- **`litellm` is optional.** Install `semantic-router[litellm]` to use `LiteLLMEncoder`. `CohereEncoder`, `MistralEncoder`, `VoyageEncoder`, `JinaEncoder` and `NimEncoder` call their providers' own SDKs and no longer need it.
-- **`BM25Encoder` scores change.** The ATIRE BM25 formula is corrected: document length normalisation, the `(k1 + 1)` numerator, query IDF weighted by term frequency, and query weights scaled to `[0, 1]`. Sparse and hybrid scores differ from 0.1.x, so re-check any thresholds you tuned on them.
+- **`litellm` is optional.** Install `semantic-router[litellm]` to use `LiteLLMEncoder`. `CohereEncoder`, `MistralEncoder`, `VoyageEncoder`, `JinaEncoder` and `NimEncoder` call their providers directly and no longer need LiteLLM.
+- **`BM25Encoder` scores change.** The ATIRE BM25 formula is corrected: document length normalisation, the `(k1 + 1)` numerator, query IDF weighted by term frequency, and query weights scaled to `[0, 1]`. Both the document and the query weights change, so vectors stored by 0.1.x don't match queries encoded by 0.2.0: re-encode your documents and rebuild any sparse or hybrid index, then re-check the thresholds you tuned.
 
 #### Feature
 
