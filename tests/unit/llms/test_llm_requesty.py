@@ -1,11 +1,15 @@
+import json
+
 import pytest
+from chat_http import capture_chat_requests
 
 from semantic_router.llms import OpenAICompatibleLLM, RequestyLLM
 from semantic_router.schema import Message
 
 
 @pytest.fixture
-def requesty_llm(mocker):
+def requesty_llm(mocker, monkeypatch):
+    monkeypatch.delenv("REQUESTY_CHAT_MODEL_NAME", raising=False)
     mocker.patch("openai.Client")
     return RequestyLLM(requesty_api_key="test_api_key")
 
@@ -22,6 +26,14 @@ class TestRequestyLLM:
         assert requesty_llm.name == "openai/gpt-4o-mini", (
             "Default name not set correctly"
         )
+
+    def test_requesty_llm_model_from_env_var(self, monkeypatch, mocker):
+        mocker.patch("openai.Client")
+        monkeypatch.setenv("REQUESTY_CHAT_MODEL_NAME", "anthropic/claude-sonnet-4")
+        llm = RequestyLLM(requesty_api_key="test_api_key")
+        assert llm.name == "anthropic/claude-sonnet-4"
+        llm = RequestyLLM(name="openai/gpt-4o", requesty_api_key="test_api_key")
+        assert llm.name == "openai/gpt-4o", "An explicit name should win"
 
     def test_requesty_llm_init_success(self, mocker):
         mocker.patch("os.getenv", return_value="fake-api-key")
@@ -74,3 +86,14 @@ class TestRequestyLLM:
         llm_input = [Message(role="user", content="test")]
         output = requesty_llm(llm_input)
         assert output == "test"
+
+    def test_requesty_llm_call_goes_to_requesty(self, monkeypatch, mocker):
+        monkeypatch.setenv("REQUESTY_API_KEY", "env-api-key")
+        monkeypatch.delenv("REQUESTY_CHAT_MODEL_NAME", raising=False)
+        chat_requests = capture_chat_requests(mocker)
+        llm = RequestyLLM()
+        assert llm([Message(role="user", content="test")]) == "test"
+        (request,) = chat_requests
+        assert str(request.url) == "https://router.requesty.ai/v1/chat/completions"
+        assert request.headers["Authorization"] == "Bearer env-api-key"
+        assert json.loads(request.content)["model"] == "openai/gpt-4o-mini"

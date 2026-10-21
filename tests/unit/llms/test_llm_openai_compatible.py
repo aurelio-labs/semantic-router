@@ -1,4 +1,7 @@
+import json
+
 import pytest
+from chat_http import capture_chat_requests
 
 from semantic_router.llms import OpenAICompatibleLLM
 from semantic_router.schema import Message
@@ -125,3 +128,14 @@ class TestOpenAICompatibleLLM:
         with pytest.raises(Exception) as e:
             openai_compatible_llm(llm_input)
         assert "No output generated" in str(e.value)
+
+    def test_openai_compatible_llm_call_goes_to_base_url(self, mocker):
+        chat_requests = capture_chat_requests(mocker)
+        llm = OpenAICompatibleLLM(
+            name="provider/model", base_url=BASE_URL, api_key="test_api_key"
+        )
+        assert llm([Message(role="user", content="test")]) == "test"
+        (request,) = chat_requests
+        assert str(request.url) == f"{BASE_URL}/chat/completions"
+        assert request.headers["Authorization"] == "Bearer test_api_key"
+        assert json.loads(request.content)["model"] == "provider/model"
