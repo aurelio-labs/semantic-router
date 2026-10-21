@@ -53,6 +53,7 @@ Currently supported LLM providers:
 - **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
 - **Azure OpenAI** - OpenAI models via Azure
 - **Mistral** - Mistral AI language models
+- [MiniMax](minimax.md) - MiniMax language models (M3.1-Flash, M3)
 - **Bedrock** - AWS Bedrock LLMs (Claude, Titan, etc.)
 - **LiteLLM** - Unified interface to 100+ LLM providers
 - **OpenAI-compatible endpoints** - any OpenAI-compatible chat API through `OpenAICompatibleLLM`, with presets such as Requesty (`RequestyLLM`)

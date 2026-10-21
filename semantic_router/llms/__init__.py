@@ -2,6 +2,7 @@ from semantic_router.llms.atlascloud import AtlasCloudLLM
 from semantic_router.llms.base import BaseLLM
 from semantic_router.llms.cohere import CohereLLM
 from semantic_router.llms.llamacpp import LlamaCppLLM
+from semantic_router.llms.minimax import MiniMaxLLM
 from semantic_router.llms.mistral import MistralAILLM
 from semantic_router.llms.openai import OpenAILLM
 from semantic_router.llms.openai_compatible import OpenAICompatibleLLM
@@ -22,4 +23,5 @@ __all__ = [
     "CohereLLM",
     "AzureOpenAILLM",
     "MistralAILLM",
+    "MiniMaxLLM",
 ]
