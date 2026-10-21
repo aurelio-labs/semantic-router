@@ -402,3 +402,161 @@ def test_a_handle_opened_during_the_scan_waits_for_it(use_async):
         assert len(found) == SCANNED
     finally:
         _drop(creator)
+
+
+PAST_THE_CAP = 10_500  # the Redis Stack images cap FT.SEARCH at 10,000 results
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_reads_and_deletes_go_past_maxsearchresults(use_async):
+    # offset paging stopped at MAXSEARCHRESULTS without an error, so
+    # get_utterances returned 10,000 records and delete left the rest behind
+    index = _index()
+    big = PAST_THE_CAP - 250
+    index.add(
+        embeddings=_vectors(PAST_THE_CAP),
+        routes=["big"] * big + ["small"] * 250,
+        utterances=[f"u{k}" for k in range(PAST_THE_CAP)],
+        batch_size=1000,
+    )
+    if use_async:
+
+        async def run() -> list:
+            assert len(await index.aget_utterances()) == PAST_THE_CAP
+            assert len(await index.adelete(route_name="big")) == big
+            return await index.aget_utterances()
+
+        left = asyncio.run(run())
+    else:
+        assert len(index.get_utterances()) == PAST_THE_CAP
+        index.delete(route_name="big")
+        left = index.get_utterances()
+    assert {u.route for u in left} == {"small"}
+    assert len(left) == 250
+
+
+TWO_PAGES = 1_500  # more than one cursor read (1,000 rows each)
+
+
+def _open_cursors(index: RedisIndex) -> int:
+    """The index's open FT.AGGREGATE cursors, from FT.INFO's cursor_stats."""
+    info = index.client.execute_command("FT.INFO", index.index_name)
+    pairs: dict = dict(zip(info[::2], info[1::2]))
+    stats = pairs[b"cursor_stats"]
+    return int(dict(zip(stats[::2], stats[1::2]))[b"index_total"])
+
+
+def _two_page_index() -> RedisIndex:
+    index = _index()
+    index.add(
+        embeddings=_vectors(TWO_PAGES),
+        routes=["r"] * TWO_PAGES,
+        utterances=[f"u{k}" for k in range(TWO_PAGES)],
+        batch_size=1000,
+    )
+    return index
+
+
+def _second_read(mocker, client, index_name: str, then):
+    """Let the first FT.AGGREGATE through (it opens a cursor) and call `then`
+    instead of every later cursor read."""
+    ft = client.ft(index_name)
+    first = ft.aggregate
+    calls = []
+
+    def aggregate(query, *args, **kwargs):
+        calls.append(query)
+        return first(query, *args, **kwargs) if len(calls) == 1 else then()
+
+    ft.aggregate = aggregate
+    mocker.patch.object(client, "ft", return_value=ft)
+    return calls
+
+
+def test_a_read_that_fails_midway_closes_its_cursor(mocker):
+    # a cursor left open idles for 300 s, and Redis allows 128 per index
+    index = _two_page_index()
+
+    def fail():
+        raise RedisConnectionError("connection lost mid-read")
+
+    _second_read(mocker, index.client, index.index_name, fail)
+    with pytest.raises(RedisConnectionError, match="mid-read"):
+        index.get_utterances()
+    assert _open_cursors(index) == 0
+
+
+def test_a_failed_cleanup_keeps_the_read_error(mocker):
+    index = _two_page_index()
+
+    def fail():
+        raise RedisConnectionError("connection lost mid-read")
+
+    _second_read(mocker, index.client, index.index_name, fail)
+    execute = index.client.execute_command
+
+    def execute_but_not_cursor_del(*args, **kwargs):
+        if args[:2] == ("FT.CURSOR", "DEL"):
+            raise RedisConnectionError("cleanup failed too")
+        return execute(*args, **kwargs)
+
+    mocker.patch.object(
+        index.client, "execute_command", side_effect=execute_but_not_cursor_del
+    )
+    with pytest.raises(RedisConnectionError, match="mid-read"):
+        index.get_utterances()
+
+
+def test_a_cancelled_async_read_closes_its_cursor(mocker):
+    index = _two_page_index()
+
+    async def hang():
+        await asyncio.sleep(3600)
+
+    calls = _second_read(mocker, index.aclient, index.index_name, hang)
+
+    async def run():
+        task = asyncio.create_task(index.aget_utterances())
+        while len(calls) < 2:
+            await asyncio.sleep(0.01)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(run())
+    assert _open_cursors(index) == 0
+
+
+def test_namespaces_read_and_delete_across_cursor_pages():
+    name = f"test-{uuid.uuid4().hex}"
+    a = RedisIndex(index_name=name, namespace="a")
+    b = RedisIndex(index_name=name, namespace="b")
+    a.add(
+        embeddings=_vectors(TWO_PAGES),
+        routes=["x"] * 1_200 + ["y"] * 300,
+        utterances=[f"a{k}" for k in range(TWO_PAGES)],
+        batch_size=1000,
+    )
+    b.add(
+        embeddings=_vectors(1_300),
+        routes=["x"] * 1_300,
+        utterances=[f"b{k}" for k in range(1_300)],
+        batch_size=1000,
+    )
+    assert len(a.get_utterances()) == TWO_PAGES
+
+    a.delete(route_name="x")
+    left = a.get_utterances()
+    assert {u.route for u in left} == {"y"} and len(left) == 300
+    a.delete_all()
+    assert a.get_utterances() == []
+    assert len(b.get_utterances()) == 1_300
+
+    async def run() -> None:
+        # one event loop: redis-py's async client is bound to the loop it ran on
+        assert len(await b.aget_utterances()) == 1_300
+        assert len(await b.adelete(route_name="x")) == 1_300
+        assert await b.aget_utterances() == []
+
+    asyncio.run(run())
+    assert _open_cursors(a) == 0
