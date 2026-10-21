@@ -14,7 +14,16 @@ class OpenAICompatibleLLM(BaseLLM):
     routers and proxies. Configure the base URL and the name of the environment
     variable that holds the API key, for example
     OpenAICompatibleLLM(name="provider/model", base_url="https://api.example.com/v1",
-    api_key_var_name="EXAMPLE_API_KEY")."""
+    api_key_var_name="EXAMPLE_API_KEY").
+
+    Limits inherited from semantic-router 0.x:
+
+    - Dynamic routes extract function inputs only when called synchronously.
+      BaseLLM has no async extraction, so an async call returns the route with
+      function_call=None and logs an error.
+    - A router config file saves only the LLM's class and model name, so a
+      router using OpenAICompatibleLLM can't be reloaded from one: reloading
+      raises, because there is no base_url."""
 
     _client: Optional[openai.OpenAI] = PrivateAttr(default=None)
     _base_url: Optional[str] = PrivateAttr(default=None)

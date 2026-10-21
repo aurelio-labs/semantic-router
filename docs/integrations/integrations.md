@@ -55,6 +55,11 @@ Currently supported LLM providers:
 - **Mistral** - Mistral AI language models
 - **Bedrock** - AWS Bedrock LLMs (Claude, Titan, etc.)
 - **LiteLLM** - Unified interface to 100+ LLM providers
+- **OpenAI-compatible endpoints** - any OpenAI-compatible chat API through `OpenAICompatibleLLM`, with presets such as Requesty (`RequestyLLM`)
+
+`OpenAICompatibleLLM` and the presets built on it have two limits in 0.x:
+- Dynamic routes extract function inputs only when called synchronously. `BaseLLM` has no async extraction, so an async call returns the matched route with `function_call=None` and logs an error.
+- A router config file saves only each LLM's class and model name. A router using `OpenAICompatibleLLM` can't be reloaded from one, because it needs a `base_url`. A preset reloads with its default `base_url` and reads its key from its environment variable, so a custom `base_url` or a key passed in code is lost.
 
 ## 4. Framework Integrations
 
