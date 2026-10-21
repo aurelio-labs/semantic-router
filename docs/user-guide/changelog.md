@@ -1,5 +1,31 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.2.0
+
+`0.2.0` is the last feature release of the 0.x line: from here, 0.x gets bug fixes only, and new work goes into 1.x (see the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1)). These are the changes since `0.1.16`.
+
+#### Breaking changes
+
+- **Python 3.10 or later.** Python 3.9 is no longer supported, and dependency floors are raised to patched versions.
+- **`litellm` is optional.** Install `semantic-router[litellm]` to use `LiteLLMEncoder`. `CohereEncoder`, `MistralEncoder`, `VoyageEncoder`, `JinaEncoder` and `NimEncoder` call their providers directly and no longer need LiteLLM.
+- **`BM25Encoder` scores change.** The ATIRE BM25 formula is corrected: document length normalisation, the `(k1 + 1)` numerator, query IDF weighted by term frequency, and query weights scaled to `[0, 1]`. Both the document and the query weights change, so vectors stored by 0.1.x don't match queries encoded by 0.2.0: re-encode your documents and rebuild any sparse or hybrid index, then re-check the thresholds you tuned.
+
+#### Feature
+
+- `FastEmbedEncoder` supports async calls.
+
+#### Fixes
+
+- `OpenAIEncoder` rejects an empty list, an empty string, non-string items and a bare `str` with a clear `ValueError` before calling the API. It used to retry the API's 400 before failing. Other input is sent unchanged.
+- `LocalIndex` returns no results for a route filter that matches no routes, like the other indexes, instead of raising.
+- `LocalIndex.add` checks that `metadata_list` is as long as the other inputs.
+- `PostgresIndex.aadd` uses deterministic record ids, as `add` does, so adding a stored utterance again doesn't duplicate it.
+- `PostgresIndex` no longer fails when two connections create the `vector` extension at the same moment.
+- `PineconeIndex` retries reading the stats of a freshly created index while its host comes up.
+- `QdrantIndex`: a failed scroll raises instead of reading as an empty index.
+- `NimEncoder` embeds queries with `input_type="query"` instead of `"passage"`.
+- `CLIPEncoder` and `VitEncoder` work with transformers 5.
+
 ### v0.1.12
 
 The `0.1.12` release brings Pinecone v7 support and AWS Bedrock boto3 client integration, improving compatibility and expanding cloud deployment options.
