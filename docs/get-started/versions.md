@@ -23,7 +23,7 @@ The 1.x source lives on the [`main` branch](https://github.com/aurelio-labs/sema
 
 ## v0: the 0.x line
 
-The 0.x releases are the library as it shipped from 2023 to 2026: `SemanticRouter`, `HybridRouter`, `score_threshold`, dynamic routes and index sync. The final release of this line is **0.2.0**. From then on it gets bug fixes only, on the [`v0` branch](https://github.com/aurelio-labs/semantic-router/tree/v0).
+The 0.x releases are the library as it shipped from 2023 to 2026: `SemanticRouter`, `HybridRouter`, `score_threshold`, dynamic routes and index sync. The final feature release of this line is **0.3.0**. From then on it gets bug fixes only, on the [`v0` branch](https://github.com/aurelio-labs/semantic-router/tree/v0).
 
 Install it with an upper bound, so an upgrade never moves you to 1.x by accident:
 
