@@ -177,17 +177,26 @@ class BaseLLM(BaseModel):
 
     @staticmethod
     def _strip_code_fence(output: str) -> str:
-        """Return the contents of the first Markdown code block in the output,
-        such as ```json ... ```, which many models wrap their JSON in. Output
-        without a code block is returned unchanged.
+        """Return the JSON inside a Markdown code block, such as ```json ... ```,
+        which many models wrap their JSON in. The block either wraps the whole
+        output or starts on its own line after some prose. Valid JSON never
+        starts a line with a fence (a JSON string can't span lines), so backticks
+        inside a JSON string are left alone, as is output without a code block.
 
         :param output: The LLM output.
         :type output: str
         :return: The output without its code fence.
         :rtype: str
         """
-        match = re.search(r"```[\w-]*[^\S\n]*\n?(.*?)```", output, flags=re.DOTALL)
-        return match.group(1) if match else output
+        outer = re.fullmatch(r"\s*```[\w-]*\s*(.*?)\s*```\s*", output, flags=re.DOTALL)
+        if outer:
+            return outer.group(1)
+        block = re.search(
+            r"^[ \t]*```[\w-]*[ \t]*\n(.*?)\n[ \t]*```",
+            output,
+            flags=re.DOTALL | re.MULTILINE,
+        )
+        return block.group(1) if block else output
 
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
