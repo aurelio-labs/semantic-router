@@ -2,7 +2,7 @@
 
 The Aurelio Team welcome and encourage any contributions to the Semantic Router, big or small. Please feel free to contribute to new features, bug fixes, or documentation. We're always eager to hear your suggestions.
 
-There are two release lines, on two branches. `v0` carries the 0.x releases (finishing at 0.2.0) and takes bug fixes only. `main` carries the 1.x rewrite and takes everything else. Open your pull request against the branch that owns the code you are changing.
+There are two release lines, on two branches. `v0` carries the 0.x releases (finishing at 0.3.0) and takes bug fixes only. `main` carries the 1.x rewrite and takes everything else. Open your pull request against the branch that owns the code you are changing.
 
 Please follow these guidelines when making a contribution:
 1. **Check for Existing Issues:** Before making any changes, [check here for related issues](https://github.com/aurelio-labs/semantic-router/issues).

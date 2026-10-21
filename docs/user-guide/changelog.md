@@ -1,5 +1,33 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.3.0
+
+`0.3.0` brings in the features from pull requests that were already open when `0.2.0` shipped, as a one-off exception. It is now the last feature release of the 0.x line: from here, 0.x gets bug fixes only, and new work goes into 1.x. Releases also follow strict [semantic versioning](https://semver.org) from now on: new features raise the minor version, and fixes raise the patch version. These are the changes since `0.2.0`, and none of them is breaking.
+
+#### Features
+
+- **`RedisIndex`** stores routes in Redis with RediSearch vector search, sync and async. It needs a server with the search module, such as Redis Stack, Redis 8 or Redis Cloud. Install `semantic-router[redis]`, and see the [Redis guide](https://github.com/aurelio-labs/semantic-router/blob/v0/docs/integrations/redis.md).
+- **`OpenAICompatibleLLM`** calls any OpenAI-compatible chat completions API. Pass its `base_url`, and either `api_key` or the name of the environment variable holding the key (`api_key_var_name`).
+- **Presets** built on `OpenAICompatibleLLM`, each with its own default `base_url`:
+
+| LLM | Key variable | Default model |
+|---|---|---|
+| `RequestyLLM` | `REQUESTY_API_KEY` | `openai/gpt-4o-mini` |
+| `OrcaRouterLLM` | `ORCAROUTER_API_KEY` | `orcarouter/auto` |
+| `AtlasCloudLLM` | `ATLASCLOUD_API_KEY` | `deepseek-ai/deepseek-v4-flash` |
+| `MiniMaxLLM` | `MINIMAX_API_KEY` | `MiniMax-M3.1-Flash` |
+
+A preset reads its model from `<PROVIDER>_CHAT_MODEL_NAME` (`REQUESTY_CHAT_MODEL_NAME`, for example) when you don't pass `name`. `MiniMaxLLM` strips MiniMax-M3's `<think>` blocks from its replies, and its default `max_tokens` is 4096 to leave room for thinking.
+
+#### Limits
+
+**`RedisIndex` on Redis 8 with search workers.** With the query engine's worker threads on, Redis 8 can return incomplete results while it re-indexes a key. Redis 8.10 turns them on by default (`search-workers 16`); 8.0 and 8.2 leave them off. A query that runs while the same keys are being rewritten can miss routes, and so can the scans behind `sync` and `delete`. `RedisIndex` waits for a new or reopened index to finish indexing the keys already in the database (up to `index_ready_timeout`, 60 seconds by default), but it can't guard against concurrent updates. If routes are updated while the router serves queries, use Redis Stack 7.4 or set `search-workers 0`. On Redis 8.2 with workers on, a search can also return a record without its score, and `RedisIndex` raises an error rather than return incomplete results.
+
+`OpenAICompatibleLLM` and its presets have two limits in 0.x:
+
+- Dynamic routes extract function inputs only when called synchronously. `BaseLLM` has no async extraction, so an async call returns the matched route with `function_call=None` and logs an error.
+- A router config file saves only each LLM's class and model name. A router using `OpenAICompatibleLLM` can't be reloaded from one, because it needs a `base_url`. A preset reloads with its default `base_url` and reads its key from its environment variable, so a custom `base_url` or a key passed in code is lost.
+
 ### v0.2.0
 
 `0.2.0` is the last feature release of the 0.x line: from here, 0.x gets bug fixes only, and new work goes into 1.x (see the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1)). These are the changes since `0.1.16`.
