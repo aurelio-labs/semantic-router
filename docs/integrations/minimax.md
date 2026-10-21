@@ -1,14 +1,14 @@
-Semantic Router integrates with MiniMax's embedding and language models through the `MiniMaxEncoder` and `MiniMaxLLM` classes. This integration uses MiniMax's OpenAI-compatible API for high-quality embeddings and chat completions.
+Semantic Router integrates with MiniMax's embedding and language models through the `MiniMaxEncoder` and `MiniMaxLLM` classes. Chat completions go through MiniMax's OpenAI-compatible API, and embeddings through MiniMax's own embeddings endpoint.
 
 ## Overview
 
-MiniMax provides both embedding and language models accessible via an OpenAI-compatible API at `https://api.minimax.io/v1`. The `MiniMaxEncoder` generates dense embeddings for semantic routing, while `MiniMaxLLM` enables dynamic routes with parameter extraction.
+MiniMax serves its language models through an OpenAI-compatible API at `https://api.minimax.io/v1`, so `MiniMaxLLM` is a preset of `OpenAICompatibleLLM`. Embeddings come from MiniMax's own `/embeddings` endpoint on the same host. The `MiniMaxEncoder` generates dense embeddings for semantic routing, while `MiniMaxLLM` enables dynamic routes with parameter extraction.
 
 ## Getting Started
 
 ### Prerequisites
 
-1. MiniMax API key from [https://platform.minimaxi.com/](https://platform.minimaxi.com/)
+1. MiniMax API key from [https://platform.minimax.io](https://platform.minimax.io). A key from MiniMax's China platform ([https://platform.minimaxi.com](https://platform.minimaxi.com)) needs `base_url="https://api.minimaxi.com/v1"`.
 2. Semantic Router installed
 
 ### Installation
@@ -59,10 +59,10 @@ Full async/await support for both encoder and LLM:
 
 ```python
 # Synchronous
-embeddings = encoder(["your text here"])
+embeddings = encoder(docs=["your text here"])
 
 # Asynchronous
-embeddings = await encoder.acall(["your text here"])
+embeddings = await encoder.acall(docs=["your text here"])
 ```
 
 ### Temperature Clamping
@@ -72,6 +72,8 @@ MiniMax requires temperature in the range (0.0, 1.0]. The `MiniMaxLLM` automatic
 ### Think-Tag Stripping
 
 MiniMax models may include `<think>...</think>` tags in responses. The `MiniMaxLLM` automatically strips these to return clean output.
+
+Thinking counts towards `max_tokens` (200 by default). If a reply runs out of tokens while the model is still thinking, `MiniMaxLLM` raises an error rather than returning the thinking, so give longer tasks more room, for example `MiniMaxLLM(max_tokens=1024)`.
 
 ## Integration with Routers
 
@@ -99,7 +101,7 @@ routes = [
 ]
 
 router = SemanticRouter(encoder=encoder, routes=routes, auto_sync="local")
-result = router("hey, how are you?")
+result = router(text="hey, how are you?")
 print(result.name)  # "greeting"
 ```
 

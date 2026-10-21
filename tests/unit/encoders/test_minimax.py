@@ -75,6 +75,23 @@ class TestMiniMaxEncoder:
         assert isinstance(result, list)
         assert result == [[0.1, 0.2, 0.3]]
 
+    def test_call_goes_to_minimax(self, minimax_encoder, mocker):
+        post = mocker.patch("requests.post")
+        post.return_value.json.return_value = {
+            "vectors": [[0.1, 0.2, 0.3]],
+            "base_resp": {"status_code": 0, "status_msg": "success"},
+        }
+        minimax_encoder(["test"])
+        post.assert_called_once_with(
+            "https://api.minimax.io/v1/embeddings",
+            json={"model": "embo-01", "texts": ["test"], "type": "db"},
+            headers={
+                "Authorization": "Bearer test_api_key",
+                "Content-Type": "application/json",
+            },
+            timeout=30,
+        )
+
     def test_call_api_failure(self, minimax_encoder, mocker):
         mocker.patch("requests.post", side_effect=Exception("API call failed"))
         with pytest.raises(ValueError, match="MiniMax API call failed"):

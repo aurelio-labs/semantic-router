@@ -7,6 +7,9 @@ from semantic_router.encoders.minimax import MiniMaxEncoder
 from semantic_router.llms.minimax import MiniMaxLLM
 from semantic_router.schema import Message
 
+# Calls the paid MiniMax API, so it runs with the other live tests only.
+pytestmark = pytest.mark.live("MINIMAX_API_KEY")
+
 
 def has_valid_minimax_api_key():
     """Check if a valid MiniMax API key is available."""

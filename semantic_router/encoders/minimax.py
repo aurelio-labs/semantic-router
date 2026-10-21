@@ -14,7 +14,7 @@ class MiniMaxEncoder(DenseEncoder):
     """MiniMax encoder class for generating embeddings using the MiniMax API.
 
     Uses MiniMax's native embedding endpoint at https://api.minimax.io/v1/embeddings.
-    Requires a MiniMax API key from https://platform.minimaxi.com/
+    Requires a MiniMax API key from https://platform.minimax.io
     """
 
     _api_key: str = PrivateAttr(default="")
