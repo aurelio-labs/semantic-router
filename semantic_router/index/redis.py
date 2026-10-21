@@ -268,7 +268,6 @@ class RedisIndex(BaseIndex):
             self.client.ft(self.index_name).info()
         except ResponseError:
             return False
-        self._index_initialized = True
         return True
 
     async def _aindex_exists(self) -> bool:
@@ -283,7 +282,6 @@ class RedisIndex(BaseIndex):
             await self.aclient.ft(self.index_name).info()
         except ResponseError:
             return False
-        self._index_initialized = True
         return True
 
     def _schema_fields(self):
@@ -338,25 +336,88 @@ class RedisIndex(BaseIndex):
             fields=self._schema_fields(), definition=definition
         )
 
-    def _ensure_index(self) -> None:
-        """Create the index if it doesn't exist yet. Idempotent and cheap once
-        created (checked via a local flag before falling back to a server round-trip).
+    @staticmethod
+    def _vector_dimensions(info: Any) -> Optional[int]:
+        """Extract the vector field's DIM from an FT.INFO reply.
+
+        :param info: The raw FT.INFO reply.
+        :return: The index's vector dimensions, if it has a vector field.
+        :rtype: Optional[int]
+        """
+        if not isinstance(info, dict):
+            info = dict(zip(info[::2], info[1::2]))
+        for attribute in info.get("attributes", []):
+            fields = {
+                (k.decode() if isinstance(k, bytes) else str(k)).lower(): v
+                for k, v in zip(attribute[::2], attribute[1::2])
+            }
+            if fields.get("type") in (b"VECTOR", "VECTOR"):
+                return int(fields["dim"])
+        return None
+
+    def _check_dimensions(self, info: Any) -> None:
+        """Adopt an existing index's dimensions, or raise if they differ.
+
+        Redis stores a vector of the wrong size without indexing it, so a
+        mismatch would otherwise lose writes silently.
+
+        :param info: The FT.INFO reply for the existing index.
+        :raises ValueError: If the index's dimensions differ from this handle's.
+        """
+        dimensions = self._vector_dimensions(info)
+        if dimensions is None:
+            return
+        if self.dimensions is None:
+            self.dimensions = dimensions
+        elif self.dimensions != dimensions:
+            raise ValueError(
+                f"Redis index '{self.index_name}' holds {dimensions}-dimensional "
+                f"vectors, not {self.dimensions}-dimensional ones. Use another "
+                "index_name, or delete_index() first."
+            )
+
+    def _ensure_index(self, create: bool = True) -> bool:
+        """Create the index (when `create`) or check an existing one's
+        dimensions, once per handle; later calls skip the server round-trip.
+
+        :param create: Whether to create the index if it doesn't exist.
+        :type create: bool
+        :return: True if the index exists.
+        :rtype: bool
         """
         if self._index_initialized:
-            return
-        if not self._index_exists():
+            return True
+        from redis.exceptions import ResponseError
+
+        try:
+            info = self.client.ft(self.index_name).info()
+        except ResponseError:
+            if not create:
+                return False
             self._create_index()
+        else:
+            self._check_dimensions(info)
         self._index_initialized = True
         self.index = self
+        return True
 
-    async def _aensure_index(self) -> None:
+    async def _aensure_index(self, create: bool = True) -> bool:
         """Async version of :meth:`_ensure_index`."""
         if self._index_initialized:
-            return
-        if not await self._aindex_exists():
+            return True
+        from redis.exceptions import ResponseError
+
+        try:
+            info = await self.aclient.ft(self.index_name).info()
+        except ResponseError:
+            if not create:
+                return False
             await self._acreate_index()
+        else:
+            self._check_dimensions(info)
         self._index_initialized = True
         self.index = self
+        return True
 
     # ___________________________ FILTERING / IDS ___________________________
 
@@ -585,7 +646,7 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
-        if not self._index_initialized and not self._index_exists():
+        if not self._ensure_index(create=False):
             return np.array([]), []
         from redis.commands.search.query import Query
 
@@ -628,7 +689,7 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
-        if not self._index_initialized and not await self._aindex_exists():
+        if not await self._aensure_index(create=False):
             return np.array([]), []
         from redis.commands.search.query import Query
 

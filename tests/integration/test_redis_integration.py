@@ -125,3 +125,18 @@ def test_index_names_that_extend_each_other_keep_their_own_records():
     assert [u.route for u in base.get_utterances()] == ["base"]
     base.delete_index()
     assert [u.route for u in v2.get_utterances()] == ["v2"]
+
+
+def test_vectors_of_another_size_raise_instead_of_vanishing():
+    # Redis stores a wrong-size vector without indexing it, so it was never found
+    name = f"test-{uuid.uuid4().hex}"
+    RedisIndex(index_name=name).add(
+        embeddings=_vectors(1, dims=8), routes=["eight"], utterances=["one"]
+    )
+    with pytest.raises(ValueError, match="8-dimensional"):
+        RedisIndex(index_name=name).add(
+            embeddings=_vectors(1, dims=4), routes=["four"], utterances=["two"]
+        )
+    reader = RedisIndex(index_name=name)
+    reader.query(vector=np.array(_vectors(1, dims=8)[0]), top_k=1)
+    assert reader.dimensions == 8  # a read-only handle learns them
