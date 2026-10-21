@@ -27,7 +27,8 @@ VECTOR_FIELD = "vector"
 SR_ROUTE_TAG_FIELD = "sr_route_tag"
 SR_NAMESPACE_TAG_FIELD = "sr_namespace_tag"
 
-# Config values are stored as plain Redis hashes, independent of the search index.
+# Config values (sr_hash, sr_lock, ...) live in one plain Redis hash per index,
+# `sr_config:{index_name}`, outside the search index.
 CONFIG_KEY_PREFIX = "sr_config"
 
 # RediSearch only supports these three distance metrics for VECTOR fields.
@@ -52,6 +53,21 @@ def _tag(value: str) -> str:
     :rtype: str
     """
     return hashlib.sha256(str(value).encode()).hexdigest()
+
+
+def _missing_index(error: Exception) -> bool:
+    """Whether a ResponseError from FT.INFO means the index doesn't exist.
+
+    Redis versions word that differently ("Unknown index name", "no such index",
+    "SEARCH_INDEX_NOT_FOUND"), but a server without RediSearch always answers
+    "unknown command", and that should raise rather than read as "no index".
+
+    :param error: The ResponseError raised by FT.INFO.
+    :type error: Exception
+    :return: True if the error means the index doesn't exist.
+    :rtype: bool
+    """
+    return not str(error).lower().startswith("unknown command")
 
 
 def _import_index_definition():
@@ -142,8 +158,9 @@ class RedisIndex(BaseIndex):
             "all index operations to a single tenant within a shared index. When "
             "set, a `namespace` TAG field is stored on every record and all "
             "queries/scans/deletes are automatically filtered to this namespace. "
-            "Record IDs are also namespaced via `uuid5('{namespace}:{route}:{utterance}')`, "
-            "preventing cross-tenant ID collisions."
+            "Record IDs are also namespaced, via uuid5 of "
+            "`json.dumps([namespace, route, utterance])`, preventing cross-tenant "
+            "ID collisions."
         ),
     )
     client: Any = Field(default=None, exclude=True)
@@ -152,6 +169,11 @@ class RedisIndex(BaseIndex):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        if self.index_name == CONFIG_KEY_PREFIX:
+            raise ValueError(
+                f"'{CONFIG_KEY_PREFIX}' can't be a RedisIndex index_name: its key "
+                "prefix would take in every index's config hash."
+            )
         self.type = "redis"
         if self.connection_string is None:
             self.connection_string = os.getenv("REDIS_URL")
@@ -266,7 +288,9 @@ class RedisIndex(BaseIndex):
 
         try:
             self.client.ft(self.index_name).info()
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             return False
         return True
 
@@ -280,7 +304,9 @@ class RedisIndex(BaseIndex):
 
         try:
             await self.aclient.ft(self.index_name).info()
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             return False
         return True
 
@@ -337,36 +363,44 @@ class RedisIndex(BaseIndex):
         )
 
     @staticmethod
-    def _vector_dimensions(info: Any) -> Optional[int]:
-        """Extract the vector field's DIM from an FT.INFO reply.
+    def _vector_attributes(info: Any) -> Dict[str, str]:
+        """Extract the vector field's attributes (DIM, DISTANCE_METRIC, ...)
+        from an FT.INFO reply.
 
         :param info: The raw FT.INFO reply.
-        :return: The index's vector dimensions, if it has a vector field.
-        :rtype: Optional[int]
+        :return: The vector field's attributes, lower-cased keys to str
+            values, or an empty dict if the index has no vector field.
+        :rtype: Dict[str, str]
         """
         if not isinstance(info, dict):
             info = dict(zip(info[::2], info[1::2]))
         for attribute in info.get("attributes", []):
             fields = {
-                (k.decode() if isinstance(k, bytes) else str(k)).lower(): v
+                (k.decode() if isinstance(k, bytes) else str(k)).lower(): (
+                    v.decode() if isinstance(v, bytes) else str(v)
+                )
                 for k, v in zip(attribute[::2], attribute[1::2])
             }
-            if fields.get("type") in (b"VECTOR", "VECTOR"):
-                return int(fields["dim"])
-        return None
+            if fields.get("type") == "VECTOR":
+                return fields
+        return {}
 
-    def _check_dimensions(self, info: Any) -> None:
-        """Adopt an existing index's dimensions, or raise if they differ.
+    def _check_index(self, info: Any) -> None:
+        """Check an existing index against this handle: adopt its dimensions,
+        or raise if they or its metric differ.
 
-        Redis stores a vector of the wrong size without indexing it, so a
-        mismatch would otherwise lose writes silently.
+        Redis stores a vector of the wrong size without indexing it, and scores
+        an index by the metric it was created with, so a mismatch would
+        otherwise lose writes or return the wrong scores, without an error.
 
         :param info: The FT.INFO reply for the existing index.
-        :raises ValueError: If the index's dimensions differ from this handle's.
+        :raises ValueError: If the index's dimensions or metric differ from
+            this handle's.
         """
-        dimensions = self._vector_dimensions(info)
-        if dimensions is None:
+        attributes = self._vector_attributes(info)
+        if not attributes:
             return
+        dimensions = int(attributes["dim"])
         if self.dimensions is None:
             self.dimensions = dimensions
         elif self.dimensions != dimensions:
@@ -375,10 +409,38 @@ class RedisIndex(BaseIndex):
                 f"vectors, not {self.dimensions}-dimensional ones. Use another "
                 "index_name, or delete_index() first."
             )
+        metric = attributes.get("distance_metric", "").upper()
+        if metric and metric != self._redis_metric():
+            names = {v: k.value for k, v in _METRIC_MAP.items()}
+            raise ValueError(
+                f"Redis index '{self.index_name}' uses the "
+                f"{names.get(metric, metric)} metric, not {self.metric.value}. "
+                "Pass that metric, use another index_name, or delete_index() first."
+            )
+
+    def _check_vectors(self, embeddings: List[List[float]]) -> None:
+        """Raise, before anything is written, if a vector isn't `dimensions`
+        long.
+
+        Redis would store it without indexing it: it would never be found, and
+        its hash would outlive delete_index() and turn up in a later index.
+
+        :param embeddings: The embeddings about to be written.
+        :type embeddings: List[List[float]]
+        :raises ValueError: If any embedding has the wrong length.
+        """
+        for i, embedding in enumerate(embeddings):
+            if len(embedding) != self.dimensions:
+                raise ValueError(
+                    f"Embedding {i} has {len(embedding)} dimensions, but Redis "
+                    f"index '{self.index_name}' holds {self.dimensions}-dimensional "
+                    "vectors. Nothing was written."
+                )
 
     def _ensure_index(self, create: bool = True) -> bool:
         """Create the index (when `create`) or check an existing one's
-        dimensions, once per handle; later calls skip the server round-trip.
+        dimensions and metric, once per handle; later calls skip the server
+        round-trip.
 
         :param create: Whether to create the index if it doesn't exist.
         :type create: bool
@@ -391,12 +453,14 @@ class RedisIndex(BaseIndex):
 
         try:
             info = self.client.ft(self.index_name).info()
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             if not create:
                 return False
             self._create_index()
         else:
-            self._check_dimensions(info)
+            self._check_index(info)
         self._index_initialized = True
         self.index = self
         return True
@@ -409,12 +473,14 @@ class RedisIndex(BaseIndex):
 
         try:
             info = await self.aclient.ft(self.index_name).info()
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             if not create:
                 return False
             await self._acreate_index()
         else:
-            self._check_dimensions(info)
+            self._check_index(info)
         self._index_initialized = True
         self.index = self
         return True
@@ -458,7 +524,9 @@ class RedisIndex(BaseIndex):
 
     def _id_for(self, route: str, utterance: str) -> str:
         """Compute a deterministic ID for a route/utterance pair, namespaced
-        when a namespace is set, to avoid cross-tenant collisions.
+        when a namespace is set, to avoid cross-tenant collisions. The parts are
+        JSON-encoded, so no split of the same characters (`a` + `b:c` against
+        `a:b` + `c`) gives the same ID.
 
         :param route: The route name.
         :type route: str
@@ -467,11 +535,7 @@ class RedisIndex(BaseIndex):
         :return: A UUID5 string.
         :rtype: str
         """
-        key = (
-            f"{self.namespace}:{route}:{utterance}"
-            if self.namespace is not None
-            else f"{route}:{utterance}"
-        )
+        key = json.dumps([self.namespace, route, utterance])
         return str(uuid.uuid5(uuid.NAMESPACE_DNS, key))
 
     def _key_for(self, route: str, utterance: str) -> str:
@@ -554,6 +618,7 @@ class RedisIndex(BaseIndex):
         :type batch_size: int
         """
         self.dimensions = self.dimensions or len(embeddings[0])
+        self._check_vectors(embeddings)
         self._ensure_index()
 
         if not metadata_list or len(metadata_list) != len(utterances):
@@ -602,6 +667,7 @@ class RedisIndex(BaseIndex):
         :type batch_size: int
         """
         self.dimensions = self.dimensions or len(embeddings[0])
+        self._check_vectors(embeddings)
         await self._aensure_index()
 
         if not metadata_list or len(metadata_list) != len(utterances):
@@ -646,6 +712,8 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
+        if route_filter is not None and not route_filter:
+            return np.array([]), []  # no routes allowed, as in the other indexes
         if not self._ensure_index(create=False):
             return np.array([]), []
         from redis.commands.search.query import Query
@@ -689,6 +757,8 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
+        if route_filter is not None and not route_filter:
+            return np.array([]), []  # no routes allowed, as in the other indexes
         if not await self._aensure_index(create=False):
             return np.array([]), []
         from redis.commands.search.query import Query
@@ -903,15 +973,19 @@ class RedisIndex(BaseIndex):
             self.client.delete(*ids)
 
     def delete_index(self):
-        """Delete the RediSearch index and all of its documents."""
+        """Delete the RediSearch index, all of its documents and its config
+        (every namespace's sync hash and lock)."""
         if self._index_exists():
             self.client.ft(self.index_name).dropindex(delete_documents=True)
+        self.client.delete(self._config_key())
         self._index_initialized = False
 
     async def adelete_index(self):
-        """Asynchronously delete the RediSearch index and all of its documents."""
+        """Asynchronously delete the RediSearch index, all of its documents and
+        its config (every namespace's sync hash and lock)."""
         if await self._aindex_exists():
             await self.aclient.ft(self.index_name).dropindex(delete_documents=True)
+        await self.aclient.delete(self._config_key())
         self._index_initialized = False
 
     # ___________________________ DESCRIBE / READY / LEN ___________________________
@@ -940,7 +1014,9 @@ class RedisIndex(BaseIndex):
         try:
             info = self.client.ft(self.index_name).info()
             num_docs = self._num_docs(info)
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             num_docs = 0
         return IndexConfig(
             type=self.type,
@@ -984,39 +1060,74 @@ class RedisIndex(BaseIndex):
         try:
             info = await self.aclient.ft(self.index_name).info()
             return self._num_docs(info)
-        except ResponseError:
+        except ResponseError as e:
+            if not _missing_index(e):
+                raise
             return 0
 
     # ___________________________ CONFIG ___________________________
-    # Config values (hash, lock, etc.) are plain Redis hashes -- no vector
-    # index needed, unlike backends where everything must be a vector record.
+    # Config values (hash, lock, etc.) are fields of one plain Redis hash per
+    # index -- no vector index needed, unlike backends where everything must be
+    # a vector record -- so delete_index() can drop them all with one DEL.
 
-    def _config_key(self, field: str, scope: Optional[str]) -> str:
-        """Build the Redis key for a config parameter.
+    def _config_key(self) -> str:
+        """The Redis key of this index's config hash.
 
-        :param field: The config field name.
-        :param scope: The config scope, defaults to this index's name.
         :return: The Redis key.
         :rtype: str
         """
-        return (
-            f"{CONFIG_KEY_PREFIX}:{self.index_name}:{scope or self.index_name}:{field}"
+        return f"{CONFIG_KEY_PREFIX}:{self.index_name}"
+
+    def _config_field(self, field: str, scope: Optional[str]) -> str:
+        """The config hash field for a parameter, scoped to this handle's
+        namespace so tenants sharing an index keep their own sync hash and lock.
+
+        :param field: The config field name.
+        :param scope: The config scope, defaults to this index's name.
+        :return: The hash field name.
+        :rtype: str
+        """
+        return json.dumps([self.namespace, scope or self.index_name, field])
+
+    def _config_value(self, config: ConfigParameter) -> str:
+        """Serialise a config parameter for the config hash.
+
+        :param config: The config parameter.
+        :return: Its JSON encoding.
+        :rtype: str
+        """
+        return json.dumps(
+            {
+                "field": config.field,
+                "value": config.value,
+                "scope": config.scope or self.index_name,
+                "created_at": config.created_at,
+            }
         )
 
-    @staticmethod
-    def _decode_hash(data: Dict[Any, Any]) -> Dict[str, str]:
-        """Decode a raw HGETALL reply (bytes keys/values) into a str->str dict.
+    def _parse_config(
+        self, raw: Optional[Union[str, bytes]], field: str, scope: Optional[str]
+    ) -> ConfigParameter:
+        """Parse a config hash value, or return an empty parameter if unset.
 
-        :param data: The raw hash reply.
-        :return: The decoded hash.
-        :rtype: Dict[str, str]
+        :param raw: The stored value, or None if the parameter isn't set.
+        :param field: The config field name.
+        :param scope: The config scope, defaults to this index's name.
+        :return: The config parameter.
+        :rtype: ConfigParameter
         """
-        return {
-            (k.decode() if isinstance(k, bytes) else k): (
-                v.decode() if isinstance(v, bytes) else v
+        if raw is None:
+            logger.warning(f"Configuration for {field} parameter not found in Redis.")
+            return ConfigParameter(
+                field=field, value="", scope=scope or self.index_name
             )
-            for k, v in data.items()
-        }
+        data = json.loads(raw)
+        return ConfigParameter(
+            field=data.get("field", field),
+            value=data.get("value", ""),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            scope=data.get("scope", scope or self.index_name),
+        )
 
     def _write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Write a config parameter to Redis.
@@ -1026,15 +1137,10 @@ class RedisIndex(BaseIndex):
         :return: The config parameter that was written.
         :rtype: ConfigParameter
         """
-        key = self._config_key(config.field, config.scope)
         self.client.hset(
-            key,
-            mapping={
-                "field": config.field,
-                "value": config.value,
-                "scope": config.scope or self.index_name,
-                "created_at": config.created_at,
-            },
+            self._config_key(),
+            self._config_field(config.field, config.scope),
+            self._config_value(config),
         )
         return config
 
@@ -1048,32 +1154,15 @@ class RedisIndex(BaseIndex):
         :return: The config parameter that was read.
         :rtype: ConfigParameter
         """
-        key = self._config_key(field, scope)
-        data = self.client.hgetall(key)
-        if not data:
-            logger.warning(f"Configuration for {field} parameter not found in Redis.")
-            return ConfigParameter(
-                field=field, value="", scope=scope or self.index_name
-            )
-        data = self._decode_hash(data)
-        return ConfigParameter(
-            field=data.get("field", field),
-            value=data.get("value", ""),
-            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
-            scope=data.get("scope", scope or self.index_name),
-        )
+        raw = self.client.hget(self._config_key(), self._config_field(field, scope))
+        return self._parse_config(raw, field, scope)
 
     async def _async_write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Asynchronously write a config parameter to Redis."""
-        key = self._config_key(config.field, config.scope)
         await self.aclient.hset(
-            key,
-            mapping={
-                "field": config.field,
-                "value": config.value,
-                "scope": config.scope or self.index_name,
-                "created_at": config.created_at,
-            },
+            self._config_key(),
+            self._config_field(config.field, config.scope),
+            self._config_value(config),
         )
         return config
 
@@ -1081,20 +1170,10 @@ class RedisIndex(BaseIndex):
         self, field: str, scope: Optional[str] = None
     ) -> ConfigParameter:
         """Asynchronously read a config parameter from Redis."""
-        key = self._config_key(field, scope)
-        data = await self.aclient.hgetall(key)
-        if not data:
-            logger.warning(f"Configuration for {field} parameter not found in Redis.")
-            return ConfigParameter(
-                field=field, value="", scope=scope or self.index_name
-            )
-        data = self._decode_hash(data)
-        return ConfigParameter(
-            field=data.get("field", field),
-            value=data.get("value", ""),
-            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
-            scope=data.get("scope", scope or self.index_name),
+        raw = await self.aclient.hget(
+            self._config_key(), self._config_field(field, scope)
         )
+        return self._parse_config(raw, field, scope)
 
     def close(self):
         """Closes the Redis client connections if they exist."""

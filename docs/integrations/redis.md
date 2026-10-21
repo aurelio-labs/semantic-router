@@ -73,6 +73,8 @@ index = RedisIndex(
 )
 ```
 
+Opening an index that already exists checks it against your settings: a different `dimensions` or `metric` raises a `ValueError`, and so does adding a vector of the wrong size, in which case nothing from that batch is written. The name `sr_config` is reserved for the hashes that hold each index's sync state.
+
 ### Distance Metrics
 
 Redis supports three distance metrics for vector fields. `RedisIndex` defaults to cosine:
@@ -106,6 +108,8 @@ Like `QdrantIndex`, a `namespace` scopes all reads/writes to a single tenant wit
 ```python
 index = RedisIndex(index_name="semantic_router", namespace="org-123")
 ```
+
+Each namespace keeps its own sync state (`sr_hash` and `sr_lock`), so tenants sync independently. `delete_index()` drops the whole index, with every namespace's records and sync state.
 
 ### Asynchronous Support
 

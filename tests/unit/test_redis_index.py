@@ -7,8 +7,10 @@ and by tests/integration/test_redis_integration.py, run against the redis-stack
 container in compose.yaml (`make services`).
 """
 
+import json
 import uuid
 
+import numpy as np
 import pytest
 
 pytest.importorskip("redis", reason="redis not installed")
@@ -151,13 +153,21 @@ class TestDistanceToScore:
 class TestIds:
     def test_deterministic_without_namespace(self):
         idx = make_index()
-        expected = str(uuid.uuid5(uuid.NAMESPACE_DNS, "r:utt"))
+        expected = str(uuid.uuid5(uuid.NAMESPACE_DNS, json.dumps([None, "r", "utt"])))
         assert idx._id_for("r", "utt") == expected
 
     def test_deterministic_with_namespace(self):
         idx = make_index(namespace="org-abc")
-        expected = str(uuid.uuid5(uuid.NAMESPACE_DNS, "org-abc:r:utt"))
+        expected = str(
+            uuid.uuid5(uuid.NAMESPACE_DNS, json.dumps(["org-abc", "r", "utt"]))
+        )
         assert idx._id_for("r", "utt") == expected
+
+    def test_colons_dont_make_ids_collide(self):
+        assert make_index()._id_for("a:b", "c") != make_index()._id_for("a", "b:c")
+        assert make_index(namespace="a")._id_for("b:c", "d") != make_index(
+            namespace="a:b"
+        )._id_for("c", "d")
 
     def test_namespace_changes_id(self):
         assert make_index()._id_for("r", "utt") != make_index(
@@ -214,8 +224,6 @@ class TestBuildMapping:
         assert "namespace" not in mapping
         assert "sr_namespace_tag" not in mapping
 
-        import json
-
         record = json.loads(mapping["sr_record"])
         assert record["sr_route"] == "r"
         assert record["sr_utterance"] == "utt"
@@ -231,8 +239,6 @@ class TestBuildMapping:
     def test_no_function_schema_defaults_empty(self):
         idx = make_index()
         mapping = idx._build_mapping("r", "utt", [0.1, 0.2, 0.3, 0.4], {}, None)
-        import json
-
         record = json.loads(mapping["sr_record"])
         assert record["sr_function_schema"] == "{}"
 
@@ -246,3 +252,27 @@ class TestKeyPrefix:
         base = make_index(index_name="routes")._key_prefix()
         v2 = make_index(index_name="routes:v2")._key_prefix()
         assert not v2.startswith(base)
+
+
+class TestWithoutRediSearch:
+    def test_query_raises_instead_of_returning_empty(self, mocker):
+        # plain Redis answers FT.INFO with "unknown command", which must not
+        # read as "no index yet"
+        from redis.exceptions import ResponseError
+
+        idx = make_index()
+        ft = mocker.patch.object(idx.client, "ft")
+        ft.return_value.info.side_effect = ResponseError(
+            "unknown command 'FT.INFO', with args beginning with: 'x' "
+        )
+        with pytest.raises(ResponseError, match="unknown command"):
+            idx.query(vector=np.zeros(DIMS), top_k=1)
+
+    def test_a_missing_index_still_reads_as_empty(self, mocker):
+        from redis.exceptions import ResponseError
+
+        idx = make_index()
+        ft = mocker.patch.object(idx.client, "ft")
+        ft.return_value.info.side_effect = ResponseError("Unknown index name")
+        scores, routes = idx.query(vector=np.zeros(DIMS), top_k=1)
+        assert routes == []
