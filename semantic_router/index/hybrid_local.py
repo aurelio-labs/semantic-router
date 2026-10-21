@@ -230,7 +230,9 @@ class HybridLocalIndex(LocalIndex):
             idx = np.argpartition(total_sim, -top_k)[-top_k:]
             scores = total_sim[idx]
             # get the utterance categories (route names)
-            route_names = self.routes[idx] if self.routes is not None else []
+            route_names = (
+                [self.routes[i] for i in idx] if self.routes is not None else []
+            )
             return scores, route_names
         else:
             logger.warning("Index or sparse index is not populated.")

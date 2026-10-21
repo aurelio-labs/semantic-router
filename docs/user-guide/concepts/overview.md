@@ -1,19 +1,20 @@
-Semantic Routing is an approach to directing inputs (like text, images, or audio) to the appropriate handlers based on their meaning rather than rigid keyword matching or rule-based systems. It provides a more flexible and human-like understanding of content, allowing systems to gracefully handle the natural variability in how people express similar ideas.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/concepts/overview), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-## Semantic Space
+Semantic routing sends an input — text, an image, audio — to the right handler based on what it *means*, not on keywords or hand-written rules. People say the same thing a hundred different ways. Semantic routing handles that variety without you enumerating every phrasing.
 
-Semantic space is a high-dimensional mathematical space where meaning is represented geometrically. Imagine a vast coordinate system where every point corresponds to a specific concept or idea. In this space, the sentence "I need help with my password" exists as a point near "Can't log in to my account" but far from "What's the weather forecast?" Semantic similarity becomes a measurable distance, transforming abstract meaning into computable relationships.
+## Semantic space
 
-- Each point (vector) represents the meaning of a piece of content
-- Distance between points represents semantic difference
-- Content with similar meanings cluster together, regardless of exact wording
+Here's the core idea. Imagine a huge coordinate system where every point is a concept. "I need help with my password" sits right next to "Can't log in to my account", and far from "What's the weather forecast?". That's semantic space. Meaning becomes geometry, and similarity becomes a distance you can measure.
 
-This approach allows us to capture the nuanced relationships between concepts, accommodating synonyms, paraphrases, and related ideas without explicitly programming each variation.
+- Each point (a vector) represents the meaning of some content.
+- Distance between points is semantic difference.
+- Similar meanings cluster together, whatever the exact wording.
+
+So synonyms, paraphrases, and related ideas all land close to each other — and you never program the variations by hand.
 
 ### Encoders
 
-To place content in a semantic space, we need to convert it into vector representations – a process called **encoding**. This is handled by neural network models called **bi-encoders** (commonly known as embedding
-models or encoders) which:
+To put content into semantic space, you *encode* it into a vector. That's the job of an encoder (you'll also hear "embedding model" or "bi-encoder").
 
 ```mermaid
 flowchart LR
@@ -25,44 +26,40 @@ flowchart LR
     style C fill:#f1f8e9,stroke:#558b2f,stroke-width:1px
 ```
 
-1. Process the input content (text, image, etc.)
-2. Analyze its features and semantic properties
-3. Output a fixed-size vector of floating-point numbers (typically hundreds or thousands of dimensions)
+An encoder takes the input, analyzes its features, and outputs a fixed-size vector of numbers — usually hundreds or thousands of dimensions. "How's the weather today?" might become `[0.12, -0.34, 0.56, ...]`. "What's the temperature outside?" becomes a different but nearby vector, because the meanings are close.
 
-For example, the sentence "How's the weather today?" might be encoded as a vector like `[0.12, -0.34, 0.56, ...]`, while "What's the temperature outside?" would produce a different but nearby vector, reflecting their similar meanings.
+Semantic Router supports two families:
 
-Semantic Router supports various encoder types:
+- **Dense encoders** (`OpenAIEncoder`, `HuggingFaceEncoder`, …) fill every dimension. They capture rich semantic relationships.
+- **Sparse encoders** (`AurelioSparseEncoder`, `BM25Encoder`, …) leave most dimensions at zero. They excel at exact keywords and term frequency.
 
-- **Dense encoders** (like `OpenAIEncoder` or `HuggingFaceEncoder`): Generate vectors where every dimension has a value, capturing complex semantic relationships
-- **Sparse encoders** (like `AurelioSparseEncoder` or `BM25Encoder`): Generate vectors where most dimensions are zero, excelling at keyword matching and term frequency
+### Multimodal routing
 
-### Multimodal Routing
+Text is the common case, but anything you can encode, you can route:
 
-While text is the most common application, semantic routing works with any content that can be meaningfully encoded into vectors:
+- **Images.** `CLIPEncoder` and `VitEncoder` place images in the same space as text, so you can compare across modalities.
+- **Audio.** Speech or sound, routed on content or tone.
+- **Mixed content.** Text and images together, encoded jointly or separately.
 
-- **Images**: Using encoders like `CLIPEncoder` or `VitEncoder`, images can be placed in the same semantic space as text, enabling cross-modal comparisons and routing
-- **Audio**: Speech or sound can be encoded and routed based on content, tone, or other semantic attributes
-- **Hybrid content**: Combinations of text, images, and other modalities can be encoded together or separately
+That's what lets you route on what's *in* an image, or on the combined meaning of text plus a picture.
 
-This multimodal capability enables powerful applications like routing based on the content of images, or understanding the combined meaning of text and images together.
+### Making the decision
 
-### Making Routing Decisions
-
-Once content is encoded into vectors, **semantic similarity** is used to make routing decisions. This is typically calculated using mathematical operations like:
+Once everything is a vector, routing is a similarity calculation. The usual measures:
 
 - **Cosine similarity**: cos(θ) = (A·B)/(||A||·||B||)
 - **Euclidean distance**: d(A,B) = √(Σ(Aᵢ-Bᵢ)²)
 - **Dot product**: A·B = Σ(Aᵢ·Bᵢ)
 
-Semantic Router compares incoming queries against predefined routes, each represented by one or more example utterances. The route with the highest similarity score above a configurable threshold is selected as the match.
+Semantic Router compares the incoming query against every route, where each route is represented by its example utterances. The route with the highest score above a configurable threshold wins.
 
-## Implementation Workflow
+## The workflow
 
-1. **Define routes**: Create example utterances for each target category
-2. **Select encoder**: Choose based on content type and performance requirements
-3. **Configure router**: Connect encoder, routes, and vector index
-4. **Implement handlers**: Define logic for each route
-5. **Process inputs**: Transform, encode, and route based on similarity
+1. **Define routes** — example utterances for each category.
+2. **Pick an encoder** — based on content type and performance needs.
+3. **Configure the router** — connect encoder, routes, and an index.
+4. **Write handlers** — the logic for each route.
+5. **Route inputs** — encode, compare, dispatch.
 
 ```mermaid
 flowchart TD
@@ -89,13 +86,4 @@ flowchart TD
     class F,G,H,I,J,K runtime
 ```
 
-## Getting Started with Semantic Router
-
-Semantic Router makes implementing these capabilities straightforward:
-
-1. **Define routes** with example utterances representing the concepts you want to detect
-2. **Choose an encoder** appropriate for your content type and requirements
-3. **Initialize a router** that connects your encoder, routes, and an index for storing embeddings
-4. **Route incoming content** to appropriate handlers based on semantic similarity
-
-The library handles the complex vector operations, similarity calculations, and decision-making process, allowing you to focus on defining meaningful routes and creating effective handlers for each case.
+Semantic Router handles the vector math, the similarity scoring, and the decision. You focus on defining good routes and writing the handlers.

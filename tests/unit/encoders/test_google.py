@@ -1,9 +1,14 @@
 import pytest
-from google.api_core.exceptions import GoogleAPICallError
-from vertexai.language_models import TextEmbedding
-from vertexai.language_models._language_models import TextEmbeddingStatistics
 
-from semantic_router.encoders import GoogleEncoder
+_ = pytest.importorskip("vertexai")
+
+from google.api_core.exceptions import GoogleAPICallError  # noqa: E402
+from vertexai.language_models import TextEmbedding  # noqa: E402
+from vertexai.language_models._language_models import (  # noqa: E402
+    TextEmbeddingStatistics,
+)
+
+from semantic_router.encoders import GoogleEncoder  # noqa: E402
 
 
 @pytest.fixture

@@ -15,13 +15,25 @@ from semantic_router.encoders.base import (
     AsymmetricSparseMixin,
     SparseEncoder,
 )
-from semantic_router.index import LocalIndex, PineconeIndex, PostgresIndex, QdrantIndex
+from semantic_router.index import (
+    BaseIndex,
+    LocalIndex,
+    PineconeIndex,
+    PostgresIndex,
+    QdrantIndex,
+)
 from semantic_router.llms import BaseLLM, OpenAILLM
 from semantic_router.route import Route
 from semantic_router.routers import HybridRouter, RouterConfig, SemanticRouter
 from semantic_router.schema import RouteChoice, SparseEmbedding
 
 PINECONE_BASE_URL = os.getenv("PINECONE_API_BASE_URL", "http://localhost:5080")
+
+
+def qdrant_kwargs() -> dict:
+    """Use a real Qdrant server when QDRANT_URL is set, otherwise in-memory."""
+    url = os.getenv("QDRANT_URL")
+    return {"location": None, "url": url} if url else {}
 
 
 def mock_encoder_call(utterances):
@@ -122,7 +134,9 @@ def openai_encoder(mocker):
 
     mocker.patch.object(OpenAIEncoder, "acall", side_effect=async_mock_encoder_call)
     # Create and return the mocked encoder
-    encoder = OpenAIEncoder(name="text-embedding-3-small")
+    encoder = OpenAIEncoder(
+        name="text-embedding-3-small", openai_api_key="test_api_key"
+    )
     return encoder
 
 
@@ -137,7 +151,7 @@ def mock_openai_llm(mocker):
 
     mocker.patch.object(OpenAILLM, "acall", side_effect=async_mock_llm_call)
 
-    return OpenAILLM(name="fake-model-v1")
+    return OpenAILLM(name="fake-model-v1", openai_api_key="test_api_key")
 
 
 @pytest.fixture
@@ -257,9 +271,14 @@ def init_index(
     init_async_index: bool = False,
 ):
     """Initialize indexes for unit testing."""
+    index: BaseIndex
     if index_cls is QdrantIndex:
         index_name = index_name or f"test_{uuid.uuid4().hex}"
-        return QdrantIndex(index_name=index_name, init_async_index=init_async_index)
+        return QdrantIndex(
+            index_name=index_name,
+            init_async_index=init_async_index,
+            **qdrant_kwargs(),
+        )
     if index_cls is PineconeIndex:
         # In CI cloud mode, require a shared index to avoid quota/timeouts
         cloud_mode = os.getenv("PINECONE_API_BASE_URL", "").startswith(
@@ -269,9 +288,12 @@ def init_index(
             pytest.skip(
                 "Skipping Pinecone in cloud: set PINECONE_INDEX_NAME to an existing index to run."
             )
-        # Use local Pinecone instance
+        # Use local Pinecone instance. Include microseconds + a short uuid in
+        # the index name so parameterized tests that run within the same second
+        # don't collide on a shared index (pinecone-local persists indexes for
+        # the lifetime of the emulator container).
         index_name = (
-            f"test-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            f"test-{datetime.now().strftime('%Y%m%d%H%M%S%f')}-{uuid.uuid4().hex[:6]}"
             if not index_name
             else index_name
         )
@@ -283,8 +305,9 @@ def init_index(
             base_url=PINECONE_BASE_URL,
         )
     elif index_cls is PostgresIndex:
+        # Unique table per test so tests can run in parallel against one database.
         index = index_cls(
-            index_name=index_name or "test_index",
+            index_name=index_name or f"test_{uuid.uuid4().hex}",
             index_prefix="",
             namespace=namespace,
             dimensions=dimensions,

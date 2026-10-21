@@ -2,7 +2,7 @@ Semantic Router integrates with Cohere's embedding models through the `CohereEnc
 
 ## Overview
 
-The `CohereEncoder` is a subclass of `LiteLLMEncoder` that enables semantic routing using Cohere's embedding models. It supports both synchronous and asynchronous operations with built-in cost tracking via LiteLLM.
+The `CohereEncoder` enables semantic routing using Cohere's embedding models. It calls the Cohere Python SDK directly — `cohere.ClientV2` for synchronous requests and `cohere.AsyncClientV2` for asynchronous ones — so it does not depend on LiteLLM.
 
 ## Getting Started
 
@@ -31,6 +31,10 @@ encoder = CohereEncoder(
 )
 ```
 
+The key can also be passed explicitly with `cohere_api_key=...`. If neither the parameter
+nor the `COHERE_API_KEY` environment variable is set, the constructor raises a
+`ValueError`.
+
 ## Features
 
 ### Supported Models
@@ -43,11 +47,10 @@ The `CohereEncoder` supports Cohere's embedding models:
 
 ### Input Types
 
-Cohere models support different input types for optimal embedding generation:
-- `search_document` - For indexing documents
-- `search_query` - For search queries
-- `classification` - For classification tasks
-- `clustering` - For clustering tasks
+Cohere models use different input types for optimal embedding generation. The encoder
+selects the right one for you:
+- `search_document` - used by `encode_documents()`, for indexing route utterances
+- `search_query` - used by `encode_queries()`, `__call__()` and `acall()`, for incoming queries
 
 ### Asynchronous Support
 
@@ -61,12 +64,17 @@ embeddings = encoder(["your text here"])
 embeddings = await encoder.acall(["your text here"])
 ```
 
-### Cost Tracking
+### Passing Cohere Options
 
-Built-in cost tracking via LiteLLM integration:
-- Automatic token counting
-- Per-request cost calculation
-- Model-specific pricing
+Extra keyword arguments are forwarded to the Cohere SDK, so model-specific options are
+available directly:
+
+```python
+embeddings = encoder.encode_queries(["your text here"], output_dimension=256)
+```
+
+Note that `model`, `inputs`, `input_type` and `embedding_types` are set by the encoder
+and cannot be overridden this way.
 
 ## Integration with Routers
 
@@ -117,7 +125,7 @@ router = SemanticRouter(
 - **High Quality**: State-of-the-art embedding quality for semantic search
 - **Multilingual**: Strong support for 100+ languages with multilingual models
 - **Flexible**: Different model sizes for different performance/cost tradeoffs
-- **Transparent Pricing**: Clear per-token pricing with LiteLLM cost tracking
+- **Direct SDK Access**: Talks to the official Cohere SDK, with native async support and no extra abstraction layer
 
 ## Example Usage
 

@@ -7,13 +7,24 @@
 <img alt="" src="https://img.shields.io/github/repo-size/aurelio-labs/semantic-router" />
 <a href="https://github.com/aurelio-labs/semantic-router/issues"><img alt="GitHub Issues" src="https://img.shields.io/github/issues/aurelio-labs/semantic-router" />
 <a href="https://github.com/aurelio-labs/semantic-router/pulls"><img alt="GitHub Pull Requests" src="https://img.shields.io/github/issues-pr/aurelio-labs/semantic-router" />
-<img src="https://codecov.io/gh/aurelio-labs/semantic-router/graph/badge.svg?token=H8OOMV2TUF" />
 <a href="https://github.com/aurelio-labs/semantic-router/blob/main/LICENSE"><img alt="Github License" src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 </p>
 
 Semantic Router is a superfast decision-making layer for your LLMs and agents. Rather than waiting for slow LLM generations to make tool-use decisions, we use the magic of semantic vector space to make those decisions — _routing_ our requests using _semantic_ meaning.
 
 #### [Read the Docs](https://docs.aurelio.ai/semantic-router/get-started/introduction)
+
+---
+
+## Versions
+
+Semantic Router has two release lines. The **0.x line** (`v0` branch) is the current stable library and finishes at 0.2.0, after which it receives bug fixes only. The **1.x line** (`main` branch) is a breaking rewrite of the routing layer and ships as 1.0.0. Pin to the line you are on:
+
+```
+pip install "semantic-router<1"   # 0.x
+```
+
+Details, and the docs for each line, are on the [versions page](https://docs.aurelio.ai/semantic-router/v0/get-started/versions).
 
 ---
 
@@ -137,6 +148,7 @@ Our utterance vector space also integrates with [Pinecone](https://github.com/au
 | [Local Execution](https://github.com/aurelio-labs/semantic-router/blob/main/docs/05-local-execution.ipynb) | Fully local Semantic Router with dynamic routes — *local models such as Mistral 7B outperform GPT-3.5 in most tests* |
 | [Route Optimization](https://github.com/aurelio-labs/semantic-router/blob/main/docs/06-threshold-optimization.ipynb) | How to train route layer thresholds to optimize performance |
 | [Multi-Modal Routes](https://github.com/aurelio-labs/semantic-router/blob/main/docs/07-multi-modal.ipynb) | Using multi-modal routes to identify Shrek vs. not-Shrek pictures |
+| [Healthcare Administrative Routing](https://github.com/aurelio-labs/semantic-router/blob/main/docs/examples/healthcare-routing/healthcare-administrative-routing.ipynb) | Fully local routing, threshold optimization, and evaluation across seven synthetic healthcare administrative workflows |
 
 ### Online Course
 

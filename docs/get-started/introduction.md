@@ -1,41 +1,37 @@
-Semantic Router is a superfast decision-making layer for LLMs and agents. Instead of waiting for slow LLM generations to make tool-use decisions, it uses semantic vector space to route requests based on meaning.
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/introduction), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
-## What is Semantic Router?
+Semantic Router is a superfast decision layer for LLMs and agents. Most tools make routing decisions by asking an LLM and waiting for it to answer. That's slow. Semantic Router skips the wait — it compares the *meaning* of an input against your routes in vector space and picks a match in milliseconds.
 
-Semantic Router enables:
+The payoff is simple. Decisions land in milliseconds, not seconds. You skip an LLM call, so you cut cost. And because routes are explicit, you stay in control of what happens next.
 
-- **Faster decisions**: Make routing decisions in milliseconds rather than seconds
-- **Lower costs**: Avoid expensive LLM inference for simple routing tasks
-- **Better control**: Direct conversations, queries, and agent actions with precision
-- **Full flexibility**: Use cloud APIs or run everything locally
+## How it works
 
-## Key Features
+You define routes, each one a handful of example phrases. Semantic Router embeds those examples once, up front. At runtime it embeds the incoming request and matches it to the closest route by meaning. No keyword matching, and no LLM in the hot path.
 
-- **Simple API**: Set up routes with just a few lines of code
-- **Dynamic routes**: Generate parameters and trigger function calls
-- **Multiple integrations**: Works with Cohere, OpenAI, Hugging Face, FastEmbed, and more
-- **Vector store support**: Integrates with Pinecone and Qdrant for persistence
-- **Multi-modal capabilities**: Route based on image content, not just text
-- **Local execution**: Run entirely on your machine with no API dependencies
+From there you can:
 
-## Version 0.1 Released
+- **Trigger functions.** Dynamic routes extract parameters and call your code.
+- **Go multi-modal.** Route on images, not just text.
+- **Scale it.** Persist routes in Pinecone, Qdrant, or Postgres.
+- **Run it anywhere.** Cloud APIs, fully local, or a mix of both.
 
-Semantic Router v0.1 is now available! If you're migrating from an earlier version, please see our [migration guide](../user-guide/guides/migration-to-v1).
+It works with the encoders you already use — OpenAI, Cohere, Hugging Face, FastEmbed, and more.
 
-## Getting Started
+## Running local or in the cloud
 
-For a quick introduction to using Semantic Router, check out our [quickstart guide](quickstart).
+You choose how much runs on your machine:
 
-## Execution Options
+- **Cloud.** Embeddings from OpenAI, Cohere, or another API.
+- **Hybrid.** Local embeddings, API-based LLMs.
+- **Fully local.** Everything on your hardware, with models like Llama and Mistral. No external calls.
 
-Semantic Router supports multiple execution modes:
+## Start here
 
-- **Cloud-based**: Using OpenAI, Cohere, or other API-based embeddings
-- **Hybrid**: Combining local embeddings with API-based LLMs
-- **Fully local**: Run everything on your machine with models like Llama and Mistral
+New to Semantic Router? The [quickstart](quickstart) gets you routing in a few minutes.
+
+Upgrading from a 0.0.x release? v0.1 introduced breaking changes — the [migration guide](../user-guide/guides/migration-to-v0-1) walks you through them.
 
 ## Resources
 
-- [Documentation](https://docs.aurelio.ai/semantic-router/index.html)
-- [GitHub Repository](https://github.com/aurelio-labs/semantic-router)
-- [Online Course](https://www.aurelio.ai/course/semantic-router) 
+- [GitHub repository](https://github.com/aurelio-labs/semantic-router)
+- [Online course](https://www.aurelio.ai/course/semantic-router)

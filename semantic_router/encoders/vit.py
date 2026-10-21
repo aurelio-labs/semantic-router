@@ -41,21 +41,23 @@ class VitEncoder(DenseEncoder):
         :return: The processor and model.
         :rtype: tuple
         """
-        try:
-            from transformers import ViTImageProcessor, ViTModel
-        except ImportError:
-            raise ImportError(
-                "Please install transformers to use VitEncoder. "
-                "You can install it with: "
-                "`pip install semantic-router[vision]`"
-            )
-
+        # torch first: transformers >= 5 imports torch itself, so checking it
+        # second would report a missing torch as a missing transformers
         try:
             import torch
             import torchvision.transforms as T
         except ImportError:
             raise ImportError(
                 "Please install Pytorch to use VitEncoder. "
+                "You can install it with: "
+                "`pip install semantic-router[vision]`"
+            )
+
+        try:
+            from transformers import ViTImageProcessor, ViTModel
+        except ImportError:
+            raise ImportError(
+                "Please install transformers to use VitEncoder. "
                 "You can install it with: "
                 "`pip install semantic-router[vision]`"
             )

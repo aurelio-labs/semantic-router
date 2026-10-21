@@ -2,7 +2,10 @@ Semantic Router integrates with NVIDIA NIM (NVIDIA Inference Microservices) embe
 
 ## Overview
 
-The `NimEncoder` is a subclass of `LiteLLMEncoder` that enables semantic routing using NVIDIA NIM embedding models. It supports both synchronous and asynchronous operations with built-in cost tracking.
+The `NimEncoder` enables semantic routing using NVIDIA NIM embedding models. NIM exposes
+an OpenAI-compatible embeddings endpoint, so the encoder drives it with the OpenAI SDK
+pointed at `https://integrate.api.nvidia.com/v1` — it does not depend on LiteLLM. It
+supports both synchronous and asynchronous operations.
 
 ## Getting Started
 
@@ -26,9 +29,26 @@ from semantic_router.encoders import NimEncoder
 os.environ["NVIDIA_NIM_API_KEY"] = "your-api-key"
 
 encoder = NimEncoder(
-    name="nvidia_nim/nvidia/nv-embedqa-e5-v5",
+    name="nvidia/nv-embedqa-e5-v5",
     score_threshold=0.4,
     api_key=os.environ["NVIDIA_NIM_API_KEY"]
+)
+```
+
+Model names no longer need the `nvidia_nim/` prefix that LiteLLM required. The key comes
+from the `api_key` parameter or the `NVIDIA_NIM_API_KEY` environment variable; if neither
+is set, the constructor raises a `ValueError`.
+
+### Self-Hosted NIM
+
+To target a NIM container you run yourself, pass `base_url` or set
+`NVIDIA_NIM_API_BASE`:
+
+```python
+encoder = NimEncoder(
+    name="nvidia/nv-embedqa-e5-v5",
+    base_url="http://localhost:8000/v1",
+    api_key="not-used-but-required",
 )
 ```
 
@@ -37,8 +57,8 @@ encoder = NimEncoder(
 ### Supported Models
 
 The `NimEncoder` supports NVIDIA NIM embedding models:
-- `nvidia_nim/nvidia/nv-embedqa-e5-v5` - Optimized QA embeddings (1024 dimensions)
-- `nvidia_nim/nvidia/nv-embed-v1` - General-purpose embeddings
+- `nvidia/nv-embedqa-e5-v5` - Optimized QA embeddings (1024 dimensions)
+- `nvidia/nv-embed-v1` - General-purpose embeddings
 - Other NVIDIA NIM embedding models available on the platform
 
 ### GPU-Accelerated Inference
@@ -60,12 +80,28 @@ embeddings = encoder(["your text here"])
 embeddings = await encoder.acall(["your text here"])
 ```
 
-### Cost Tracking
+### Passing NIM Options
 
-Built-in cost tracking via LiteLLM integration:
-- Automatic token counting
-- Per-request cost calculation
-- Model-specific pricing
+Standard OpenAI embedding parameters such as `dimensions` are forwarded as-is. Options
+specific to NIM — `input_type`, `truncate` — travel in `extra_body`:
+
+```python
+embeddings = encoder.encode_queries(
+    ["your text here"],
+    extra_body={"truncate": "END"},
+)
+```
+
+### Input Types
+
+NVIDIA's `nv-embedqa` models are asymmetric — they expect a different `input_type` for
+search queries than for the documents being searched. The encoder picks the right one for
+you:
+- `passage` - used by `encode_documents()`, for indexing route utterances
+- `query` - used by `encode_queries()`, `__call__()` and `acall()`, for incoming queries
+
+Anything you supply in `extra_body` is merged over that default, so
+`extra_body={"input_type": "passage"}` will override it if you need to.
 
 ## Integration with Routers
 
@@ -120,7 +156,7 @@ from semantic_router.routers import SemanticRouter
 from semantic_router.route import Route
 
 encoder = NimEncoder(
-    name="nvidia_nim/nvidia/nv-embedqa-e5-v5",
+    name="nvidia/nv-embedqa-e5-v5",
     score_threshold=0.4
 )
 

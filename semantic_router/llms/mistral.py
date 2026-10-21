@@ -13,7 +13,6 @@ class MistralAILLM(BaseLLM):
     """LLM for MistralAI. Requires a MistralAI API key from https://console.mistral.ai/api-keys/"""
 
     _client: Any = PrivateAttr()
-    _mistralai: Any = PrivateAttr()
 
     def __init__(
         self,
@@ -36,7 +35,7 @@ class MistralAILLM(BaseLLM):
         if name is None:
             name = EncoderDefault.MISTRAL.value["language_model"]
         super().__init__(name=name)
-        self._client, self._mistralai = self._initialize_client(mistralai_api_key)
+        self._client = self._initialize_client(mistralai_api_key)
         self.temperature = temperature
         self.max_tokens = max_tokens
 
@@ -46,11 +45,10 @@ class MistralAILLM(BaseLLM):
         :param api_key: The MistralAI API key.
         :type api_key: Optional[str]
         :return: The MistralAI client.
-        :rtype: MistralClient
+        :rtype: Mistral
         """
         try:
-            import mistralai
-            from mistralai.client import MistralClient
+            from mistralai import Mistral
         except ImportError:
             raise ImportError(
                 "Please install MistralAI to use MistralAI LLM. "
@@ -61,12 +59,12 @@ class MistralAILLM(BaseLLM):
         if api_key is None:
             raise ValueError("MistralAI API key cannot be 'None'.")
         try:
-            client = MistralClient(api_key=api_key)
+            client = Mistral(api_key=api_key)
         except Exception as e:
             raise ValueError(
                 f"MistralAI API client failed to initialize. Error: {e}"
             ) from e
-        return client, mistralai
+        return client
 
     def __call__(self, messages: List[Message]) -> str:
         """Call the MistralAILLM.
@@ -78,14 +76,9 @@ class MistralAILLM(BaseLLM):
         """
         if self._client is None:
             raise ValueError("MistralAI client is not initialized.")
-        chat_messages = [
-            self._mistralai.models.chat_completion.ChatMessage(
-                role=m.role, content=m.content
-            )
-            for m in messages
-        ]
+        chat_messages = [{"role": m.role, "content": m.content} for m in messages]
         try:
-            completion = self._client.chat(
+            completion = self._client.chat.complete(
                 model=self.name,
                 messages=chat_messages,
                 temperature=self.temperature,

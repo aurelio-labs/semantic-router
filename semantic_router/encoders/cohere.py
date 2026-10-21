@@ -1,17 +1,32 @@
 import os
 from typing import Any
 
-import litellm
+import cohere
 from pydantic import PrivateAttr
 from typing_extensions import deprecated
 
-from semantic_router.encoders.litellm import LiteLLMEncoder, litellm_to_list
+from semantic_router.encoders.base import AsymmetricDenseMixin, DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
 
-class CohereEncoder(LiteLLMEncoder):
-    """Dense encoder that uses Cohere API to embed documents. Supports text only. Requires
-    a Cohere API key from https://dashboard.cohere.com/api-keys.
+def docs2cohere_embed_input(docs: list[str]) -> list[dict[str, Any]]:
+    """Convert a list of texts into Cohere's ``inputs`` format.
+
+    The Cohere ``embed`` endpoint expects one ``EmbedInput`` per embedding, each
+    holding its own ``content`` array, so a list of N texts becomes N inputs.
+
+    :param docs: The texts to embed.
+    :type docs: list[str]
+    :return: One embed input per text.
+    :rtype: list[dict[str, Any]]
+    """
+    return [{"content": [{"type": "text", "text": d}]} for d in docs]
+
+
+class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
+    """Dense encoder that uses Cohere API and SDK to embed documents.
+    Supports text only.
+    Requires a Cohere API key from https://dashboard.cohere.com/api-keys.
     """
 
     _client: Any = PrivateAttr()  # TODO: deprecated, to remove in v0.2.0
@@ -35,19 +50,21 @@ class CohereEncoder(LiteLLMEncoder):
         :type cohere_api_key: str
         :param score_threshold: The threshold for the score of the embedding.
         :type score_threshold: float
+        :raises ValueError: If no API key is provided or found in the environment.
         """
-        # get default model name if none provided and convert to litellm format
+        # get default model name if none provided
         if name is None:
-            name = f"cohere/{EncoderDefault.COHERE.value['embedding_model']}"
-        elif not name.startswith("cohere/"):
-            name = f"cohere/{name}"
-        super().__init__(
-            name=name,
-            score_threshold=score_threshold,
-            api_key=cohere_api_key,
-        )
-        self._client = None  # TODO: deprecated, to remove in v0.2.0
-        self._async_client = None  # TODO: deprecated, to remove in v0.2.0
+            name = f"{EncoderDefault.COHERE.value['embedding_model']}"
+        super().__init__(name=name, score_threshold=score_threshold)
+        if cohere_api_key is None:
+            cohere_api_key = os.getenv("COHERE_API_KEY")
+        if cohere_api_key is None:
+            raise ValueError(
+                "Expected API key via `cohere_api_key` parameter or "
+                "`COHERE_API_KEY` environment variable."
+            )
+        self._client = cohere.ClientV2(api_key=cohere_api_key)
+        self._async_client = cohere.AsyncClientV2(api_key=cohere_api_key)
 
     # TODO: deprecated, to remove in v0.2.0
     @deprecated("_initialize_client method no longer required")
@@ -65,50 +82,86 @@ class CohereEncoder(LiteLLMEncoder):
             raise ValueError("Cohere API key cannot be 'None'.")
         return None, None
 
+    def __call__(self, docs: list[Any], **kwargs) -> list[list[float]]:
+        """Encode a list of text documents into embeddings using Cohere.
+
+        :param docs: List of text documents to encode.
+        :type docs: list[Any]
+        :return: List of embeddings for each document.
+        :rtype: list[list[float]]
+        """
+        return self.encode_queries(docs, **kwargs)
+
+    async def acall(self, docs: list[Any], **kwargs) -> list[list[float]]:
+        """Encode a list of text documents into embeddings using Cohere asynchronously.
+
+        :param docs: List of text documents to encode.
+        :type docs: list[Any]
+        :return: List of embeddings for each document.
+        :rtype: list[list[float]]
+        """
+        return await self.aencode_queries(docs, **kwargs)
+
     def encode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
-                input=docs,
+            cohere_embeds = self._client.embed(
+                inputs=docs2cohere_embed_input(docs),
                 input_type="search_query",
-                model=f"{self.type}/{self.name}",
+                model=self.name,
+                embedding_types=["float"],
                 **kwargs,
             )
-            return litellm_to_list(embeds)
+            values = cohere_embeds.embeddings.float_
+            if values is None:
+                raise ValueError("Cohere API call returned None.")
+            return values
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     def encode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
-                input=docs,
+            cohere_embeds = self._client.embed(
+                inputs=docs2cohere_embed_input(docs),
                 input_type="search_document",
-                model=f"{self.type}/{self.name}",
+                model=self.name,
+                embedding_types=["float"],
                 **kwargs,
             )
-            return litellm_to_list(embeds)
+            values = cohere_embeds.embeddings.float_
+            if values is None:
+                raise ValueError("Cohere API call returned None.")
+            return values
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await litellm.aembedding(
-                input=docs,
+            cohere_embeds = await self._async_client.embed(
+                inputs=docs2cohere_embed_input(docs),
                 input_type="search_query",
-                model=f"{self.type}/{self.name}",
+                model=self.name,
+                embedding_types=["float"],
                 **kwargs,
             )
-            return litellm_to_list(embeds)
+            values = cohere_embeds.embeddings.float_
+            if values is None:
+                raise ValueError("Cohere API call returned None.")
+            return values
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     async def aencode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await litellm.aembedding(
-                input=docs,
+            cohere_embeds = await self._async_client.embed(
+                inputs=docs2cohere_embed_input(docs),
                 input_type="search_document",
-                model=f"{self.type}/{self.name}",
+                model=self.name,
+                embedding_types=["float"],
                 **kwargs,
             )
-            return litellm_to_list(embeds)
+            values = cohere_embeds.embeddings.float_
+            if values is None:
+                raise ValueError("Cohere API call returned None.")
+            return values
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e

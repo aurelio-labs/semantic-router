@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import json
 import os
-import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
@@ -209,11 +208,13 @@ class PineconeIndex(BaseIndex):
         else:
             self.base_url = base_url
 
-        # Determine if using local emulator or cloud
+        # Determine if using local emulator or cloud. Treat any http:// base URL
+        # (or anything containing "localhost") as the local pinecone-local
+        # emulator; cloud uses https://api.pinecone.io.
         if self.base_url and (
-            "localhost" in self.base_url or "pinecone:5080" in self.base_url
+            self.base_url.startswith("http://") or "localhost" in self.base_url
         ):
-            self.index_host = "http://pinecone:5080"
+            self.index_host = self.base_url
             self._using_local_emulator = True
         else:
             self.index_host = None  # Let Pinecone SDK handle host for cloud
@@ -276,6 +277,25 @@ class PineconeIndex(BaseIndex):
                 "Please install the Pinecone SDK v7+ to use PineconeIndex. "
                 "You can install it with: `pip install 'semantic-router[pinecone]'`"
             )
+        # The Pinecone SDK rejects host strings that don't contain "." or
+        # "localhost" (see pinecone.pinecone.check_realistic_host). Local
+        # emulator service aliases like "pinecone" fail that check, so disable
+        # it when we know we're talking to a local emulator. The async client
+        # re-imports the symbol via ``from .pinecone import check_realistic_host``
+        # so we must patch both modules.
+        if self._using_local_emulator:
+            _noop = lambda host: None  # noqa: E731
+            for _mod_name in ("pinecone.pinecone", "pinecone.pinecone_asyncio"):
+                try:
+                    import importlib
+
+                    setattr(
+                        importlib.import_module(_mod_name),
+                        "check_realistic_host",
+                        _noop,
+                    )
+                except (ImportError, AttributeError):
+                    pass
         pinecone_args = {
             "api_key": api_key,
             "source_tag": "semanticrouter",
@@ -285,26 +305,66 @@ class PineconeIndex(BaseIndex):
             pinecone_args["namespace"] = self.namespace
         return Pinecone(**pinecone_args)  # type: ignore[arg-type]
 
+    def _open_sync_index(self, name: str):
+        """Open a sync Index handle, routing per-index traffic to the local
+        emulator's data-plane port when in local-emulator mode.
+
+        pinecone-local creates a separate HTTP server per index on ports 5081+.
+        The SDK would otherwise default to HTTPS against that host, which the
+        emulator does not serve.
+        """
+        if self._using_local_emulator:
+            desc = self.client.describe_index(name)
+            raw_host = getattr(desc, "host", None) or (
+                desc.get("host") if isinstance(desc, dict) else None
+            )
+            if raw_host:
+                per_index_host = (
+                    raw_host
+                    if str(raw_host).startswith("http")
+                    else f"http://{raw_host}"
+                )
+                return self.client.Index(name, host=per_index_host)
+        return self.client.Index(name)
+
     def _calculate_index_host(self):
-        """Calculate the index host. Used to differentiate between Pinecone cloud and local emulator."""
-        # Local emulator: base_url explicitly points to localhost or the pinecone service alias
-        if self.base_url and (
-            "localhost" in self.base_url or "pinecone:5080" in self.base_url
-        ):
-            self.index_host = "http://pinecone:5080"
-            self._sdk_host_for_validation = "http://pinecone:5080"
-        elif self.base_url and "localhost" in self.base_url:
-            match = re.match(r"http://localhost:(\d+)", self.base_url)
-            port = match.group(1) if match else "5080"
-            self.index_host = f"http://localhost:{port}"
-            self._sdk_host_for_validation = self.index_host
-        elif self.index_host and self.base_url:
-            # Cloud: keep the described host, ensure scheme if needed
-            if not str(self.index_host).startswith("http"):
-                self.index_host = f"https://{self.index_host}"
-            self._sdk_host_for_validation = self.index_host
-        else:
-            self._sdk_host_for_validation = self.index_host
+        """Normalize self.index_host into a fully-qualified URL.
+
+        Expects self.index_host to already hold the per-index host returned by
+        describe_index (e.g. ``localhost:5081`` or ``idx-xxx.svc.pinecone.io``).
+        Prepends ``http://`` for local-emulator mode (pinecone-local serves
+        plain HTTP) and ``https://`` for cloud.
+        """
+        if self.index_host and not str(self.index_host).startswith("http"):
+            scheme = "http" if self._using_local_emulator else "https"
+            self.index_host = f"{scheme}://{self.index_host}"
+        self._sdk_host_for_validation = self.index_host
+
+    @staticmethod
+    def _describe_index_stats_when_reachable(index, attempts: int = 8) -> dict:
+        """Call ``describe_index_stats`` on a freshly opened index, retrying
+        connection-level failures.
+
+        Right after an index is created its data-plane host can take a moment
+        to accept connections. pinecone-local in particular opens a new port
+        per index, and that listener is not always up by the time
+        ``create_index`` returns. Only connection errors are retried; anything
+        else is raised immediately.
+        """
+        import time
+
+        import urllib3
+        from pinecone.utils.error_handling import ProtocolError
+
+        transient = (ProtocolError, urllib3.exceptions.MaxRetryError, ConnectionError)
+        for attempt in range(1, attempts + 1):
+            try:
+                return index.describe_index_stats()
+            except transient:
+                if attempt == attempts:
+                    raise
+                time.sleep(0.25 * attempt)
+        raise RuntimeError("unreachable")  # pragma: no cover
 
     def _init_index(self, force_create: bool = False) -> Union[Any, None]:
         """Initializing the index can be done after the object has been created
@@ -347,15 +407,17 @@ class PineconeIndex(BaseIndex):
                 logger.debug(
                     f"[PineconeIndex] Index created; proceeding without readiness wait: {self.index_name}"
                 )
-                index = self.client.Index(self.index_name)
+                index = self._open_sync_index(self.index_name)
                 self.index = index
-                # Best-effort to populate dimensions; let errors surface if not ready
-                self.dimensions = index.describe_index_stats()["dimension"]
+                self.dimensions = self._describe_index_stats_when_reachable(index)[
+                    "dimension"
+                ]
             elif index_exists:
-                # Let the SDK pick the correct host (cloud or local) based on client configuration
-                index = self.client.Index(self.index_name)
+                index = self._open_sync_index(self.index_name)
                 self.index = index
-                self.dimensions = index.describe_index_stats()["dimension"]
+                self.dimensions = self._describe_index_stats_when_reachable(index)[
+                    "dimension"
+                ]
             elif force_create and not dimensions_given:
                 raise ValueError("Dimensions must be provided to create a new index.")
             else:
@@ -373,11 +435,14 @@ class PineconeIndex(BaseIndex):
         else:
             index = self.index
         if self.index is not None and self.host == "":
-            # Get the data-plane host from describe; normalize scheme for cloud
+            # Get the data-plane host from describe; normalize scheme based on
+            # whether we're talking to the local emulator (http) or cloud (https).
             self.index_host = self.client.describe_index(self.index_name).host
             if self.index_host:
                 if str(self.index_host).startswith("http"):
                     self.host = str(self.index_host)
+                elif self._using_local_emulator:
+                    self.host = f"http://{self.index_host}"
                 else:
                     self.host = f"https://{self.index_host}"
         logger.debug(
@@ -742,8 +807,10 @@ class PineconeIndex(BaseIndex):
             if self.base_url and "api.pinecone.io" in self.base_url:
                 self.index.delete(ids=route_vec_ids, namespace=self.namespace)
             else:
+                # Use self.host (full per-index URL with scheme) rather than
+                # self.index_host which may be the bare controller URL.
                 response = requests.post(
-                    f"{self.index_host}/vectors/delete",
+                    f"{self.host}/vectors/delete",
                     json=DeleteRequest(
                         ids=route_vec_ids,
                         delete_all=True,
@@ -849,31 +916,19 @@ class PineconeIndex(BaseIndex):
         else:
             filter_query = None
         if sparse_vector is not None:
-            logger.error(f"sparse_vector exists:{sparse_vector}")
             if isinstance(sparse_vector, dict):
                 sparse_vector = SparseEmbedding.from_dict(sparse_vector)
             if isinstance(sparse_vector, SparseEmbedding):
                 # unnecessary if-statement but mypy didn't like this otherwise
                 sparse_vector = sparse_vector.to_pinecone()
-        try:
-            results = self.index.query(
-                vector=[query_vector_list],
-                sparse_vector=sparse_vector,
-                top_k=top_k,
-                filter=filter_query,
-                include_metadata=True,
-                namespace=self.namespace,
-            )
-        except Exception:
-            logger.error("retrying query with vector as str")
-            results = self.index.query(
-                vector=query_vector_list,
-                sparse_vector=sparse_vector,
-                top_k=top_k,
-                filter=filter_query,
-                include_metadata=True,
-                namespace=self.namespace,
-            )
+        results = self.index.query(
+            vector=query_vector_list,
+            sparse_vector=sparse_vector,
+            top_k=top_k,
+            filter=filter_query,
+            include_metadata=True,
+            namespace=self.namespace,
+        )
         scores = [result["score"] for result in results["matches"]]
         route_names = [result["metadata"]["sr_route"] for result in results["matches"]]
         return np.array(scores), route_names
@@ -1131,27 +1186,11 @@ class PineconeIndex(BaseIndex):
             ) from e
 
         async with PineconeAsyncio(api_key=self.api_key) as apc:
-            # Resolve host via describe if not already known
-            index_host: Optional[str] = self.host or None
-            if not index_host:
-                desc = await apc.describe_index(self.index_name)
-                candidate = (
-                    desc.get("host")
-                    if isinstance(desc, dict)
-                    else getattr(desc, "host", None)
-                )
-                if isinstance(candidate, str):
-                    index_host = candidate
-                else:
-                    index_host = None
-            if self._using_local_emulator and not index_host:
-                index_host = "http://pinecone:5080"
+            index_host = await self._resolve_async_index_host(apc)
             if not index_host:
                 raise ValueError(
                     "Could not resolve Pinecone index host for async query"
                 )
-            if not index_host.startswith("http"):
-                index_host = f"https://{index_host}"
 
             async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.query(
@@ -1236,23 +1275,11 @@ class PineconeIndex(BaseIndex):
             ) from e
 
         async with PineconeAsyncio(api_key=self.api_key) as apc:
-            index_host: Optional[str] = self.host or None
-            if not index_host:
-                desc = await apc.describe_index(self.index_name)
-                candidate = (
-                    desc.get("host")
-                    if isinstance(desc, dict)
-                    else getattr(desc, "host", None)
-                )
-                index_host = candidate if isinstance(candidate, str) else None
-            if self._using_local_emulator and not index_host:
-                index_host = "http://pinecone:5080"
+            index_host = await self._resolve_async_index_host(apc)
             if not index_host:
                 raise ValueError(
                     "Could not resolve Pinecone index host for async upsert"
                 )
-            if not index_host.startswith("http"):
-                index_host = f"https://{index_host}"
             async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.upsert(vectors=vectors, namespace=namespace)
 
@@ -1331,6 +1358,31 @@ class PineconeIndex(BaseIndex):
                 headers=self.headers,
             ) as response:
                 return await response.json(content_type=None)
+
+    async def _resolve_async_index_host(self, apc) -> Optional[str]:
+        """Resolve the per-index data-plane host for async operations.
+
+        Returns a fully-qualified URL (with http/https scheme) suitable for
+        passing to ``apc.IndexAsyncio(host=...)``. Uses ``self.host`` when
+        already known; otherwise looks up via ``describe_index``. Prepends
+        ``http://`` for local-emulator mode (pinecone-local serves plain HTTP)
+        and ``https://`` for cloud.
+        """
+        index_host: Optional[str] = self.host or None
+        if not index_host:
+            desc = await apc.describe_index(self.index_name)
+            candidate = (
+                desc.get("host")
+                if isinstance(desc, dict)
+                else getattr(desc, "host", None)
+            )
+            index_host = candidate if isinstance(candidate, str) else None
+        if not index_host:
+            return None
+        if not index_host.startswith("http"):
+            scheme = "http" if self._using_local_emulator else "https"
+            index_host = f"{scheme}://{index_host}"
+        return index_host
 
     async def _async_get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
@@ -1437,19 +1489,7 @@ class PineconeIndex(BaseIndex):
                 'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
             ) from e
         async with PineconeAsyncio(api_key=self.api_key) as apc:
-            index_host: Optional[str] = self.host or None
-            if not index_host:
-                desc = await apc.describe_index(self.index_name)
-                candidate = (
-                    desc.get("host")
-                    if isinstance(desc, dict)
-                    else getattr(desc, "host", None)
-                )
-                index_host = candidate if isinstance(candidate, str) else None
-                if index_host and not str(index_host).startswith("http"):
-                    index_host = f"https://{index_host}"
-            if self._using_local_emulator and not index_host:
-                index_host = "http://pinecone:5080"
+            index_host = await self._resolve_async_index_host(apc)
             if not index_host:
                 raise ValueError(
                     "Could not resolve Pinecone index host for async fetch"
@@ -1512,7 +1552,7 @@ class PineconeIndex(BaseIndex):
         if namespace_stats and "namespaces" in namespace_stats:
             ns_stats = namespace_stats["namespaces"].get(self.namespace)
             if ns_stats:
-                return ns_stats["vectorCount"]
+                return ns_stats["vector_count"]
         return 0
 
     async def _async_describe_index_stats(self):
@@ -1529,17 +1569,6 @@ class PineconeIndex(BaseIndex):
                 'Pinecone asyncio support not installed. Install with `pip install "pinecone[asyncio]"`.'
             ) from e
         async with PineconeAsyncio(api_key=self.api_key) as apc:
-            index_host = self.host
-            if not index_host:
-                desc = await apc.describe_index(self.index_name)
-                index_host = (
-                    desc.get("host")
-                    if isinstance(desc, dict)
-                    else getattr(desc, "host", None)
-                )
-                if index_host and not str(index_host).startswith("http"):
-                    index_host = f"https://{index_host}"
-            if self._using_local_emulator and not index_host:
-                index_host = "http://pinecone:5080"
+            index_host = await self._resolve_async_index_host(apc)
             async with apc.IndexAsyncio(host=index_host) as aindex:
                 return await aindex.describe_index_stats(namespace=self.namespace)

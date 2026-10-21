@@ -57,11 +57,11 @@ class OllamaEncoder(DenseEncoder):
         self.client = self._initialize_client(base_url=base_url)
 
     def _initialize_client(self, base_url: str):
-        """Initializes the Google AI Platform client.
+        """Initializes the Ollama embedding client.
 
         :param base_url: hosted URL of ollama.
-        :return: An instance of the TextEmbeddingModel client.
-        :rtype: TextEmbeddingModel
+        :return: An instance of the Ollama client.
+        :rtype: ollama.Client
         :raise ImportError: If the required ollama library is not installed.
         :raise ValueError: If the hosted base url is not provided properly or if the ollama
             client fails to initialize.
