@@ -4,7 +4,7 @@ from typing import List, Optional
 import openai
 from pydantic import PrivateAttr
 
-from semantic_router.llms import BaseLLM
+from semantic_router.llms.base import BaseLLM
 from semantic_router.schema import Message
 from semantic_router.utils.logger import logger
 
