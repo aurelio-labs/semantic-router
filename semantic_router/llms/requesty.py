@@ -8,7 +8,15 @@ class RequestyLLM(OpenAICompatibleLLM):
     """LLM for Requesty, a preset of OpenAICompatibleLLM pointing at the Requesty
     router (https://router.requesty.ai/v1) and reading the API key from
     REQUESTY_API_KEY. See https://docs.requesty.ai for more information and
-    https://app.requesty.ai/api-keys to create a key."""
+    https://app.requesty.ai/api-keys to create a key.
+
+    Limits inherited from semantic-router 0.x:
+
+    - Dynamic routes extract function inputs only when called synchronously;
+      an async call returns the route with function_call=None.
+    - A router config file saves only the class and model name. Reloading one
+      uses the default base_url and REQUESTY_API_KEY, so a custom base_url or a
+      key passed in code is lost."""
 
     def __init__(
         self,
