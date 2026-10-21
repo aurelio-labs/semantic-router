@@ -7,7 +7,15 @@ from semantic_router.llms.openai_compatible import OpenAICompatibleLLM
 class AtlasCloudLLM(OpenAICompatibleLLM):
     """LLM for Atlas Cloud, a preset of OpenAICompatibleLLM pointing at the Atlas
     Cloud gateway (https://api.atlascloud.ai/v1) and reading the API key from
-    ATLASCLOUD_API_KEY. See https://docs.atlascloud.ai/ for more information."""
+    ATLASCLOUD_API_KEY. See https://docs.atlascloud.ai/ for more information.
+
+    Limits inherited from semantic-router 0.x:
+
+    - Dynamic routes extract function inputs only when called synchronously;
+      an async call returns the route with function_call=None.
+    - A router config file saves only the class and model name. Reloading one
+      uses the default base_url and ATLASCLOUD_API_KEY, so a custom base_url or
+      a key passed in code is lost."""
 
     def __init__(
         self,
@@ -21,7 +29,7 @@ class AtlasCloudLLM(OpenAICompatibleLLM):
 
         :param name: The name of the Atlas Cloud model to use. Defaults to the
             ATLASCLOUD_CHAT_MODEL_NAME environment variable or
-            Qwen/Qwen3-235B-A22B-Instruct-2507.
+            deepseek-ai/deepseek-v4-flash.
         :type name: Optional[str]
         :param atlascloud_api_key: The Atlas Cloud API key. Defaults to the
             ATLASCLOUD_API_KEY environment variable.
@@ -35,7 +43,7 @@ class AtlasCloudLLM(OpenAICompatibleLLM):
         """
         if name is None:
             name = os.getenv(
-                "ATLASCLOUD_CHAT_MODEL_NAME", "Qwen/Qwen3-235B-A22B-Instruct-2507"
+                "ATLASCLOUD_CHAT_MODEL_NAME", "deepseek-ai/deepseek-v4-flash"
             )
         super().__init__(
             name=name,

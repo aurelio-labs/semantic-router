@@ -6,7 +6,7 @@ from chat_http import capture_chat_requests
 from semantic_router.llms import AtlasCloudLLM, OpenAICompatibleLLM
 from semantic_router.schema import Message
 
-DEFAULT_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+DEFAULT_MODEL = "deepseek-ai/deepseek-v4-flash"
 
 
 @pytest.fixture
@@ -29,11 +29,11 @@ class TestAtlasCloudLLM:
 
     def test_atlascloud_llm_model_from_env_var(self, monkeypatch, mocker):
         mocker.patch("openai.Client")
-        monkeypatch.setenv("ATLASCLOUD_CHAT_MODEL_NAME", "deepseek-ai/deepseek-v3.2")
+        monkeypatch.setenv("ATLASCLOUD_CHAT_MODEL_NAME", "qwen/qwen3.5-35b-a3b")
         llm = AtlasCloudLLM(atlascloud_api_key="test_api_key")
-        assert llm.name == "deepseek-ai/deepseek-v3.2"
-        llm = AtlasCloudLLM(name="zai-org/GLM-4.6", atlascloud_api_key="test_api_key")
-        assert llm.name == "zai-org/GLM-4.6", "An explicit name should win"
+        assert llm.name == "qwen/qwen3.5-35b-a3b"
+        llm = AtlasCloudLLM(name="zai-org/glm-5.1", atlascloud_api_key="test_api_key")
+        assert llm.name == "zai-org/glm-5.1", "An explicit name should win"
 
     def test_atlascloud_llm_init_from_env_var(self, monkeypatch, mocker):
         openai_mock = mocker.patch("openai.OpenAI")
