@@ -13,7 +13,7 @@ This project uses `uv` for dependency management. All commands should be prefixe
 
 ### Testing
 ```bash
-# Start the local service containers (pinecone-local, pgvector, qdrant). Needed
+# Start the local service containers (pinecone-local, pgvector, qdrant, redis). Needed
 # once per session; the integration tests run against them. No API keys needed.
 make services
 

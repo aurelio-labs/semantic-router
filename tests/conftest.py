@@ -4,7 +4,7 @@ Test tiers
 ----------
 * default (``make test``): unit tests plus integration tests that run against
   the local service containers in ``compose.yaml`` (pinecone-local, pgvector,
-  qdrant). No API keys are needed, so this is what CI runs on every pull
+  qdrant, redis). No API keys are needed, so this is what CI runs on every pull
   request, including ones from forks.
 * ``live`` (``make test_live``): tests marked ``@pytest.mark.live`` call paid
   third-party APIs (OpenAI, Cohere). They are excluded from the default run.
