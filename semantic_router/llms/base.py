@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -174,6 +175,20 @@ class BaseLLM(BaseModel):
         ]
         return param_names, param_types
 
+    @staticmethod
+    def _strip_code_fence(output: str) -> str:
+        """Return the contents of the first Markdown code block in the output,
+        such as ```json ... ```, which many models wrap their JSON in. Output
+        without a code block is returned unchanged.
+
+        :param output: The LLM output.
+        :type output: str
+        :return: The output without its code fence.
+        :rtype: str
+        """
+        match = re.search(r"```[\w-]*[^\S\n]*\n?(.*?)```", output, flags=re.DOTALL)
+        return match.group(1) if match else output
+
     def extract_function_inputs(
         self, query: str, function_schemas: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
@@ -242,6 +257,7 @@ Provide JSON output now:
         output = self(llm_input)
         if not output:
             raise Exception("No output generated for extract function input")
+        output = self._strip_code_fence(output)
         output = output.replace("'", '"').strip().rstrip(",")
         logger.info(f"LLM output: {output}")
         function_inputs = json.loads(output)

@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 import httpx
@@ -17,15 +18,17 @@ CHAT_COMPLETION = {
 }
 
 
-def capture_chat_requests(mocker) -> List[httpx.Request]:
+def capture_chat_requests(mocker, content: str = "test") -> List[httpx.Request]:
     """Answer every HTTP request the OpenAI client sends with a canned chat
-    completion and record it, so a test can check where a call went without a
-    network or an API key."""
+    completion whose reply is `content`, and record it, so a test can check
+    where a call went without a network or an API key."""
     requests: List[httpx.Request] = []
+    completion = copy.deepcopy(CHAT_COMPLETION)
+    completion["choices"][0]["message"]["content"] = content
 
     def send(self, request: httpx.Request, **kwargs) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json=CHAT_COMPLETION, request=request)
+        return httpx.Response(200, json=completion, request=request)
 
     mocker.patch.object(httpx.Client, "send", send)
     return requests
