@@ -21,7 +21,16 @@ class MiniMaxLLM(OpenAICompatibleLLM):
     counts towards max_tokens, so the default leaves room for it.
 
     Current MiniMax models ignore temperature. It is still clamped to
-    (0.0, 1.0], the range older MiniMax models required."""
+    (0.0, 1.0], the range older MiniMax models required.
+
+    Limits inherited from semantic-router 0.x:
+
+    - Dynamic routes extract function inputs only when called synchronously;
+      an async call returns the route with function_call=None. MiniMaxLLM.acall
+      itself works, but routes don't use it for extraction.
+    - A router config file saves only the class and model name. Reloading one
+      uses the default base_url and MINIMAX_API_KEY, so a custom base_url or a
+      key passed in code is lost."""
 
     _async_client: Optional[openai.AsyncOpenAI] = PrivateAttr(default=None)
 

@@ -88,6 +88,13 @@ weather_route = Route(
 )
 ```
 
+## Limits
+
+`MiniMaxLLM` inherits two limits from semantic-router 0.x:
+
+- Dynamic routes extract function inputs only when called synchronously. `BaseLLM` has no async extraction, so an async call returns the matched route with `function_call=None` and logs an error. `MiniMaxLLM.acall` itself works; routes just don't use it for extraction.
+- A router config file saves only the LLM's class and model name. Reloading one uses the default `base_url` and `MINIMAX_API_KEY`, so a custom `base_url` (such as the China platform's) or a key passed in code is lost.
+
 ## Environment Variables
 
 | Variable | Description |
