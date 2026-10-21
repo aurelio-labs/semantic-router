@@ -21,7 +21,7 @@ def google_encoder(mocker):
 class TestGoogleEncoder:
     def test_initialization_with_project_id(self, google_encoder):
         assert google_encoder.client is not None, "Client should be initialized"
-        assert google_encoder.name == "textembedding-gecko@003", (
+        assert google_encoder.name == "text-embedding-005", (
             "Default name not set correctly"
         )
 
