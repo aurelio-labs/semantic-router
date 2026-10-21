@@ -24,8 +24,11 @@ DIMS = 4
 
 def make_index(**kwargs):
     """Create a RedisIndex without touching the network -- redis-py's client
-    constructor is lazy, so this never connects."""
-    return RedisIndex(dimensions=DIMS, **kwargs)
+    constructor is lazy, so this never connects. The cluster check (an INFO
+    call) counts as done; TestClusterCheck covers it."""
+    idx = RedisIndex(dimensions=DIMS, **kwargs)
+    idx._standalone_checked = True
+    return idx
 
 
 # ---------------------------------------------------------------------------
@@ -372,3 +375,51 @@ class TestIncompleteHits:
         ft.search.return_value.docs = [Document(id="k", sr_route="r")]
         with pytest.raises(RuntimeError, match="without its score"):
             idx.query(vector=np.zeros(DIMS), top_k=1)
+
+
+class TestClusterCheck:
+    """RedisIndex talks to one endpoint, so on an OSS cluster it raises a clear
+    error before its first FT.INFO or config access, instead of MOVED errors
+    mid-write (or, on Redis Stack 7.x, searches that see one shard)."""
+
+    def _index(self, mocker, cluster_info):
+        idx = RedisIndex(dimensions=DIMS)
+        info = mocker.patch.object(idx.client, "info")
+        if isinstance(cluster_info, Exception):
+            info.side_effect = cluster_info
+        else:
+            info.return_value = cluster_info
+        ft = mocker.patch.object(idx.client, "ft").return_value
+        ft.info.return_value = SCANNED
+        return idx, info, ft
+
+    def test_a_cluster_raises_before_any_command(self, mocker):
+        idx, info, ft = self._index(mocker, {"cluster_enabled": 1})
+        with pytest.raises(ValueError, match="cluster mode"):
+            idx.query(vector=np.zeros(DIMS), top_k=1)
+        with pytest.raises(ValueError, match="cluster mode"):
+            idx._read_hash()
+        info.assert_called_with("cluster")
+        ft.info.assert_not_called()
+
+    def test_a_standalone_server_is_checked_once(self, mocker):
+        idx, info, ft = self._index(mocker, {"cluster_enabled": 0})
+        assert idx.is_ready()
+        assert idx.is_ready()
+        assert info.call_count == 1
+
+    def test_an_acl_user_without_info_skips_the_check(self, mocker):
+        from redis.exceptions import NoPermissionError
+
+        idx, info, ft = self._index(
+            mocker, NoPermissionError("this user has no permissions to run 'info'")
+        )
+        assert idx.is_ready()
+
+    def test_async_a_cluster_raises(self, mocker):
+        idx = RedisIndex(dimensions=DIMS)
+        mocker.patch.object(
+            idx.aclient, "info", mocker.AsyncMock(return_value={"cluster_enabled": 1})
+        )
+        with pytest.raises(ValueError, match="cluster mode"):
+            asyncio.run(idx.aquery(vector=np.zeros(DIMS), top_k=1))
