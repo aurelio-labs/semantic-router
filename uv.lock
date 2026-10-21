@@ -3798,6 +3798,18 @@ wheels = [
 ]
 
 [[package]]
+name = "redis"
+version = "6.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/d6/e8b92798a5bd67d659d51a18170e91c16ac3b59738d91894651ee255ed49/redis-6.4.0.tar.gz", hash = "sha256:b01bc7282b8444e28ec36b261df5375183bb47a07eb9c603f284e89cbc5ef010", size = 4647399, upload-time = "2025-08-07T08:10:11.441Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/02/89e2ed7e85db6c93dfa9e8f691c5087df4e3551ab39081a4d7c6d1f90e05/redis-6.4.0-py3-none-any.whl", hash = "sha256:f0544fa9604264e9464cdf4814e7d4830f74b165d52f2a330a760a88dd248b7f", size = 279847, upload-time = "2025-08-07T08:10:09.84Z" },
+]
+
+[[package]]
 name = "referencing"
 version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4439,6 +4451,7 @@ all = [
     { name = "pinecone", extra = ["asyncio"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "qdrant-client" },
+    { name = "redis" },
     { name = "sentence-transformers", marker = "python_full_version < '3.13'" },
     { name = "tokenizers", marker = "python_full_version < '3.13'" },
     { name = "torch", version = "2.14.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "python_full_version < '3.13' and sys_platform == 'darwin'" },
@@ -4479,6 +4492,9 @@ postgres = [
 ]
 qdrant = [
     { name = "qdrant-client" },
+]
+redis = [
+    { name = "redis" },
 ]
 vision = [
     { name = "pillow", marker = "python_full_version < '3.13'" },
@@ -4532,6 +4548,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.10.2,<3" },
     { name = "pyyaml", specifier = ">=6.0.1,<7" },
     { name = "qdrant-client", marker = "extra == 'qdrant'", specifier = ">=1.11.1,<2" },
+    { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0,<7" },
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "semantic-router", extras = ["bedrock"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["fastembed"], marker = "extra == 'all'" },
@@ -4542,6 +4559,7 @@ requires-dist = [
     { name = "semantic-router", extras = ["pinecone"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["postgres"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["qdrant"], marker = "extra == 'all'" },
+    { name = "semantic-router", extras = ["redis"], marker = "extra == 'all'" },
     { name = "semantic-router", extras = ["vision"], marker = "extra == 'all'" },
     { name = "sentence-transformers", marker = "python_full_version < '3.13' and extra == 'local'", specifier = ">=5.0.0" },
     { name = "tiktoken", specifier = ">=0.6.0,<1.0.0" },
@@ -4555,7 +4573,7 @@ requires-dist = [
     { name = "urllib3", specifier = ">=1.26,<3" },
     { name = "voyageai", specifier = ">=0.4.1" },
 ]
-provides-extras = ["litellm", "ollama", "local", "pinecone", "vision", "qdrant", "google", "bedrock", "postgres", "fastembed", "all"]
+provides-extras = ["litellm", "ollama", "local", "pinecone", "vision", "qdrant", "redis", "google", "bedrock", "postgres", "fastembed", "all"]
 
 [package.metadata.requires-dev]
 dev = [

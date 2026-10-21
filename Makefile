@@ -27,7 +27,7 @@ test:
 test_unit:
 	$(PYTEST) -m "not live" tests/unit tests/functional
 
-# Tests that hit real index backends (pinecone-local, pgvector, qdrant).
+# Tests that hit real index backends (pinecone-local, pgvector, qdrant, redis).
 test_integration:
 	$(PYTEST) -m "not live" tests/integration
 
