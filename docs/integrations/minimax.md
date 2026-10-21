@@ -37,7 +37,7 @@ llm = MiniMaxLLM(name="MiniMax-M3")
 - `MiniMax-M3.1-Flash` (default): always thinks, and returns its thinking in a separate field
 - `MiniMax-M3`: thinks by default, inside `<think>` tags in the reply
 
-Any model name MiniMax's OpenAI-compatible API accepts works through `name=` or `MINIMAX_CHAT_MODEL_NAME`. MiniMax has retired its M2 models, so names such as `MiniMax-M2.5` no longer work.
+Any model name MiniMax's OpenAI-compatible API accepts works through `name=` or `MINIMAX_CHAT_MODEL_NAME`. MiniMax's M2.5 and M2.7 models have been unavailable to new users since 19 October 2026 and are scheduled to retire on 18 November 2026; existing pay-as-you-go users can keep using them until then (see [MiniMax's model list](https://platform.minimax.io/docs/faq/models)).
 
 ### Asynchronous Support
 
