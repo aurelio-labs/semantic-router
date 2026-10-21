@@ -1,5 +1,13 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.3.2
+
+#### Fixes
+
+- `RedisIndex` reads every record past RediSearch's `MAXSEARCHRESULTS` limit (10,000 on Redis Stack). `get_utterances` and the lookups behind `delete` and `delete_all` used to stop at the limit without an error, so an index with more records than that synced from an incomplete list and left records behind on delete. Queries are unchanged.
+- `RedisIndex` raises a clear `ValueError` on a server in cluster mode, before it writes anything. It talks to a single endpoint and doesn't support open-source Redis Cluster; it used to fail with a `MovedError` after some writes had landed.
+- The [Redis guide](https://github.com/aurelio-labs/semantic-router/blob/v0/docs/integrations/redis.md) covers TLS: a `rediss://` connection string with `ssl_ca_certs` (and a client certificate and key, if the server needs them) for a private CA. `ssl=True` with `host` and `port` trusts only the system's CAs.
+
 ### v0.3.1
 
 #### Fixes
