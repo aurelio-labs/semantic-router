@@ -1,3 +1,5 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/get-started/quickstart), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 Semantic Router sends text to the right handler based on *meaning*, not keywords. That makes it a good fit for chatbots, intent classification, guardrails — anything that needs to understand what a user is actually asking.
 
 Install it:

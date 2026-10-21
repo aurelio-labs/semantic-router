@@ -342,24 +342,20 @@ class QdrantIndex(BaseIndex):
         results = []
         next_offset = None
         stop_scrolling = False
-        try:
-            while not stop_scrolling:
-                records, next_offset = self.client.scroll(
-                    self.index_name,
-                    limit=SCROLL_SIZE,
-                    offset=next_offset,
-                    with_payload=True,
-                    scroll_filter=self._build_filter(),
-                )
-                stop_scrolling = next_offset is None or (
-                    isinstance(next_offset, grpc.PointId)
-                    and next_offset.num == 0
-                    and next_offset.uuid == ""
-                )
-                results.extend(records)
-        except ValueError as e:
-            logger.warning(f"Index likely empty, error: {e}")
-            return [], []
+        while not stop_scrolling:
+            records, next_offset = self.client.scroll(
+                self.index_name,
+                limit=SCROLL_SIZE,
+                offset=next_offset,
+                with_payload=True,
+                scroll_filter=self._build_filter(),
+            )
+            stop_scrolling = next_offset is None or (
+                isinstance(next_offset, grpc.PointId)
+                and next_offset.num == 0
+                and next_offset.uuid == ""
+            )
+            results.extend(records)
 
         ids = [str(r.id) for r in results]
         metadata = [r.payload or {} for r in results] if include_metadata else []
@@ -385,24 +381,20 @@ class QdrantIndex(BaseIndex):
         results = []
         next_offset = None
         stop_scrolling = False
-        try:
-            while not stop_scrolling:
-                records, next_offset = await self.aclient.scroll(
-                    self.index_name,
-                    limit=SCROLL_SIZE,
-                    offset=next_offset,
-                    with_payload=True,
-                    scroll_filter=self._build_filter(),
-                )
-                stop_scrolling = next_offset is None or (
-                    isinstance(next_offset, grpc.PointId)
-                    and next_offset.num == 0
-                    and next_offset.uuid == ""
-                )
-                results.extend(records)
-        except ValueError as e:
-            logger.warning(f"Index likely empty, error: {e}")
-            return [], []
+        while not stop_scrolling:
+            records, next_offset = await self.aclient.scroll(
+                self.index_name,
+                limit=SCROLL_SIZE,
+                offset=next_offset,
+                with_payload=True,
+                scroll_filter=self._build_filter(),
+            )
+            stop_scrolling = next_offset is None or (
+                isinstance(next_offset, grpc.PointId)
+                and next_offset.num == 0
+                and next_offset.uuid == ""
+            )
+            results.extend(records)
 
         ids = [str(r.id) for r in results]
         metadata = [r.payload or {} for r in results] if include_metadata else []

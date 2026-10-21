@@ -95,6 +95,58 @@ class TestOpenAIEncoder:
 
         assert "OpenAI API call failed. Error: Non-OpenAIError" in str(e.value)
 
+    def test_openai_encoder_call_rejects_empty_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder([])
+
+        assert "OpenAI encoder input cannot be empty." in str(e.value)
+        openai_encoder._client.embeddings.create.assert_not_called()
+
+    def test_openai_encoder_call_rejects_empty_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["ok", ""])
+
+        assert "contains an empty string at index 1" in str(e.value)
+        openai_encoder._client.embeddings.create.assert_not_called()
+
+    def test_openai_encoder_call_rejects_non_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["ok", 123])  # type: ignore[list-item]
+
+        assert "must contain only strings" in str(e.value)
+
+    def test_openai_encoder_call_rejects_bare_string(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder("test document")  # type: ignore[arg-type]
+
+        assert "must be a list of strings" in str(e.value)
+
+    def test_openai_encoder_call_sends_whitespace_unchanged(self, openai_encoder):
+        # the API embeds whitespace-only input, and " hi " differently from "hi"
+        openai_encoder._client.embeddings.create.return_value = CreateEmbeddingResponse(
+            data=[
+                Embedding(embedding=[0.1], index=0, object="embedding"),
+                Embedding(embedding=[0.2], index=1, object="embedding"),
+            ],
+            model="text-embedding-3-small",
+            object="list",
+            usage={"prompt_tokens": 2, "total_tokens": 2},
+        )
+
+        assert openai_encoder([" hi ", "   "]) == [[0.1], [0.2]]
+        _, kwargs = openai_encoder._client.embeddings.create.call_args
+        assert kwargs["input"] == [" hi ", "   "]
+
+    @pytest.mark.asyncio
+    async def test_openai_encoder_acall_rejects_empty_string_input(
+        self, openai_encoder
+    ):
+        with pytest.raises(ValueError) as e:
+            await openai_encoder.acall([""])
+
+        assert "contains an empty string at index 0" in str(e.value)
+        openai_encoder._async_client.embeddings.create.assert_not_called()
+
     def test_openai_encoder_call_successful_retry(self, openai_encoder, mocker):
         mock_embeddings = mocker.Mock()
         mock_embeddings.data = [
