@@ -1,19 +1,42 @@
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import litellm
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.encoders.base import AsymmetricDenseMixin
 from semantic_router.utils.defaults import EncoderDefault
 
+if TYPE_CHECKING:
+    import litellm
 
-def litellm_to_list(embeds: litellm.EmbeddingResponse) -> list[list[float]]:
+_LITELLM_IMPORT_ERROR = (
+    "Please install litellm to use the LiteLLMEncoder. "
+    'You can install it with: `pip install "semantic-router[litellm]"`'
+)
+
+
+def _import_litellm():
+    """Import the optional litellm dependency.
+
+    :return: The litellm module.
+    :rtype: module
+    :raises ImportError: If litellm is not installed.
+    """
+    try:
+        import litellm
+    except ImportError:
+        raise ImportError(_LITELLM_IMPORT_ERROR)
+    return litellm
+
+
+def litellm_to_list(embeds: "litellm.EmbeddingResponse") -> list[list[float]]:
     """Convert a LiteLLM embedding response to a list of embeddings.
 
     :param embeds: The LiteLLM embedding response.
     :return: A list of embeddings.
     """
+    litellm = _import_litellm()
     if (
         not embeds
         or not isinstance(embeds, litellm.EmbeddingResponse)
@@ -29,8 +52,12 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
     The LiteLLMEncoder class is a subclass of DenseEncoder and utilizes the LiteLLM SDK
     to generate embeddings for given documents. It supports all encoders supported by LiteLLM
     and supports customization of the score threshold for filtering or processing the embeddings.
+
+    litellm is an optional dependency: install it with
+    ``pip install "semantic-router[litellm]"``.
     """
 
+    _litellm: Any = PrivateAttr()
     type: str = "litellm"
 
     def __init__(
@@ -46,6 +73,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
         :type name: str
         :param score_threshold: The score threshold for the embeddings.
         :type score_threshold: float
+        :raises ImportError: If litellm is not installed.
         """
         if name is None:
             # defaults to default openai model if none provided
@@ -54,12 +82,13 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
             name=name,
             score_threshold=score_threshold if score_threshold is not None else 0.3,
         )
+        self._litellm = _import_litellm()
         self.type, self.name = self.name.split("/", 1)
         if api_key is None:
             api_key = os.getenv(self.type.upper() + "_API_KEY")
         if api_key is None:
             raise ValueError(
-                "Expected API key via `api_key` parameter or `{self.type.upper()}_API_KEY` "
+                f"Expected API key via `api_key` parameter or `{self.type.upper()}_API_KEY` "
                 "environment variable."
             )
         os.environ[self.type.upper() + "_API_KEY"] = api_key
@@ -80,7 +109,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     def encode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
+            embeds = self._litellm.embedding(
                 input=docs, model=f"{self.type}/{self.name}", **kwargs
             )
             return litellm_to_list(embeds)
@@ -91,7 +120,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     def encode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = litellm.embedding(
+            embeds = self._litellm.embedding(
                 input=docs, model=f"{self.type}/{self.name}", **kwargs
             )
             return litellm_to_list(embeds)
@@ -102,7 +131,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await litellm.aembedding(
+            embeds = await self._litellm.aembedding(
                 input=docs, model=f"{self.type}/{self.name}", **kwargs
             )
             return litellm_to_list(embeds)
@@ -113,7 +142,7 @@ class LiteLLMEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     async def aencode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await litellm.aembedding(
+            embeds = await self._litellm.aembedding(
                 input=docs, model=f"{self.type}/{self.name}", **kwargs
             )
             return litellm_to_list(embeds)

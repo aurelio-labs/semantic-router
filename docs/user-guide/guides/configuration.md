@@ -1,48 +1,45 @@
+> **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/configuration), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
+
 # Configuration
 
-This guide covers various configuration options available in semantic-router.
+## Logging
 
-## Logging Configuration
+Semantic Router uses Python's standard `logging` module. You control how much it says with an environment variable.
 
-Semantic-router uses Python's logging module for debugging and monitoring. You can control the verbosity of logs using environment variables.
+### Setting the log level
 
-### Setting Log Levels
+Two variables work. Set the library-specific one if you can:
 
-You can configure the log level in two ways:
+```bash
+export SEMANTIC_ROUTER_LOG_LEVEL=DEBUG
+```
 
-1. **Using the semantic-router specific variable (recommended):**
-   ```bash
-   export SEMANTIC_ROUTER_LOG_LEVEL=DEBUG
-   ```
+Or use the general one, which other libraries may share:
 
-2. **Using the general LOG_LEVEL variable:**
-   ```bash
-   export LOG_LEVEL=WARNING
-   ```
+```bash
+export LOG_LEVEL=WARNING
+```
 
-The library checks for `SEMANTIC_ROUTER_LOG_LEVEL` first, then falls back to `LOG_LEVEL`. If neither is set, it defaults to `INFO`.
+`SEMANTIC_ROUTER_LOG_LEVEL` wins if both are set. If neither is, the level is `INFO`.
 
-### Available Log Levels
+### Levels
 
-- `DEBUG`: Detailed information for diagnosing problems
-- `INFO`: General informational messages (default)
-- `WARNING`: Warning messages for potentially problematic situations
-- `ERROR`: Error messages for serious problems
-- `CRITICAL`: Critical messages for very serious errors
+- `DEBUG` — detailed diagnostics.
+- `INFO` — general progress (the default).
+- `WARNING` — something looks off but still works.
+- `ERROR` — something failed.
+- `CRITICAL` — something failed badly.
 
-### Example Usage
+### From Python
+
+Set the variable *before* importing the library:
 
 ```python
 import os
-# Set before importing semantic-router
 os.environ["SEMANTIC_ROUTER_LOG_LEVEL"] = "DEBUG"
 
 from semantic_router import Route, SemanticRouter
-# Your debug logs will now be visible
+# debug logs now show
 ```
 
-This is particularly useful when:
-- Debugging encoder or index issues
-- Monitoring route matching decisions
-- Troubleshooting performance problems
-- Understanding the library's internal behavior
+Turn on `DEBUG` when you're chasing an encoder or index problem, want to see why a query matched the route it did, or need to understand what the library is doing under the hood.

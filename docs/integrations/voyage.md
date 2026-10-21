@@ -2,7 +2,9 @@ Semantic Router integrates with Voyage AI's embedding models through the `Voyage
 
 ## Overview
 
-The `VoyageEncoder` is a subclass of `LiteLLMEncoder` that enables semantic routing using Voyage AI's embedding models. It supports both synchronous and asynchronous operations with built-in cost tracking.
+The `VoyageEncoder` enables semantic routing using Voyage AI's embedding models. It calls the
+VoyageAI Python SDK directly — `voyageai.Client` for synchronous requests and
+`voyageai.AsyncClient` for asynchronous ones — so it does not depend on LiteLLM.
 
 ## Getting Started
 
@@ -31,6 +33,9 @@ encoder = VoyageEncoder(
     api_key=os.environ["VOYAGE_API_KEY"]
 )
 ```
+
+The key can also be left to the `VOYAGE_API_KEY` environment variable. If neither the
+`api_key` parameter nor that variable is set, the constructor raises a `ValueError`.
 
 ## Features
 
@@ -63,12 +68,26 @@ embeddings = encoder(["your text here"])
 embeddings = await encoder.acall(["your text here"])
 ```
 
-### Cost Tracking
+### Input Types
 
-Built-in cost tracking via LiteLLM integration:
-- Automatic token counting
-- Per-request cost calculation
-- Model-specific pricing
+Voyage models take an input type so queries and documents are embedded differently. The
+encoder selects the right one for you:
+- `document` - used by `encode_documents()`, for indexing route utterances
+- `query` - used by `encode_queries()`, `__call__()` and `acall()`, for incoming queries
+
+### Passing Voyage Options
+
+Extra keyword arguments are forwarded to the VoyageAI SDK, so model-specific options are
+available directly:
+
+```python
+embeddings = encoder.encode_queries(
+    ["your text here"], output_dimension=256, truncation=False
+)
+```
+
+Note that `texts`, `model` and `input_type` are set by the encoder and cannot be
+overridden this way.
 
 ## Integration with Routers
 
@@ -119,7 +138,7 @@ router = SemanticRouter(
 - **High Performance**: State-of-the-art retrieval performance on benchmarks
 - **Domain Specialization**: Specialized models for code and legal content
 - **Optimized Dimensions**: 1024-dimensional embeddings balance quality and efficiency
-- **Cost Effective**: Competitive pricing with transparent cost tracking
+- **Direct SDK Access**: Talks to the official VoyageAI SDK, with native async support and no extra abstraction layer
 
 ## Example Usage
 

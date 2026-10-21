@@ -4,7 +4,9 @@ from io import BytesIO
 
 import pytest
 
-from semantic_router.encoders import BedrockEncoder
+_ = pytest.importorskip("boto3")
+
+from semantic_router.encoders import BedrockEncoder  # noqa: E402
 
 
 @pytest.fixture
@@ -139,6 +141,8 @@ class TestBedrockEncoder:
 
     def test_call_with_expired_token(self, mocker, bedrock_encoder):
         from botocore.exceptions import ClientError
+
+        mocker.patch("semantic_router.encoders.bedrock.sleep")
 
         error_response = {"Error": {"Code": "ExpiredTokenException"}}
         mocker.patch(

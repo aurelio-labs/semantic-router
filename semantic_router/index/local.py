@@ -43,6 +43,10 @@ class LocalIndex(BaseIndex):
         :param metadata_list: List of metadata to add to the index.
         :type metadata_list: List[Dict[str, Any]]
         """
+        if metadata_list and len(metadata_list) != len(embeddings):
+            raise ValueError(
+                f"metadata_list length ({len(metadata_list)}) must match embeddings length ({len(embeddings)})."
+            )
         embeds = np.array(embeddings)  # type: ignore
         routes_arr = np.array(routes)
         if isinstance(utterances[0], str):
@@ -191,7 +195,7 @@ class LocalIndex(BaseIndex):
                     filtered_index.append(vec)
                     filtered_routes.append(route)
             if not filtered_routes:
-                raise ValueError("No routes found matching the filter criteria.")
+                return np.array([]), []
             sim = similarity_matrix(vector, np.array(filtered_index))
             scores, idx = top_scores(sim, top_k)
             route_names = [filtered_routes[i] for i in idx]
@@ -231,7 +235,7 @@ class LocalIndex(BaseIndex):
                     filtered_index.append(vec)
                     filtered_routes.append(route)
             if not filtered_routes:
-                raise ValueError("No routes found matching the filter criteria.")
+                return np.array([]), []
             sim = similarity_matrix(vector, np.array(filtered_index))
             scores, idx = top_scores(sim, top_k)
             route_names = [filtered_routes[i] for i in idx]
