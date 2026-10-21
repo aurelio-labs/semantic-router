@@ -83,7 +83,7 @@ index = RedisIndex(
 
 ### Redis Cluster
 
-`RedisIndex` talks to a single Redis endpoint, so it doesn't support open-source Redis Cluster: it raises a `ValueError` when the server runs in cluster mode, before it writes anything. Redis Cloud and Redis Enterprise databases present a single endpoint unless their OSS Cluster API is turned on.
+`RedisIndex` talks to a single Redis endpoint, so it doesn't support open-source Redis Cluster. When the server allows the `INFO` command, `RedisIndex` detects cluster mode and raises a `ValueError` before it writes anything. If an ACL denies `INFO`, the check is skipped, and Cluster is still unsupported. Redis Cloud and Redis Enterprise databases present a single endpoint unless their OSS Cluster API is turned on.
 
 ### Index Management
 

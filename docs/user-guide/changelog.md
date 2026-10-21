@@ -5,7 +5,7 @@
 #### Fixes
 
 - `RedisIndex` reads every record past RediSearch's `MAXSEARCHRESULTS` limit (10,000 on Redis Stack). `get_utterances` and the lookups behind `delete` and `delete_all` used to stop at the limit without an error, so an index with more records than that synced from an incomplete list and left records behind on delete. Queries are unchanged.
-- `RedisIndex` raises a clear `ValueError` on a server in cluster mode, before it writes anything. It talks to a single endpoint and doesn't support open-source Redis Cluster; it used to fail with a `MovedError` after some writes had landed.
+- `RedisIndex` doesn't support open-source Redis Cluster, because it talks to a single endpoint. When the server allows `INFO`, `RedisIndex` now detects cluster mode and raises a clear `ValueError` before it writes anything; it used to fail with a `MovedError` after some writes had landed. If an ACL denies `INFO`, the check is skipped, and Cluster is still unsupported.
 - The [Redis guide](https://github.com/aurelio-labs/semantic-router/blob/v0/docs/integrations/redis.md) covers TLS: a `rediss://` connection string with `ssl_ca_certs` (and a client certificate and key, if the server needs them) for a private CA. `ssl=True` with `host` and `port` trusts only the system's CAs.
 
 ### v0.3.1
