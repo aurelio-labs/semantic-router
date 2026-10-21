@@ -10,6 +10,8 @@ The `RedisIndex` enables semantic routing backed by Redis's vector search. It su
 
 1. A Redis server with the RediSearch module (Redis Stack, Redis 8+, or Redis Cloud)
 
+> **Redis 8 and search workers.** Redis 8.10 runs searches on worker threads by default (`search-workers 16`). A search that runs while a record is being written can miss that record without an error, so a query can return fewer routes than the index holds, or none. `RedisIndex` waits for a new or reopened index to finish indexing the keys already in the database, but it can't protect searches from writes made while other clients query the index, such as a sync that rewrites routes during traffic. If routes change while the index is in use, set `search-workers 0` in your Redis configuration (`RedisIndex` never changes server settings), or use Redis Stack 7.4, which runs searches on the main thread. On Redis 8.2 with workers enabled, a search can also return a record without its score; `RedisIndex` raises an error rather than return incomplete results.
+
 ### Installation
 
 ```bash
@@ -74,6 +76,12 @@ index = RedisIndex(
 ```
 
 Opening an index that already exists checks it against your settings: a different `dimensions` or `metric` raises a `ValueError`, and so does adding a vector of the wrong size, in which case nothing from that batch is written. The name `sr_config` is reserved for the hashes that hold each index's sync state.
+
+Creating an index makes Redis index every key already in the database, in the background. `RedisIndex` waits for that to finish before it writes to or searches the index, for up to `index_ready_timeout` seconds (60 by default), then raises a `TimeoutError`. On a large database the wait can be long, about 20 seconds per million keys on a laptop, so raise `index_ready_timeout` there:
+
+```python
+index = RedisIndex(index_name="my_routes", index_ready_timeout=600)
+```
 
 ### Distance Metrics
 

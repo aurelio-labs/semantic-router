@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import json
 import math
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -16,6 +18,8 @@ from semantic_router.utils.logger import logger
 DEFAULT_INDEX_NAME = "semantic-router-index"
 DEFAULT_UPLOAD_BATCH_SIZE = 100
 PAGE_SIZE = 1000
+# How often to poll FT.INFO while an index's initial background scan runs.
+SCAN_POLL_SECONDS = 0.05
 VECTOR_TYPE = "FLOAT32"
 
 # Hash field names used for every record.
@@ -168,6 +172,12 @@ class RedisIndex(BaseIndex):
             "ID collisions."
         ),
     )
+    index_ready_timeout: float = Field(
+        default=60.0,
+        description="Seconds to wait for a new or reopened index to finish its "
+        "initial background scan of the existing keys before using it; raises "
+        "a TimeoutError after that.",
+    )
     client: Any = Field(default=None, exclude=True)
     aclient: Any = Field(default=None, exclude=True)
     _index_initialized: bool = PrivateAttr(default=False)
@@ -280,40 +290,117 @@ class RedisIndex(BaseIndex):
             return 1 - distance
         return math.sqrt(max(distance, 0.0))
 
-    def _index_exists(self) -> bool:
+    def _index_exists(self, wait: bool = False) -> bool:
         """Check whether the RediSearch index already exists.
 
         Only a missing index counts as "no": a connection error raises, so an
         outage is not mistaken for an empty index.
 
+        :param wait: Whether to wait for the index's initial background scan
+            (see :meth:`_wait_for_scan`), for callers that search it next.
+        :type wait: bool
         :return: True if the index exists.
         :rtype: bool
         """
         from redis.exceptions import ResponseError
 
         try:
-            self.client.ft(self.index_name).info()
+            info = self.client.ft(self.index_name).info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             return False
+        if wait:
+            self._wait_for_scan(info)
         return True
 
-    async def _aindex_exists(self) -> bool:
+    async def _aindex_exists(self, wait: bool = False) -> bool:
         """Async version of :meth:`_index_exists`.
 
+        :param wait: Whether to wait for the index's initial background scan.
+        :type wait: bool
         :return: True if the index exists.
         :rtype: bool
         """
         from redis.exceptions import ResponseError
 
         try:
-            await self.aclient.ft(self.index_name).info()
+            info = await self.aclient.ft(self.index_name).info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             return False
+        if wait:
+            await self._await_scan(info)
         return True
+
+    @staticmethod
+    def _scanning(info: Any) -> bool:
+        """Whether an FT.INFO reply shows the index's initial background scan
+        still running.
+
+        :param info: The raw FT.INFO reply.
+        :return: True while FT.INFO's `indexing` is set.
+        :rtype: bool
+        """
+        if not isinstance(info, dict):
+            info = dict(zip(info[::2], info[1::2]))
+        indexing = info.get("indexing", 0)
+        if isinstance(indexing, bytes):
+            indexing = indexing.decode()
+        return float(indexing) != 0
+
+    def _log_scan(self) -> None:
+        """Say why a call is waiting, since the scan can take a while."""
+        logger.info(
+            f"Waiting for Redis to index the existing keys for '{self.index_name}' "
+            f"(up to {self.index_ready_timeout} s)."
+        )
+
+    def _scan_timeout(self) -> TimeoutError:
+        """The error for a scan that outlasts `index_ready_timeout`."""
+        return TimeoutError(
+            f"Redis index '{self.index_name}' was still indexing the existing keys "
+            f"after {self.index_ready_timeout} s. Try again later, or raise "
+            "index_ready_timeout."
+        )
+
+    def _wait_for_scan(self, info: Any) -> Any:
+        """Wait, up to `index_ready_timeout` seconds, for the index's initial
+        background scan to finish.
+
+        After FT.CREATE, Redis indexes the keys already in the database in the
+        background. On Redis 8, which runs queries on worker threads, a search
+        during that scan can miss the records it is re-indexing, and writes
+        made during it get re-indexed. So nothing writes to or searches the
+        index until the scan is done.
+
+        :param info: A fresh FT.INFO reply for the index.
+        :return: The FT.INFO reply that shows the scan finished.
+        :raises TimeoutError: If the scan outlasts `index_ready_timeout`.
+        """
+        deadline = time.monotonic() + self.index_ready_timeout
+        if self._scanning(info):
+            self._log_scan()
+        while self._scanning(info):
+            if time.monotonic() >= deadline:
+                raise self._scan_timeout()
+            time.sleep(SCAN_POLL_SECONDS)
+            info = self.client.ft(self.index_name).info()
+        return info
+
+    async def _await_scan(self, info: Any) -> Any:
+        """Async version of :meth:`_wait_for_scan`, yielding to the event loop
+        between polls."""
+        deadline = time.monotonic() + self.index_ready_timeout
+        if self._scanning(info):
+            self._log_scan()
+        while self._scanning(info):
+            if time.monotonic() >= deadline:
+                raise self._scan_timeout()
+            await asyncio.sleep(SCAN_POLL_SECONDS)
+            info = await self.aclient.ft(self.index_name).info()
+        return info
 
     def _schema_fields(self):
         """Build the RediSearch schema field definitions.
@@ -444,8 +531,8 @@ class RedisIndex(BaseIndex):
 
     def _ensure_index(self, create: bool = True) -> bool:
         """Create the index (when `create`) or check an existing one's
-        dimensions and metric, once per handle; later calls skip the server
-        round-trip.
+        dimensions and metric, then wait for its initial background scan, once
+        per handle; later calls skip the server round-trip.
 
         :param create: Whether to create the index if it doesn't exist.
         :type create: bool
@@ -464,8 +551,10 @@ class RedisIndex(BaseIndex):
             if not create:
                 return False
             self._create_index()
+            info = self.client.ft(self.index_name).info()
         else:
             self._check_index(info)
+        self._wait_for_scan(info)
         self._index_initialized = True
         self.index = self
         return True
@@ -484,8 +573,10 @@ class RedisIndex(BaseIndex):
             if not create:
                 return False
             await self._acreate_index()
+            info = await self.aclient.ft(self.index_name).info()
         else:
             self._check_index(info)
+        await self._await_scan(info)
         self._index_initialized = True
         self.index = self
         return True
@@ -736,11 +827,7 @@ class RedisIndex(BaseIndex):
         results = self.client.ft(self.index_name).search(
             q, query_params={"vec": vector_bytes}
         )
-        scores = [
-            self._distance_to_score(float(doc.vector_score)) for doc in results.docs
-        ]
-        route_names = [getattr(doc, SR_ROUTE_FIELD) for doc in results.docs]
-        return np.array(scores), route_names
+        return self._scores_and_routes(results.docs)
 
     async def aquery(
         self,
@@ -781,10 +868,29 @@ class RedisIndex(BaseIndex):
         results = await self.aclient.ft(self.index_name).search(
             q, query_params={"vec": vector_bytes}
         )
-        scores = [
-            self._distance_to_score(float(doc.vector_score)) for doc in results.docs
-        ]
-        route_names = [getattr(doc, SR_ROUTE_FIELD) for doc in results.docs]
+        return self._scores_and_routes(results.docs)
+
+    def _scores_and_routes(self, docs: List[Any]) -> Tuple[np.ndarray, List[str]]:
+        """Read the scores and route names from KNN search results.
+
+        :param docs: The documents of a KNN search.
+        :return: A tuple of the scores and route names.
+        :rtype: Tuple[np.ndarray, List[str]]
+        :raises RuntimeError: If a hit came back without its score or route,
+            rather than drop it and return incomplete results.
+        """
+        scores, route_names = [], []
+        for doc in docs:
+            distance = getattr(doc, "vector_score", None)
+            route = getattr(doc, SR_ROUTE_FIELD, None)
+            if distance is None or route is None:
+                raise RuntimeError(
+                    f"Redis returned search result '{doc.id}' without its score or "
+                    "route. Redis 8 can do this while records are rewritten if search "
+                    "workers are on (search-workers > 0); see the RedisIndex docs."
+                )
+            scores.append(self._distance_to_score(float(distance)))
+            route_names.append(route)
         return np.array(scores), route_names
 
     # ___________________________ GET ALL ___________________________
@@ -841,7 +947,7 @@ class RedisIndex(BaseIndex):
         :param include_metadata: Whether to include record dicts in the return value.
         :return: Tuple of (ids, metadata_list).
         """
-        if not self._index_exists():
+        if not self._index_exists(wait=True):
             return [], []
         from redis.commands.search.query import Query
 
@@ -871,7 +977,7 @@ class RedisIndex(BaseIndex):
         self, prefix: Optional[str] = None, include_metadata: bool = False
     ) -> tuple[list[str], list[dict]]:
         """Async version of :meth:`_get_all`."""
-        if not await self._aindex_exists():
+        if not await self._aindex_exists(wait=True):
             return [], []
         from redis.commands.search.query import Query
 
@@ -914,7 +1020,7 @@ class RedisIndex(BaseIndex):
         :param route_name: The name of the route to delete.
         :type route_name: str
         """
-        if not self._index_exists():
+        if not self._index_exists(wait=True):
             return
         filter_query = self._filter_query([self._route_filter_term([route_name])])
         ids = self._search_ids(filter_query)
@@ -929,7 +1035,7 @@ class RedisIndex(BaseIndex):
         :return: List of IDs of the vectors deleted.
         :rtype: list[str]
         """
-        if not await self._aindex_exists():
+        if not await self._aindex_exists(wait=True):
             return []
         filter_query = self._filter_query([self._route_filter_term([route_name])])
         ids = await self._asearch_ids(filter_query)
@@ -971,7 +1077,7 @@ class RedisIndex(BaseIndex):
 
     def delete_all(self):
         """Deletes all records from the index (but keeps the index/schema)."""
-        if not self._index_exists():
+        if not self._index_exists(wait=True):
             return
         ids = self._search_ids(self._filter_query())
         if ids:
@@ -1018,11 +1124,12 @@ class RedisIndex(BaseIndex):
 
         try:
             info = self.client.ft(self.index_name).info()
-            num_docs = self._num_docs(info)
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             num_docs = 0
+        else:
+            num_docs = self._num_docs(self._wait_for_scan(info))
         return IndexConfig(
             type=self.type,
             dimensions=self.dimensions or 0,
@@ -1064,11 +1171,11 @@ class RedisIndex(BaseIndex):
 
         try:
             info = await self.aclient.ft(self.index_name).info()
-            return self._num_docs(info)
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             return 0
+        return self._num_docs(await self._await_scan(info))
 
     # ___________________________ CONFIG ___________________________
     # Config values (hash, lock, etc.) are fields of one plain Redis hash per

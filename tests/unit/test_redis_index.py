@@ -7,6 +7,7 @@ and by tests/integration/test_redis_integration.py, run against the redis-stack
 container in compose.yaml (`make services`).
 """
 
+import asyncio
 import json
 import uuid
 
@@ -302,3 +303,72 @@ class TestMissingIndex:
     )
     def test_other_errors_are_not_a_missing_index(self, reply):
         assert not _missing_index(Exception(reply))
+
+
+SCANNING = {"indexing": 1, "num_docs": 0}
+SCANNED = {"indexing": 0, "num_docs": 3}
+
+
+class TestScanWait:
+    """A new or reopened index is used only once its initial background scan
+    is done (FT.INFO `indexing` is 0), and the wait is bounded."""
+
+    def test_waits_for_the_scan_then_marks_the_handle_ready(self, mocker):
+        idx = make_index(index_ready_timeout=5)
+        info = mocker.patch.object(idx.client, "ft").return_value.info
+        info.side_effect = [SCANNING, SCANNING, SCANNED]
+        assert idx._ensure_index(create=False)
+        assert info.call_count == 3
+        assert idx._index_initialized
+
+    def test_raises_when_the_scan_outlasts_the_timeout(self, mocker):
+        idx = make_index(index_ready_timeout=0.1)
+        info = mocker.patch.object(idx.client, "ft").return_value.info
+        info.return_value = SCANNING
+        with pytest.raises(TimeoutError, match="still indexing"):
+            idx.query(vector=np.zeros(DIMS), top_k=1)
+        assert not idx._index_initialized
+
+    def test_async_wait_yields_to_the_event_loop(self, mocker):
+        idx = make_index(index_ready_timeout=5)
+        ft = mocker.patch.object(idx.aclient, "ft")
+        ft.return_value.info = mocker.AsyncMock(side_effect=[SCANNING] * 4 + [SCANNED])
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            while True:
+                ticks += 1
+                await asyncio.sleep(0.01)
+
+        async def run() -> bool:
+            task = asyncio.create_task(ticker())
+            ready = await idx._aensure_index(create=False)
+            task.cancel()
+            return ready
+
+        assert asyncio.run(run())
+        assert ticks >= 4  # other tasks ran while it waited
+        assert idx._index_initialized
+
+    def test_async_raises_when_the_scan_outlasts_the_timeout(self, mocker):
+        idx = make_index(index_ready_timeout=0.1)
+        ft = mocker.patch.object(idx.aclient, "ft")
+        ft.return_value.info = mocker.AsyncMock(return_value=SCANNING)
+        with pytest.raises(TimeoutError, match="still indexing"):
+            asyncio.run(idx.aquery(vector=np.zeros(DIMS), top_k=1))
+        assert not idx._index_initialized
+
+
+class TestIncompleteHits:
+    def test_a_hit_without_its_score_raises(self, mocker):
+        # Redis 8.2 with search workers can return a record without the
+        # fields asked for; skipping it would return incomplete results
+        from redis.commands.search.document import Document
+
+        idx = make_index()
+        ft = mocker.patch.object(idx.client, "ft").return_value
+        ft.info.return_value = SCANNED
+        ft.search.return_value.docs = [Document(id="k", sr_route="r")]
+        with pytest.raises(RuntimeError, match="without its score"):
+            idx.query(vector=np.zeros(DIMS), top_k=1)

@@ -147,8 +147,9 @@ def test_vectors_of_another_size_raise_instead_of_vanishing():
     assert reader.dimensions == 8  # a read-only handle learns them
 
 
-def _keys(index: RedisIndex) -> list:
-    return list(index.client.scan_iter(match=f"{index._key_prefix()}*"))
+def _keys(index: RedisIndex) -> set:
+    # a set: SCAN can return a key twice while Redis rehashes its keyspace
+    return set(index.client.scan_iter(match=f"{index._key_prefix()}*"))
 
 
 def test_a_wrong_size_vector_writes_nothing():
@@ -181,7 +182,7 @@ def test_a_mixed_batch_on_a_new_index_writes_nothing():
             routes=["eight", "four"],
             utterances=["one", "two"],
         )
-    assert _keys(index) == []
+    assert _keys(index) == set()
 
 
 class _HashEncoder(DenseEncoder):
@@ -343,3 +344,61 @@ def test_other_server_errors_raise_instead_of_looking_empty(no_ft_info_user):
                 await acall()
 
     asyncio.run(run())
+
+
+SCANNED = 5_000  # existing keys, so the scan after FT.CREATE takes a while
+
+
+def _preload(index: RedisIndex, n: int) -> None:
+    """Write n records straight into Redis before any index exists, as an
+    earlier index or another client could have left them."""
+    pipe = index.client.pipeline(transaction=False)
+    for k, vector in enumerate(_vectors(n)):
+        route, utterance = f"r{k % 10}", f"u{k}"
+        pipe.hset(
+            index._key_for(route, utterance),
+            mapping=index._build_mapping(route, utterance, vector, {}, None),
+        )
+    pipe.execute()
+
+
+def _drop(index: RedisIndex) -> None:
+    """Drop the index and every key under its prefix, even mid-scan, when the
+    cleanup fixture wouldn't (it skips handles that never got ready)."""
+    try:
+        index.client.ft(index.index_name).dropindex(delete_documents=True)
+    except Exception:
+        pass
+    for key in index.client.scan_iter(match=f"{index._key_prefix()}*", count=1000):
+        index.client.delete(key)
+
+
+def test_a_new_index_finishes_its_scan_before_it_is_used():
+    # after FT.CREATE, Redis indexes the existing keys in the background; on
+    # Redis 8 a search during that scan could miss records, so a filtered
+    # query sometimes came back empty
+    index = _index()
+    _preload(index, SCANNED)
+    try:
+        index.add(embeddings=_vectors(1), routes=["new"], utterances=["one"])
+        assert int(index.client.ft(index.index_name).info()["indexing"]) == 0
+        assert len(index.get_utterances()) == SCANNED + 1
+    finally:
+        _drop(index)
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_a_handle_opened_during_the_scan_waits_for_it(use_async):
+    name = f"test-{uuid.uuid4().hex}"
+    creator = RedisIndex(index_name=name, dimensions=8)
+    _preload(creator, SCANNED)
+    try:
+        creator._create_index()  # as another process would; the scan starts
+        reader = RedisIndex(index_name=name)
+        if use_async:
+            found = asyncio.run(reader.aget_utterances())
+        else:
+            found = reader.get_utterances()
+        assert len(found) == SCANNED
+    finally:
+        _drop(creator)
