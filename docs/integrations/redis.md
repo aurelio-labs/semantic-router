@@ -64,6 +64,27 @@ index = RedisIndex(
 )
 ```
 
+### TLS
+
+A `rediss://` connection string turns TLS on. If your server's certificate comes from a private CA (a self-signed one, for example), pass the CA as a query parameter, and add a client certificate and key the same way if the server requires them:
+
+```python
+index = RedisIndex(
+    index_name="semantic_router",
+    connection_string=(
+        "rediss://default:password@your-redis-host:6379"
+        "?ssl_ca_certs=/path/to/ca.crt"
+        "&ssl_certfile=/path/to/client.crt&ssl_keyfile=/path/to/client.key"
+    ),
+)
+```
+
+`ssl=True` with `host` and `port` checks the server against the system's trusted CAs only, which suits a publicly trusted certificate. For a private CA, use the connection string above. Python 3.13 and later check certificates strictly, so a home-made CA needs the usual X.509 extensions (Authority and Subject Key Identifiers); without them the connection fails with `certificate verify failed: Missing Authority Key Identifier`.
+
+### Redis Cluster
+
+`RedisIndex` talks to a single Redis endpoint, so it doesn't support open-source Redis Cluster: it raises a `ValueError` when the server runs in cluster mode, before it writes anything. Redis Cloud and Redis Enterprise databases present a single endpoint unless their OSS Cluster API is turned on.
+
 ### Index Management
 
 The RediSearch index is created automatically the first time routes are added, using the encoder's embedding dimensions:

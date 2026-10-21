@@ -181,6 +181,7 @@ class RedisIndex(BaseIndex):
     client: Any = Field(default=None, exclude=True)
     aclient: Any = Field(default=None, exclude=True)
     _index_initialized: bool = PrivateAttr(default=False)
+    _standalone_checked: bool = PrivateAttr(default=False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -290,6 +291,63 @@ class RedisIndex(BaseIndex):
             return 1 - distance
         return math.sqrt(max(distance, 0.0))
 
+    def _cluster_error(self) -> ValueError:
+        """The error for a server running in OSS cluster mode."""
+        kwargs = self.client.connection_pool.connection_kwargs
+        return ValueError(
+            f"Redis at {kwargs.get('host')}:{kwargs.get('port')} runs in cluster "
+            "mode, which RedisIndex doesn't support: it talks to a single Redis "
+            "endpoint. Use a standalone Redis 8 or Redis Stack server, or a Redis "
+            "Cloud or Enterprise database without the OSS Cluster API."
+        )
+
+    def _check_standalone(self) -> None:
+        """Raise, once per handle and before anything is written, if the server
+        runs in OSS cluster mode.
+
+        This index uses a single-endpoint client, so on a cluster its writes
+        and config reads fail with MOVED redirections, or (on Redis Stack 7.x,
+        whose search runs per shard) searches see only one shard's records. An
+        ACL user that may not run INFO skips the check.
+
+        :raises ValueError: If the server runs in cluster mode.
+        """
+        if self._standalone_checked:
+            return
+        from redis.exceptions import NoPermissionError
+
+        try:
+            cluster = self.client.info("cluster").get("cluster_enabled")
+        except NoPermissionError:
+            cluster = 0
+        if int(cluster or 0):
+            raise self._cluster_error()
+        self._standalone_checked = True
+
+    async def _acheck_standalone(self) -> None:
+        """Async version of :meth:`_check_standalone`."""
+        if self._standalone_checked:
+            return
+        from redis.exceptions import NoPermissionError
+
+        try:
+            cluster = (await self.aclient.info("cluster")).get("cluster_enabled")
+        except NoPermissionError:
+            cluster = 0
+        if int(cluster or 0):
+            raise self._cluster_error()
+        self._standalone_checked = True
+
+    def _ft_info(self) -> Any:
+        """FT.INFO for this index, on a server checked not to be a cluster."""
+        self._check_standalone()
+        return self.client.ft(self.index_name).info()
+
+    async def _aft_info(self) -> Any:
+        """Async version of :meth:`_ft_info`."""
+        await self._acheck_standalone()
+        return await self.aclient.ft(self.index_name).info()
+
     def _index_exists(self, wait: bool = False) -> bool:
         """Check whether the RediSearch index already exists.
 
@@ -305,7 +363,7 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = self.client.ft(self.index_name).info()
+            info = self._ft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
@@ -325,7 +383,7 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = await self.aclient.ft(self.index_name).info()
+            info = await self._aft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
@@ -386,7 +444,7 @@ class RedisIndex(BaseIndex):
             if time.monotonic() >= deadline:
                 raise self._scan_timeout()
             time.sleep(SCAN_POLL_SECONDS)
-            info = self.client.ft(self.index_name).info()
+            info = self._ft_info()
         return info
 
     async def _await_scan(self, info: Any) -> Any:
@@ -399,7 +457,7 @@ class RedisIndex(BaseIndex):
             if time.monotonic() >= deadline:
                 raise self._scan_timeout()
             await asyncio.sleep(SCAN_POLL_SECONDS)
-            info = await self.aclient.ft(self.index_name).info()
+            info = await self._aft_info()
         return info
 
     def _schema_fields(self):
@@ -544,14 +602,14 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = self.client.ft(self.index_name).info()
+            info = self._ft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             if not create:
                 return False
             self._create_index()
-            info = self.client.ft(self.index_name).info()
+            info = self._ft_info()
         else:
             self._check_index(info)
         self._wait_for_scan(info)
@@ -566,14 +624,14 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = await self.aclient.ft(self.index_name).info()
+            info = await self._aft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
             if not create:
                 return False
             await self._acreate_index()
-            info = await self.aclient.ft(self.index_name).info()
+            info = await self._aft_info()
         else:
             self._check_index(info)
         await self._await_scan(info)
@@ -1123,7 +1181,7 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = self.client.ft(self.index_name).info()
+            info = self._ft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
@@ -1170,7 +1228,7 @@ class RedisIndex(BaseIndex):
         from redis.exceptions import ResponseError
 
         try:
-            info = await self.aclient.ft(self.index_name).info()
+            info = await self._aft_info()
         except ResponseError as e:
             if not _missing_index(e):
                 raise
@@ -1249,6 +1307,7 @@ class RedisIndex(BaseIndex):
         :return: The config parameter that was written.
         :rtype: ConfigParameter
         """
+        self._check_standalone()
         self.client.hset(
             self._config_key(),
             self._config_field(config.field, config.scope),
@@ -1266,11 +1325,13 @@ class RedisIndex(BaseIndex):
         :return: The config parameter that was read.
         :rtype: ConfigParameter
         """
+        self._check_standalone()
         raw = self.client.hget(self._config_key(), self._config_field(field, scope))
         return self._parse_config(raw, field, scope)
 
     async def _async_write_config(self, config: ConfigParameter) -> ConfigParameter:
         """Asynchronously write a config parameter to Redis."""
+        await self._acheck_standalone()
         await self.aclient.hset(
             self._config_key(),
             self._config_field(config.field, config.scope),
@@ -1282,6 +1343,7 @@ class RedisIndex(BaseIndex):
         self, field: str, scope: Optional[str] = None
     ) -> ConfigParameter:
         """Asynchronously read a config parameter from Redis."""
+        await self._acheck_standalone()
         raw = await self.aclient.hget(
             self._config_key(), self._config_field(field, scope)
         )
