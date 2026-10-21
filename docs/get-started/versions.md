@@ -9,7 +9,7 @@ Semantic Router has two release lines. Pick the one that matches the version you
 
 ## v0: the 0.x line
 
-The 0.x releases are the library as it has shipped since 2023: `SemanticRouter`, `HybridRouter`, utterance-based routes, `score_threshold`, and index synchronisation. The final feature release of this line is **0.2.0**. After that it receives bug fixes only.
+The 0.x releases are the library as it has shipped since 2023: `SemanticRouter`, `HybridRouter`, utterance-based routes, `score_threshold`, and index synchronisation. The final feature release of this line is **0.3.0**. After that it receives bug fixes only.
 
 Install it with an upper bound so an upgrade never moves you to 1.x by accident:
 
