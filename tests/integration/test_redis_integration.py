@@ -402,3 +402,34 @@ def test_a_handle_opened_during_the_scan_waits_for_it(use_async):
         assert len(found) == SCANNED
     finally:
         _drop(creator)
+
+
+PAST_THE_CAP = 10_500  # the Redis Stack images cap FT.SEARCH at 10,000 results
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+def test_reads_and_deletes_go_past_maxsearchresults(use_async):
+    # offset paging stopped at MAXSEARCHRESULTS without an error, so
+    # get_utterances returned 10,000 records and delete left the rest behind
+    index = _index()
+    big = PAST_THE_CAP - 250
+    index.add(
+        embeddings=_vectors(PAST_THE_CAP),
+        routes=["big"] * big + ["small"] * 250,
+        utterances=[f"u{k}" for k in range(PAST_THE_CAP)],
+        batch_size=1000,
+    )
+    if use_async:
+
+        async def run() -> list:
+            assert len(await index.aget_utterances()) == PAST_THE_CAP
+            assert len(await index.adelete(route_name="big")) == big
+            return await index.aget_utterances()
+
+        left = asyncio.run(run())
+    else:
+        assert len(index.get_utterances()) == PAST_THE_CAP
+        index.delete(route_name="big")
+        left = index.get_utterances()
+    assert {u.route for u in left} == {"small"}
+    assert len(left) == 250

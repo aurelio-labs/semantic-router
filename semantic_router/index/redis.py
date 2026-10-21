@@ -953,53 +953,104 @@ class RedisIndex(BaseIndex):
 
     # ___________________________ GET ALL ___________________________
 
+    @staticmethod
+    def _rows(rows: List[Any]) -> List[Dict[str, Any]]:
+        """FT.AGGREGATE rows, flat [name, value, ...] lists, as dicts with str
+        names and the Redis key as a str under `__key`."""
+        records = []
+        for row in rows:
+            record = {
+                (k.decode() if isinstance(k, bytes) else k): v
+                for k, v in zip(row[::2], row[1::2])
+            }
+            key = record.get("__key")
+            record["__key"] = key.decode() if isinstance(key, bytes) else key
+            records.append(record)
+        return records
+
+    def _aggregate_request(self, filter_query: str, fields: List[str]) -> Any:
+        """An FT.AGGREGATE over every record matching a filter query, read
+        through a cursor.
+
+        FT.SEARCH can't page past MAXSEARCHRESULTS (10,000 in the Redis Stack
+        images): past it, a page comes back empty without an error. A cursor
+        has no such cap.
+
+        :param filter_query: The RediSearch filter query.
+        :param fields: The hash fields to load besides the key.
+        :return: The aggregate request.
+        """
+        from redis.commands.search.aggregation import AggregateRequest
+
+        return (
+            AggregateRequest(filter_query)
+            .load(*(f"@{f}" for f in ["__key", *fields]))
+            .cursor(count=PAGE_SIZE)
+        )
+
+    def _read_all(
+        self, filter_query: str, fields: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """Every record matching a filter query, with its key and the given
+        hash fields.
+
+        :param filter_query: The RediSearch filter query.
+        :param fields: The hash fields to load besides the key.
+        :return: One dict per record.
+        :rtype: List[Dict[str, Any]]
+        """
+        ft = self.client.ft(self.index_name)
+        result = ft.aggregate(self._aggregate_request(filter_query, fields or []))
+        rows = list(result.rows)
+        while result.cursor and result.cursor.cid:
+            result = ft.aggregate(result.cursor)
+            rows.extend(result.rows)
+        return self._rows(rows)
+
+    async def _aread_all(
+        self, filter_query: str, fields: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """Async version of :meth:`_read_all`."""
+        ft = self.aclient.ft(self.index_name)
+        result = await ft.aggregate(self._aggregate_request(filter_query, fields or []))
+        rows = list(result.rows)
+        while result.cursor and result.cursor.cid:
+            result = await ft.aggregate(result.cursor)
+            rows.extend(result.rows)
+        return self._rows(rows)
+
     def _search_ids(self, filter_query: str) -> List[str]:
-        """Collect every document ID matching a filter query, paginating
-        through results.
+        """Collect every document ID matching a filter query.
 
         :param filter_query: The RediSearch filter query.
         :type filter_query: str
         :return: A list of matching document (Redis key) IDs.
         :rtype: List[str]
         """
-        from redis.commands.search.query import Query
-
-        ids: List[str] = []
-        offset = 0
-        while True:
-            q = Query(filter_query).paging(offset, PAGE_SIZE).no_content()
-            results = self.client.ft(self.index_name).search(q)
-            docs = results.docs
-            if not docs:
-                break
-            ids.extend(doc.id for doc in docs)
-            offset += len(docs)
-            if len(docs) < PAGE_SIZE:
-                break
-        return ids
+        return [record["__key"] for record in self._read_all(filter_query)]
 
     async def _asearch_ids(self, filter_query: str) -> List[str]:
         """Async version of :meth:`_search_ids`."""
-        from redis.commands.search.query import Query
+        return [record["__key"] for record in await self._aread_all(filter_query)]
 
-        ids: List[str] = []
-        offset = 0
-        while True:
-            q = Query(filter_query).paging(offset, PAGE_SIZE).no_content()
-            results = await self.aclient.ft(self.index_name).search(q)
-            docs = results.docs
-            if not docs:
-                break
-            ids.extend(doc.id for doc in docs)
-            offset += len(docs)
-            if len(docs) < PAGE_SIZE:
-                break
-        return ids
+    @staticmethod
+    def _parse_records(
+        records: List[Dict[str, Any]], include_metadata: bool
+    ) -> tuple[list[str], list[dict]]:
+        """Split read records into their ids and, if asked, their parsed
+        `sr_record` JSON."""
+        ids = [record["__key"] for record in records]
+        metadata = (
+            [json.loads(record.get(SR_RECORD_FIELD) or "{}") for record in records]
+            if include_metadata
+            else []
+        )
+        return ids, metadata
 
     def _get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
     ) -> tuple[list[str], list[dict]]:
-        """Retrieves all vector IDs (and optionally parsed records) via FT.SEARCH.
+        """Retrieves all vector IDs (and optionally parsed records).
 
         :param prefix: Unused for Redis; filtering is handled by namespace.
         :param include_metadata: Whether to include record dicts in the return value.
@@ -1007,29 +1058,9 @@ class RedisIndex(BaseIndex):
         """
         if not self._index_exists(wait=True):
             return [], []
-        from redis.commands.search.query import Query
-
-        filter_query = self._filter_query()
-        ids: List[str] = []
-        metadata: List[dict] = []
-        offset = 0
-        while True:
-            q = Query(filter_query).paging(offset, PAGE_SIZE)
-            q = q.return_fields(SR_RECORD_FIELD) if include_metadata else q.no_content()
-            results = self.client.ft(self.index_name).search(q)
-            docs = results.docs
-            if not docs:
-                break
-            for doc in docs:
-                ids.append(doc.id)
-                if include_metadata:
-                    metadata.append(
-                        json.loads(getattr(doc, SR_RECORD_FIELD, "{}") or "{}")
-                    )
-            offset += len(docs)
-            if len(docs) < PAGE_SIZE:
-                break
-        return ids, metadata
+        fields = [SR_RECORD_FIELD] if include_metadata else []
+        records = self._read_all(self._filter_query(), fields)
+        return self._parse_records(records, include_metadata)
 
     async def _async_get_all(
         self, prefix: Optional[str] = None, include_metadata: bool = False
@@ -1037,29 +1068,9 @@ class RedisIndex(BaseIndex):
         """Async version of :meth:`_get_all`."""
         if not await self._aindex_exists(wait=True):
             return [], []
-        from redis.commands.search.query import Query
-
-        filter_query = self._filter_query()
-        ids: List[str] = []
-        metadata: List[dict] = []
-        offset = 0
-        while True:
-            q = Query(filter_query).paging(offset, PAGE_SIZE)
-            q = q.return_fields(SR_RECORD_FIELD) if include_metadata else q.no_content()
-            results = await self.aclient.ft(self.index_name).search(q)
-            docs = results.docs
-            if not docs:
-                break
-            for doc in docs:
-                ids.append(doc.id)
-                if include_metadata:
-                    metadata.append(
-                        json.loads(getattr(doc, SR_RECORD_FIELD, "{}") or "{}")
-                    )
-            offset += len(docs)
-            if len(docs) < PAGE_SIZE:
-                break
-        return ids, metadata
+        fields = [SR_RECORD_FIELD] if include_metadata else []
+        records = await self._aread_all(self._filter_query(), fields)
+        return self._parse_records(records, include_metadata)
 
     async def aget_routes(self) -> list[tuple]:
         """Asynchronously get a list of route and utterance objects currently
