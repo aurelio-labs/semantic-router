@@ -1,5 +1,11 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.3.1
+
+#### Fixes
+
+- Dynamic routes read function inputs that the LLM wraps in a Markdown code block (```` ```json … ``` ````), alone or after a line of text, instead of failing with a `JSONDecodeError`. This affects every LLM that asks for the inputs as JSON: `OpenAICompatibleLLM` and its presets, `AzureOpenAILLM`, `CohereLLM`, `MistralAILLM`, `OllamaLLM` and `OpenRouterLLM`. `OpenAILLM` uses tool calls and is unaffected. Plain JSON is read as before, including backticks inside its strings.
+
 ### v0.3.0
 
 `0.3.0` brings in the features from pull requests that were already open when `0.2.0` shipped, as a one-off exception. It is now the last feature release of the 0.x line: from here, 0.x gets bug fixes only, and new work goes into 1.x. Releases also follow strict [semantic versioning](https://semver.org) from now on: new features raise the minor version, and fixes raise the patch version. These are the changes since `0.2.0`, and none of them is breaking.
