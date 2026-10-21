@@ -1,6 +1,7 @@
+import hashlib
 import json
+import math
 import os
-import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -22,6 +23,9 @@ SR_ROUTE_FIELD = "sr_route"
 SR_RECORD_FIELD = "sr_record"
 SR_NAMESPACE_FIELD = "namespace"
 VECTOR_FIELD = "vector"
+# The indexed TAG fields hold a digest of the route name and namespace (see `_tag`).
+SR_ROUTE_TAG_FIELD = "sr_route_tag"
+SR_NAMESPACE_TAG_FIELD = "sr_namespace_tag"
 
 # Config values are stored as plain Redis hashes, independent of the search index.
 CONFIG_KEY_PREFIX = "sr_config"
@@ -34,21 +38,20 @@ _METRIC_MAP = {
     Metric.DOTPRODUCT: "IP",
 }
 
-# Characters that RediSearch's query parser treats as special and that must be
-# backslash-escaped when they appear inside a TAG filter value (e.g. a route
-# name containing a space or hyphen).
-_TAG_ESCAPE_RE = re.compile(r"([,.<>{}\[\]\"':;!@#$%^&*()\-+=~\s\\|])")
 
+def _tag(value: str) -> str:
+    """A filter-safe stand-in for a route name or namespace.
 
-def _escape_tag(value: str) -> str:
-    """Escape a value for safe use inside a RediSearch TAG filter.
+    RediSearch TAG fields fold case and split values on commas, and TAG queries
+    need punctuation escaped, so filtering on the raw name lets `Chat` match
+    `chat` and `a` match `a,b`. A hex digest matches only its own value.
 
-    :param value: The raw value (e.g. a route name) to escape.
+    :param value: The route name or namespace.
     :type value: str
-    :return: The escaped value, safe to embed in a `@field:{...}` filter.
+    :return: The SHA-256 hex digest of the value.
     :rtype: str
     """
-    return _TAG_ESCAPE_RE.sub(r"\\\1", str(value))
+    return hashlib.sha256(str(value).encode()).hexdigest()
 
 
 def _import_index_definition():
@@ -207,10 +210,15 @@ class RedisIndex(BaseIndex):
         """The Redis key prefix used for every record hash, and the RediSearch
         index's PREFIX filter.
 
+        RediSearch matches keys by plain prefix, so `routes:` would also cover
+        the records of an index named `routes:v2`. Colons in the name are
+        written as `%3A`, so no index's prefix can start another's.
+
         :return: The key prefix.
         :rtype: str
         """
-        return f"{self.index_name}:"
+        name = self.index_name.replace("%", "%25").replace(":", "%3A")
+        return f"{name}:"
 
     def _redis_metric(self) -> str:
         """Convert the configured metric to a RediSearch DISTANCE_METRIC value.
@@ -232,8 +240,9 @@ class RedisIndex(BaseIndex):
 
         Redis always returns a value where *smaller* means *closer*. For
         COSINE and IP, that value is defined as `1 - similarity`, so we invert
-        it back into a similarity score. For L2 the raw (Euclidean) distance
-        is returned as-is.
+        it back into a similarity score. For L2, Redis returns the squared
+        distance, so we take its root to match the Euclidean distance that
+        QdrantIndex and PostgresIndex return.
 
         :param distance: The `vector_score` value returned by Redis.
         :type distance: float
@@ -242,19 +251,25 @@ class RedisIndex(BaseIndex):
         """
         if self.metric in (Metric.COSINE, Metric.DOTPRODUCT):
             return 1 - distance
-        return distance
+        return math.sqrt(max(distance, 0.0))
 
     def _index_exists(self) -> bool:
         """Check whether the RediSearch index already exists.
 
+        Only a missing index counts as "no": a connection error raises, so an
+        outage is not mistaken for an empty index.
+
         :return: True if the index exists.
         :rtype: bool
         """
+        from redis.exceptions import ResponseError
+
         try:
             self.client.ft(self.index_name).info()
-            return True
-        except Exception:
+        except ResponseError:
             return False
+        self._index_initialized = True
+        return True
 
     async def _aindex_exists(self) -> bool:
         """Async version of :meth:`_index_exists`.
@@ -262,11 +277,14 @@ class RedisIndex(BaseIndex):
         :return: True if the index exists.
         :rtype: bool
         """
+        from redis.exceptions import ResponseError
+
         try:
             await self.aclient.ft(self.index_name).info()
-            return True
-        except Exception:
+        except ResponseError:
             return False
+        self._index_initialized = True
+        return True
 
     def _schema_fields(self):
         """Build the RediSearch schema field definitions.
@@ -282,8 +300,8 @@ class RedisIndex(BaseIndex):
             **self.algorithm_params,
         }
         return (
-            TagField(SR_ROUTE_FIELD),
-            TagField(SR_NAMESPACE_FIELD),
+            TagField(SR_ROUTE_TAG_FIELD),
+            TagField(SR_NAMESPACE_TAG_FIELD),
             VectorField(VECTOR_FIELD, self.algorithm, vector_attrs),
         )
 
@@ -350,18 +368,18 @@ class RedisIndex(BaseIndex):
         """
         if self.namespace is None:
             return []
-        return [f"@{SR_NAMESPACE_FIELD}:{{{_escape_tag(self.namespace)}}}"]
+        return [f"@{SR_NAMESPACE_TAG_FIELD}:{{{_tag(self.namespace)}}}"]
 
     def _route_filter_term(self, route_names: List[str]) -> str:
         """Build a TAG filter term matching any of the given route names.
 
         :param route_names: The route names to match.
         :type route_names: List[str]
-        :return: A `@sr_route:{...}` filter term.
+        :return: A `@sr_route_tag:{...}` filter term.
         :rtype: str
         """
-        escaped = "|".join(_escape_tag(r) for r in route_names)
-        return f"@{SR_ROUTE_FIELD}:{{{escaped}}}"
+        tags = "|".join(_tag(r) for r in route_names)
+        return f"@{SR_ROUTE_TAG_FIELD}:{{{tags}}}"
 
     def _filter_query(self, extra_terms: Optional[List[str]] = None) -> str:
         """Build a RediSearch filter query string from the namespace and any
@@ -419,8 +437,8 @@ class RedisIndex(BaseIndex):
 
         The full parseable record (route, utterance, function schema, and any
         additional metadata) is stored as one JSON blob so arbitrary metadata
-        shapes are supported; `sr_route` is duplicated as its own TAG field so
-        it can be used in RediSearch filters.
+        shapes are supported; `sr_route` is duplicated as its own field so
+        queries can return it, and its digest is the TAG that filters use.
 
         :param route: The route name.
         :param utterance: The utterance text.
@@ -438,11 +456,13 @@ class RedisIndex(BaseIndex):
         record.update(metadata or {})
         mapping: Dict[str, Any] = {
             SR_ROUTE_FIELD: route,
+            SR_ROUTE_TAG_FIELD: _tag(route),
             SR_RECORD_FIELD: json.dumps(record),
             VECTOR_FIELD: np.asarray(embedding, dtype=np.float32).tobytes(),
         }
         if self.namespace is not None:
             mapping[SR_NAMESPACE_FIELD] = self.namespace
+            mapping[SR_NAMESPACE_TAG_FIELD] = _tag(self.namespace)
         return mapping
 
     # ___________________________ ADD ___________________________
@@ -565,7 +585,7 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
-        if not self._index_exists():
+        if not self._index_initialized and not self._index_exists():
             return np.array([]), []
         from redis.commands.search.query import Query
 
@@ -608,7 +628,7 @@ class RedisIndex(BaseIndex):
         :return: A tuple of the scores and route names.
         :rtype: Tuple[np.ndarray, List[str]]
         """
-        if not await self._aindex_exists():
+        if not self._index_initialized and not await self._aindex_exists():
             return np.array([]), []
         from redis.commands.search.query import Query
 
@@ -854,10 +874,12 @@ class RedisIndex(BaseIndex):
         :return: The index configuration.
         :rtype: IndexConfig
         """
+        from redis.exceptions import ResponseError
+
         try:
             info = self.client.ft(self.index_name).info()
             num_docs = self._num_docs(info)
-        except Exception:
+        except ResponseError:
             num_docs = 0
         return IndexConfig(
             type=self.type,
@@ -896,10 +918,12 @@ class RedisIndex(BaseIndex):
         :return: The total number of vectors.
         :rtype: int
         """
+        from redis.exceptions import ResponseError
+
         try:
             info = await self.aclient.ft(self.index_name).info()
             return self._num_docs(info)
-        except Exception:
+        except ResponseError:
             return 0
 
     # ___________________________ CONFIG ___________________________

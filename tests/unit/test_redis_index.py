@@ -1,9 +1,10 @@
-"""Unit tests for RedisIndex's pure logic -- escaping, ID derivation and metric
-mapping -- that don't need a live Redis/RediSearch server.
+"""Unit tests for RedisIndex's pure logic -- filter tags, ID derivation and
+metric mapping -- that don't need a live Redis/RediSearch server.
 
 Behaviour that requires an actual RediSearch index (add/query/delete/sync) is
-covered by the parametrized suite in tests/integration/test_router_integration.py,
-run against the redis-stack container in compose.yaml (`make services`).
+covered by the parametrized suite in tests/integration/test_router_integration.py
+and by tests/integration/test_redis_integration.py, run against the redis-stack
+container in compose.yaml (`make services`).
 """
 
 import uuid
@@ -12,7 +13,7 @@ import pytest
 
 pytest.importorskip("redis", reason="redis not installed")
 
-from semantic_router.index.redis import RedisIndex, _escape_tag
+from semantic_router.index.redis import RedisIndex, _tag
 from semantic_router.schema import Metric
 
 DIMS = 4
@@ -86,25 +87,21 @@ class TestConstruction:
 
 
 # ---------------------------------------------------------------------------
-# _escape_tag
+# _tag
 # ---------------------------------------------------------------------------
 
 
-class TestEscapeTag:
-    def test_plain_alphanumeric_untouched(self):
-        assert _escape_tag("billing") == "billing"
+class TestTag:
+    def test_is_hex(self):
+        assert all(c in "0123456789abcdef" for c in _tag("weird route, name?"))
 
-    def test_escapes_space(self):
-        assert _escape_tag("weird route name") == "weird\\ route\\ name"
-
-    def test_escapes_hyphen(self):
-        assert _escape_tag("my-route") == "my\\-route"
-
-    def test_escapes_multiple_special_chars(self):
-        assert _escape_tag("a.b@c!d") == "a\\.b\\@c\\!d"
+    def test_keeps_case_and_commas_apart(self):
+        # a raw RediSearch TAG folds case and splits on commas
+        assert _tag("Chat") != _tag("chat")
+        assert _tag("a,b") != _tag("a")
 
     def test_non_str_input_coerced(self):
-        assert _escape_tag(123) == "123"
+        assert _tag(123) == _tag("123")
 
 
 # ---------------------------------------------------------------------------
@@ -140,9 +137,10 @@ class TestDistanceToScore:
         idx = make_index(metric=Metric.DOTPRODUCT)
         assert idx._distance_to_score(0.4) == pytest.approx(0.6)
 
-    def test_euclidean_passes_through(self):
+    def test_euclidean_is_root_of_squared_distance(self):
+        # Redis returns the squared L2 distance
         idx = make_index(metric=Metric.EUCLIDEAN)
-        assert idx._distance_to_score(1.23) == pytest.approx(1.23)
+        assert idx._distance_to_score(2.25) == pytest.approx(1.5)
 
 
 # ---------------------------------------------------------------------------
@@ -184,17 +182,19 @@ class TestFilterQuery:
 
     def test_namespace_only(self):
         idx = make_index(namespace="org-1")
-        assert idx._filter_query() == "(@namespace:{org\\-1})"
+        assert idx._filter_query() == f"(@sr_namespace_tag:{{{_tag('org-1')}}})"
 
     def test_route_filter_term_joins_with_pipe(self):
         idx = make_index()
         term = idx._route_filter_term(["billing", "support"])
-        assert term == "@sr_route:{billing|support}"
+        assert term == f"@sr_route_tag:{{{_tag('billing')}|{_tag('support')}}}"
 
     def test_namespace_and_route_filter_combine(self):
         idx = make_index(namespace="org-1")
         term = idx._route_filter_term(["billing"])
-        assert idx._filter_query([term]) == "(@namespace:{org\\-1} @sr_route:{billing})"
+        assert idx._filter_query([term]) == (
+            f"(@sr_namespace_tag:{{{_tag('org-1')}}} @sr_route_tag:{{{_tag('billing')}}})"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -209,8 +209,10 @@ class TestBuildMapping:
             "r", "utt", [0.1, 0.2, 0.3, 0.4], {"foo": "bar"}, {"name": "fn"}
         )
         assert mapping["sr_route"] == "r"
+        assert mapping["sr_route_tag"] == _tag("r")
         assert isinstance(mapping["vector"], bytes)
         assert "namespace" not in mapping
+        assert "sr_namespace_tag" not in mapping
 
         import json
 
@@ -224,6 +226,7 @@ class TestBuildMapping:
         idx = make_index(namespace="org-1")
         mapping = idx._build_mapping("r", "utt", [0.1, 0.2, 0.3, 0.4], {}, None)
         assert mapping["namespace"] == "org-1"
+        assert mapping["sr_namespace_tag"] == _tag("org-1")
 
     def test_no_function_schema_defaults_empty(self):
         idx = make_index()
@@ -232,3 +235,14 @@ class TestBuildMapping:
 
         record = json.loads(mapping["sr_record"])
         assert record["sr_function_schema"] == "{}"
+
+
+class TestKeyPrefix:
+    def test_plain_name_is_the_prefix(self):
+        assert make_index(index_name="routes")._key_prefix() == "routes:"
+
+    def test_no_prefix_starts_another(self):
+        # `routes:` must not be a prefix of `routes:v2`'s keys
+        base = make_index(index_name="routes")._key_prefix()
+        v2 = make_index(index_name="routes:v2")._key_prefix()
+        assert not v2.startswith(base)
