@@ -139,3 +139,53 @@ class TestOpenAICompatibleLLM:
         assert str(request.url) == f"{BASE_URL}/chat/completions"
         assert request.headers["Authorization"] == "Bearer test_api_key"
         assert json.loads(request.content)["model"] == "provider/model"
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            '{"timezone": "Europe/London"}',
+            '```json\n{"timezone": "Europe/London"}\n```',
+            '```\n{"timezone": "Europe/London"}\n```',
+            '```JSON {"timezone": "Europe/London"} ```',
+            'Here are the inputs:\n\n```json\n{"timezone": "Europe/London"}\n```\n\nDone.',
+        ],
+    )
+    def test_extract_function_inputs_reads_json_in_a_code_fence(self, mocker, reply):
+        capture_chat_requests(mocker, content=reply)
+        llm = OpenAICompatibleLLM(
+            name="provider/model", base_url=BASE_URL, api_key="test_api_key"
+        )
+        schema = {
+            "name": "get_time",
+            "description": "Finds the current time in a timezone.",
+            "signature": "(timezone: str) -> str",
+            "output": "<class 'str'>",
+        }
+        inputs = llm.extract_function_inputs(
+            query="What time is it in London?", function_schemas=[schema]
+        )
+        assert inputs == [{"timezone": "Europe/London"}]
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            '{"text": "Please keep ```hello``` literally"}',
+            '```json\n{"text": "Please keep ```hello``` literally"}\n```',
+            'The inputs:\n```json\n{"text": "Please keep ```hello``` literally"}\n```',
+        ],
+    )
+    def test_extract_function_inputs_keeps_backticks_inside_json(self, mocker, reply):
+        capture_chat_requests(mocker, content=reply)
+        llm = OpenAICompatibleLLM(
+            name="provider/model", base_url=BASE_URL, api_key="test_api_key"
+        )
+        schema = {
+            "name": "echo",
+            "description": "Repeats the text.",
+            "signature": "(text: str) -> str",
+            "output": "<class 'str'>",
+        }
+        inputs = llm.extract_function_inputs(
+            query="Echo: Please keep ```hello``` literally", function_schemas=[schema]
+        )
+        assert inputs == [{"text": "Please keep ```hello``` literally"}]
