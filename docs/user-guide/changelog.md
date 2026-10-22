@@ -7,7 +7,11 @@ description: What changed in each Semantic Router release.
 
 #### Security
 
-- **LiteLLM 1.107.0 is excluded.** That PyPI release contained malicious code (a supply-chain attack reported by JFrog on 21 October 2026), and the `litellm` extra allowed it. The extra is now `litellm>=1.84.0,!=1.107.0`. If you installed `semantic-router[litellm]` or `[all]` without a lockfile around 21 October, run `pip show litellm`. If it shows 1.107.0, uninstall it, rotate the API keys and credentials that environment could read, then reinstall. PyPI has removed 1.107.0, but a private mirror may still serve it.
+- **LiteLLM 1.107.0 is excluded.** That PyPI release contained malware (a supply-chain attack, live on PyPI on 21 October 2026 from 11:39 to 13:23 UTC), and the `litellm` extra allowed it. The extra is now `litellm>=1.84.0,!=1.107.0`. PyPI has removed 1.107.0, but a private mirror may still serve it.
+
+  If you installed `semantic-router[litellm]` or `[all]` without a lockfile in that window, check without starting Python in that environment: any Python start, `pip` included, runs the malware again. Look at your lockfile or deployment records, or search the environment from a shell, for example `find <env> -name 'litellm-1.107.0.dist-info' -o -name cook.pth -o -name sitecustomize.py`. Run `pip show litellm` only from an environment you know is clean.
+
+  If 1.107.0 was installed, follow [LiteLLM's incident guidance](https://docs.litellm.ai/blog/security-incident-oct-21-2026#what-to-do-if-you-are-affected): isolate the host, rebuild the environment rather than reinstalling into it, and rotate every credential it could reach, from a clean machine. Finding nothing doesn't prove the environment was never exposed.
 - **certifi 2026.10.19 in the lockfile.** It drops the `emSign ECC Root CA - G3` root after a compromise of eMudhra's certificate authority. semantic-router doesn't pin certifi, so `pip install -U certifi` fixes an existing environment. Connections to Postgres or MongoDB over TLS don't use certifi: they trust your operating system's certificate store, so update its CA bundle too.
 
 ### v1.1.0
