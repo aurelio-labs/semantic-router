@@ -88,6 +88,16 @@ jobs:
         image: qdrant/qdrant:v1.19.0
         ports:
           - 6333:6333
+      redis:
+        # Redis Stack bundles RediSearch, which provides the vector index
+        image: redis/redis-stack-server:7.4.0-v3
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -100,6 +110,8 @@ jobs:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       QDRANT_URL: http://localhost:6333
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
 
     steps:
       - name: Resolve ref
