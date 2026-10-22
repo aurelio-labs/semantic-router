@@ -151,7 +151,11 @@ class BaseRouter(ABC):
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
     ) -> FitReport:
         """calibrate on labelled queries. a label of None means no route should match."""
+        if not self.routes:
+            raise ValueError("cannot fit a calibrator: this router has no routes")
         scored = await self._scores_many(X)
+        if any(not scores for scores in scored):
+            raise ValueError("cannot fit a calibrator: this router has no routes")
         top = [max(s, key=lambda k: s[k]) for s in scored]
         raw = np.array([s[t] for s, t in zip(scored, top)])
         correct = np.array([t == truth for t, truth in zip(top, y)], dtype=float)
@@ -169,6 +173,8 @@ class BaseRouter(ABC):
 
     async def aevaluate(self, X: Sequence[str], y: Sequence[str | None]) -> float:
         """end-to-end accuracy with the threshold applied; None labels are right when nothing passes."""
+        if not self.routes:
+            return 0.0
         picks = [self._choose(s, 1, None) for s in await self._scores_many(X)]
         return float(np.mean([getattr(p, "name", None) == t for p, t in zip(picks, y)]))
 

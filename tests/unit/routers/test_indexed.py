@@ -98,6 +98,34 @@ def test_evaluate_applies_threshold(router):
     assert router.evaluate(["hello there"], [None]) == 1.0
 
 
+@pytest.mark.asyncio
+async def test_afit_on_empty_router_raises_clear_error():
+    router = IndexedRouter(encoder=FakeEncoder(), routes=[])
+    with pytest.raises(ValueError, match="no routes"):
+        await router.afit(["hello"], ["greeting"])
+
+
+@pytest.mark.asyncio
+async def test_afit_raises_clear_error_when_queries_score_no_routes(
+    router, monkeypatch
+):
+    async def no_scores(_):
+        return [{}]
+
+    monkeypatch.setattr(router, "_scores_many", no_scores)
+    with pytest.raises(
+        ValueError, match="cannot fit a calibrator: this router has no routes"
+    ):
+        await router.afit(["hello"], ["greeting"])
+
+
+@pytest.mark.asyncio
+async def test_aevaluate_on_empty_router_does_not_crash():
+    router = IndexedRouter(encoder=FakeEncoder(), routes=[])
+    acc = await router.aevaluate(["hello"], ["greeting"])
+    assert acc == 0.0
+
+
 def test_hybrid_router_rebuilds_sparse_index_on_add():
     from semantic_router.encoders import BM25Encoder
 
