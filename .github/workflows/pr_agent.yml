@@ -12,7 +12,10 @@ jobs:
     steps:
       - name: PR Agent action step
         id: pragent
-        uses: Codium-ai/pr-agent@main
+        # pinned by digest: pragent/pr-agent:0.48.0-github_action, attested as built from
+        # The-PR-Agent/pr-agent v0.48.0 (`gh attestation verify oci://index.docker.io/pragent/pr-agent@sha256:...
+        # --repo The-PR-Agent/pr-agent`). A moving ref here would run new code with our OpenAI key and write token
+        uses: docker://pragent/pr-agent@sha256:80edef71baa3df28c129d858d4b53784abfc14704c235efb32b6c461d5399a6d
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
