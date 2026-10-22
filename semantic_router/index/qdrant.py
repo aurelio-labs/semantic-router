@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, overload
 
 import numpy as np
 from pydantic import Field, PrivateAttr
@@ -447,13 +447,43 @@ class QdrantIndex(BaseIndex):
         """
         return self.client.collection_exists(self.index_name)
 
+    @overload
     def query(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Query the index.
 
         :param vector: The vector to query.
@@ -464,8 +494,11 @@ class QdrantIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to query.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple of the scores and route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         from qdrant_client import QdrantClient, models
 
@@ -493,15 +526,51 @@ class QdrantIndex(BaseIndex):
         route_names = [
             result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
         ]
+        if return_utterances:
+            utterances = [
+                str(result.payload.get(SR_UTTERANCE_PAYLOAD_KEY, ""))
+                for result in results.points
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
+    @overload
     async def aquery(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Asynchronously query the index.
 
         :param vector: The vector to query.
@@ -512,8 +581,11 @@ class QdrantIndex(BaseIndex):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to query.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple of the scores and route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         from qdrant_client import AsyncQdrantClient, models
 
@@ -522,7 +594,9 @@ class QdrantIndex(BaseIndex):
             # in-memory and on-disk qdrant have no async client (see _initialize_clients),
             # so the async methods run the sync ones, like LocalIndex does
             logger.debug("Cannot use async query with an in-memory Qdrant instance")
-            return self.query(vector, top_k, route_filter)
+            return self.query(
+                vector, top_k, route_filter, sparse_vector, return_utterances
+            )
 
         filter = None
         if route_filter is not None:
@@ -547,6 +621,12 @@ class QdrantIndex(BaseIndex):
         route_names = [
             result.payload[SR_ROUTE_PAYLOAD_KEY] for result in results.points
         ]
+        if return_utterances:
+            utterances = [
+                str(result.payload.get(SR_UTTERANCE_PAYLOAD_KEY, ""))
+                for result in results.points
+            ]
+            return np.array(scores), route_names, utterances
         return np.array(scores), route_names
 
     def delete_index(self):

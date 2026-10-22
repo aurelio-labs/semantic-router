@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union, overload
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -187,13 +187,43 @@ class BaseIndex(BaseModel):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    @overload
     def query(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.
 
@@ -205,18 +235,52 @@ class BaseIndex(BaseModel):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to search for.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing the query vector and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts
+            alongside scores and route names.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 
+    @overload
     async def aquery(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index for the query_vector and return top_k results.
         This method should be implemented by subclasses.
 
@@ -228,8 +292,12 @@ class BaseIndex(BaseModel):
         :type route_filter: Optional[List[str]]
         :param sparse_vector: The sparse vector to search for.
         :type sparse_vector: dict[int, float] | SparseEmbedding | None
-        :return: A tuple containing the query vector and a list of route names.
-        :rtype: Tuple[np.ndarray, List[str]]
+        :param return_utterances: If True, also return the matched utterance texts
+            alongside scores and route names.
+        :type return_utterances: bool
+        :return: ``(scores, route_names)`` by default, or ``(scores, route_names, utterances)``
+            when ``return_utterances=True``.
+        :rtype: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
 

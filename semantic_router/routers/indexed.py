@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Callable, Literal, Sequence
+from typing import Callable, List, Literal, Sequence, Tuple
 
 import numpy as np
 
@@ -17,8 +17,13 @@ from semantic_router.encoders.base import (
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter, FitReport, in_sync_call
-from semantic_router.schema import SparseEmbedding
+from semantic_router.routers.base import (
+    BaseRouter,
+    FitReport,
+    QueryResult,
+    in_sync_call,
+)
+from semantic_router.schema import MatchedUtterance, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 Kind = Literal["queries", "documents"]
@@ -213,8 +218,11 @@ class IndexedRouter(BaseRouter):
         await self.arefresh()
 
     async def _query(
-        self, dense: list[float], sparse: SparseEmbedding | None
-    ) -> dict[str, float]:
+        self,
+        dense: list[float],
+        sparse: SparseEmbedding | None,
+        return_utterances: bool = False,
+    ) -> QueryResult:
         vec = np.array(dense)
         if sparse is not None:
             # convex mix: alpha on dense, the rest on sparse, summed inside the hybrid index
@@ -222,20 +230,77 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-        if in_sync_call():
-            scores, names = await asyncio.to_thread(
-                self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+
+        # Call with return_utterances first when requested; fall back to calling
+        # without the flag if the index (e.g. a user's custom BaseIndex subclass)
+        # does not accept it.
+        result: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
+        try:
+            if in_sync_call():
+                if return_utterances:
+                    result = await asyncio.to_thread(
+                        self.index.query,
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                        return_utterances=True,
+                    )
+                else:
+                    result = await asyncio.to_thread(
+                        self.index.query,
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                    )
+            else:
+                if return_utterances:
+                    result = await self.index.aquery(
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                        return_utterances=True,
+                    )
+                else:
+                    result = await self.index.aquery(
+                        vector=vec,
+                        top_k=self.top_k,
+                        sparse_vector=sparse,
+                    )
+        except TypeError:
+            # index doesn't accept return_utterances param — call without it
+            if in_sync_call():
+                result = await asyncio.to_thread(
+                    self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
+                )
+            else:
+                result = await self.index.aquery(
+                    vector=vec, top_k=self.top_k, sparse_vector=sparse
+                )
+
+        # result is either (scores, names) or (scores, names, utterances) depending on
+        # whether the index honours return_utterances; older implementations may ignore it
+        if len(result) == 3:
+            scores_arr, names, utterances = result
         else:
-            scores, names = await self.index.aquery(
-                vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+            scores_arr, names = result
+            utterances = []
+        scores = [float(s) for s in scores_arr]
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}
+        matched_utts: dict[str, list[MatchedUtterance]] | None = None
+        if return_utterances and utterances:
+            matched_utts = {}
+            for n, s, u in zip(names, scores, utterances):
+                matched_utts.setdefault(n, []).append(
+                    MatchedUtterance(text=str(u), score=float(s), route=n)
+                )
         for n, s in zip(names, scores):
             hits.setdefault(n, []).append(float(s))
-        return {n: self.aggregate(v) if v else 0.0 for n, v in hits.items()}
+        return QueryResult(
+            scores={n: self.aggregate(v) if v else 0.0 for n, v in hits.items()},
+            matched_utterances=matched_utts,
+        )
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
@@ -252,10 +317,14 @@ class IndexedRouter(BaseRouter):
             )
         return await super().afit(X, y, method)
 
-    async def _scores(self, query: str) -> dict[str, float]:
-        return (await self._scores_many([query]))[0]
+    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
+        return (await self._scores_many([query], return_utterances=return_utterances))[
+            0
+        ]
 
-    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+    async def _scores_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # one encoder call for the whole batch, then a cheap index query per vector
         texts = list(queries)
         if self._stale():
@@ -271,5 +340,10 @@ class IndexedRouter(BaseRouter):
             else [None] * len(texts)
         )
         return list(
-            await asyncio.gather(*(self._query(d, s) for d, s in zip(dense, sparse)))
+            await asyncio.gather(
+                *(
+                    self._query(d, s, return_utterances=return_utterances)
+                    for d, s in zip(dense, sparse)
+                )
+            )
         )

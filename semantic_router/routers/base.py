@@ -13,7 +13,7 @@ import numpy as np
 
 from semantic_router.calibration import Calibrator, Method, ece
 from semantic_router.route import Route
-from semantic_router.schema import RouteChoice
+from semantic_router.schema import MatchedUtterance, RouteChoice
 from semantic_router.utils.logger import logger
 
 T = TypeVar("T")
@@ -66,6 +66,21 @@ class FitReport:
     ece: float  # calibration error of the stated confidences
 
 
+@dataclass(frozen=True)
+class QueryResult:
+    """per-call output of a router's scoring phase.
+
+    :param scores: raw score for every route, higher means more likely.
+    :param matched_utterances: utterance-level match details keyed by route name,
+        when the caller opts in (``return_utterances=True``). ``None`` otherwise,
+        or on routers that cannot expose them (e.g. ``DecisionRouter``,
+        ``Chain``, ``Merge``).
+    """
+
+    scores: dict[str, float]
+    matched_utterances: dict[str, list[MatchedUtterance]] | None = None
+
+
 class BaseRouter(ABC):
     # true when raw scores are already probabilities (system one models)
     probabilistic = False
@@ -84,16 +99,23 @@ class BaseRouter(ABC):
         self._fit_data: tuple[list[str], list[str | None], Method] | None = None
 
     @abstractmethod
-    async def _scores(self, query: str) -> dict[str, float]:
-        """raw score for every route, higher means more likely."""
+    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
+        """score every route for ``query``; higher is more likely.
 
-    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        routers that cannot expose utterance-level matches (e.g. ``DecisionRouter``,
+        ``Chain``, ``Merge``) should still accept ``return_utterances`` but return a
+        ``QueryResult`` whose ``matched_utterances`` is ``None``.
+        """
+
+    async def _scores_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # default fans out with a concurrency cap; indexed routers override to batch-embed
         sem = asyncio.Semaphore(self.concurrency)
 
-        async def one(q: str) -> dict[str, float]:
+        async def one(q: str) -> QueryResult:
             async with sem:
-                return await self._scores(q)
+                return await self._scores(q, return_utterances=return_utterances)
 
         return list(await asyncio.gather(*(one(q) for q in queries)))
 
@@ -117,8 +139,9 @@ class BaseRouter(ABC):
         return self.confidence_threshold
 
     def _choose(
-        self, scores: dict[str, float], limit: int | None, threshold: float | None
+        self, result: QueryResult, limit: int | None, threshold: float | None
     ) -> RouteChoice | list[RouteChoice]:
+        scores = result.scores
         probs = self._probs(scores)
         # rank by the raw score: calibration says how sure, it must never reorder routes
         ranked = sorted(scores, key=scores.__getitem__, reverse=True)
@@ -128,9 +151,12 @@ class BaseRouter(ABC):
             # a per-call threshold wins over the route's and the router's
             bar = self._bar(n) if threshold is None else threshold
             if bar is None or c >= bar:
-                picks.append(
-                    RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
-                )
+                pick = RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
+                if result.matched_utterances is not None:
+                    utterances = result.matched_utterances.get(n)
+                    if utterances:
+                        pick.matched_utterances = list(utterances)
+                picks.append(pick)
         picks = picks[:limit]
         if limit == 1:
             # an empty pick still says whether the bar it missed was a calibrated one
@@ -138,20 +164,47 @@ class BaseRouter(ABC):
         return picks
 
     async def acall(
-        self, query: str, limit: int | None = 1, threshold: float | None = None
+        self,
+        query: str,
+        limit: int | None = 1,
+        threshold: float | None = None,
+        return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
-        return self._choose(await self._scores(query), limit, threshold)
+        """route ``query`` and return one or many ``RouteChoice`` objects.
+
+        :param query: the text to route.
+        :param limit: number of route choices to return, ranked by confidence;
+            ``1`` (default) gives the best, ``None`` returns every route.
+        :param threshold: confidence threshold that overrides every route/router
+            threshold for this call.
+        :param return_utterances: whether to populate each choice's
+            ``matched_utterances`` (utterance-level match details). ``False`` by
+            default — opt-in. Routers that cannot expose matches (``DecisionRouter``,
+            ``Chain``, ``Merge``) return choices whose ``matched_utterances`` is
+            ``None`` even when this is ``True``.
+        """
+        return self._choose(
+            await self._scores(query, return_utterances=return_utterances),
+            limit,
+            threshold,
+        )
 
     def __call__(
-        self, query: str, limit: int | None = 1, threshold: float | None = None
+        self,
+        query: str,
+        limit: int | None = 1,
+        threshold: float | None = None,
+        return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
-        return run(self.acall(query, limit, threshold))
+        return run(
+            self.acall(query, limit, threshold, return_utterances=return_utterances)
+        )
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
     ) -> FitReport:
         """calibrate on labelled queries. a label of None means no route should match."""
-        scored = await self._scores_many(X)
+        scored = [qr.scores for qr in await self._scores_many(X)]
         top = [max(s, key=lambda k: s[k]) for s in scored]
         raw = np.array([s[t] for s, t in zip(scored, top)])
         correct = np.array([t == truth for t, truth in zip(top, y)], dtype=float)
