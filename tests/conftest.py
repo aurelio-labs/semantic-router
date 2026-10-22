@@ -60,6 +60,9 @@ def pytest_configure(config):
         os.environ["QDRANT_URL"] = "http://localhost:6333"
 
 
+# trylast: run after `-m`/`-k` deselection, so only the tests that will run
+# decide which services must be up (`make test_live` needs no MongoDB).
+@pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config, items):
     ids = [item.nodeid for item in items]
 
