@@ -1,5 +1,16 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.3.3
+
+#### Security
+
+- **LiteLLM 1.107.0 is excluded.** That PyPI release contained malware (a supply-chain attack, live on PyPI on 21 October 2026 from 11:39 to 13:23 UTC), and the `litellm` extra allowed it. The extra is now `litellm>=1.84.0,!=1.107.0`. PyPI has removed 1.107.0, but a private mirror may still serve it.
+
+  If you installed `semantic-router[litellm]` or `[all]` without a lockfile in that window, check without starting Python in that environment: any Python start, `pip` included, runs the malware again. Look at your lockfile or deployment records, or search the environment from a shell, for example `find <env> -name 'litellm-1.107.0.dist-info' -o -name cook.pth -o -name sitecustomize.py`. `pip show litellm` is safe only in an environment you know is clean, such as one you've just rebuilt.
+
+  If 1.107.0 was installed, follow [LiteLLM's incident guidance](https://docs.litellm.ai/blog/security-incident-oct-21-2026#what-to-do-if-you-are-affected): isolate the host, rebuild the environment rather than reinstalling into it, and rotate every credential it could reach, from a clean machine. Finding nothing doesn't prove the environment was never exposed.
+- **certifi 2026.10.19 in the lockfile.** It removes the `emSign ECC Root CA - G3` root, which compromised eMudhra intermediate keys chain to ([advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2)). semantic-router doesn't pin certifi, so `pip install -U certifi` updates the bundle in an existing environment; images and vendored bundles need rebuilding. Connections to Redis or Postgres over TLS may use your operating system's trust store or a CA bundle you configured instead of certifi: update whichever one they use.
+
 ### v0.3.2
 
 #### Fixes

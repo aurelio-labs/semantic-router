@@ -1,6 +1,6 @@
 [project]
 name = "semantic-router"
-version = "0.3.2"
+version = "0.3.3"
 description = "Super fast semantic router for AI decision making"
 authors = [{ name = "Aurelio AI", email = "hello@aurelio.ai" }]
 requires-python = ">=3.10,<3.14"
@@ -28,8 +28,9 @@ dependencies = [
 # only required by LiteLLMEncoder; the provider-specific encoders use their own SDKs
 litellm = [
     # 1.84.0 fixes an authentication bypass via Host header injection
-    # (GHSA-4xpc-pv4p-pm3w); 1.83.7 was the previous floor for CVE-2026-42208
-    "litellm>=1.84.0",
+    # (GHSA-4xpc-pv4p-pm3w); 1.83.7 was the previous floor for CVE-2026-42208.
+    # 1.107.0 was a malicious release (supply-chain attack, 21 Oct 2026)
+    "litellm>=1.84.0,!=1.107.0",
 ]
 ollama = ["ollama>=0.1.7"]
 local = [
