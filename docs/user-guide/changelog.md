@@ -3,6 +3,13 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.1.1
+
+#### Security
+
+- **LiteLLM 1.107.0 is excluded.** That PyPI release contained malicious code (a supply-chain attack reported by JFrog on 21 October 2026), and the `litellm` extra allowed it. The extra is now `litellm>=1.84.0,!=1.107.0`. If you installed `semantic-router[litellm]` or `[all]` without a lockfile around 21 October, run `pip show litellm`. If it shows 1.107.0, uninstall it, rotate the API keys and credentials that environment could read, then reinstall. PyPI has removed 1.107.0, but a private mirror may still serve it.
+- **certifi 2026.10.19 in the lockfile.** It drops the `emSign ECC Root CA - G3` root after a compromise of eMudhra's certificate authority. semantic-router doesn't pin certifi, so `pip install -U certifi` fixes an existing environment. Connections to Postgres or MongoDB over TLS don't use certifi: they trust your operating system's certificate store, so update its CA bundle too.
+
 ### v1.1.0
 
 `1.1.0` adds a MongoDB Atlas index and fixes four bugs. Code and files written for `1.0.2` work unchanged, apart from the `QdrantIndex.ais_ready()` change below.
