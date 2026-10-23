@@ -48,7 +48,6 @@ class TestBaseLLM:
 
         assert base_llm._is_valid_inputs(test_inputs, test_schemas) is True
 
-    @pytest.mark.skip(reason="TODO: bug in is_valid_inputs")
     def test_base_llm_is_valid_inputs_valid_input_fail(self, base_llm):
         test_schema = {
             "name": "get_time",
@@ -56,9 +55,9 @@ class TestBaseLLM:
             "signature": "(timezone: str) -> str",
             "output": "<class 'str'>",
         }
-        test_inputs = {"timezone": None}
+        test_inputs = [{"timezone": None}]
 
-        assert base_llm._is_valid_inputs(test_inputs, test_schema) is False
+        assert base_llm._is_valid_inputs(test_inputs, [test_schema]) is False
 
     def test_base_llm_is_valid_inputs_invalid_false(self, base_llm):
         test_schema = {
@@ -115,6 +114,14 @@ class TestBaseLLM:
         inputs = [{"mandatory1": "value1", "optional1": "opt1", "optional2": "opt2"}]
         assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
 
+    def test_mandatory_arg_none_is_invalid(self, base_llm, mixed_function_schema):
+        inputs = [{"mandatory1": "value1", "mandatory2": None}]
+        assert not base_llm._is_valid_inputs(inputs, mixed_function_schema)
+
+    def test_optional_arg_none_is_valid(self, base_llm, mixed_function_schema):
+        inputs = [{"mandatory1": "value1", "mandatory2": 42, "optional1": None}]
+        assert base_llm._is_valid_inputs(inputs, mixed_function_schema)
+
     def test_extra_arg_provided(self, base_llm, mixed_function_schema):
         inputs = [
             {
@@ -135,6 +142,10 @@ class TestBaseLLM:
 
     def test_check_for_mandatory_inputs_missing_one(self, base_llm, mandatory_params):
         inputs = {"param1": "value1"}
+        assert not base_llm._check_for_mandatory_inputs(inputs, mandatory_params)
+
+    def test_check_for_mandatory_inputs_none_value(self, base_llm, mandatory_params):
+        inputs = {"param1": "value1", "param2": None}
         assert not base_llm._check_for_mandatory_inputs(inputs, mandatory_params)
 
     def test_check_for_extra_inputs_no_extras(self, base_llm, all_params):
