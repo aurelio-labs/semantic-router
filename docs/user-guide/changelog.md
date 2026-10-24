@@ -3,6 +3,15 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.1.2
+
+`1.1.2` fixes two bugs. Code and files written for `1.1.1` work unchanged.
+
+#### Fixes
+
+- **Async Pinecone reads raise on a failed page.** `PineconeIndex` used to log and stop when a `vectors/list` request failed, returning an empty or partial route list. `adelete()`, `aget_routes()`, `arefresh()` and a sparse-encoder `aadd()` then acted as if routes were missing. They now propagate the HTTP error instead. A 404 still reads as an empty index, as the synchronous path does. If you call these methods directly, handle the exception where you used to accept the empty result.
+- **Isotonic calibration no longer depends on the order of tied scores.** Examples with the same score are pooled before the PAV pass and weighted by how many there are, rather than kept as separate blocks. A fitted probability, and so a threshold decision, is the same whatever order the examples arrive in. Calibrators saved by an earlier version still load and interpolate as before.
+
 ### v1.1.1
 
 #### Security
