@@ -1,5 +1,5 @@
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -73,3 +73,43 @@ class TestOllamaEncoder:
             encoder = OllamaEncoder()
             assert encoder.client is not None
             assert encoder.client.host == test_url
+
+    @pytest.mark.asyncio
+    async def test_ollama_encoder_acall_success(self, mocker):
+        mocker.patch("ollama.Client", return_value=Mock())
+        mock_async_client = Mock()
+        mock_async_client.embed = AsyncMock(
+            return_value=Mock(embeddings=[[0.1, 0.2], [0.3, 0.4]])
+        )
+        async_client_class = mocker.patch(
+            "ollama.AsyncClient", return_value=mock_async_client
+        )
+        encoder = OllamaEncoder(base_url="http://localhost:11434")
+        docs = ["doc1", "doc2"]
+        result = await encoder.acall(docs)
+        assert result == [[0.1, 0.2], [0.3, 0.4]]
+        async_client_class.assert_called_once_with(host="http://localhost:11434")
+        mock_async_client.embed.assert_awaited_once_with(model=encoder.name, input=docs)
+        # The async client is created once and reused.
+        await encoder.acall(docs)
+        async_client_class.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_ollama_encoder_acall_client_not_initialized(self, mocker):
+        mocker.patch("ollama.Client", return_value=Mock())
+        encoder = OllamaEncoder(base_url="http://localhost:11434")
+        encoder.client = None
+        with pytest.raises(ValueError) as e:
+            await encoder.acall(["doc1"])
+        assert "OLLAMA Platform client is not initialized." in str(e.value)
+
+    @pytest.mark.asyncio
+    async def test_ollama_encoder_acall_api_error(self, mocker):
+        mocker.patch("ollama.Client", return_value=Mock())
+        mock_async_client = Mock()
+        mock_async_client.embed = AsyncMock(side_effect=Exception("API error"))
+        mocker.patch("ollama.AsyncClient", return_value=mock_async_client)
+        encoder = OllamaEncoder(base_url="http://localhost:11434")
+        with pytest.raises(ValueError) as e:
+            await encoder.acall(["doc1"])
+        assert "OLLAMA API call failed. Error: API error" in str(e.value)
