@@ -45,6 +45,10 @@ class Chain(BaseRouter):
             raws = await r._scores_many([queries[i] for i in pending])
             unsure = []
             for i, raw in zip(pending, raws):
+                if not raw:
+                    out[i] = {}
+                    unsure.append(i)
+                    continue
                 probs = r._probs(raw)
                 # the top route by raw score: a calibrator never reorders
                 top = max(raw, key=raw.__getitem__)

@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from semantic_router.route import Route
 from semantic_router.routers import Chain, Merge
 from semantic_router.routers.base import BaseRouter
@@ -28,6 +30,30 @@ def test_chain_stops_at_first_confident_router():
     first = Canned({"a": 0.95, "b": 0.05}, confidence_threshold=0.8)
     second = Canned({"a": 0.0, "b": 1.0})
     assert Chain(routers=[first, second])("q").name == "a" and second.calls == 0
+
+
+def test_chain_falls_through_an_empty_router():
+    empty = Canned({})
+    fallback = Canned({"b": 0.9})
+    choice = Chain(routers=[empty, fallback])("q")
+    assert choice.name == "b" and choice.confidence == 0.9
+    assert empty.calls == fallback.calls == 1
+
+
+@pytest.mark.parametrize("limit", [1, None])
+def test_chain_empty_final_scores_return_no_route(limit):
+    unsure = Canned({"a": 0.1}, confidence_threshold=0.8)
+    chain = Chain(routers=[unsure, Canned({})])
+    choice = asyncio.run(chain.acall("q", limit=limit))
+    if limit == 1:
+        assert choice.name is None and choice.confidence is None
+    else:
+        assert choice == []
+
+
+def test_chain_all_empty_scores_return_no_route():
+    chain = Chain(routers=[Canned({}), Canned({})])
+    assert chain("q").name is None
 
 
 def test_chain_is_calibrated_only_when_every_link_is():
@@ -116,3 +142,16 @@ def test_merge_scores_the_whole_batch_once_per_router():
     scored = asyncio.run(merge._scores_many(["q1", "q2"]))
     assert one.batches == [2] and two.batches == [2]
     assert [max(s, key=s.get) for s in scored] == ["a", "b"]
+
+
+def test_chain_preserves_batch_order_with_empty_results():
+    first = Batched(
+        {"early": {"a": 0.9}, "fallback": {}, "missing": {}},
+        confidence_threshold=0.8,
+    )
+    second = Batched({"fallback": {"b": 0.9}, "missing": {}})
+    chain = Chain(routers=[first, second])
+    queries = ["missing", "early", "fallback"]
+    assert asyncio.run(chain._scores_many(queries)) == [{}, {"a": 0.9}, {"b": 0.9}]
+    assert first.batches == [3] and second.batches == [2]
+    assert chain.evaluate(queries, [None, "a", "b"]) == 1.0
