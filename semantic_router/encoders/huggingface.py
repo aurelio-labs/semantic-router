@@ -274,14 +274,14 @@ class HFEndpointEncoder(DenseEncoder):
                 )
                 if response.status_code == 503:
                     estimated_time = response.json().get("estimated_time", "")
-                    if estimated_time:
+                    if estimated_time and attempt < max_retries:
                         logger.info(
                             f"Model Initializing wait for - {estimated_time:.2f}s "
                         )
                         time.sleep(estimated_time)
                         continue
-                else:
-                    response.raise_for_status()
+                response.raise_for_status()
+                return response.json()
 
             except requests.exceptions.RequestException as e:
                 if attempt < max_retries:
@@ -297,4 +297,4 @@ class HFEndpointEncoder(DenseEncoder):
                     # no response at all, e.g. a DNS or connection error
                     raise ValueError(f"Query failed: {e}") from e
 
-        return response.json()
+        raise ValueError("Query failed: no response received")
