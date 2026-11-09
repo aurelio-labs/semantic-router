@@ -18,6 +18,7 @@ Classes:
 
 import json
 import os
+import re
 from time import sleep
 from typing import Any, Dict, List, Optional, Union
 
@@ -26,6 +27,49 @@ import tiktoken
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
+
+# the most texts Bedrock's Cohere embed models take in one call
+COHERE_MAX_TEXTS = 96
+# Bedrock caps a Cohere Embed v3 text at 2,048 characters, apart from `truncate`
+# (which acts on its 512 tokens). v4 takes ~128k tokens and has no such cap
+COHERE_V3_MAX_CHARS = 2048
+_COHERE_V3 = re.compile(r"cohere\.embed-[a-z-]*v3")
+
+
+def _fit_cohere_v3_texts(
+    docs: List[Union[str, Dict]], model_kwargs: Optional[Dict]
+) -> List[Union[str, Dict]]:
+    """Fit each text to Cohere Embed v3's character cap, following `truncate`:
+    END (the default, as on Bedrock) keeps the start, START keeps the end, and NONE
+    raises before any call. Any other value is sent as given, for Bedrock to judge.
+    """
+    truncate = str((model_kwargs or {}).get("truncate", "END")).upper()
+    too_long = {
+        i: doc
+        for i, doc in enumerate(docs)
+        if isinstance(doc, str) and len(doc) > COHERE_V3_MAX_CHARS
+    }
+    if not too_long or truncate not in ("END", "START", "NONE"):
+        return docs
+    if truncate == "NONE":
+        i, doc = next(iter(too_long.items()))
+        raise ValueError(
+            f"Document at index {i} has {len(doc)} characters, over the "
+            f"{COHERE_V3_MAX_CHARS} Cohere Embed v3 takes on Bedrock, and truncate is "
+            "NONE. Shorten it, or pass truncate END or START in model_kwargs."
+        )
+    logger.warning(
+        f"Cutting {len(too_long)} document(s) to Cohere Embed v3's "
+        f"{COHERE_V3_MAX_CHARS}-character limit (truncate={truncate})."
+    )
+    fitted = list(docs)
+    for i, doc in too_long.items():
+        fitted[i] = (
+            doc[:COHERE_V3_MAX_CHARS]
+            if truncate == "END"
+            else doc[-COHERE_V3_MAX_CHARS:]
+        )
+    return fitted
 
 
 class BedrockEncoder(DenseEncoder):
@@ -198,6 +242,8 @@ class BedrockEncoder(DenseEncoder):
             )
         if self.client is None:
             raise ValueError("Bedrock client is not initialised.")
+        if self.name and _COHERE_V3.search(self.name):
+            docs = _fit_cohere_v3_texts(docs, model_kwargs)
         max_attempts = 3
         for attempt in range(max_attempts):
             try:
@@ -233,27 +279,29 @@ class BedrockEncoder(DenseEncoder):
                         response_body = json.loads(response.get("body").read())
                         embeddings.append(response_body.get("embedding"))
                 elif self.name and "cohere" in self.name:
-                    chunked_docs = self.chunk_strings(docs)
-                    for chunk in chunked_docs:
-                        chunk = {"texts": chunk, "input_type": self.input_type}
+                    # each document is one text, so one embedding per document. Cohere
+                    # on Bedrock takes up to 96 texts a call and truncates texts over
+                    # its token limit itself (`truncate`, set through model_kwargs);
+                    # v3's character cap is applied above
+                    for i in range(0, len(docs), COHERE_MAX_TEXTS):
+                        body = {
+                            "texts": docs[i : i + COHERE_MAX_TEXTS],
+                            "input_type": self.input_type,
+                        }
 
                         # Add model-specific inference parameters
                         # Note: if specified, input_type will be overwritten by model_kwargs
                         if model_kwargs:
-                            chunk = chunk | model_kwargs
-
-                        # Format payload
-                        chunk = json.dumps(chunk)
+                            body = body | model_kwargs
 
                         response = self.client.invoke_model(
-                            body=chunk,
+                            body=json.dumps(body),
                             modelId=self.name,
                             accept="*/*",
                             contentType="application/json",
                         )
                         response_body = json.loads(response.get("body").read())
-                        chunk_embeddings = response_body.get("embeddings")
-                        embeddings.extend(chunk_embeddings)
+                        embeddings.extend(response_body.get("embeddings"))
                 else:
                     raise ValueError("Unknown model name")
                 return embeddings
