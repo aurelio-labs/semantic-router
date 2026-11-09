@@ -72,6 +72,18 @@ def test_merge_takes_a_weighted_mean():
     assert {p.name: round(p.confidence, 2) for p in picks} == {"a": 0.75, "b": 0.25}
 
 
+@pytest.mark.parametrize("weights", [[1], [1, 1, 1], []])
+def test_merge_wants_one_weight_per_router(weights):
+    with pytest.raises(ValueError, match=f"{len(weights)} weights for 2 routers"):
+        Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
+
+
+@pytest.mark.parametrize("weights", [[0, 0], [-1, 2], [1, float("nan")]])
+def test_merge_wants_weights_that_add_up(weights):
+    with pytest.raises(ValueError, match="weights must be 0 or more"):
+        Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
+
+
 def test_chain_checks_the_top_routes_own_bar():
     strict = [Route(name="a", utterances=["a"], confidence_threshold=0.99), ROUTES[1]]
 

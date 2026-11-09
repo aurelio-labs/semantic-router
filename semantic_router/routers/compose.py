@@ -78,7 +78,19 @@ class Merge(BaseRouter):
         confidence_threshold: float | None = None,
     ):
         self.routers = list(routers)
-        self.weights = weights or [1.0] * len(routers)
+        if weights is None:
+            weights = [1.0] * len(self.routers)
+        elif len(weights) != len(self.routers):
+            # zip would drop routers past a short list, and a long one only adds to the total
+            raise ValueError(
+                f"got {len(weights)} weights for {len(self.routers)} routers; "
+                "give one weight per router"
+            )
+        elif any(w < 0 for w in weights) or not sum(weights) > 0:
+            raise ValueError(
+                f"weights must be 0 or more and add up to more than 0, got {weights}"
+            )
+        self.weights = list(weights)
         super().__init__([], confidence_threshold)
 
     @property
