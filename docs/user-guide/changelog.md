@@ -1,5 +1,11 @@
 > **You're reading the docs for Semantic Router 0.x.** Version 1.0 is out: read [this page for v1](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/changelog), or the [migration guide](https://docs.aurelio.ai/docs/semantic-router/v1/user-guide/guides/migration-to-v1) to upgrade.
 
+### v0.3.4
+
+#### Fixes
+
+- Dynamic routes reject function inputs in which the LLM sets a required argument to `null`. They raise `ValueError("Invalid inputs")`, as they already did for a missing argument, instead of returning `None` for it in `function_call`. Optional arguments may still be `None`. This applies to every LLM except `OpenAILLM`, which checks its tool calls separately. ([#686](https://github.com/aurelio-labs/semantic-router/issues/686))
+
 ### v0.3.3
 
 #### Security
