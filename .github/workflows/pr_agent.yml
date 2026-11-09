@@ -3,6 +3,9 @@ on:
   issue_comment:
 jobs:
   pr_agent_job:
+    # a pull_request run from a fork gets no secrets, so the agent can only fail there;
+    # comments on fork PRs (issue_comment) run with the secrets and still work
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
