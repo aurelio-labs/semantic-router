@@ -3,6 +3,21 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.1.2
+
+`1.1.2` fixes bugs in five encoders, in loading encoders from router files, and in calibration. Code and files written for `1.1.1` work unchanged.
+
+#### Fixes
+
+- `CohereEncoder` sends at most 96 texts per request, Cohere's limit for one embed call, and returns the embeddings in input order. A router with more than 96 utterances used to fail to encode them.
+- `BedrockEncoder` with a Cohere model returns one embedding per document. It used to return one per 20-word chunk, so it gave back more embeddings than documents. Each document is now sent whole, up to 96 per request. Embed v3 takes at most 2,048 characters per text, so a longer document is cut to fit following `truncate` in `model_kwargs`. `END`, the default, keeps the start; `START` keeps the end; and `NONE` raises a `ValueError` before any call. Embed v4 texts are sent uncut. ([#824](https://github.com/aurelio-labs/semantic-router/issues/824))
+- `OpenAIEncoder` raises a clear `ValueError` before any call for an empty list, an empty string, or an item that isn't a string. It used to retry, then fail with `$.input is invalid`. Whitespace-only strings are still sent. ([#530](https://github.com/aurelio-labs/semantic-router/issues/530))
+- `OpenAIEncoder` accepts models that tiktoken doesn't know, such as `nomic-embed-text` on an OpenAI-compatible server. It counts tokens with `cl100k_base` for them, where it used to raise `KeyError`.
+- `HFEndpointEncoder` stops resending a request once it succeeds. It used to send a successful request again until its retries ran out, three times by default. When an endpoint still answers 503 after the retries, it raises a `ValueError`; it used to return the error body as embeddings.
+- `GoogleEncoder` defaults to `text-embedding-005`, because Google retired the old default, `textembedding-gecko@003`. Both give 768-dimensional embeddings. `GOOGLE_EMBEDDING_MODEL` still overrides it.
+- An encoder block in a router file can leave out `name`, and the encoder then uses its default model. `AutoEncoder` does the same when passed `name=None`. This used to fail validation for `FastEmbedEncoder`, `HuggingFaceEncoder`, `VitEncoder`, `CLIPEncoder`, `BedrockEncoder` and `LocalEncoder`.
+- `fit` and `afit` raise a clear `ValueError` when a query scores no route, as on a router with no routes. They used to fail with `max() iterable argument is empty`. ([#806](https://github.com/aurelio-labs/semantic-router/issues/806))
+
 ### v1.1.1
 
 #### Security
