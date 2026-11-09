@@ -270,3 +270,69 @@ class TestBedrockEncoderWithCohere:
         result = bedrock_encoder_with_cohere(["test with different input type"])
         assert isinstance(result, list), "Result should be a list"
         assert result == [[0.1, 0.2, 0.3]], "Expected specific embeddings"
+
+    @staticmethod
+    def _one_embedding_per_text(**kwargs):
+        texts = json.loads(kwargs["body"])["texts"]
+        body = json.dumps({"embeddings": [[float(len(t))] for t in texts]})
+        return {"body": BytesIO(body.encode("utf-8"))}
+
+    def test_cohere_one_embedding_per_document(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = ["word " * 100, "short"]
+
+        result = bedrock_encoder_with_cohere(docs)
+
+        assert len(result) == len(docs)
+        assert result == [[500.0], [5.0]]
+        # one call, with each document sent whole
+        assert client.invoke_model.call_count == 1
+        sent = json.loads(client.invoke_model.call_args.kwargs["body"])
+        assert sent == {"texts": docs, "input_type": "search_query"}
+
+    def test_cohere_batches_at_most_96_texts(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = [f"doc {i}" for i in range(97)]
+
+        result = bedrock_encoder_with_cohere(docs)
+
+        assert len(result) == len(docs)
+        batches = [
+            json.loads(c.kwargs["body"])["texts"]
+            for c in client.invoke_model.call_args_list
+        ]
+        assert [len(b) for b in batches] == [96, 1]
+        assert sum(batches, []) == docs
+
+    def test_cohere_model_kwargs_reach_the_request(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+
+        bedrock_encoder_with_cohere(
+            ["a"], model_kwargs={"truncate": "START", "input_type": "search_document"}
+        )
+
+        sent = json.loads(client.invoke_model.call_args.kwargs["body"])
+        assert sent == {
+            "texts": ["a"],
+            "input_type": "search_document",
+            "truncate": "START",
+        }
+
+    @pytest.mark.asyncio
+    async def test_cohere_one_embedding_per_document_async(
+        self, bedrock_encoder_with_cohere
+    ):
+        # Bedrock has no async client: a router's async path runs the sync call
+        from semantic_router.routers.indexed import _aencode
+
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = ["word " * 100, "short"]
+
+        result = await _aencode(bedrock_encoder_with_cohere, docs, "documents")
+
+        assert len(result) == len(docs)
+        assert result == [[500.0], [5.0]]

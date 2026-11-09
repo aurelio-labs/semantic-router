@@ -27,6 +27,9 @@ from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
+# the most texts Bedrock's Cohere embed models take in one call
+COHERE_MAX_TEXTS = 96
+
 
 class BedrockEncoder(DenseEncoder):
     """Dense encoder using Amazon Bedrock embedding API. Requires an AWS Access Key ID
@@ -233,27 +236,28 @@ class BedrockEncoder(DenseEncoder):
                         response_body = json.loads(response.get("body").read())
                         embeddings.append(response_body.get("embedding"))
                 elif self.name and "cohere" in self.name:
-                    chunked_docs = self.chunk_strings(docs)
-                    for chunk in chunked_docs:
-                        chunk = {"texts": chunk, "input_type": self.input_type}
+                    # each document is one text, so one embedding per document. Cohere
+                    # on Bedrock takes up to 96 texts a call and truncates texts over
+                    # its token limit itself (`truncate`, set through model_kwargs)
+                    for i in range(0, len(docs), COHERE_MAX_TEXTS):
+                        body = {
+                            "texts": docs[i : i + COHERE_MAX_TEXTS],
+                            "input_type": self.input_type,
+                        }
 
                         # Add model-specific inference parameters
                         # Note: if specified, input_type will be overwritten by model_kwargs
                         if model_kwargs:
-                            chunk = chunk | model_kwargs
-
-                        # Format payload
-                        chunk = json.dumps(chunk)
+                            body = body | model_kwargs
 
                         response = self.client.invoke_model(
-                            body=chunk,
+                            body=json.dumps(body),
                             modelId=self.name,
                             accept="*/*",
                             contentType="application/json",
                         )
                         response_body = json.loads(response.get("body").read())
-                        chunk_embeddings = response_body.get("embeddings")
-                        embeddings.extend(chunk_embeddings)
+                        embeddings.extend(response_body.get("embeddings"))
                 else:
                     raise ValueError("Unknown model name")
                 return embeddings
