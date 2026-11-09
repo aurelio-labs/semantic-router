@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 import pytest
 
 _ = pytest.importorskip("vertexai")
@@ -123,3 +125,43 @@ class TestGoogleEncoder:
         )
         with pytest.raises(ValueError):
             google_encoder(["test"])
+
+    @pytest.mark.asyncio
+    async def test_acall_returns_embeddings(self, google_encoder, mocker):
+        mock_embeddings = [
+            TextEmbedding(
+                values=[0.1, 0.2, 0.3],
+                statistics=TextEmbeddingStatistics(token_count=5, truncated=False),
+            ),
+            TextEmbedding(
+                values=[0.4, 0.5, 0.6],
+                statistics=TextEmbeddingStatistics(token_count=6, truncated=False),
+            ),
+        ]
+        mocker.patch.object(
+            google_encoder.client,
+            "get_embeddings_async",
+            new=AsyncMock(return_value=mock_embeddings),
+        )
+
+        result = await google_encoder.acall(["test1", "test2"])
+        assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+        google_encoder.client.get_embeddings_async.assert_awaited_once_with(
+            ["test1", "test2"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_acall_without_client_raises(self, google_encoder):
+        google_encoder.client = None
+        with pytest.raises(ValueError, match="client is not initialized"):
+            await google_encoder.acall(["test"])
+
+    @pytest.mark.asyncio
+    async def test_acall_api_error_raises_value_error(self, google_encoder, mocker):
+        mocker.patch.object(
+            google_encoder.client,
+            "get_embeddings_async",
+            new=AsyncMock(side_effect=GoogleAPICallError("boom")),
+        )
+        with pytest.raises(ValueError, match="API call failed"):
+            await google_encoder.acall(["test"])

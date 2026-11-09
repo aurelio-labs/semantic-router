@@ -1,5 +1,8 @@
+import asyncio
 import os
 from typing import Any, List, Optional
+
+from pydantic import PrivateAttr
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
@@ -26,6 +29,10 @@ class OllamaEncoder(DenseEncoder):
 
     client: Optional[Any] = None
     type: str = "ollama"
+    _base_url: str = PrivateAttr()
+    # An AsyncClient is bound to the event loop it is first used on, so keep one
+    # per running loop instead of a single shared instance.
+    _async_clients: Any = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -51,6 +58,7 @@ class OllamaEncoder(DenseEncoder):
         super().__init__(name=name)
         if base_url is None:
             base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        self._base_url = base_url
         self.client = self._initialize_client(base_url=base_url)
 
     def _initialize_client(self, base_url: str):
@@ -88,5 +96,35 @@ class OllamaEncoder(DenseEncoder):
             raise ValueError("OLLAMA Platform client is not initialized.")
         try:
             return self.client.embed(model=self.name, input=docs).embeddings
+        except Exception as e:
+            raise ValueError(f"OLLAMA API call failed. Error: {e}") from e
+
+    async def acall(self, docs: List[str]) -> List[List[float]]:
+        """Generates embeddings for the given documents asynchronously.
+
+        :param docs: A list of strings representing the documents to embed.
+        :type docs: List[str]
+        :return: A list of lists, where each inner list contains the embedding values for a
+            document.
+        :rtype: List[List[float]]
+        :raise ValueError: If the OLLAMA client is not initialized or if the API call fails.
+        """
+        if self.client is None:
+            raise ValueError("OLLAMA Platform client is not initialized.")
+        try:
+            loop = asyncio.get_running_loop()
+            if self._async_clients is None:
+                self._async_clients = {}
+            async_client = self._async_clients.get(loop)
+            if async_client is None:
+                from ollama import AsyncClient
+
+                # Drop clients bound to loops that have since been closed.
+                for old_loop in [lp for lp in self._async_clients if lp.is_closed()]:
+                    del self._async_clients[old_loop]
+                async_client = AsyncClient(host=self._base_url)
+                self._async_clients[loop] = async_client
+            response = await async_client.embed(model=self.name, input=docs)
+            return response.embeddings
         except Exception as e:
             raise ValueError(f"OLLAMA API call failed. Error: {e}") from e
