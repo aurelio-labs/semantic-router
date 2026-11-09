@@ -97,7 +97,11 @@ class OpenAIEncoder(DenseEncoder):
         if name in model_configs:
             self.token_limit = model_configs[name].token_limit
         # get token encoder
-        self._token_encoder = tiktoken.encoding_for_model(name)
+        # models served through openai_base_url may not be known to tiktoken
+        try:
+            self._token_encoder = tiktoken.encoding_for_model(name)
+        except KeyError:
+            self._token_encoder = tiktoken.get_encoding("cl100k_base")
 
     def __call__(self, docs: List[str], truncate: bool = True) -> List[List[float]]:
         """Encode a list of text documents into embeddings using OpenAI API.

@@ -33,6 +33,19 @@ class TestOpenAIEncoder:
         encoder = OpenAIEncoder()
         assert encoder._client is not None
 
+    def test_openai_encoder_init_unknown_model_name(
+        self, mock_openai_client, mock_openai_async_client
+    ):
+        # a model served through openai_base_url (not an OpenAI model) has no
+        # tiktoken mapping; the encoder must still build and truncate
+        encoder = OpenAIEncoder(
+            name="nomic-embed-text",
+            openai_api_key="fake_key",
+            openai_base_url="http://localhost:11434/v1",
+        )
+        assert encoder.name == "nomic-embed-text"
+        assert encoder._truncate("hello world") == "hello world"
+
     def test_openai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
         with pytest.raises(ValueError) as _:
