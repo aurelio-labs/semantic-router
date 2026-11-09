@@ -23,6 +23,23 @@ def docs2cohere_embed_input(docs: list[str]) -> list[dict[str, Any]]:
     return [{"content": [{"type": "text", "text": d}]} for d in docs]
 
 
+# Cohere's embed endpoint accepts at most 96 inputs per request.
+COHERE_MAX_EMBED_BATCH = 96
+
+
+def batch_docs(docs: list[str], size: int = COHERE_MAX_EMBED_BATCH) -> list[list[str]]:
+    """Split texts into chunks that fit Cohere's per-request input limit.
+
+    :param docs: The texts to embed.
+    :type docs: list[str]
+    :param size: Maximum number of texts per request.
+    :type size: int
+    :return: The texts split into consecutive chunks of at most ``size``.
+    :rtype: list[list[str]]
+    """
+    return [docs[i : i + size] for i in range(0, len(docs), size)] or [[]]
+
+
 class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
     """Dense encoder that uses Cohere API and SDK to embed documents.
     Supports text only.
@@ -101,64 +118,76 @@ class CohereEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     def encode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            cohere_embeds = self._client.embed(
-                inputs=docs2cohere_embed_input(docs),
-                input_type="search_query",
-                model=self.name,
-                embedding_types=["float"],
-                **kwargs,
-            )
-            values = cohere_embeds.embeddings.float_
-            if values is None:
-                raise ValueError("Cohere API call returned None.")
-            return values
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                cohere_embeds = self._client.embed(
+                    inputs=docs2cohere_embed_input(batch),
+                    input_type="search_query",
+                    model=self.name,
+                    embedding_types=["float"],
+                    **kwargs,
+                )
+                values = cohere_embeds.embeddings.float_
+                if values is None:
+                    raise ValueError("Cohere API call returned None.")
+                embeddings.extend(values)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     def encode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            cohere_embeds = self._client.embed(
-                inputs=docs2cohere_embed_input(docs),
-                input_type="search_document",
-                model=self.name,
-                embedding_types=["float"],
-                **kwargs,
-            )
-            values = cohere_embeds.embeddings.float_
-            if values is None:
-                raise ValueError("Cohere API call returned None.")
-            return values
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                cohere_embeds = self._client.embed(
+                    inputs=docs2cohere_embed_input(batch),
+                    input_type="search_document",
+                    model=self.name,
+                    embedding_types=["float"],
+                    **kwargs,
+                )
+                values = cohere_embeds.embeddings.float_
+                if values is None:
+                    raise ValueError("Cohere API call returned None.")
+                embeddings.extend(values)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            cohere_embeds = await self._async_client.embed(
-                inputs=docs2cohere_embed_input(docs),
-                input_type="search_query",
-                model=self.name,
-                embedding_types=["float"],
-                **kwargs,
-            )
-            values = cohere_embeds.embeddings.float_
-            if values is None:
-                raise ValueError("Cohere API call returned None.")
-            return values
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                cohere_embeds = await self._async_client.embed(
+                    inputs=docs2cohere_embed_input(batch),
+                    input_type="search_query",
+                    model=self.name,
+                    embedding_types=["float"],
+                    **kwargs,
+                )
+                values = cohere_embeds.embeddings.float_
+                if values is None:
+                    raise ValueError("Cohere API call returned None.")
+                embeddings.extend(values)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
 
     async def aencode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            cohere_embeds = await self._async_client.embed(
-                inputs=docs2cohere_embed_input(docs),
-                input_type="search_document",
-                model=self.name,
-                embedding_types=["float"],
-                **kwargs,
-            )
-            values = cohere_embeds.embeddings.float_
-            if values is None:
-                raise ValueError("Cohere API call returned None.")
-            return values
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                cohere_embeds = await self._async_client.embed(
+                    inputs=docs2cohere_embed_input(batch),
+                    input_type="search_document",
+                    model=self.name,
+                    embedding_types=["float"],
+                    **kwargs,
+                )
+                values = cohere_embeds.embeddings.float_
+                if values is None:
+                    raise ValueError("Cohere API call returned None.")
+                embeddings.extend(values)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Cohere API call failed. Error: {e}") from e
