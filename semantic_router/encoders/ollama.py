@@ -1,6 +1,5 @@
 import asyncio
 import os
-import weakref
 from typing import Any, List, Optional
 
 from pydantic import PrivateAttr
@@ -115,11 +114,14 @@ class OllamaEncoder(DenseEncoder):
         try:
             loop = asyncio.get_running_loop()
             if self._async_clients is None:
-                self._async_clients = weakref.WeakKeyDictionary()
+                self._async_clients = {}
             async_client = self._async_clients.get(loop)
             if async_client is None:
                 from ollama import AsyncClient
 
+                # Drop clients bound to loops that have since been closed.
+                for old_loop in [lp for lp in self._async_clients if lp.is_closed()]:
+                    del self._async_clients[old_loop]
                 async_client = AsyncClient(host=self._base_url)
                 self._async_clients[loop] = async_client
             response = await async_client.embed(model=self.name, input=docs)
