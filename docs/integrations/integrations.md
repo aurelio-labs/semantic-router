@@ -44,7 +44,7 @@ Each index integration supports:
 
 ## 3. Decision Model Integrations
 
-A `DecisionRouter` routes by asking a decision model instead of comparing embeddings. `TypeSafeDecisionModel` calls TypeSafe's **Jev**, and `SystemOneDecisionModel(base_url=...)` calls any other server that speaks the same `/v1/systemone` API, such as **Laya** or **Von**. It needs no encoder and no index. See [decision models](../user-guide/features/decision-models.md), and for background, [Understanding Jev and Where It Fits in the AI Stack](https://jamesbriggs.io/understanding-jev) and [the video](https://youtu.be/P-t4F_UlxkI).
+A `DecisionRouter` routes by asking a decision model instead of comparing embeddings. `TypeSafeDecisionModel` calls TypeSafe's **Jev**, `NaceDecisionModel` calls nace.ai's **Drex**, and `SystemOneDecisionModel(base_url=...)` calls any other server that speaks the same `/v1/systemone` API, such as **Laya** or **Von**. It needs no encoder and no index. See [decision models](../user-guide/features/decision-models.md), and for background, [Understanding Jev and Where It Fits in the AI Stack](https://jamesbriggs.io/understanding-jev) and [the video](https://youtu.be/P-t4F_UlxkI).
 
 Semantic Router 1.0 no longer wraps LLMs (OpenAI, Mistral, Bedrock and so on) for dynamic routes: route first, then call your LLM with whichever client you already use.
 

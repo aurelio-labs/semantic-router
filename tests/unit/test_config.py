@@ -15,7 +15,11 @@ from semantic_router import (
 )
 from semantic_router.calibration import Calibrator
 from semantic_router.config import from_config, to_config
-from semantic_router.decision_models import GLiNER2DecisionModel, TypeSafeDecisionModel
+from semantic_router.decision_models import (
+    GLiNER2DecisionModel,
+    NaceDecisionModel,
+    TypeSafeDecisionModel,
+)
 from semantic_router.encoders import DenseEncoder, OpenAIEncoder, TfidfEncoder
 from semantic_router.index import LocalIndex, PostgresIndex, QdrantIndex
 from semantic_router.schema import Metric
@@ -28,9 +32,10 @@ AXES = {"refund": 0, "charged": 0, "crash": 1, "error": 1}
 SECRETS = {
     "OPENAI_API_KEY": "sk-env-SECRET",
     "JEV_API_KEY": "jev-env-SECRET",
+    "NACE_API_KEY": "nace-env-SECRET",
     "POSTGRES_CONNECTION_STRING": "postgresql://u:pg-env-SECRET@localhost:5432/db",
 }
-PASSED_SECRETS = ["jev-arg-SECRET", "qd-arg-SECRET", "pg-arg-SECRET"]
+PASSED_SECRETS = ["jev-arg-SECRET", "nace-arg-SECRET", "qd-arg-SECRET", "pg-arg-SECRET"]
 
 
 def fake_embed(self, docs, truncate=True):
@@ -109,6 +114,13 @@ def decision():
         routes=ROUTES,
         instructions="Which team should take this?",
         confidence_threshold=0.8,
+    )
+
+
+def nace_decision():
+    return DecisionRouter(
+        model=NaceDecisionModel(api_key="nace-arg-SECRET", timeout=5.0),
+        routes=ROUTES,
     )
 
 
@@ -202,6 +214,38 @@ def test_a_default_local_model_writes_only_its_type_and_name(no_weights):
     assert config["model"] == {"type": "gliner2", "name": "fastino/GLiNER2.5-Decide"}
 
 
+@pytest.mark.parametrize("fmt", ["yaml", "json"])
+def test_a_nace_decision_router_round_trips(fmt, tmp_path):
+    router = nace_decision()
+    path = save(router, tmp_path, fmt)
+    data = yaml.safe_load(path.read_text())
+    assert data["model"] == {"type": "nace", "name": "drex-max", "timeout": 5.0}
+    loaded = load_router(path=path)
+    assert isinstance(loaded.model, NaceDecisionModel)
+    # the key came from the environment, not the file
+    assert loaded.model.api_key == SECRETS["NACE_API_KEY"]
+    assert to_config(loaded) == to_config(router)
+
+
+def test_a_config_with_a_foreign_nace_host_does_not_get_the_env_key(tmp_path):
+    router = DecisionRouter(
+        model=NaceDecisionModel(base_url="https://example.test", api_key="x"),
+        routes=ROUTES,
+    )
+    path = save(router, tmp_path, "yaml")
+    assert (
+        yaml.safe_load(path.read_text())["model"]["base_url"] == "https://example.test"
+    )
+    with pytest.raises(ValueError, match="only used with https://console.nace.ai"):
+        load_router(path=path)
+
+
+def test_a_default_nace_model_writes_only_its_type_and_name():
+    router = DecisionRouter(model=NaceDecisionModel(), routes=ROUTES)
+    config = to_config(router).model_dump(mode="json")
+    assert config["model"] == {"type": "nace", "name": "drex-max"}
+
+
 def test_a_1_0_0_decision_file_says_what_changed():
     old = {"router_type": "decision", "model": "jev-latest", "routes": []}
     with pytest.raises(ValueError, match="model: {type: typesafe"):
@@ -267,7 +311,7 @@ def test_no_secrets_in_the_file(fmt, tmp_path):
         ),
     )
     text = save(
-        Merge(routers=[postgres, qdrant, decision()]), tmp_path, fmt
+        Merge(routers=[postgres, qdrant, decision(), nace_decision()]), tmp_path, fmt
     ).read_text()
     for secret in [*SECRETS.values(), *PASSED_SECRETS]:
         assert secret not in text

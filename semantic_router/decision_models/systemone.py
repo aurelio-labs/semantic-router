@@ -5,7 +5,11 @@ from __future__ import annotations
 import asyncio
 import os
 import random
+import re
+from functools import lru_cache
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, ClassVar, Sequence
+from urllib.parse import urlsplit
 
 import aiohttp
 from pydantic import Field, PrivateAttr
@@ -15,6 +19,30 @@ from semantic_router.decision_models.base import Answer, DecisionModel, Question
 
 class _Retry(Exception):
     pass
+
+
+def _origin(url: str) -> str:
+    """scheme://host[:port] of a url, lowercased, with the default port dropped."""
+    parts = urlsplit(url.strip())
+    scheme = parts.scheme.lower()
+    try:
+        port = parts.port
+    except ValueError:
+        return ""
+    if port == {"https": 443, "http": 80}.get(scheme):
+        port = None
+    host = (parts.hostname or "").lower()
+    return f"{scheme}://{host}" + (f":{port}" if port else "")
+
+
+@lru_cache(maxsize=1)
+def _nace_client() -> str | None:
+    """`semantic-router/<version>`, or None for a checkout that was never installed."""
+    try:
+        v = version("semantic-router")
+    except PackageNotFoundError:
+        return None
+    return f"semantic-router/{re.sub(r'[^A-Za-z0-9 ._@+-]', '-', v)}"[:64]
 
 
 class SystemOneDecisionModel(DecisionModel):
@@ -42,16 +70,45 @@ class SystemOneDecisionModel(DecisionModel):
     # where to find the key when none is passed, and whether one is required
     api_key_env: ClassVar[str | None] = None
     requires_key: ClassVar[bool] = False
+    # when set, the key is read from `api_key_env` only if base_url has this origin, so
+    # an environment key is never sent to another host. A key passed in is always used.
+    env_key_origin: ClassVar[str | None] = None
 
     _session: aiohttp.ClientSession | None = PrivateAttr(default=None)
     _loop: asyncio.AbstractEventLoop | None = PrivateAttr(default=None)
+    # the key as read from the environment, so a later base_url change can't carry it away
+    _env_key: str | None = PrivateAttr(default=None)
+
+    def _check_key_destination(self) -> None:
+        if (
+            self._env_key is not None
+            and self.api_key == self._env_key
+            and self.env_key_origin is not None
+            and _origin(self.base_url) != self.env_key_origin
+        ):
+            raise ValueError(
+                f"{self.api_key_env} is only used with {self.env_key_origin}; "
+                f"pass api_key to use {self.base_url}"
+            )
 
     def model_post_init(self, __context: Any) -> None:
-        if self.api_key is None and self.api_key_env:
-            self.api_key = os.environ.get(self.api_key_env) or None
+        env_ok = self.env_key_origin is None or (
+            _origin(self.base_url) == self.env_key_origin
+        )
+        if self.api_key is None and self.api_key_env and env_ok:
+            self.api_key = self._env_key = os.environ.get(self.api_key_env) or None
         if self.api_key is None and self.requires_key:
+            if not env_ok:
+                raise ValueError(
+                    f"{self.api_key_env} is only used with {self.env_key_origin}; "
+                    f"pass api_key to use {self.base_url}"
+                )
             raise ValueError(f"pass api_key or set {self.api_key_env}")
         self._session = self.session
+
+    def _extra_headers(self) -> dict[str, str]:
+        """headers sent on every request besides Authorization; none by default."""
+        return {}
 
     @property
     def url(self) -> str:
@@ -61,6 +118,7 @@ class SystemOneDecisionModel(DecisionModel):
         self, state: object, questions: dict[str, Question]
     ) -> dict[str, Answer]:
         """answer several typed questions about one state in a single request."""
+        self._check_key_destination()  # before any session or request exists
         loop = asyncio.get_running_loop()
         if (
             self._session is None
@@ -74,6 +132,7 @@ class SystemOneDecisionModel(DecisionModel):
         self._loop = loop
         body = {"state": state, "model": self.name, "questions": questions}
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        headers.update(self._extra_headers())
         for attempt in range(self.retries + 1):
             try:
                 async with self._session.post(
@@ -155,3 +214,28 @@ class TypeSafeDecisionModel(SystemOneDecisionModel):
 
     api_key_env: ClassVar[str | None] = "JEV_API_KEY"
     requires_key: ClassVar[bool] = True
+
+
+class NaceDecisionModel(SystemOneDecisionModel):
+    """nace.ai's Drex over its API. Reads `NACE_API_KEY` when no key is passed.
+
+    The environment key is used only with the default `base_url`; a different host
+    needs an explicit `api_key`, so the environment key never leaves nace.ai.
+
+    :param name: The Drex model to call: `drex-max` (default), `drex-max-v1.1` or
+        `drex-v2.0`. The Max models also read images, but this model sends the
+        text `state` only.
+    """
+
+    type: str = "nace"
+    name: str = "drex-max"
+    base_url: str = "https://console.nace.ai"
+
+    api_key_env: ClassVar[str | None] = "NACE_API_KEY"
+    env_key_origin: ClassVar[str | None] = "https://console.nace.ai"
+    requires_key: ClassVar[bool] = True
+
+    def _extra_headers(self) -> dict[str, str]:
+        # names this integration and its version for nace.ai's usage attribution
+        client = _nace_client()
+        return {"X-Nace-Client": client} if client else {}

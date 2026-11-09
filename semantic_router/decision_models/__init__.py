@@ -8,6 +8,7 @@ from semantic_router.decision_models.base import (  # isort: skip
 )
 from semantic_router.decision_models.gliner2 import GLiNER2DecisionModel
 from semantic_router.decision_models.systemone import (
+    NaceDecisionModel,
     SystemOneDecisionModel,
     TypeSafeDecisionModel,
 )
@@ -15,6 +16,7 @@ from semantic_router.decision_models.systemone import (
 __all__ = [
     "DecisionModel",
     "GLiNER2DecisionModel",
+    "NaceDecisionModel",
     "SystemOneDecisionModel",
     "TypeSafeDecisionModel",
     "Question",

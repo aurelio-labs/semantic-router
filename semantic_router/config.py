@@ -29,6 +29,7 @@ from semantic_router.calibration import Calibrator, Method
 from semantic_router.decision_models import (
     DecisionModel,
     GLiNER2DecisionModel,
+    NaceDecisionModel,
     SystemOneDecisionModel,
     TypeSafeDecisionModel,
 )
@@ -165,6 +166,7 @@ _SYSTEMONE_FIELDS = ("name", "base_url", "timeout", "retries", "concurrency")
 _DECISION_MODELS: dict[str, tuple[type[DecisionModel], tuple[str, ...]]] = {
     "gliner2": (GLiNER2DecisionModel, ("name", "device", "batch_size")),
     "typesafe": (TypeSafeDecisionModel, _SYSTEMONE_FIELDS),
+    "nace": (NaceDecisionModel, _SYSTEMONE_FIELDS),
     "systemone": (SystemOneDecisionModel, _SYSTEMONE_FIELDS),
 }
 

@@ -134,7 +134,7 @@ No route cleared the bar, so the router returned `None`!
 
 ## Beyond embeddings
 
-- **`DecisionRouter`** asks a decision model (TypeSafe's Jev, Laya or Von) which route applies, and can answer several yes/no, choice and score questions about one message in a single call. New to decision models? Read [Understanding Jev](https://jamesbriggs.io/understanding-jev) or watch [the video](https://youtu.be/P-t4F_UlxkI).
+- **`DecisionRouter`** asks a decision model (TypeSafe's Jev, nace.ai's Drex, Laya or Von) which route applies, and can answer several yes/no, choice and score questions about one message in a single call. New to decision models? Read [Understanding Jev](https://jamesbriggs.io/understanding-jev) or watch [the video](https://youtu.be/P-t4F_UlxkI).
 - **`Chain`** answers easy queries from a fast router and falls through to a slower one only when it isn't sure. **`Merge`** averages several routers.
 - **Hybrid search**: give `IndexedRouter` a `sparse_encoder` to weigh exact keywords alongside meaning.
 - **Production indexes**: keep your routes in [Pinecone](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/pinecone.ipynb), [Qdrant](https://github.com/aurelio-labs/semantic-router/blob/main/docs/indexes/qdrant.ipynb) or Postgres.
