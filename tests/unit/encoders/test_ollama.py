@@ -112,6 +112,8 @@ class TestOllamaEncoder:
         asyncio.run(encoder.acall(["doc1"]))
         asyncio.run(encoder.acall(["doc1"]))
         assert len(clients) == 2
+        # Entries for closed loops are dropped, so nothing accumulates.
+        assert len(encoder._async_clients) == 1
 
     @pytest.mark.asyncio
     async def test_ollama_encoder_acall_client_not_initialized(self, mocker):
