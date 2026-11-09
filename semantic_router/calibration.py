@@ -70,12 +70,14 @@ def _platt(s: np.ndarray, y: np.ndarray) -> dict[str, list[float]]:
 
 
 def _isotonic(s: np.ndarray, y: np.ndarray) -> dict[str, list[float]]:
-    order = np.argsort(s, kind="stable")
-    xs, ys = s[order], y[order]
+    # A score has one probability regardless of the order of tied examples.
+    # Keep their counts so pooling weights each sample equally, not each score.
+    xs, inverse, counts = np.unique(s, return_inverse=True, return_counts=True)
+    sums = np.bincount(inverse, weights=y)
     # pool adjacent violators: merge neighbouring blocks until the means are non-decreasing
     blocks: list[list[float]] = []  # [sum_y, count, x_lo, x_hi]
-    for x, t in zip(xs, ys):
-        blocks.append([float(t), 1.0, float(x), float(x)])
+    for x, total, count in zip(xs, sums, counts):
+        blocks.append([float(total), float(count), float(x), float(x)])
         while (
             len(blocks) > 1
             and blocks[-2][0] / blocks[-2][1] > blocks[-1][0] / blocks[-1][1]
@@ -92,8 +94,11 @@ def _isotonic(s: np.ndarray, y: np.ndarray) -> dict[str, list[float]]:
     px, py = [], []
     for sum_y, n, x_lo, x_hi in blocks:
         v = float(np.clip(sum_y / n, lo, hi_))
-        px += [x_lo, x_hi]
-        py += [v, v]
+        px.append(x_lo)
+        py.append(v)
+        if x_hi != x_lo:
+            px.append(x_hi)
+            py.append(v)
     return {"x": px, "y": py}
 
 

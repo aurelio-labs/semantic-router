@@ -1148,6 +1148,9 @@ class PineconeIndex(BaseIndex):
         """Retrieves all vector IDs from the Pinecone index using pagination
         asynchronously.
 
+        A 404 is treated as an empty index, matching the synchronous read.
+        Other HTTP errors are raised rather than returning a partial result.
+
         :param prefix: The prefix to filter the vectors by.
         :type prefix: Optional[str]
         :param include_metadata: Whether to include metadata in the response.
@@ -1188,10 +1191,11 @@ class PineconeIndex(BaseIndex):
                     params=params,
                     headers=self.headers,
                 ) as response:
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"Error fetching vectors: {error_text}")
-                        break
+                    if response.status == 404:
+                        # Match _get_all: a missing index has no vectors, even
+                        # if it disappeared after an earlier page was read.
+                        return [], []
+                    response.raise_for_status()
 
                     response_data = await response.json(content_type=None)
 

@@ -141,7 +141,7 @@ P(right | s) = 1 / (1 + e^-(a·s + b))
 
 *a* sets how steep the curve is and *b* where it crosses 50%. They're chosen to minimise log-loss on your (score, right?) pairs, with the targets softened slightly so a small class can't pin the curve at exactly 0 or 1.
 
-**Isotonic regression** assumes only that a higher score is never worse. It sorts the scores and merges neighbouring blocks wherever accuracy drops (pool adjacent violators), so the curve is a staircase of observed accuracies.
+**Isotonic regression** assumes only that a higher score is never worse. It sorts the scores and merges neighbouring blocks wherever accuracy drops (pool adjacent violators), so the curve is a staircase of observed accuracies. Examples that share a score are pooled first, weighted by how many there are, so the fitted curve doesn't depend on their order.
 
 | | Platt | Isotonic |
 |---|---|---|
