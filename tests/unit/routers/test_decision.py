@@ -120,3 +120,21 @@ def test_added_routes_join_the_next_question():
     r = DecisionRouter(model=FakeModel(), routes=ROUTES)
     r.add(Route(name="account", description="logins and passwords"))
     assert set(r.route_question()["criteria"]) == {"billing", "technical", "account"}
+
+
+def test_fit_without_routes_says_so():
+    r = DecisionRouter(model=RawScores(table=TABLE))
+    with pytest.raises(ValueError, match="2/2 queries scored no route"):
+        r.fit(X=["charged twice", "hello"], y=[None, None])
+
+
+def test_removing_the_last_route_drops_the_calibrator_and_says_why(monkeypatch):
+    from semantic_router.routers import base
+
+    r = DecisionRouter(model=RawScores(table=TABLE), routes=ROUTES[:1])
+    r.fit(X=list(TABLE), y=["billing", None, None])
+    warned: list[str] = []
+    monkeypatch.setattr(base.logger, "warning", warned.append)
+    r.remove(name="billing")
+    assert r.calibrator is None
+    assert warned and "3/3 queries scored no route" in warned[0]
