@@ -400,3 +400,19 @@ def test_a_local_encoder_round_trips(tmp_path):
     loaded = load_router(path=path)
     assert isinstance(loaded.encoder, LocalEncoder)
     assert loaded.encoder.name == router.encoder.name
+
+
+def test_an_encoder_block_without_a_name_uses_the_default_model(mocker):
+    # name is optional in a file, so a hand-written block can give just the type
+    from semantic_router.encoders import FastEmbedEncoder
+
+    mocker.patch.object(FastEmbedEncoder, "_initialize_client")
+    router = from_config(
+        config={
+            "router_type": "indexed",
+            "encoder": {"type": "fastembed"},
+            "routes": [],
+        }
+    )
+    assert isinstance(router.encoder, FastEmbedEncoder)
+    assert router.encoder.name == FastEmbedEncoder.model_fields["name"].default
