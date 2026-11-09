@@ -1,3 +1,4 @@
+import asyncio
 import os
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -90,9 +91,27 @@ class TestOllamaEncoder:
         assert result == [[0.1, 0.2], [0.3, 0.4]]
         async_client_class.assert_called_once_with(host="http://localhost:11434")
         mock_async_client.embed.assert_awaited_once_with(model=encoder.name, input=docs)
-        # The async client is created once and reused.
+        # Within one event loop the async client is created once and reused.
         await encoder.acall(docs)
         async_client_class.assert_called_once()
+
+    def test_ollama_encoder_acall_new_client_per_event_loop(self, mocker):
+        mocker.patch("ollama.Client", return_value=Mock())
+        clients = []
+
+        def make_client(host):
+            client = Mock()
+            client.embed = AsyncMock(return_value=Mock(embeddings=[[0.1, 0.2]]))
+            clients.append(client)
+            return client
+
+        mocker.patch("ollama.AsyncClient", side_effect=make_client)
+        encoder = OllamaEncoder(base_url="http://localhost:11434")
+        # Each asyncio.run() uses a new loop; an AsyncClient is bound to the
+        # loop it was first used on, so it must not be reused across loops.
+        asyncio.run(encoder.acall(["doc1"]))
+        asyncio.run(encoder.acall(["doc1"]))
+        assert len(clients) == 2
 
     @pytest.mark.asyncio
     async def test_ollama_encoder_acall_client_not_initialized(self, mocker):

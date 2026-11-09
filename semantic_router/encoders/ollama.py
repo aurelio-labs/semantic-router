@@ -1,4 +1,6 @@
+import asyncio
 import os
+import weakref
 from typing import Any, List, Optional
 
 from pydantic import PrivateAttr
@@ -29,7 +31,9 @@ class OllamaEncoder(DenseEncoder):
     client: Optional[Any] = None
     type: str = "ollama"
     _base_url: str = PrivateAttr()
-    _async_client: Any = PrivateAttr(default=None)
+    # An AsyncClient is bound to the event loop it is first used on, so keep one
+    # per running loop instead of a single shared instance.
+    _async_clients: Any = PrivateAttr(default=None)
 
     def __init__(
         self,
@@ -109,11 +113,16 @@ class OllamaEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("OLLAMA Platform client is not initialized.")
         try:
-            if self._async_client is None:
+            loop = asyncio.get_running_loop()
+            if self._async_clients is None:
+                self._async_clients = weakref.WeakKeyDictionary()
+            async_client = self._async_clients.get(loop)
+            if async_client is None:
                 from ollama import AsyncClient
 
-                self._async_client = AsyncClient(host=self._base_url)
-            response = await self._async_client.embed(model=self.name, input=docs)
+                async_client = AsyncClient(host=self._base_url)
+                self._async_clients[loop] = async_client
+            response = await async_client.embed(model=self.name, input=docs)
             return response.embeddings
         except Exception as e:
             raise ValueError(f"OLLAMA API call failed. Error: {e}") from e
