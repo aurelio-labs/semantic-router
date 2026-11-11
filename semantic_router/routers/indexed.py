@@ -116,11 +116,17 @@ class IndexedRouter(BaseRouter):
         self.index = index
         # build synchronously so a constructed router is ready to call; the given routes
         # are upserted onto whatever the index already holds
-        if isinstance(self.sparse_encoder, FittableMixin) and (
-            corpus := _merge(self.index.get_routes(), list(routes))
-        ):
-            self.sparse_encoder.fit(corpus)
-        self._index(list(routes))
+        to_index = list(routes)
+        if isinstance(self.sparse_encoder, FittableMixin):
+            stored = self.index.get_routes()
+            if corpus := _merge(stored, to_index):
+                self.sparse_encoder.fit(corpus)
+                if stored and to_index:
+                    # refitting on the merged corpus changes the vocabulary, so the rows
+                    # already in the index are stale; rebuild them like _on_add does
+                    self.index.delete_index()
+                    to_index = corpus
+        self._index(to_index)
         self.refresh()
 
     @property
