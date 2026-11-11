@@ -268,3 +268,35 @@ def test_sync_calls_use_the_index_sync_api(router, monkeypatch):
     router.add(routes=Route(name="support", utterances=["call a human"]))
     router.remove(name="support")
     assert [r.name for r in router.routes] == ["billing", "technical"]
+
+
+def test_hybrid_router_built_on_a_populated_index_rebuilds_stale_sparse_rows():
+    from semantic_router.encoders import TfidfEncoder
+    from semantic_router.index import HybridLocalIndex
+
+    class ConstantEncoder(DenseEncoder):
+        name: str = "constant"
+
+        def __call__(self, docs):
+            return [[1.0, 0.0] for _ in docs]
+
+    def build(routes, index):
+        return IndexedRouter(
+            ConstantEncoder(),
+            routes,
+            index=index,
+            sparse_encoder=TfidfEncoder(),
+            alpha=0.5,
+            confidence_threshold=0.8,
+        )
+
+    shared = HybridLocalIndex()
+    first = build([Route(name="existing", utterances=["zebra"])], shared)
+    assert first("zebra").name == "existing"
+
+    # a second router on the same index refits on the merged corpus; the stored
+    # "zebra" row must be re-encoded with the new vocabulary, not left stale
+    reopened = build([Route(name="new", utterances=["apple"])], shared)
+    assert reopened("zebra").name == "existing"
+    assert reopened("apple").name == "new"
+    assert len(shared) == 2
