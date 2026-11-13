@@ -158,3 +158,93 @@ class TestVoyageEncoderAsync:
         async_client.embed.side_effect = Exception("API call failed")
         with pytest.raises(ValueError, match="Voyage API call failed"):
             await encoder.aencode_documents(["test"])
+
+
+# Voyage's embeddings API accepts at most 1,000 texts per request.
+VOYAGE_MAX_EMBED_BATCH = 1000
+
+
+def _echo_embed(call_texts):
+    """Return one distinct embedding per text, so ordering can be checked."""
+
+    def _embed(texts, **kwargs):
+        call_texts.append(list(texts))
+        return embed_response([[float(t)] for t in texts])
+
+    return _embed
+
+
+class TestBatching:
+    def test_empty_docs_still_one_request(self, encoder, mock_voyage):
+        sync_client, _ = mock_voyage
+        calls: list = []
+        sync_client.embed = Mock(side_effect=_echo_embed(calls))
+        assert encoder.encode_documents([]) == []
+        assert calls == [[]]
+
+    def test_at_limit_is_one_request(self, encoder, mock_voyage):
+        sync_client, _ = mock_voyage
+        calls: list = []
+        sync_client.embed = Mock(side_effect=_echo_embed(calls))
+        docs = [str(i) for i in range(VOYAGE_MAX_EMBED_BATCH)]
+        result = encoder.encode_queries(docs)
+        assert [len(c) for c in calls] == [VOYAGE_MAX_EMBED_BATCH]
+        assert result == [[float(i)] for i in range(VOYAGE_MAX_EMBED_BATCH)]
+
+    def test_encode_documents_splits_into_batches(self, encoder, mock_voyage):
+        sync_client, _ = mock_voyage
+        calls: list = []
+        sync_client.embed = Mock(side_effect=_echo_embed(calls))
+        n = VOYAGE_MAX_EMBED_BATCH * 2 + 5
+        result = encoder.encode_documents([str(i) for i in range(n)], truncation=False)
+        assert [len(c) for c in calls] == [VOYAGE_MAX_EMBED_BATCH] * 2 + [5]
+        assert result == [[float(i)] for i in range(n)]
+        assert all(
+            c.kwargs["truncation"] is False for c in sync_client.embed.call_args_list
+        )
+        assert all(
+            c.kwargs["input_type"] == "document"
+            for c in sync_client.embed.call_args_list
+        )
+
+    def test_encode_queries_splits_into_batches(self, encoder, mock_voyage):
+        sync_client, _ = mock_voyage
+        calls: list = []
+        sync_client.embed = Mock(side_effect=_echo_embed(calls))
+        n = VOYAGE_MAX_EMBED_BATCH + 1
+        result = encoder.encode_queries([str(i) for i in range(n)])
+        assert [len(c) for c in calls] == [VOYAGE_MAX_EMBED_BATCH, 1]
+        assert result == [[float(i)] for i in range(n)]
+        assert all(
+            c.kwargs["input_type"] == "query" for c in sync_client.embed.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_aencode_documents_splits_into_batches(self, encoder, mock_voyage):
+        _, async_client = mock_voyage
+        calls: list = []
+        echo = _echo_embed(calls)
+
+        async def _aembed(texts, **kwargs):
+            return echo(texts, **kwargs)
+
+        async_client.embed = AsyncMock(side_effect=_aembed)
+        n = VOYAGE_MAX_EMBED_BATCH * 2 + 5
+        result = await encoder.aencode_documents([str(i) for i in range(n)])
+        assert [len(c) for c in calls] == [VOYAGE_MAX_EMBED_BATCH] * 2 + [5]
+        assert result == [[float(i)] for i in range(n)]
+
+    @pytest.mark.asyncio
+    async def test_aencode_queries_splits_into_batches(self, encoder, mock_voyage):
+        _, async_client = mock_voyage
+        calls: list = []
+        echo = _echo_embed(calls)
+
+        async def _aembed(texts, **kwargs):
+            return echo(texts, **kwargs)
+
+        async_client.embed = AsyncMock(side_effect=_aembed)
+        n = VOYAGE_MAX_EMBED_BATCH + 1
+        result = await encoder.aencode_queries([str(i) for i in range(n)])
+        assert [len(c) for c in calls] == [VOYAGE_MAX_EMBED_BATCH, 1]
+        assert result == [[float(i)] for i in range(n)]
