@@ -11,6 +11,22 @@ from semantic_router.encoders.base import AsymmetricDenseMixin, DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
 
+VOYAGE_MAX_EMBED_BATCH = 128
+
+
+def batch_docs(docs: list[str], size: int = VOYAGE_MAX_EMBED_BATCH) -> list[list[str]]:
+    """Split texts into chunks that fit Voyage's per-request input limit.
+
+    :param docs: The texts to embed.
+    :type docs: list[str]
+    :param size: Maximum number of texts per request.
+    :type size: int
+    :return: The texts split into consecutive chunks of at most ``size``.
+    :rtype: list[list[str]]
+    """
+    return [docs[i : i + size] for i in range(0, len(docs), size)] or [[]]
+
+
 class VoyageEncoder(DenseEncoder, AsymmetricDenseMixin):
     """Class to encode text using Voyage and VoyageAI SDK.
     Requires a Voyage API key from https://voyageai.com/api-keys/
@@ -72,48 +88,60 @@ class VoyageEncoder(DenseEncoder, AsymmetricDenseMixin):
 
     def encode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = self._client.embed(
-                texts=docs,
-                model=self.name,
-                input_type="query",
-                **kwargs,
-            )
-            return embeds.embeddings
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                embeds = self._client.embed(
+                    texts=batch,
+                    model=self.name,
+                    input_type="query",
+                    **kwargs,
+                )
+                embeddings.extend(embeds.embeddings)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Voyage API call failed. Error: {e}") from e
 
     def encode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = self._client.embed(
-                texts=docs,
-                model=self.name,
-                input_type="document",
-                **kwargs,
-            )
-            return embeds.embeddings
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                embeds = self._client.embed(
+                    texts=batch,
+                    model=self.name,
+                    input_type="document",
+                    **kwargs,
+                )
+                embeddings.extend(embeds.embeddings)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Voyage API call failed. Error: {e}") from e
 
     async def aencode_queries(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await self._async_client.embed(
-                texts=docs,
-                model=self.name,
-                input_type="query",
-                **kwargs,
-            )
-            return embeds.embeddings
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                embeds = await self._async_client.embed(
+                    texts=batch,
+                    model=self.name,
+                    input_type="query",
+                    **kwargs,
+                )
+                embeddings.extend(embeds.embeddings)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Voyage API call failed. Error: {e}") from e
 
     async def aencode_documents(self, docs: list[str], **kwargs) -> list[list[float]]:
         try:
-            embeds = await self._async_client.embed(
-                texts=docs,
-                model=self.name,
-                input_type="document",
-                **kwargs,
-            )
-            return embeds.embeddings
+            embeddings: list[list[float]] = []
+            for batch in batch_docs(docs):
+                embeds = await self._async_client.embed(
+                    texts=batch,
+                    model=self.name,
+                    input_type="document",
+                    **kwargs,
+                )
+                embeddings.extend(embeds.embeddings)
+            return embeddings
         except Exception as e:
             raise ValueError(f"Voyage API call failed. Error: {e}") from e
