@@ -158,3 +158,32 @@ class TestVoyageEncoderAsync:
         async_client.embed.side_effect = Exception("API call failed")
         with pytest.raises(ValueError, match="Voyage API call failed"):
             await encoder.aencode_documents(["test"])
+
+
+class TestVoyageEncoderBatching:
+    @staticmethod
+    def _echo(texts, **_):
+        return embed_response([[float(len(t))] for t in texts])
+
+    def test_sync_splits_large_inputs(self, encoder, mock_voyage):
+        sync_client, _ = mock_voyage
+        sync_client.embed.side_effect = self._echo
+        docs = ["x" * (i % 7 + 1) for i in range(300)]
+        for method in (encoder.encode_queries, encoder.encode_documents):
+            sync_client.embed.reset_mock()
+            result = method(docs)
+            sizes = [len(c.kwargs["texts"]) for c in sync_client.embed.call_args_list]
+            assert sizes == [128, 128, 44]
+            assert result == [[float(len(d))] for d in docs]
+
+    @pytest.mark.asyncio
+    async def test_async_splits_large_inputs(self, encoder, mock_voyage):
+        _, async_client = mock_voyage
+        async_client.embed.side_effect = self._echo
+        docs = ["x" * (i % 7 + 1) for i in range(300)]
+        for method in (encoder.aencode_queries, encoder.aencode_documents):
+            async_client.embed.reset_mock()
+            result = await method(docs)
+            sizes = [len(c.kwargs["texts"]) for c in async_client.embed.call_args_list]
+            assert sizes == [128, 128, 44]
+            assert result == [[float(len(d))] for d in docs]
