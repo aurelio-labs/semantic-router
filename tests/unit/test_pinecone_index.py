@@ -18,7 +18,7 @@ async def _serve(status: int, body: str):
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", 0)
     await site.start()
-    port = site._server.sockets[0].getsockname()[1]
+    port = runner.addresses[0][1]
     return runner, f"http://127.0.0.1:{port}"
 
 
