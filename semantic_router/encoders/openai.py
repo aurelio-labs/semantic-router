@@ -165,6 +165,8 @@ class OpenAIEncoder(DenseEncoder):
 
     def _embed_batch(self, docs: List[str]) -> List[List[float]]:
         """Embed one batch of documents, retrying on OpenAI errors."""
+        if self._client is None:
+            raise ValueError("OpenAI client is not initialized.")
         embeds = None
 
         # Exponential backoff
@@ -247,6 +249,8 @@ class OpenAIEncoder(DenseEncoder):
 
     async def _aembed_batch(self, docs: List[str]) -> List[List[float]]:
         """Embed one batch of documents, retrying on OpenAI errors."""
+        if self._async_client is None:
+            raise ValueError("OpenAI async client is not initialized.")
         embeds = None
 
         # Exponential backoff

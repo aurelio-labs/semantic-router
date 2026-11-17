@@ -172,6 +172,8 @@ class AzureOpenAIEncoder(DenseEncoder):
 
     def _embed_batch(self, docs: List[str]) -> List[List[float]]:
         """Embed one batch of documents, retrying on OpenAI errors."""
+        if self.client is None:
+            raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
 
         # Exponential backoff
@@ -224,6 +226,8 @@ class AzureOpenAIEncoder(DenseEncoder):
 
     async def _aembed_batch(self, docs: List[str]) -> List[List[float]]:
         """Embed one batch of documents, retrying on OpenAI errors."""
+        if self.async_client is None:
+            raise ValueError("Azure OpenAI async client is not initialized.")
         embeds = None
 
         # Exponential backoff
