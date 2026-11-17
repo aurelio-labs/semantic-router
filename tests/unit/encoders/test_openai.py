@@ -315,3 +315,44 @@ class TestOpenAIEncoder:
             await openai_encoder.acall(["test document"])
 
         assert mock_create.call_count == 1  # Only the initial attempt, no retries
+
+
+def _embedding_response(docs):
+    return CreateEmbeddingResponse(
+        data=[
+            Embedding(embedding=[float(d)], index=i, object="embedding")
+            for i, d in enumerate(docs)
+        ],
+        model="text-embedding-3-small",
+        object="list",
+        usage=Usage(prompt_tokens=len(docs), total_tokens=len(docs)),
+    )
+
+
+class TestEmbedBatching:
+    """The embeddings endpoint accepts at most 2048 inputs per request."""
+
+    def test_call_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 * 2 + 5)]
+        create = openai_encoder._client.embeddings.create
+        create.side_effect = lambda input, **kw: _embedding_response(input)
+
+        result = openai_encoder(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [
+            2048,
+            2048,
+            5,
+        ]
+        assert result == [[float(d)] for d in docs]
+
+    @pytest.mark.asyncio
+    async def test_acall_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 + 1)]
+        create = AsyncMock(side_effect=lambda input, **kw: _embedding_response(input))
+        openai_encoder._async_client.embeddings.create = create
+
+        result = await openai_encoder.acall(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [2048, 1]
+        assert result == [[float(d)] for d in docs]
