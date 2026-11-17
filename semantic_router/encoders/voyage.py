@@ -10,7 +10,6 @@ from voyageai.client_async import AsyncClient
 from semantic_router.encoders.base import AsymmetricDenseMixin, DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
-
 VOYAGE_MAX_EMBED_BATCH = 128
 
 
