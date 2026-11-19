@@ -4,6 +4,9 @@ from typing import Any, List, Optional
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
 
+# Vertex AI text embedding models accept at most 250 input texts per request.
+GOOGLE_MAX_EMBED_BATCH = 250
+
 
 class GoogleEncoder(DenseEncoder):
     """GoogleEncoder class for generating embeddings using Google's AI Platform.
@@ -123,7 +126,12 @@ class GoogleEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("Google AI Platform client is not initialized.")
         try:
-            embeddings = self.client.get_embeddings(docs)
-            return [embedding.values for embedding in embeddings]
+            embeddings: List[List[float]] = []
+            for start in range(0, len(docs), GOOGLE_MAX_EMBED_BATCH):
+                batch = docs[start : start + GOOGLE_MAX_EMBED_BATCH]
+                embeddings.extend(
+                    embedding.values for embedding in self.client.get_embeddings(batch)
+                )
+            return embeddings
         except Exception as e:
             raise ValueError(f"Google AI Platform API call failed. Error: {e}") from e
