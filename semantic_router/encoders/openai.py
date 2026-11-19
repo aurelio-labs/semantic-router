@@ -31,6 +31,20 @@ model_configs = {
 }
 
 
+# The embeddings endpoint accepts at most 2048 inputs per request.
+OPENAI_MAX_EMBED_BATCH = 2048
+
+
+def batch_docs(docs: List[str], size: int = OPENAI_MAX_EMBED_BATCH) -> List[List[str]]:
+    """Split texts into chunks that fit the per-request input limit.
+
+    :param docs: The texts to embed.
+    :param size: Maximum number of texts per request.
+    :return: The texts split into consecutive chunks of at most ``size``.
+    """
+    return [docs[i : i + size] for i in range(0, len(docs), size)] or [[]]
+
+
 class OpenAIEncoder(DenseEncoder):
     """OpenAI encoder class for generating embeddings using OpenAI API.
 
@@ -134,13 +148,26 @@ class OpenAIEncoder(DenseEncoder):
         :return: List of embeddings for each document."""
         if self._client is None:
             raise ValueError("OpenAI client is not initialized.")
-        embeds = None
 
         self._validate_docs(docs)
 
         if truncate:
             # check if any document exceeds token limit and truncate if so
             docs = [self._truncate(doc) for doc in docs]
+
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(self._embed_batch(batch))
+        return embeddings
+
+    def _embed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one request-sized batch of documents, retrying on API errors.
+
+        :param docs: Documents to embed, at most ``OPENAI_MAX_EMBED_BATCH``.
+        :return: One embedding per document."""
+        if self._client is None:
+            raise ValueError("OpenAI client is not initialized.")
+        embeds = None
 
         # Exponential backoff
         for j in range(self.max_retries + 1):
@@ -208,13 +235,26 @@ class OpenAIEncoder(DenseEncoder):
         :return: List of embeddings for each document."""
         if self._async_client is None:
             raise ValueError("OpenAI async client is not initialized.")
-        embeds = None
 
         self._validate_docs(docs)
 
         if truncate:
             # check if any document exceeds token limit and truncate if so
             docs = [self._truncate(doc) for doc in docs]
+
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(await self._aembed_batch(batch))
+        return embeddings
+
+    async def _aembed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one request-sized batch of documents asynchronously.
+
+        :param docs: Documents to embed, at most ``OPENAI_MAX_EMBED_BATCH``.
+        :return: One embedding per document."""
+        if self._async_client is None:
+            raise ValueError("OpenAI async client is not initialized.")
+        embeds = None
 
         # Exponential backoff
         for j in range(self.max_retries + 1):

@@ -315,3 +315,49 @@ class TestOpenAIEncoder:
             await openai_encoder.acall(["test document"])
 
         assert mock_create.call_count == 1  # Only the initial attempt, no retries
+
+
+def _fake_embeddings_create(model_name="m"):
+    """Fake ``embeddings.create`` that rejects over-limit requests like the API."""
+    sizes = []
+
+    def create(input, **kwargs):
+        sizes.append(len(input))
+        if len(input) > 2048:
+            raise OpenAIError("too many inputs in request")
+        return CreateEmbeddingResponse(
+            model=model_name,
+            object="list",
+            usage=Usage(prompt_tokens=0, total_tokens=0),
+            data=[
+                Embedding(index=i, object="embedding", embedding=[float(t)])
+                for i, t in enumerate(input)
+            ],
+        )
+
+    return create, sizes
+
+
+def test_openai_encoder_call_batches_large_input(openai_encoder, mocker):
+    create, sizes = _fake_embeddings_create()
+    mocker.patch.object(openai_encoder._client.embeddings, "create", side_effect=create)
+    docs = [str(i) for i in range(2048 * 2 + 5)]
+    result = openai_encoder(docs)
+    assert sizes == [2048, 2048, 5]
+    assert result == [[float(i)] for i in range(len(docs))]
+
+
+@pytest.mark.asyncio
+async def test_openai_encoder_acall_batches_large_input(openai_encoder, mocker):
+    sync_create, sizes = _fake_embeddings_create()
+
+    async def create(**kwargs):
+        return sync_create(**kwargs)
+
+    mocker.patch.object(
+        openai_encoder._async_client.embeddings, "create", side_effect=create
+    )
+    docs = [str(i) for i in range(2048 + 1)]
+    result = await openai_encoder.acall(docs)
+    assert sizes == [2048, 1]
+    assert result == [[float(i)] for i in range(len(docs))]
