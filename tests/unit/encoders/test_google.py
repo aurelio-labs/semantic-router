@@ -123,3 +123,26 @@ class TestGoogleEncoder:
         )
         with pytest.raises(ValueError):
             google_encoder(["test"])
+
+
+class TestGoogleEncoderBatching:
+    def test_call_splits_into_batches_of_250(self, google_encoder, mocker):
+        def fake_get_embeddings(batch):
+            return [
+                TextEmbedding(
+                    values=[float(doc)],
+                    statistics=TextEmbeddingStatistics(token_count=1, truncated=False),
+                )
+                for doc in batch
+            ]
+
+        mocker.patch.object(
+            google_encoder.client, "get_embeddings", side_effect=fake_get_embeddings
+        )
+        docs = [str(i) for i in range(600)]
+
+        result = google_encoder(docs)
+
+        calls = google_encoder.client.get_embeddings.call_args_list
+        assert [len(c.args[0]) for c in calls] == [250, 250, 100]
+        assert result == [[float(i)] for i in range(600)]
