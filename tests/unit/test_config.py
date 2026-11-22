@@ -416,3 +416,38 @@ def test_an_encoder_block_without_a_name_uses_the_default_model(mocker):
     )
     assert isinstance(router.encoder, FastEmbedEncoder)
     assert router.encoder.name == FastEmbedEncoder.model_fields["name"].default
+
+
+@pytest.fixture
+def cp1252_locale(mocker):
+    # as on Windows, where Path.read_text and Path.write_text default to the locale codec
+    from pathlib import Path
+
+    read_text, write_text = Path.read_text, Path.write_text
+
+    def read(self, encoding=None, errors=None, **kwargs):
+        return read_text(self, encoding=encoding or "cp1252", errors=errors, **kwargs)
+
+    def write(self, data, encoding=None, errors=None, newline=None):
+        return write_text(
+            self, data, encoding=encoding or "cp1252", errors=errors, newline=newline
+        )
+
+    mocker.patch.object(Path, "read_text", read)
+    mocker.patch.object(Path, "write_text", write)
+
+
+@pytest.mark.parametrize("fmt", ["yaml", "json"])
+def test_non_ascii_utterances_round_trip_on_a_non_utf8_locale(
+    fmt, tmp_path, cp1252_locale
+):
+    utterances = ["Łukasz ✨", "환불해 주세요"]
+    router = IndexedRouter(
+        encoder=OpenAIEncoder(name="text-embedding-3-small"),
+        routes=[Route(name="billing", utterances=utterances)],
+        index=LocalIndex(),
+    )
+    path = save(router, tmp_path, fmt)
+    assert "Łukasz ✨" in path.read_bytes().decode("utf-8")
+    loaded = load_router(path=path)
+    assert loaded.routes[0].utterances == utterances
