@@ -534,3 +534,18 @@ class TestReadiness:
         assert await idx.ais_ready() is True
         idx.aclient.collection_exists = AsyncMock(return_value=False)
         assert await idx.ais_ready() is False
+
+
+def test_sync_writes_wait_until_they_are_applied(mocker):
+    # upload_collection defaults to wait=False, which lets a read straight after a
+    # write see the old payload on a Qdrant server
+    idx = make_index()
+    upload = mocker.spy(idx.client, "upload_collection")
+    delete = mocker.spy(idx.client, "delete")
+
+    idx.add(embeddings=rand_vecs(2), routes=["a", "b"], utterances=["x", "y"])
+    idx.delete("a")
+
+    assert upload.call_args.kwargs["wait"] is True
+    # delete waits unless told not to
+    assert delete.call_args.kwargs.get("wait", True) is True
