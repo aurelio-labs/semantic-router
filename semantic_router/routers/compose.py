@@ -7,11 +7,15 @@ import math
 from typing import Sequence
 
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter
+from semantic_router.routers.base import BaseRouter, QueryResult
+from semantic_router.schema import MatchedUtterance
 
 
 class Chain(BaseRouter):
-    """try routers in order; the first whose best confidence clears its bar answers."""
+    """try routers in order; the first whose best confidence clears its bar answers.
+
+    Matched utterances, when asked for, are those of the router that answered.
+    """
 
     def __init__(
         self,
@@ -38,16 +42,32 @@ class Chain(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        return [r.scores for r in await self._chain(queries)]
+
+    async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(Chain, queries)
+        if custom is not None:
+            return custom
+        return await self._chain(queries, return_utterances=return_utterances)
+
+    async def _chain(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # each router scores, in one batch, only the queries the routers before it
         # weren't sure of
-        out: dict[int, dict[str, float]] = {}
+        out: dict[int, QueryResult] = {}
         pending = list(range(len(queries)))
         for r in self.routers:
-            raws = await r._scores_many([queries[i] for i in pending])
+            results = await _results(
+                r, [queries[i] for i in pending], return_utterances
+            )
             unsure = []
-            for i, raw in zip(pending, raws):
+            for i, res in zip(pending, results):
+                raw = res.scores
                 if not raw:
-                    out[i] = {}
+                    out[i] = res
                     unsure.append(i)
                     continue
                 probs = r._probs(raw)
@@ -60,7 +80,10 @@ class Chain(BaseRouter):
                 if r is self.routers[-1] or bar is None or probs[top] >= bar:
                     # in raw-score order, so routes the calibrator ties keep their order
                     order = sorted(raw, key=raw.__getitem__, reverse=True)
-                    out[i] = {n: probs[n] for n in order}
+                    out[i] = QueryResult(
+                        scores={n: probs[n] for n in order},
+                        matched_utterances=res.matched_utterances,
+                    )
                 else:
                     unsure.append(i)
             pending = unsure
@@ -70,7 +93,11 @@ class Chain(BaseRouter):
 
 
 class Merge(BaseRouter):
-    """ask every router at once and take a weighted mean of their confidences per route."""
+    """ask every router at once and take a weighted mean of their confidences per route.
+
+    Matched utterances, when asked for, are every router's that has them, in router
+    order. Each keeps its own router's raw score.
+    """
 
     def __init__(
         self,
@@ -121,18 +148,52 @@ class Merge(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        return [r.scores for r in await self._merge(queries)]
+
+    async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(Merge, queries)
+        if custom is not None:
+            return custom
+        return await self._merge(queries, return_utterances=return_utterances)
+
+    async def _merge(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # every router scores the whole batch at once, so an indexed router makes one
         # embed call for it rather than one per query
         shares = self._shares()  # before any router runs, so bad weights cost nothing
-        results = await asyncio.gather(*(r._scores_many(queries) for r in self.routers))
+        results = await asyncio.gather(
+            *(_results(r, queries, return_utterances) for r in self.routers)
+        )
         out = []
         for per_router in zip(*results):
-            probs = [r._probs(s) for r, s in zip(self.routers, per_router)]
+            probs = [r._probs(res.scores) for r, res in zip(self.routers, per_router)]
             names = dict.fromkeys(n for p in probs for n in p)
+            matches: dict[str, list[MatchedUtterance]] | None = None
+            for res in per_router:
+                if res.matched_utterances is not None:
+                    matches = matches if matches is not None else {}
+                    for n, found in res.matched_utterances.items():
+                        matches.setdefault(n, []).extend(found)
             out.append(
-                {
-                    n: sum(w * p.get(n, 0.0) for w, p in zip(shares, probs))
-                    for n in names
-                }
+                QueryResult(
+                    scores={
+                        n: sum(w * p.get(n, 0.0) for w, p in zip(shares, probs))
+                        for n in names
+                    },
+                    matched_utterances=matches,
+                )
             )
         return out
+
+
+async def _results(
+    router: BaseRouter, queries: Sequence[str], return_utterances: bool
+) -> list[QueryResult]:
+    if not return_utterances:
+        # scores through the router's _scores_many, as before matches existed, so a
+        # subclass that overrides it still decides what the composite sees
+        return [QueryResult(scores=s) for s in await router._scores_many(queries)]
+    return await router._results_many(queries, return_utterances=True)

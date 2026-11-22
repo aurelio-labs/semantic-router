@@ -16,9 +16,15 @@ from semantic_router.encoders.base import (
     FittableMixin,
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
+from semantic_router.index.base import _takes_utterances
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter, FitReport, in_sync_call
-from semantic_router.schema import SparseEmbedding
+from semantic_router.routers.base import (
+    BaseRouter,
+    FitReport,
+    QueryResult,
+    in_sync_call,
+)
+from semantic_router.schema import MatchedUtterance, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 Kind = Literal["queries", "documents"]
@@ -302,8 +308,11 @@ class IndexedRouter(BaseRouter):
         await self.arefresh()
 
     async def _query(
-        self, dense: list[float], sparse: SparseEmbedding | None
-    ) -> dict[str, float]:
+        self,
+        dense: list[float],
+        sparse: SparseEmbedding | None,
+        return_utterances: bool = False,
+    ) -> QueryResult:
         vec = np.array(dense)
         if sparse is not None:
             # convex mix: alpha on dense, the rest on sparse, summed inside the hybrid index
@@ -311,20 +320,42 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-        if in_sync_call():
-            scores, names = await asyncio.to_thread(
-                self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+        sync = in_sync_call()
+        kwargs: dict = {"vector": vec, "top_k": self.top_k, "sparse_vector": sparse}
+        # a custom index written before return_utterances existed doesn't take it:
+        # ask only an index that does, so nothing is searched twice
+        if return_utterances and _takes_utterances(
+            self.index.query if sync else self.index.aquery
+        ):
+            kwargs["return_utterances"] = True
+        result: tuple
+        if sync:
+            result = await asyncio.to_thread(lambda: self.index.query(**kwargs))
         else:
-            scores, names = await self.index.aquery(
-                vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+            result = await self.index.aquery(**kwargs)
+        scores, names = result[0], result[1]
+        matches: dict[str, list[MatchedUtterance]] | None = None
+        if return_utterances:
+            if len(result) == 3:
+                matches = {}
+                for n, sc, u in zip(names, scores, result[2]):
+                    matches.setdefault(n, []).append(
+                        MatchedUtterance(text=str(u), score=float(sc), route=n)
+                    )
+                for found in matches.values():
+                    # best first: some indexes return their hits worst first
+                    found.sort(key=lambda m: m.score, reverse=True)
+            else:
+                _warn_no_utterances(self.index)
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}
-        for n, s in zip(names, scores):
-            hits.setdefault(n, []).append(float(s))
-        return {n: self.aggregate(v) if v else 0.0 for n, v in hits.items()}
+        for n, sc in zip(names, scores):
+            hits.setdefault(n, []).append(float(sc))
+        return QueryResult(
+            scores={n: self.aggregate(v) if v else 0.0 for n, v in hits.items()},
+            matched_utterances=matches,
+        )
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
@@ -345,6 +376,19 @@ class IndexedRouter(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        return [r.scores for r in await self._search_many(queries)]
+
+    async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(IndexedRouter, queries)
+        if custom is not None:
+            return custom
+        return await self._search_many(queries, return_utterances=return_utterances)
+
+    async def _search_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # one encoder call for the whole batch, then a cheap index query per vector
         texts = list(queries)
         if self._stale():
@@ -360,5 +404,22 @@ class IndexedRouter(BaseRouter):
             else [None] * len(texts)
         )
         return list(
-            await asyncio.gather(*(self._query(d, s) for d, s in zip(dense, sparse)))
+            await asyncio.gather(
+                *(
+                    self._query(d, s, return_utterances=return_utterances)
+                    for d, s in zip(dense, sparse)
+                )
+            )
+        )
+
+
+_warned: set[type] = set()
+
+
+def _warn_no_utterances(index: BaseIndex) -> None:
+    if type(index) not in _warned:
+        _warned.add(type(index))
+        logger.warning(
+            f"{type(index).__name__} doesn't return matched utterances, so "
+            "matched_utterances stays None"
         )
