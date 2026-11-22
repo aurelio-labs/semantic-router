@@ -117,7 +117,7 @@ router = IndexedRouter(
 
 What's gone is the threshold rescaling: `HybridRouter` multiplied its threshold by `alpha`, and 1.0 doesn't. Calibration absorbs the difference, so refit after you upgrade.
 
-A *fitted* sparse encoder such as `BM25Encoder` changes its vocabulary whenever the routes change. So `add()` on a hybrid router refits the sparse encoder and rebuilds the whole index. On Pinecone, rebuilding deletes and recreates the remote index.
+A *fitted* sparse encoder such as `BM25Encoder` changes its vocabulary whenever the routes change. So `add()` and `remove()` on a hybrid router refit the sparse encoder and re-encode every stored utterance. Building a router with new utterances on an index that already holds routes does the same. Each record is overwritten in place: the index is never deleted, so other namespaces on a Pinecone index are left alone.
 
 ## The encoder is required
 

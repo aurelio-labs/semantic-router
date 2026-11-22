@@ -88,7 +88,7 @@ Without an `index`, a hybrid router uses a `HybridLocalIndex`. The only remote i
 
 The dense encoder alone scores .95 and 1.0 on these sets, which have no keyword-heavy routes. Sparse earns its place when queries hinge on exact terms like product codes and names. Measure on your own queries with [`evaluate()`](../features/calibration#measure-it) before you lower `alpha`.
 
-A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your utterances, so `add()` refits it and rebuilds the index.
+A *fitted* sparse encoder such as `BM25Encoder` learns its vocabulary from your utterances. So when the utterances change, through `add()`, `remove()` or a new router that brings new ones, it refits and re-encodes every stored utterance, overwriting each record in place. A router built on an index that already holds its routes writes nothing.
 
 ## DecisionRouter
 
