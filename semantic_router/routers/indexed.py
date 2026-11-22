@@ -211,15 +211,19 @@ class IndexedRouter(BaseRouter):
         if (records := self._records(routes)) is not None:
             self.index.add(**records)
 
-    def _upsert(self, stored: list[Route], routes: list[Route]) -> None:
+    def _upsert(
+        self, stored: list[Route], routes: list[Route], rewrite: bool = False
+    ) -> None:
         """write `routes` onto the `stored` ones (the index's routes, read fresh).
 
         a fitted sparse model (TF-IDF, BM25) refits on the merged corpus. it fits on the
         utterances alone, whatever their order, so the same corpus gives the same model
         and the stored rows stay valid: only routes the index doesn't hold yet are
         written. new utterances move the vocabulary, so then every row is encoded again
-        and upserted over the old one. ids are deterministic, so nothing is deleted, and
-        a failed encode leaves the index as it was.
+        and upserted over the old one, as it is whenever `rewrite` is set (add() sets
+        it, so retrying an add whose write failed part way repairs every row). ids are
+        deterministic, so nothing is deleted, and a failed encode leaves the index as
+        it was.
         """
         if not isinstance(self.sparse_encoder, FittableMixin):
             self._index(routes)
@@ -234,7 +238,7 @@ class IndexedRouter(BaseRouter):
         # a changed route is written whole, so all its rows get its new fields
         todo = (
             corpus
-            if grows
+            if grows or rewrite
             else [
                 merged[n]
                 for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
@@ -242,12 +246,16 @@ class IndexedRouter(BaseRouter):
         )
         self.sparse_encoder.fit(corpus)
         try:
-            self._index(todo)
+            records = self._records(todo)
         except BaseException:
             # the index is as it was: put back the model its rows were encoded with
             if stored:
                 self.sparse_encoder.fit(stored)
             raise
+        # a write that fails part way keeps the new model: it is what the rows already
+        # written hold, and what a retried add() writes everywhere
+        if records is not None:
+            self.index.add(**records)
 
     async def _on_add(self, routes: list[Route]) -> None:
         # read the stored routes fresh: another router may have written since this one
@@ -256,36 +264,40 @@ class IndexedRouter(BaseRouter):
             if isinstance(self.sparse_encoder, FittableMixin)
             else []
         )
-        await asyncio.to_thread(self._upsert, stored, routes)
+        await asyncio.to_thread(self._upsert, stored, routes, True)
         await self.arefresh()
 
     async def _on_remove(self, name: str) -> None:
         records = None
         stored: list[Route] = []
+        rest: list[Route] = []
         if isinstance(self.sparse_encoder, FittableMixin):
             # fewer utterances move a fitted vocabulary too, so the remaining rows are
-            # encoded with the refit model before anything is deleted
+            # encoded with the refit model before anything is deleted. they are written
+            # even when the route is already gone, so a retry after a failed write
+            # finishes the job: ids are deterministic, so it only overwrites
             stored = await self._aget_routes()
             rest = [r for r in stored if r.name != name]
-            if rest and len(rest) < len(stored):
+            if rest:
                 self.sparse_encoder.fit(rest)
                 try:
                     records = await asyncio.to_thread(self._records, rest)
                 except BaseException:
                     self.sparse_encoder.fit(stored)
                     raise
+        deleted = False
         try:
             if in_sync_call():
                 await asyncio.to_thread(self.index.delete, name)
             else:
                 await self.index.adelete(name)
+            deleted = True
             if records is not None:
                 await asyncio.to_thread(self.index.add, **records)
         except BaseException:
             if records is not None:
-                # the stored rows still hold the old encoding (a failed delete changed
-                # nothing): put back the model they were encoded with
-                self.sparse_encoder.fit(stored)
+                # match what a reopen fits on: the routes the index holds now
+                self.sparse_encoder.fit(rest if deleted else stored)
             raise
         await self.arefresh()
 

@@ -197,3 +197,61 @@ def test_a_failed_delete_on_remove_leaves_the_router_aligned(make_index, mocker)
     assert router("zebra").name == "existing"
     assert router("apple").name == "new"
     assert router("mango").name == "fruit"
+
+
+def test_retrying_a_remove_whose_write_failed_repairs_the_index(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    router = build([ZEBRA, APPLE], index)
+    add = mocker.patch.object(index_cls, "add", side_effect=RuntimeError("down"))
+
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="new")
+    # the delete landed, so a retry finds the route gone but still rewrites the rest
+    assert [u.route for u in index.get_utterances()] == ["existing"]
+    add.side_effect = None
+    add.reset_mock()
+    mocker.stopall()
+    rewrite = mocker.spy(index_cls, "add")
+    router.remove(name="new")
+
+    assert rewrite.call_count == 1
+    assert [u.route for u in index.get_utterances()] == ["existing"]
+    fresh = build([], reopen(index, make_index))
+    assert [r.name for r in fresh.routes] == ["existing"]
+    if routes_sparse(fresh):
+        assert fresh("zebra").name == "existing"
+        assert router("zebra").name == "existing"
+
+
+def test_retrying_an_add_whose_write_failed_repairs_the_index(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    router = build([ZEBRA], index)
+    real_add = index_cls.add
+
+    def partial(self, **records):
+        # the new route's row lands, then the backend goes down before the rest
+        keep = [i for i, r in enumerate(records["routes"]) if r == "new"]
+        real_add(self, **{k: [v[i] for i in keep] for k, v in records.items()})
+        raise RuntimeError("down")
+
+    mocker.patch.object(index_cls, "add", partial)
+
+    with pytest.raises(RuntimeError, match="down"):
+        router.add(routes=APPLE)
+    assert {u.route for u in index.get_utterances()} == {"existing", "new"}
+    mocker.stopall()
+    rewrite = mocker.spy(index_cls, "add")
+    router.add(routes=APPLE)
+
+    # every row is written again, not only the new route's
+    assert rewrite.call_count == 1
+    assert sorted(rewrite.call_args.kwargs["routes"]) == ["existing", "new"]
+    fresh = build([], reopen(index, make_index))
+    assert {r.name for r in fresh.routes} == {"existing", "new"}
+    if routes_sparse(fresh):
+        assert fresh("zebra").name == "existing"
+        assert fresh("apple").name == "new"
