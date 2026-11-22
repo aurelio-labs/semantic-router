@@ -308,6 +308,9 @@ class QdrantIndex(BaseIndex):
             payload=payloads,
             ids=ids,
             batch_size=batch_size,
+            # qdrant-client returns before the server applies the write unless asked to
+            # wait, so a read straight after could still see the old payload
+            wait=True,
         )
 
     def _records(self, results: list, include_metadata: bool) -> tuple[list, list]:
