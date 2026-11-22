@@ -273,7 +273,13 @@ class MongoDbIndex(BaseIndex):
             search["filter"] = scope
         return [
             {"$vectorSearch": search},
-            {"$project": {"score": {"$meta": "vectorSearchScore"}, ROUTE_FIELD: 1}},
+            {
+                "$project": {
+                    "score": {"$meta": "vectorSearchScore"},
+                    ROUTE_FIELD: 1,
+                    UTTERANCE_FIELD: 1,
+                }
+            },
         ]
 
     @overload
@@ -319,10 +325,9 @@ class MongoDbIndex(BaseIndex):
         :param top_k: The number of results to return.
         :param route_filter: Only search these routes.
         :param sparse_vector: Not used: MongoDbIndex is dense only.
-        :param return_utterances: If True, also return matched utterance texts.
-            MongoDB Atlas records do not store the original utterance text, so
-            this is accepted for API compatibility but does not add utterances.
-        :return: The scores and route names of the top_k results.
+        :param return_utterances: If True, also return the matched utterance texts.
+        :return: The scores and route names of the top_k results, and their
+            utterances when ``return_utterances`` is True.
         """
         extra = {ROUTE_FIELD: {"$in": route_filter}} if route_filter is not None else {}
         docs = list(self._collection.aggregate(self._pipeline(vector, top_k, extra)))
@@ -330,7 +335,10 @@ class MongoDbIndex(BaseIndex):
         if self.metric is not Metric.EUCLIDEAN:
             # atlas reports (1 + similarity) / 2; the other indexes report the similarity
             scores = scores * 2 - 1
-        return scores, [d[ROUTE_FIELD] for d in docs]
+        routes = [d[ROUTE_FIELD] for d in docs]
+        if return_utterances:
+            return scores, routes, [str(d.get(UTTERANCE_FIELD, "")) for d in docs]
+        return scores, routes
 
     @overload
     async def aquery(

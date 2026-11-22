@@ -187,6 +187,30 @@ async def test_aquery_finds_the_nearest_route(index):
 
 
 @pytest.mark.asyncio
+async def test_query_returns_the_matched_utterances_when_asked(index):
+    kwargs = records(index, ROUTES)
+    index.add(**kwargs)
+    i = kwargs["utterances"].index("how's the weather today?")
+    query: dict = {"vector": np.array(kwargs["embeddings"][i]), "top_k": 2}
+    if "sparse_embeddings" in kwargs:
+        query["sparse_vector"] = kwargs["sparse_embeddings"][i]
+
+    scores, names, utterances = index.query(**query, return_utterances=True)
+    ascores, anames, autterances = await index.aquery(**query, return_utterances=True)
+
+    # some backends return hits best first, LocalIndex worst first
+    best, abest = int(np.argmax(scores)), int(np.argmax(ascores))
+    assert names[best] == anames[abest] == "chitchat"
+    assert utterances[best] == autterances[abest] == "how's the weather today?"
+    # each utterance is the record behind its route and score
+    by_text = dict(zip(kwargs["utterances"], kwargs["routes"]))
+    assert [by_text[u] for u in utterances] == list(names)
+    assert [by_text[u] for u in autterances] == list(anames)
+    assert len(scores) == len(ascores) == 2
+    assert len(index.query(**query)) == 2  # the default shape is unchanged
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "index_cls", [HybridLocalIndex, PineconeIndex], ids=lambda c: c.__name__
 )

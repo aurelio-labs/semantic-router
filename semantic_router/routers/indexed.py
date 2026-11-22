@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
-from typing import Callable, List, Literal, Sequence, Tuple
+from typing import Callable, Literal, Sequence
 
 import numpy as np
 
@@ -319,76 +320,41 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-
-        # Call with return_utterances first when requested; fall back to calling
-        # without the flag if the index (e.g. a user's custom BaseIndex subclass)
-        # does not accept it.
-        result: Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]
-        try:
-            if in_sync_call():
-                if return_utterances:
-                    result = await asyncio.to_thread(
-                        self.index.query,
-                        vector=vec,
-                        top_k=self.top_k,
-                        sparse_vector=sparse,
-                        return_utterances=True,
-                    )
-                else:
-                    result = await asyncio.to_thread(
-                        self.index.query,
-                        vector=vec,
-                        top_k=self.top_k,
-                        sparse_vector=sparse,
-                    )
-            else:
-                if return_utterances:
-                    result = await self.index.aquery(
-                        vector=vec,
-                        top_k=self.top_k,
-                        sparse_vector=sparse,
-                        return_utterances=True,
-                    )
-                else:
-                    result = await self.index.aquery(
-                        vector=vec,
-                        top_k=self.top_k,
-                        sparse_vector=sparse,
-                    )
-        except TypeError:
-            # index doesn't accept return_utterances param — call without it
-            if in_sync_call():
-                result = await asyncio.to_thread(
-                    self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
-                )
-            else:
-                result = await self.index.aquery(
-                    vector=vec, top_k=self.top_k, sparse_vector=sparse
-                )
-
-        # result is either (scores, names) or (scores, names, utterances) depending on
-        # whether the index honours return_utterances; older implementations may ignore it
-        if len(result) == 3:
-            scores_arr, names, utterances = result
+        sync = in_sync_call()
+        kwargs: dict = {"vector": vec, "top_k": self.top_k, "sparse_vector": sparse}
+        # a custom index written before return_utterances existed doesn't take it:
+        # ask only an index that does, so nothing is searched twice
+        if return_utterances and _takes_utterances(
+            self.index.query if sync else self.index.aquery
+        ):
+            kwargs["return_utterances"] = True
+        result: tuple
+        if sync:
+            result = await asyncio.to_thread(lambda: self.index.query(**kwargs))
         else:
-            scores_arr, names = result
-            utterances = []
-        scores = [float(s) for s in scores_arr]
+            result = await self.index.aquery(**kwargs)
+        scores, names = result[0], result[1]
+        matches: dict[str, list[MatchedUtterance]] | None = None
+        if return_utterances:
+            if len(result) == 3:
+                matches = {}
+                for n, sc, u in zip(names, scores, result[2]):
+                    matches.setdefault(n, []).append(
+                        MatchedUtterance(text=str(u), score=float(sc), route=n)
+                    )
+                for found in matches.values():
+                    # best first: some indexes return their hits worst first
+                    found.sort(key=lambda m: m.score, reverse=True)
+            else:
+                _warn_no_utterances(self.index)
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}
-        matched_utts: dict[str, list[MatchedUtterance]] | None = None
-        if return_utterances and utterances:
-            matched_utts = {}
-            for n, s, u in zip(names, scores, utterances):
-                matched_utts.setdefault(n, []).append(
-                    MatchedUtterance(text=str(u), score=float(s), route=n)
-                )
-        for n, s in zip(names, scores):
-            hits.setdefault(n, []).append(float(s))
+        for n, sc in zip(names, scores):
+            hits.setdefault(n, []).append(float(sc))
         return QueryResult(
             scores={n: self.aggregate(v) if v else 0.0 for n, v in hits.items()},
-            matched_utterances=matched_utts,
+            matched_utterances=matches,
         )
 
     async def afit(
@@ -406,12 +372,13 @@ class IndexedRouter(BaseRouter):
             )
         return await super().afit(X, y, method)
 
-    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
-        return (await self._scores_many([query], return_utterances=return_utterances))[
-            0
-        ]
+    async def _scores(self, query: str) -> dict[str, float]:
+        return (await self._scores_many([query]))[0]
 
-    async def _scores_many(
+    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        return [r.scores for r in await self._results_many(queries)]
+
+    async def _results_many(
         self, queries: Sequence[str], return_utterances: bool = False
     ) -> list[QueryResult]:
         # one encoder call for the whole batch, then a cheap index query per vector
@@ -435,4 +402,25 @@ class IndexedRouter(BaseRouter):
                     for d, s in zip(dense, sparse)
                 )
             )
+        )
+
+
+def _takes_utterances(search: Callable) -> bool:
+    """whether an index's query method takes return_utterances."""
+    try:
+        params = inspect.signature(search).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(p.name == "return_utterances" or p.kind is p.VAR_KEYWORD for p in params)
+
+
+_warned: set[type] = set()
+
+
+def _warn_no_utterances(index: BaseIndex) -> None:
+    if type(index) not in _warned:
+        _warned.add(type(index))
+        logger.warning(
+            f"{type(index).__name__} doesn't return matched utterances, so "
+            "matched_utterances stays None"
         )

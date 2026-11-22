@@ -133,6 +133,24 @@ router("what's the weather like today?", threshold=0.8)  # a bar for this call o
 
 With `limit=1` (the default) you get one `RouteChoice`, with `name=None` when nothing clears the bar. With any other `limit` you get a list, which is empty when nothing clears it.
 
+### See which utterances matched
+
+Pass `return_utterances=True` to see the stored utterances behind a choice. Each choice's `matched_utterances` lists the index hits for its route, with their raw similarity scores. It helps when you debug a misroute or tune a threshold.
+
+```python
+choice = router("I was charged twice", return_utterances=True)
+for match in choice.matched_utterances:
+    print(match.route, match.score, match.text)
+```
+
+| `matched_utterances` | When |
+|---|---|
+| `None` | You didn't ask, nothing cleared the bar, or the router can't say (a `DecisionRouter`, or a custom index that doesn't return utterances). |
+| `[]` | You asked, but none of the route's utterances were in the index's `top_k` hits. |
+| A list | The route's hits, best first. Scores are raw, never calibrated. |
+
+`Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, each with its own router's score. It's off by default, so routers that don't ask do no extra work.
+
 Every method has an async twin:
 
 ```python
@@ -200,5 +218,6 @@ keyword_router("can I get my money back?")
 |---|---|
 | `_scores(query)` | Always: the raw score for every route. |
 | `_scores_many(queries)` | You can score a batch more cheaply than one at a time (`IndexedRouter` embeds a whole batch in one call). The default runs `_scores` concurrently, eight at a time. |
+| `_results_many(queries, return_utterances)` | Your router can say which stored utterances matched. Return a `QueryResult(scores=..., matched_utterances=...)` per query. The default wraps `_scores_many`, with no matches. |
 | `_on_add(routes)` / `_on_remove(name)` | You keep per-route state, such as an index. |
 | `probabilistic = True` | Your raw scores are already probabilities, so results report `calibrated=True` without a fit. |

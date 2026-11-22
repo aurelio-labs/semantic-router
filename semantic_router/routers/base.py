@@ -68,13 +68,11 @@ class FitReport:
 
 @dataclass(frozen=True)
 class QueryResult:
-    """per-call output of a router's scoring phase.
+    """what scoring one query gives: the raw score per route, and the matches behind it.
 
-    :param scores: raw score for every route, higher means more likely.
-    :param matched_utterances: utterance-level match details keyed by route name,
-        when the caller opts in (``return_utterances=True``). ``None`` otherwise,
-        or on routers that cannot expose them (e.g. ``DecisionRouter``,
-        ``Chain``, ``Merge``).
+    :param scores: The raw score for every route, higher means more likely.
+    :param matched_utterances: The stored utterances that matched, per route, when
+        asked for and the router can say. `None` when it can't.
     """
 
     scores: dict[str, float]
@@ -99,25 +97,26 @@ class BaseRouter(ABC):
         self._fit_data: tuple[list[str], list[str | None], Method] | None = None
 
     @abstractmethod
-    async def _scores(self, query: str, return_utterances: bool = False) -> QueryResult:
-        """score every route for ``query``; higher is more likely.
+    async def _scores(self, query: str) -> dict[str, float]:
+        """raw score for every route, higher means more likely."""
 
-        routers that cannot expose utterance-level matches (e.g. ``DecisionRouter``,
-        ``Chain``, ``Merge``) should still accept ``return_utterances`` but return a
-        ``QueryResult`` whose ``matched_utterances`` is ``None``.
-        """
-
-    async def _scores_many(
-        self, queries: Sequence[str], return_utterances: bool = False
-    ) -> list[QueryResult]:
+    async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
         # default fans out with a concurrency cap; indexed routers override to batch-embed
         sem = asyncio.Semaphore(self.concurrency)
 
-        async def one(q: str) -> QueryResult:
+        async def one(q: str) -> dict[str, float]:
             async with sem:
-                return await self._scores(q, return_utterances=return_utterances)
+                return await self._scores(q)
 
         return list(await asyncio.gather(*(one(q) for q in queries)))
+
+    async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        """scores with the utterances behind them. routers that can say which stored
+        utterances matched (IndexedRouter, Chain, Merge) override this; the default
+        has scores only."""
+        return [QueryResult(scores=s) for s in await self._scores_many(queries)]
 
     @property
     def calibrated(self) -> bool:
@@ -139,9 +138,12 @@ class BaseRouter(ABC):
         return self.confidence_threshold
 
     def _choose(
-        self, result: QueryResult, limit: int | None, threshold: float | None
+        self,
+        scores: dict[str, float],
+        limit: int | None,
+        threshold: float | None,
+        matches: dict[str, list[MatchedUtterance]] | None = None,
     ) -> RouteChoice | list[RouteChoice]:
-        scores = result.scores
         probs = self._probs(scores)
         # rank by the raw score: calibration says how sure, it must never reorder routes
         ranked = sorted(scores, key=scores.__getitem__, reverse=True)
@@ -151,12 +153,17 @@ class BaseRouter(ABC):
             # a per-call threshold wins over the route's and the router's
             bar = self._bar(n) if threshold is None else threshold
             if bar is None or c >= bar:
-                pick = RouteChoice(name=n, confidence=c, calibrated=self.calibrated)
-                if result.matched_utterances is not None:
-                    utterances = result.matched_utterances.get(n)
-                    if utterances:
-                        pick.matched_utterances = list(utterances)
-                picks.append(pick)
+                picks.append(
+                    RouteChoice(
+                        name=n,
+                        confidence=c,
+                        calibrated=self.calibrated,
+                        # a route with no hit in the index's top_k has none
+                        matched_utterances=(
+                            None if matches is None else list(matches.get(n, []))
+                        ),
+                    )
+                )
         picks = picks[:limit]
         if limit == 1:
             # an empty pick still says whether the bar it missed was a calibrated one
@@ -170,23 +177,21 @@ class BaseRouter(ABC):
         threshold: float | None = None,
         return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
-        """route ``query`` and return one or many ``RouteChoice`` objects.
+        """route one query.
 
-        :param query: the text to route.
-        :param limit: number of route choices to return, ranked by confidence;
-            ``1`` (default) gives the best, ``None`` returns every route.
-        :param threshold: confidence threshold that overrides every route/router
-            threshold for this call.
-        :param return_utterances: whether to populate each choice's
-            ``matched_utterances`` (utterance-level match details). ``False`` by
-            default — opt-in. Routers that cannot expose matches (``DecisionRouter``,
-            ``Chain``, ``Merge``) return choices whose ``matched_utterances`` is
-            ``None`` even when this is ``True``.
+        :param query: The text to route.
+        :param limit: How many choices to return, best first: `1` gives one choice,
+            `None` every route that clears its threshold.
+        :param threshold: A confidence threshold for this call only, over every
+            route's and the router's.
+        :param return_utterances: Also fill each choice's `matched_utterances` with
+            the stored utterances that matched the query, where the router can say.
         """
+        if not return_utterances:
+            return self._choose(await self._scores(query), limit, threshold)
+        (result,) = await self._results_many([query], return_utterances=True)
         return self._choose(
-            await self._scores(query, return_utterances=return_utterances),
-            limit,
-            threshold,
+            result.scores, limit, threshold, matches=result.matched_utterances
         )
 
     def __call__(
@@ -197,14 +202,19 @@ class BaseRouter(ABC):
         return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
         return run(
-            self.acall(query, limit, threshold, return_utterances=return_utterances)
+            self.acall(
+                query,
+                limit=limit,
+                threshold=threshold,
+                return_utterances=return_utterances,
+            )
         )
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
     ) -> FitReport:
         """calibrate on labelled queries. a label of None means no route should match."""
-        scored = [qr.scores for qr in await self._scores_many(X)]
+        scored = await self._scores_many(X)
         if unscored := sum(not s for s in scored):
             # a query that scores no route has no confidence to calibrate. raise, as
             # Calibrator.fit does on data it can't fit, so a refit drops the calibrator

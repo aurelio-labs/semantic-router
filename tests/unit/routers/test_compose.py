@@ -4,7 +4,7 @@ import pytest
 
 from semantic_router.route import Route
 from semantic_router.routers import Chain, Merge
-from semantic_router.routers.base import BaseRouter, QueryResult
+from semantic_router.routers.base import BaseRouter
 
 ROUTES = [Route(name="a", utterances=["a"]), Route(name="b", utterances=["b"])]
 
@@ -14,9 +14,9 @@ class Canned(BaseRouter):
         super().__init__(ROUTES, **kw)
         self.canned, self.probabilistic, self.calls = scores, probabilistic, 0
 
-    async def _scores(self, query, return_utterances=False):
+    async def _scores(self, query):
         self.calls += 1
-        return QueryResult(scores=dict(self.canned))
+        return dict(self.canned)
 
 
 def test_chain_falls_through_when_first_is_unsure():
@@ -150,12 +150,12 @@ class Batched(BaseRouter):
         super().__init__(ROUTES, **kw)
         self.table, self.batches = table, []
 
-    async def _scores(self, query, return_utterances=False):
-        return QueryResult(scores=dict(self.table[query]))
+    async def _scores(self, query):
+        return dict(self.table[query])
 
-    async def _scores_many(self, queries, return_utterances=False):
+    async def _scores_many(self, queries):
         self.batches.append(len(queries))
-        return [QueryResult(scores=dict(self.table[q])) for q in queries]
+        return [dict(self.table[q]) for q in queries]
 
 
 def test_chain_batches_and_only_passes_on_the_unsure_queries():
@@ -165,11 +165,7 @@ def test_chain_batches_and_only_passes_on_the_unsure_queries():
     chain = Chain(routers=[first, second])
     scored = asyncio.run(chain._scores_many(["q1", "q2", "q3"]))
     assert first.batches == [3] and second.batches == [1]  # one batch each
-    assert [max(s.scores, key=s.scores.get) for s in scored] == [
-        "a",
-        "b",
-        "a",
-    ]  # order kept
+    assert [max(s, key=s.get) for s in scored] == ["a", "b", "a"]  # order kept
     assert chain("q2").name == "b"  # a single query takes the same path
 
 
@@ -179,7 +175,7 @@ def test_merge_scores_the_whole_batch_once_per_router():
     merge = Merge(routers=[one, two])
     scored = asyncio.run(merge._scores_many(["q1", "q2"]))
     assert one.batches == [2] and two.batches == [2]
-    assert [max(s.scores, key=s.scores.get) for s in scored] == ["a", "b"]
+    assert [max(s, key=s.get) for s in scored] == ["a", "b"]
 
 
 def test_chain_preserves_batch_order_with_empty_results():
