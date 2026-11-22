@@ -168,7 +168,14 @@ class GoogleEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("Google AI Platform client is not initialized.")
         try:
-            embeddings = await self.client.get_embeddings_async(docs)
-            return [embedding.values for embedding in embeddings]
+            embeddings: List[List[float]] = []
+            size = max_embed_batch(self.name)
+            for start in range(0, len(docs), size):
+                batch = docs[start : start + size]
+                embeddings.extend(
+                    embedding.values
+                    for embedding in await self.client.get_embeddings_async(batch)
+                )
+            return embeddings
         except Exception as e:
             raise ValueError(f"Google AI Platform API call failed. Error: {e}") from e
