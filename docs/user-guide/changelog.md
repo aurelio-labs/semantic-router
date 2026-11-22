@@ -3,6 +3,30 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.1.3
+
+`1.1.3` fixes bugs in six encoders, in hybrid routers reusing an index, in `Chain` and `Merge`, in the Pinecone and Qdrant indexes, in calibration, and in router files on Windows. It also patches locked dependencies with security advisories. Code and files written for `1.1.2` work unchanged, apart from the two stricter checks marked below.
+
+#### Fixes
+
+- `OpenAIEncoder` and `AzureOpenAIEncoder` send at most 2,048 texts per request, OpenAI's limit for one embeddings call, and return the embeddings in input order. Each request retries on its own.
+- `VoyageEncoder` sends at most 1,000 texts per request, Voyage's limit.
+- `GoogleEncoder` sends at most 250 texts per request, and one per request for `gemini-embedding` models, which take a single text. It used to send every text in one request, which Vertex AI rejects for large route sets.
+- `OllamaEncoder` and `GoogleEncoder` have an async `acall`, so async routers no longer block the event loop on them. Ollama keeps one async client per event loop, so repeated `asyncio.run()` calls work. Google runs its sync client in a worker thread and batches as above.
+- `AzureOpenAIEncoder` raises a clear `ValueError` before any call for an empty list, an empty string, or an item that isn't a string, as `OpenAIEncoder` does since `1.1.2`. It used to retry, then fail with the API's error. **Stricter:** a bare string, outside the `List[str]` signature, now raises too.
+- A hybrid `IndexedRouter` (TF-IDF or BM25) built on an index that already holds routes refits its sparse encoder and rewrites the stored rows when the new routes bring new utterances. The stored rows used to keep the old vocabulary, so queries were misrouted. Reopening an index with the routes it already holds writes nothing. `add()` and `remove()` follow the same rule: every row is encoded before the index is touched, then written over by id, so nothing is deleted first. On Pinecone, `add()` on a hybrid router no longer deletes the whole index, with every other namespace in it. If encoding fails, the index is left as it was. ([#854](https://github.com/aurelio-labs/semantic-router/issues/854))
+- `Chain` passes a query on to its next router when a router returns no candidates. It used to raise `ValueError` from `max()`. If every router returns nothing, the chain returns an empty `RouteChoice()`.
+- `Merge` raises a `ValueError` unless there is one weight per router, each finite and at least 0, adding up to more than 0. A short list used to drop the routers past its end, a long one lowered every confidence, and weights adding up to 0 raised `ZeroDivisionError` on the first call. `weights=None` still means equal weights, and changing `merge.weights` after construction is checked on the next call. **Stricter:** weights that used to be silently misapplied now raise.
+- `PineconeIndex.adelete()` raises when Pinecone answers a delete with an error, as the sync `delete()` does. It used to report the vectors as deleted.
+- `PineconeIndex`'s async paging raises when a page fails, instead of returning an empty or partial list. `adelete()`, `aget_routes()` and a hybrid router's `aadd()` could act on that partial list. A 404 still reads as an empty index. ([#794](https://github.com/aurelio-labs/semantic-router/issues/794))
+- `QdrantIndex.add()` waits for its write to land before returning, so a read straight after sees it.
+- Calibration pools tied scores before fitting, so the same labelled scores give the same calibrator in any order. Output without ties is unchanged, and saved calibrators load as before. ([#788](https://github.com/aurelio-labs/semantic-router/issues/788))
+- Router files are written and read as UTF-8. On Windows, saving a router with characters outside the locale's code page used to raise `UnicodeEncodeError`, and loading a file written elsewhere could misread it.
+
+#### Security
+
+- The lockfile moves litellm to 1.103.1, pyasn1 to 0.6.5, and, on Python 3.11 and later, dnspython to 2.9.2 and filelock to 4.3.0, for their advisories. On Python 3.10, filelock is 4.0.12 and dnspython stays on 2.8.0: the patched releases need Python 3.11. The package's declared dependency ranges don't change.
+
 ### v1.1.2
 
 `1.1.2` fixes bugs in five encoders, in loading encoders from router files, and in calibration. Code and files written for `1.1.1` work unchanged.
