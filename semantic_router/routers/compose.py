@@ -123,8 +123,8 @@ class Merge(BaseRouter):
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
         # every router scores the whole batch at once, so an indexed router makes one
         # embed call for it rather than one per query
+        shares = self._shares()  # before any router runs, so bad weights cost nothing
         results = await asyncio.gather(*(r._scores_many(queries) for r in self.routers))
-        shares = self._shares()
         out = []
         for per_router in zip(*results):
             probs = [r._probs(s) for r, s in zip(self.routers, per_router)]

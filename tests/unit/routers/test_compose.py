@@ -95,13 +95,15 @@ def test_merge_takes_huge_weights_without_overflow():
 
 
 def test_merge_reads_the_weights_at_each_call():
-    m = Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=[1, 1])
+    routers = [Canned({"a": 1.0}), Canned({"a": 0.0})]
+    m = Merge(routers=routers, weights=[1, 1])
     assert m("q").confidence == pytest.approx(0.5)
     m.weights[0] = 3
     assert m("q").confidence == pytest.approx(0.75)
     m.weights[0] = float("inf")
     with pytest.raises(ValueError, match="weights must be finite"):
         m("q")
+    assert [r.calls for r in routers] == [2, 2]  # no router ran for the bad call
 
 
 def test_chain_checks_the_top_routes_own_bar():
