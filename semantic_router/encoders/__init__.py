@@ -57,6 +57,9 @@ class AutoEncoder:
     def __init__(self, type: str, name: Optional[str]):
         self.type = EncoderType(type)
         self.name = name
+        # some encoders default their model name and refuse an explicit None, so only
+        # pass a name when one is given
+        kwargs = {} if name is None else {"name": name}
         if self.type == EncoderType.AZURE:
             self.model = AzureOpenAIEncoder(name=name)
         elif self.type == EncoderType.COHERE:
@@ -74,9 +77,9 @@ class AutoEncoder:
                 name = "tfidf"
             self.model = TfidfEncoder(name=name)
         elif self.type == EncoderType.FASTEMBED:
-            self.model = FastEmbedEncoder(name=name)
+            self.model = FastEmbedEncoder(**kwargs)
         elif self.type == EncoderType.HUGGINGFACE:
-            self.model = HuggingFaceEncoder(name=name)
+            self.model = HuggingFaceEncoder(**kwargs)
         elif self.type == EncoderType.MISTRAL:
             self.model = MistralEncoder(name=name)
         elif self.type == EncoderType.VOYAGE:
@@ -86,19 +89,19 @@ class AutoEncoder:
         elif self.type == EncoderType.NIM:
             self.model = NimEncoder(name=name)
         elif self.type == EncoderType.VIT:
-            self.model = VitEncoder(name=name)
+            self.model = VitEncoder(**kwargs)
         elif self.type == EncoderType.CLIP:
-            self.model = CLIPEncoder(name=name)
+            self.model = CLIPEncoder(**kwargs)
         elif self.type == EncoderType.GOOGLE:
             self.model = GoogleEncoder(name=name)
         elif self.type == EncoderType.BEDROCK:
-            self.model = BedrockEncoder(name=name)  # type: ignore
+            self.model = BedrockEncoder(**kwargs)
         elif self.type == EncoderType.LITELLM:
             self.model = LiteLLMEncoder(name=name)
         elif self.type == EncoderType.OLLAMA:
             self.model = OllamaEncoder(name=name)
         elif self.type == EncoderType.LOCAL:
-            self.model = LocalEncoder(name=name)
+            self.model = LocalEncoder(**kwargs)
         else:
             raise ValueError(f"Encoder type '{type}' not supported")
 

@@ -152,6 +152,13 @@ class BaseRouter(ABC):
     ) -> FitReport:
         """calibrate on labelled queries. a label of None means no route should match."""
         scored = await self._scores_many(X)
+        if unscored := sum(not s for s in scored):
+            # a query that scores no route has no confidence to calibrate. raise, as
+            # Calibrator.fit does on data it can't fit, so a refit drops the calibrator
+            raise ValueError(
+                f"cannot calibrate: {unscored}/{len(X)} queries scored no route "
+                "(does the router have any routes?)"
+            )
         top = [max(s, key=lambda k: s[k]) for s in scored]
         raw = np.array([s[t] for s, t in zip(scored, top)])
         correct = np.array([t == truth for t, truth in zip(top, y)], dtype=float)

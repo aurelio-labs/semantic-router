@@ -384,9 +384,14 @@ def save_router(
     p = Path(path)
     data = _ADAPTER.dump_python(to_config(router), mode="json")
     if (format or _format(p)) == "yaml":
-        p.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+        p.write_text(
+            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
     else:
-        p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        p.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
 
 def load_router(path: str | Path) -> BaseRouter:
@@ -396,7 +401,7 @@ def load_router(path: str | Path) -> BaseRouter:
     """
     p = Path(path)
     fmt = _format(p)
-    text = p.read_text()
+    text = p.read_text(encoding="utf-8")
     data = yaml.safe_load(text) if fmt == "yaml" else json.loads(text)
     return from_config(data)
 

@@ -45,9 +45,7 @@ class EncoderDefault(Enum):
         ),
     }
     GOOGLE = {
-        "embedding_model": os.getenv(
-            "GOOGLE_EMBEDDING_MODEL", "textembedding-gecko@003"
-        ),
+        "embedding_model": os.getenv("GOOGLE_EMBEDDING_MODEL", "text-embedding-005"),
     }
     OLLAMA = {
         "embedding_model": os.getenv(

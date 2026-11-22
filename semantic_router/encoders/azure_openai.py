@@ -10,6 +10,7 @@ from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.openai import batch_docs
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -154,6 +155,28 @@ class AzureOpenAIEncoder(DenseEncoder):
                 f"OpenAI API client failed to initialize. Error: {e}"
             ) from e
 
+    def _validate_docs(self, docs: List[str]) -> None:
+        """Raise a clear error for input the embeddings API rejects with a 400.
+        Checked before the call, since a 400 is an OpenAIError and gets retried."""
+        if isinstance(docs, str):
+            raise ValueError(
+                "Azure OpenAI encoder input must be a list of strings, got str."
+            )
+        if len(docs) == 0:
+            raise ValueError("Azure OpenAI encoder input cannot be empty.")
+
+        for idx, doc in enumerate(docs):
+            if not isinstance(doc, str):
+                raise ValueError(
+                    "Azure OpenAI encoder input must contain only strings, got "
+                    f"{type(doc).__name__} at index {idx}."
+                )
+            # only "" is rejected by the API; docs are sent unchanged
+            if doc == "":
+                raise ValueError(
+                    f"Azure OpenAI encoder input contains an empty string at index {idx}."
+                )
+
     def __call__(self, docs: List[str]) -> List[List[float]]:
         """Encode a list of documents into embeddings using the Azure OpenAI API.
 
@@ -162,6 +185,16 @@ class AzureOpenAIEncoder(DenseEncoder):
         :return: The embeddings for the documents.
         :rtype: List[List[float]]
         """
+        if self.client is None:
+            raise ValueError("Azure OpenAI client is not initialized.")
+        self._validate_docs(docs)
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(self._embed_batch(batch))
+        return embeddings
+
+    def _embed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one batch of documents, retrying on OpenAI errors."""
         if self.client is None:
             raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
@@ -209,7 +242,18 @@ class AzureOpenAIEncoder(DenseEncoder):
         """
         if self.async_client is None:
             raise ValueError("Azure OpenAI async client is not initialized.")
+        self._validate_docs(docs)
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(await self._aembed_batch(batch))
+        return embeddings
+
+    async def _aembed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one batch of documents, retrying on OpenAI errors."""
+        if self.async_client is None:
+            raise ValueError("Azure OpenAI async client is not initialized.")
         embeds = None
+
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:

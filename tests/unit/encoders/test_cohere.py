@@ -7,7 +7,11 @@ from cohere.types.embed_by_type_response_embeddings import (
 )
 
 from semantic_router.encoders import CohereEncoder
-from semantic_router.encoders.cohere import docs2cohere_embed_input
+from semantic_router.encoders.cohere import (
+    COHERE_MAX_EMBED_BATCH,
+    batch_docs,
+    docs2cohere_embed_input,
+)
 
 
 def embed_response(embeddings: list[list[float]] | None) -> EmbedByTypeResponse:
@@ -182,3 +186,43 @@ class TestCohereEncoderAsync:
         async_client.embed.return_value = embed_response(None)
         with pytest.raises(ValueError, match="Cohere API call returned None"):
             await encoder.aencode_documents(["test"])
+
+
+def _echo_embed(call_inputs):
+    """Return one distinct embedding per input, so ordering can be checked."""
+
+    def _embed(inputs, **kwargs):
+        call_inputs.append(inputs)
+        return embed_response([[float(i["content"][0]["text"])] for i in inputs])
+
+    return _embed
+
+
+class TestBatching:
+    def test_batch_docs(self):
+        assert batch_docs(["a", "b", "c"], size=2) == [["a", "b"], ["c"]]
+        assert batch_docs([]) == [[]]
+
+    def test_encode_documents_splits_into_batches(self, encoder, mock_cohere):
+        sync_client, _ = mock_cohere
+        calls: list = []
+        sync_client.embed = Mock(side_effect=_echo_embed(calls))
+        n = COHERE_MAX_EMBED_BATCH * 2 + 5
+        result = encoder.encode_documents([str(i) for i in range(n)])
+        assert [len(c) for c in calls] == [COHERE_MAX_EMBED_BATCH] * 2 + [5]
+        assert result == [[float(i)] for i in range(n)]
+
+    @pytest.mark.asyncio
+    async def test_aencode_queries_splits_into_batches(self, encoder, mock_cohere):
+        _, async_client = mock_cohere
+        calls: list = []
+        echo = _echo_embed(calls)
+
+        async def _aembed(inputs, **kwargs):
+            return echo(inputs, **kwargs)
+
+        async_client.embed = AsyncMock(side_effect=_aembed)
+        n = COHERE_MAX_EMBED_BATCH + 1
+        result = await encoder.aencode_queries([str(i) for i in range(n)])
+        assert [len(c) for c in calls] == [COHERE_MAX_EMBED_BATCH, 1]
+        assert result == [[float(i)] for i in range(n)]
