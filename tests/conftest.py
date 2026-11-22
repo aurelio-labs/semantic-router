@@ -218,10 +218,11 @@ def _cleanup_mongodb_collections(monkeypatch):
 @pytest.fixture
 def make_index():
     """Factory for a new, empty index of the given class with a unique name, so tests
-    can run in parallel. Pass ``name`` to open a second handle on the same index. No
-    dimensions are set: each backend creates itself on its first add."""
+    can run in parallel. Pass ``name`` to open a second handle on the same index, and
+    ``namespace`` for another namespace in a Pinecone index. No dimensions are set:
+    each backend creates itself on its first add."""
 
-    def make(index_cls, name: str | None = None):
+    def make(index_cls, name: str | None = None, namespace: str | None = None):
         from semantic_router.index import (
             MongoDbIndex,
             PineconeIndex,
@@ -233,7 +234,7 @@ def make_index():
         if index_cls is PineconeIndex:
             if not os.environ["PINECONE_API_BASE_URL"].startswith("http://"):
                 pytest.skip("index backend tests run on pinecone-local")
-            return PineconeIndex(index_name=name)
+            return PineconeIndex(index_name=name, namespace=namespace or "")
         if index_cls is PostgresIndex:
             return PostgresIndex(index_name=name, index_prefix="")
         if index_cls is MongoDbIndex:

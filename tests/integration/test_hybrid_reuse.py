@@ -1,0 +1,164 @@
+"""A hybrid router with a fitted sparse encoder (TF-IDF) on an index that already holds
+routes: reopening, adding and removing keep every stored sparse row valid, never delete
+the index, and leave it as it was when encoding fails.
+
+The dense encoder is constant, so on HybridLocalIndex only the sparse side decides a
+route. pinecone-local stores records but scores dense values only, so on Pinecone these
+tests check the writes, not the routing.
+"""
+
+import pytest
+
+from semantic_router.encoders import DenseEncoder, TfidfEncoder
+from semantic_router.index import BaseIndex, HybridLocalIndex, PineconeIndex
+from semantic_router.route import Route
+from semantic_router.routers import IndexedRouter
+
+ZEBRA = Route(name="existing", utterances=["zebra"])
+APPLE = Route(name="new", utterances=["apple"])
+MANGO = Route(name="fruit", utterances=["mango"])
+
+
+class ConstantEncoder(DenseEncoder):
+    name: str = "constant"
+    fail: bool = False
+
+    def __call__(self, docs):
+        if self.fail:
+            raise RuntimeError("encoder down")
+        return [[1.0, 0.0] for _ in docs]
+
+
+@pytest.fixture(params=[HybridLocalIndex, PineconeIndex], ids=lambda c: c.__name__)
+def index_cls(request):
+    return request.param
+
+
+def reopen(index: BaseIndex, make_index, **kwargs) -> BaseIndex:
+    """another handle on the same stored index, as a second process would open it"""
+    if isinstance(index, PineconeIndex):
+        return make_index(PineconeIndex, name=index.index_name, **kwargs)
+    return index
+
+
+def build(routes, index, encoder=None) -> IndexedRouter:
+    return IndexedRouter(
+        encoder=encoder or ConstantEncoder(),
+        routes=routes,
+        index=index,
+        sparse_encoder=TfidfEncoder(),
+        alpha=0.5,
+        confidence_threshold=0.8,
+    )
+
+
+def stored(index: BaseIndex) -> list:
+    return sorted(
+        (u.route, str(u.utterance), str(u.metadata)) for u in index.get_utterances()
+    )
+
+
+def routes_sparse(router: IndexedRouter) -> bool:
+    # only HybridLocalIndex scores sparse vectors locally
+    return isinstance(router.index, HybridLocalIndex)
+
+
+def test_new_routes_on_a_filled_index_reencode_the_stored_rows(index_cls, make_index):
+    index = make_index(index_cls)
+    build([ZEBRA], index)
+
+    router = build([APPLE], reopen(index, make_index))
+
+    assert {r.name for r in router.routes} == {"existing", "new"}
+    assert len(index.get_utterances()) == 2
+    if routes_sparse(router):
+        # "zebra" was stored under the old vocabulary; a stale row would miss it
+        assert router("zebra").name == "existing"
+        assert router("apple").name == "new"
+
+
+@pytest.mark.parametrize("routes", [[ZEBRA, APPLE], [APPLE], []], ids=len)
+def test_reopening_with_routes_it_holds_writes_nothing(
+    index_cls, make_index, mocker, routes
+):
+    index = make_index(index_cls)
+    build([ZEBRA, APPLE], index)
+    add = mocker.spy(index_cls, "add")
+    delete = mocker.spy(index_cls, "delete")
+    delete_index = mocker.spy(index_cls, "delete_index")
+
+    router = build(routes, reopen(index, make_index))
+
+    assert add.call_count == delete.call_count == delete_index.call_count == 0
+    assert len(index.get_utterances()) == 2
+    if routes_sparse(router):
+        # the refit on the same corpus gives the vocabulary the rows were written with
+        assert router("zebra").name == "existing"
+        assert router("apple").name == "new"
+
+
+def test_a_failed_reopen_leaves_the_index_as_it_was(index_cls, make_index, mocker):
+    index = make_index(index_cls)
+    build([ZEBRA], index)
+    before = stored(index)
+    delete_index = mocker.spy(index_cls, "delete_index")
+
+    with pytest.raises(RuntimeError, match="encoder down"):
+        build([APPLE], reopen(index, make_index), encoder=ConstantEncoder(fail=True))
+
+    assert delete_index.call_count == 0
+    assert stored(index) == before
+    router = build([], reopen(index, make_index))
+    if routes_sparse(router):
+        assert router("zebra").name == "existing"
+
+
+def test_a_failed_add_leaves_the_index_and_the_router_as_they_were(
+    index_cls, make_index
+):
+    router = build([ZEBRA, APPLE], make_index(index_cls))
+    before = stored(router.index)
+
+    router.encoder.fail = True
+    with pytest.raises(RuntimeError, match="encoder down"):
+        router.add(routes=MANGO)
+    router.encoder.fail = False
+
+    assert stored(router.index) == before
+    assert {r.name for r in router.routes} == {"existing", "new"}
+    if routes_sparse(router):
+        # the sparse model went back to the one the stored rows were encoded with
+        assert router("zebra").name == "existing"
+        assert router("apple").name == "new"
+
+
+def test_add_and_remove_keep_the_sparse_rows_valid(make_index):
+    index = make_index(HybridLocalIndex)
+    router = build([ZEBRA], index)
+
+    router.add(routes=[APPLE, MANGO])
+    router.remove(name="fruit")
+
+    assert router("zebra").name == "existing"
+    assert router("apple").name == "new"
+    # a new process refits on what is left: its vocabulary must match the stored rows
+    reopened = build([], index)
+    assert reopened("zebra").name == "existing"
+    assert reopened("apple").name == "new"
+    assert reopened("mango").name is None
+
+
+def test_add_and_remove_leave_other_namespaces_alone(make_index):
+    a = make_index(PineconeIndex)
+    b = make_index(PineconeIndex, name=a.index_name, namespace="other")
+    router = build([ZEBRA], a)
+    build([MANGO], b)
+
+    router.add(routes=APPLE)
+    router.remove(name="new")
+
+    # fresh handles: an old one can keep reading a deleted index's data-plane host
+    other = make_index(PineconeIndex, name=a.index_name, namespace="other")
+    assert [u.route for u in other.get_utterances()] == ["fruit"]
+    same = make_index(PineconeIndex, name=a.index_name)
+    assert [u.route for u in same.get_utterances()] == ["existing"]
