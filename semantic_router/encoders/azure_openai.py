@@ -10,6 +10,7 @@ from openai._types import NotGiven
 from openai.types import CreateEmbeddingResponse
 
 from semantic_router.encoders import DenseEncoder
+from semantic_router.encoders.openai import batch_docs
 from semantic_router.utils.defaults import EncoderDefault
 from semantic_router.utils.logger import logger
 
@@ -187,6 +188,15 @@ class AzureOpenAIEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("Azure OpenAI client is not initialized.")
         self._validate_docs(docs)
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(self._embed_batch(batch))
+        return embeddings
+
+    def _embed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one batch of documents, retrying on OpenAI errors."""
+        if self.client is None:
+            raise ValueError("Azure OpenAI client is not initialized.")
         embeds = None
 
         # Exponential backoff
@@ -233,7 +243,17 @@ class AzureOpenAIEncoder(DenseEncoder):
         if self.async_client is None:
             raise ValueError("Azure OpenAI async client is not initialized.")
         self._validate_docs(docs)
+        embeddings: List[List[float]] = []
+        for batch in batch_docs(docs):
+            embeddings.extend(await self._aembed_batch(batch))
+        return embeddings
+
+    async def _aembed_batch(self, docs: List[str]) -> List[List[float]]:
+        """Embed one batch of documents, retrying on OpenAI errors."""
+        if self.async_client is None:
+            raise ValueError("Azure OpenAI async client is not initialized.")
         embeds = None
+
         # Exponential backoff
         for j in range(self.max_retries + 1):
             try:

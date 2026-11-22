@@ -1102,6 +1102,11 @@ class PineconeIndex(BaseIndex):
                 json=params,
                 headers=self.headers,
             ) as response:
+                if response.status != 200:
+                    error_message = await response.text()
+                    raise Exception(
+                        f"Failed to delete vectors: {response.status} : {error_message}"
+                    )
                 return await response.json(content_type=None)
 
     async def _async_describe_index(self, name: str):
