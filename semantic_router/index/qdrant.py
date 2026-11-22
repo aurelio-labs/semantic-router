@@ -597,13 +597,10 @@ class QdrantIndex(BaseIndex):
             # in-memory and on-disk qdrant have no async client (see _initialize_clients),
             # so the async methods run the sync ones, like LocalIndex does
             logger.debug("Cannot use async query with an in-memory Qdrant instance")
-            return self.query(
-                vector=vector,
-                top_k=top_k,
-                route_filter=route_filter,
-                sparse_vector=sparse_vector,
-                **self._utterances_kwarg(return_utterances),
-            )
+            # positional, as 1.x called it, so an override of query keeps working
+            if self._utterances_kwarg(return_utterances):
+                return self.query(vector, top_k, route_filter, return_utterances=True)
+            return self.query(vector, top_k, route_filter)
 
         filter = None
         if route_filter is not None:
