@@ -147,9 +147,9 @@ for match in choice.matched_utterances:
 |---|---|
 | `None` | You didn't ask, nothing cleared the bar, or the router can't say (a `DecisionRouter`, or a custom index that doesn't return utterances). |
 | `[]` | You asked, but none of the route's utterances were in the index's `top_k` hits. |
-| A list | The route's hits, best first. Scores are raw, never calibrated. |
+| A list | The route's hits (best first from an `IndexedRouter`). Scores are raw, never calibrated. |
 
-`Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, each with its own router's score. It's off by default, so routers that don't ask do no extra work.
+`Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, router by router in the order you passed them, each with its own router's score, so its list isn't sorted across routers. It's off by default, so a call that doesn't ask runs no extra search.
 
 Every method has an async twin:
 

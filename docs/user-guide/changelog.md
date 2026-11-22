@@ -5,15 +5,15 @@ description: What changed in each Semantic Router release.
 
 ### v1.2.0
 
-`1.2.0` adds one feature: a router can tell you which stored utterances matched a query. It's off by default, so code written for `1.1.3` works unchanged and does no extra work.
+`1.2.0` adds one feature: a router can tell you which stored utterances matched a query. It's off by default: code written for `1.1.3` keeps working, and a call that doesn't ask runs no extra search. `RouteChoice` has a new `matched_utterances` field, so `model_dump()` and JSON output include `matched_utterances: None`.
 
 #### Feature: Matched utterances
 
-- `router(query, return_utterances=True)` (and `acall`) fills each `RouteChoice.matched_utterances` with the stored utterances behind it, as `MatchedUtterance(text, score, route)`, best first. Scores are the index's raw similarity scores, never calibrated. Use it to debug a misroute or tune a threshold. ([#479](https://github.com/aurelio-labs/semantic-router/issues/479))
+- `router(query, return_utterances=True)` (and `acall`) fills each `RouteChoice.matched_utterances` with the stored utterances behind it, as `MatchedUtterance(text, score, route)`. Scores are the index's raw similarity scores, never calibrated. Use it to debug a misroute or tune a threshold. ([#479](https://github.com/aurelio-labs/semantic-router/issues/479))
 - `matched_utterances` is `None` when you didn't ask, when nothing cleared the threshold, or when the router can't say (a `DecisionRouter`, or a custom index that doesn't return utterances). It's `[]` when you asked but none of the route's utterances were in the index's `top_k` hits.
-- `Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, each with its own router's score.
+- An `IndexedRouter` lists each route's matches best first. `Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, router by router in the order you passed them (so not sorted across routers), each with its own router's score.
 - Every built-in index takes `return_utterances=True` on `query` and `aquery`, and then returns `(scores, routes, utterances)`. Without it, they return `(scores, routes)` as before.
-- A custom index whose `query` doesn't take `return_utterances` keeps working: the router routes as before, leaves `matched_utterances` as `None`, and logs a warning once.
+- A custom index whose `query` doesn't take `return_utterances` keeps working: the router routes as before, leaves `matched_utterances` as `None`, and logs a warning once per index class.
 - A custom router that implements `_scores` keeps working. To return matches from your own router, override the new `_results_many(queries, return_utterances)` hook, which returns a `QueryResult` per query.
 
 ### v1.1.3
