@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+import asyncio
 
 import pytest
 
@@ -126,46 +126,6 @@ class TestGoogleEncoder:
         with pytest.raises(ValueError):
             google_encoder(["test"])
 
-    @pytest.mark.asyncio
-    async def test_acall_returns_embeddings(self, google_encoder, mocker):
-        mock_embeddings = [
-            TextEmbedding(
-                values=[0.1, 0.2, 0.3],
-                statistics=TextEmbeddingStatistics(token_count=5, truncated=False),
-            ),
-            TextEmbedding(
-                values=[0.4, 0.5, 0.6],
-                statistics=TextEmbeddingStatistics(token_count=6, truncated=False),
-            ),
-        ]
-        mocker.patch.object(
-            google_encoder.client,
-            "get_embeddings_async",
-            new=AsyncMock(return_value=mock_embeddings),
-        )
-
-        result = await google_encoder.acall(["test1", "test2"])
-        assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
-        google_encoder.client.get_embeddings_async.assert_awaited_once_with(
-            ["test1", "test2"]
-        )
-
-    @pytest.mark.asyncio
-    async def test_acall_without_client_raises(self, google_encoder):
-        google_encoder.client = None
-        with pytest.raises(ValueError, match="client is not initialized"):
-            await google_encoder.acall(["test"])
-
-    @pytest.mark.asyncio
-    async def test_acall_api_error_raises_value_error(self, google_encoder, mocker):
-        mocker.patch.object(
-            google_encoder.client,
-            "get_embeddings_async",
-            new=AsyncMock(side_effect=GoogleAPICallError("boom")),
-        )
-        with pytest.raises(ValueError, match="API call failed"):
-            await google_encoder.acall(["test"])
-
 
 class TestGoogleEncoderBatching:
     def test_call_splits_into_batches_of_250(self, google_encoder, mocker):
@@ -215,27 +175,52 @@ class TestGoogleEncoderBatching:
         assert [len(c.args[0]) for c in calls] == [1, 1, 1]
         assert result == [[0.0], [1.0], [2.0]]
 
-    @pytest.mark.asyncio
-    async def test_acall_splits_into_batches_of_250(self, google_encoder, mocker):
-        async def fake_get_embeddings_async(batch):
-            return [
-                TextEmbedding(
-                    values=[float(doc)],
-                    statistics=TextEmbeddingStatistics(token_count=1, truncated=False),
-                )
-                for doc in batch
-            ]
 
+def _fake_embeddings(batch):
+    return [
+        TextEmbedding(
+            values=[float(doc)],
+            statistics=TextEmbeddingStatistics(token_count=1, truncated=False),
+        )
+        for doc in batch
+    ]
+
+
+class TestGoogleEncoderAcall:
+    @pytest.mark.asyncio
+    async def test_acall_returns_embeddings(self, google_encoder, mocker):
+        mocker.patch.object(
+            google_encoder.client, "get_embeddings", side_effect=_fake_embeddings
+        )
+        result = await google_encoder.acall(["1", "2"])
+        assert result == [[1.0], [2.0]]
+
+    @pytest.mark.asyncio
+    async def test_acall_without_client_raises(self, google_encoder):
+        google_encoder.client = None
+        with pytest.raises(ValueError, match="client is not initialized"):
+            await google_encoder.acall(["test"])
+
+    @pytest.mark.asyncio
+    async def test_acall_api_error_raises_value_error(self, google_encoder, mocker):
         mocker.patch.object(
             google_encoder.client,
-            "get_embeddings_async",
-            new=AsyncMock(side_effect=fake_get_embeddings_async),
+            "get_embeddings",
+            side_effect=GoogleAPICallError("boom"),
+        )
+        with pytest.raises(ValueError, match="API call failed"):
+            await google_encoder.acall(["test"])
+
+    @pytest.mark.asyncio
+    async def test_acall_splits_into_batches_of_250(self, google_encoder, mocker):
+        mocker.patch.object(
+            google_encoder.client, "get_embeddings", side_effect=_fake_embeddings
         )
         docs = [str(i) for i in range(600)]
 
         result = await google_encoder.acall(docs)
 
-        calls = google_encoder.client.get_embeddings_async.call_args_list
+        calls = google_encoder.client.get_embeddings.call_args_list
         assert [len(c.args[0]) for c in calls] == [250, 250, 100]
         assert result == [[float(i)] for i in range(600)]
 
@@ -246,24 +231,26 @@ class TestGoogleEncoderBatching:
         encoder = GoogleEncoder(
             name="gemini-embedding-001", project_id="test_project_id"
         )
-
-        async def fake_get_embeddings_async(batch):
-            return [
-                TextEmbedding(
-                    values=[float(doc)],
-                    statistics=TextEmbeddingStatistics(token_count=1, truncated=False),
-                )
-                for doc in batch
-            ]
-
         mocker.patch.object(
-            encoder.client,
-            "get_embeddings_async",
-            new=AsyncMock(side_effect=fake_get_embeddings_async),
+            encoder.client, "get_embeddings", side_effect=_fake_embeddings
         )
 
         result = await encoder.acall(["0", "1", "2"])
 
-        calls = encoder.client.get_embeddings_async.call_args_list
+        calls = encoder.client.get_embeddings.call_args_list
         assert [len(c.args[0]) for c in calls] == [1, 1, 1]
         assert result == [[0.0], [1.0], [2.0]]
+
+    def test_acall_never_uses_the_loop_bound_async_client(self, google_encoder, mocker):
+        # the SDK's async client binds a gRPC channel to the first event loop, so a
+        # second asyncio.run() would fail; acall must stay on the sync client
+        mocker.patch.object(
+            google_encoder.client, "get_embeddings", side_effect=_fake_embeddings
+        )
+        async_embed = mocker.patch.object(
+            google_encoder.client, "get_embeddings_async", create=True
+        )
+
+        assert asyncio.run(google_encoder.acall(["1"])) == [[1.0]]
+        assert asyncio.run(google_encoder.acall(["2"])) == [[2.0]]
+        async_embed.assert_not_called()

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any, List, Optional
 
@@ -157,6 +158,10 @@ class GoogleEncoder(DenseEncoder):
     async def acall(self, docs: List[str]) -> List[List[float]]:
         """Generates embeddings for the given documents asynchronously.
 
+        Runs the sync client in a worker thread. The SDK's async client caches a gRPC
+        channel bound to the first event loop it runs on, so a second
+        ``asyncio.run(...)`` would fail with ``Event loop is closed``.
+
         :param docs: A list of strings representing the documents to embed.
         :type docs: List[str]
         :return: A list of lists, where each inner list contains the embedding values for a
@@ -165,17 +170,4 @@ class GoogleEncoder(DenseEncoder):
         :raise ValueError: If the Google AI Platform client is not initialized or if the
             API call fails.
         """
-        if self.client is None:
-            raise ValueError("Google AI Platform client is not initialized.")
-        try:
-            embeddings: List[List[float]] = []
-            size = max_embed_batch(self.name)
-            for start in range(0, len(docs), size):
-                batch = docs[start : start + size]
-                embeddings.extend(
-                    embedding.values
-                    for embedding in await self.client.get_embeddings_async(batch)
-                )
-            return embeddings
-        except Exception as e:
-            raise ValueError(f"Google AI Platform API call failed. Error: {e}") from e
+        return await asyncio.to_thread(self.__call__, docs)
