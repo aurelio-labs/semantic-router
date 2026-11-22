@@ -235,7 +235,7 @@ class HybridLocalIndex(LocalIndex):
             top_k=top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
-            return_utterances=return_utterances,
+            **self._utterances_kwarg(return_utterances),
         )
 
     def _keep(self, mask: np.ndarray):

@@ -461,3 +461,69 @@ def test_merge_gives_the_utterances_of_every_router_that_has_them(router):
     # both indexed routers found it; the keyword router adds nothing
     assert texts.count("found a bug") == 2
     assert merge("found a bug").matched_utterances is None
+
+
+# routers and indexes written for 1.x, before matches existed
+
+
+class Overruled(IndexedRouter):
+    """overrides the documented batch hook: its scores, not the index's, decide."""
+
+    async def _scores_many(self, queries):
+        return [{"billing": 0.0, "technical": 1.0} for _ in queries]
+
+
+class OverruledOne(IndexedRouter):
+    async def _scores(self, query):
+        return {"billing": 0.0, "technical": 1.0}
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_a_router_that_overrides_its_scoring_keeps_it_everywhere(matches):
+    r = Overruled(FakeEncoder(), ROUTES)
+    for router in [r, Chain(routers=[r]), Merge(routers=[r])]:
+        choice = router("i want a refund", return_utterances=matches)
+        assert choice.name == "technical", type(router).__name__
+        # matches from the index would explain a choice the scores didn't make
+        assert choice.matched_utterances is None
+
+
+def test_a_router_that_overrides_scores_keeps_it_with_matches_on():
+    r = OverruledOne(FakeEncoder(), ROUTES)
+    assert r("i want a refund").name == "technical"
+    choice = r("i want a refund", return_utterances=True)
+    assert choice.name == "technical"
+    assert choice.matched_utterances is None
+
+
+class QueryOnlyIndex(LocalIndex):
+    """overrides query only, with 1.x's signature; aquery is inherited."""
+
+    def query(self, vector, top_k=5, route_filter=None, sparse_vector=None):
+        return super().query(vector=vector, top_k=top_k, route_filter=route_filter)
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_an_index_that_overrides_only_query_works_async(matches):
+    index = QueryOnlyIndex()
+    index.add(embeddings=[[1.0, 0.0]], routes=["a"], utterances=["x"])
+    result = asyncio.run(
+        index.aquery(vector=np.array([1.0, 0.0]), top_k=1, return_utterances=matches)
+    )
+    assert len(result) == 2  # it can't return utterances, so it doesn't
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=QueryOnlyIndex())
+    choice = asyncio.run(r.acall("i want a refund", return_utterances=matches))
+    assert choice.name == "billing"
+    assert choice.matched_utterances is None
+
+
+class OldCall(Keywords):
+    """overrides acall with 1.x's signature, its own parameter names and all."""
+
+    async def acall(self, q, lim=1, thr=None):
+        return await super().acall(q, lim, thr)
+
+
+def test_a_router_with_an_old_acall_still_works_when_called():
+    assert OldCall(ROUTES)("refund").name == "billing"
+    assert OldCall(ROUTES)("refund", limit=None)[0].name == "billing"

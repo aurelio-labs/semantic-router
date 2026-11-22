@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import time
 from typing import Callable, Literal, Sequence
 
@@ -17,6 +16,7 @@ from semantic_router.encoders.base import (
     FittableMixin,
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
+from semantic_router.index.base import _takes_utterances
 from semantic_router.route import Route
 from semantic_router.routers.base import (
     BaseRouter,
@@ -376,9 +376,17 @@ class IndexedRouter(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
-        return [r.scores for r in await self._results_many(queries)]
+        return [r.scores for r in await self._search_many(queries)]
 
     async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(IndexedRouter, queries)
+        if custom is not None:
+            return custom
+        return await self._search_many(queries, return_utterances=return_utterances)
+
+    async def _search_many(
         self, queries: Sequence[str], return_utterances: bool = False
     ) -> list[QueryResult]:
         # one encoder call for the whole batch, then a cheap index query per vector
@@ -403,15 +411,6 @@ class IndexedRouter(BaseRouter):
                 )
             )
         )
-
-
-def _takes_utterances(search: Callable) -> bool:
-    """whether an index's query method takes return_utterances."""
-    try:
-        params = inspect.signature(search).parameters.values()
-    except (TypeError, ValueError):
-        return False
-    return any(p.name == "return_utterances" or p.kind is p.VAR_KEYWORD for p in params)
 
 
 _warned: set[type] = set()

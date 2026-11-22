@@ -118,6 +118,20 @@ class BaseRouter(ABC):
         has scores only."""
         return [QueryResult(scores=s) for s in await self._scores_many(queries)]
 
+    async def _custom_results(
+        self, owner: type[BaseRouter], queries: Sequence[str]
+    ) -> list[QueryResult] | None:
+        """scores only, from a subclass's own scoring hooks, when it overrides `owner`'s:
+        its matches would come from a search its scores no longer use. None otherwise."""
+        cls = type(self)
+        if cls._scores_many is not owner._scores_many:
+            return await BaseRouter._results_many(self, queries)
+        if cls._scores is not owner._scores:
+            # BaseRouter's own fan-out runs the subclass's _scores
+            scored = await BaseRouter._scores_many(self, queries)
+            return [QueryResult(scores=s) for s in scored]
+        return None
+
     @property
     def calibrated(self) -> bool:
         return self.calibrator is not None or self.probabilistic
@@ -201,14 +215,10 @@ class BaseRouter(ABC):
         threshold: float | None = None,
         return_utterances: bool = False,
     ) -> RouteChoice | list[RouteChoice]:
-        return run(
-            self.acall(
-                query,
-                limit=limit,
-                threshold=threshold,
-                return_utterances=return_utterances,
-            )
-        )
+        if not return_utterances:
+            # the call 1.x made, so a subclass's own acall keeps working
+            return run(self.acall(query, limit, threshold))
+        return run(self.acall(query, limit, threshold, return_utterances=True))
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"

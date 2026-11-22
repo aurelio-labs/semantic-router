@@ -42,9 +42,17 @@ class Chain(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
-        return [r.scores for r in await self._results_many(queries)]
+        return [r.scores for r in await self._chain(queries)]
 
     async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(Chain, queries)
+        if custom is not None:
+            return custom
+        return await self._chain(queries, return_utterances=return_utterances)
+
+    async def _chain(
         self, queries: Sequence[str], return_utterances: bool = False
     ) -> list[QueryResult]:
         # each router scores, in one batch, only the queries the routers before it
@@ -52,8 +60,8 @@ class Chain(BaseRouter):
         out: dict[int, QueryResult] = {}
         pending = list(range(len(queries)))
         for r in self.routers:
-            results = await r._results_many(
-                [queries[i] for i in pending], return_utterances=return_utterances
+            results = await _results(
+                r, [queries[i] for i in pending], return_utterances
             )
             unsure = []
             for i, res in zip(pending, results):
@@ -140,19 +148,24 @@ class Merge(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
-        return [r.scores for r in await self._results_many(queries)]
+        return [r.scores for r in await self._merge(queries)]
 
     async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(Merge, queries)
+        if custom is not None:
+            return custom
+        return await self._merge(queries, return_utterances=return_utterances)
+
+    async def _merge(
         self, queries: Sequence[str], return_utterances: bool = False
     ) -> list[QueryResult]:
         # every router scores the whole batch at once, so an indexed router makes one
         # embed call for it rather than one per query
         shares = self._shares()  # before any router runs, so bad weights cost nothing
         results = await asyncio.gather(
-            *(
-                r._results_many(queries, return_utterances=return_utterances)
-                for r in self.routers
-            )
+            *(_results(r, queries, return_utterances) for r in self.routers)
         )
         out = []
         for per_router in zip(*results):
@@ -174,3 +187,13 @@ class Merge(BaseRouter):
                 )
             )
         return out
+
+
+async def _results(
+    router: BaseRouter, queries: Sequence[str], return_utterances: bool
+) -> list[QueryResult]:
+    if not return_utterances:
+        # scores through the router's _scores_many, as before matches existed, so a
+        # subclass that overrides it still decides what the composite sees
+        return [QueryResult(scores=s) for s in await router._scores_many(queries)]
+    return await router._results_many(queries, return_utterances=True)

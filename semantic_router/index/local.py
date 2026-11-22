@@ -303,7 +303,7 @@ class LocalIndex(BaseIndex):
             top_k=top_k,
             route_filter=route_filter,
             sparse_vector=sparse_vector,
-            return_utterances=return_utterances,
+            **self._utterances_kwarg(return_utterances),
         )
 
     def delete(self, route_name: str):

@@ -378,13 +378,15 @@ class MongoDbIndex(BaseIndex):
         return_utterances: bool = False,
     ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Async :meth:`query`."""
+        flag = self._utterances_kwarg(return_utterances)
         return await asyncio.to_thread(
-            self.query,
-            vector=vector,
-            top_k=top_k,
-            route_filter=route_filter,
-            sparse_vector=sparse_vector,
-            return_utterances=return_utterances,
+            lambda: self.query(
+                vector=vector,
+                top_k=top_k,
+                route_filter=route_filter,
+                sparse_vector=sparse_vector,
+                **flag,
+            )
         )
 
     # --------------------------------------------------------------- delete

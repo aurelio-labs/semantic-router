@@ -1,4 +1,16 @@
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union, overload
+import inspect
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -6,6 +18,17 @@ from pydantic import BaseModel, ConfigDict
 from semantic_router.route import Route
 from semantic_router.schema import SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
+
+
+def _takes_utterances(search: Callable) -> bool:
+    """whether a query method takes return_utterances. A subclass written before the
+    flag existed overrides query without it."""
+    try:
+        params = inspect.signature(search).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(p.name == "return_utterances" or p.kind is p.VAR_KEYWORD for p in params)
+
 
 # Reserved record metadata keys. Every key starting with ``sr_`` belongs to semantic
 # router: ``sr_route`` and ``sr_utterance`` identify a record, and the route-level
@@ -186,6 +209,13 @@ class BaseIndex(BaseModel):
         :rtype: bool
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+    def _utterances_kwarg(self, return_utterances: bool) -> Dict[str, bool]:
+        """the flag for ``self.query``, passed only when asked for and taken, so the
+        async methods that run ``query`` keep working on an older subclass."""
+        if return_utterances and _takes_utterances(self.query):
+            return {"return_utterances": True}
+        return {}
 
     @overload
     def query(
