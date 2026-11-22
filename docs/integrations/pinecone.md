@@ -151,6 +151,7 @@ Common errors and solutions:
 
 - **403 (Quota)**: Set `PINECONE_INDEX_NAME` to reuse an existing index
 - **404 (Not Found)**: Index or namespace doesn't exist yet (will be created)
+- **Failed async list page**: `adelete()`, `aget_routes()`, `arefresh()` and a sparse-encoder `aadd()` raise the HTTP error rather than continue with a partial route list. A 404 still reads as an empty index.
 - **Dimension Mismatch**: Ensure encoder dimensions match index dimensions
 
 ## Testing without Pinecone cloud
