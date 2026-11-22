@@ -162,3 +162,38 @@ def test_add_and_remove_leave_other_namespaces_alone(make_index):
     assert [u.route for u in other.get_utterances()] == ["fruit"]
     same = make_index(PineconeIndex, name=a.index_name)
     assert [u.route for u in same.get_utterances()] == ["existing"]
+
+
+@pytest.mark.parametrize("how", ["add", "reopen"])
+def test_new_fields_on_part_of_a_route_reach_all_its_rows(index_cls, make_index, how):
+    index = make_index(index_cls)
+    old = Route(name="fruit", utterances=["apple", "mango"], description="old")
+    router = build([ZEBRA, old], index)
+    changed = Route(name="fruit", utterances=["mango"], description="new")
+
+    if how == "add":
+        router.add(routes=changed)
+    else:
+        router = build([changed], reopen(index, make_index))
+
+    fruit = {r.name: r for r in router.routes}["fruit"]
+    assert fruit.description == "new"
+    assert sorted(fruit.utterances) == ["apple", "mango"]
+    rows = [u for u in index.get_utterances() if u.route == "fruit"]
+    assert {u.metadata.get("sr_description") for u in rows} == {"new"}
+
+
+def test_a_failed_delete_on_remove_leaves_the_router_aligned(make_index, mocker):
+    index = make_index(HybridLocalIndex)
+    router = build([ZEBRA, APPLE, MANGO], index)
+    before = stored(index)
+    mocker.patch.object(HybridLocalIndex, "delete", side_effect=RuntimeError("down"))
+
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+
+    assert stored(index) == before
+    # the sparse model still matches the rows the index holds
+    assert router("zebra").name == "existing"
+    assert router("apple").name == "new"
+    assert router("mango").name == "fruit"

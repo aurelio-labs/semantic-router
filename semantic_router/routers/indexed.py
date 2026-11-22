@@ -230,7 +230,16 @@ class IndexedRouter(BaseRouter):
         pairs = {(r.name, str(u)) for r in stored for u in r.utterances}
         grows = any((r.name, str(u)) not in pairs for r in routes for u in r.utterances)
         held = {r.name: r for r in stored}
-        todo = corpus if grows else [r for r in routes if not _held(held, r)]
+        merged = {r.name: r for r in corpus}
+        # a changed route is written whole, so all its rows get its new fields
+        todo = (
+            corpus
+            if grows
+            else [
+                merged[n]
+                for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
+            ]
+        )
         self.sparse_encoder.fit(corpus)
         try:
             self._index(todo)
@@ -252,6 +261,7 @@ class IndexedRouter(BaseRouter):
 
     async def _on_remove(self, name: str) -> None:
         records = None
+        stored: list[Route] = []
         if isinstance(self.sparse_encoder, FittableMixin):
             # fewer utterances move a fitted vocabulary too, so the remaining rows are
             # encoded with the refit model before anything is deleted
@@ -264,12 +274,19 @@ class IndexedRouter(BaseRouter):
                 except BaseException:
                     self.sparse_encoder.fit(stored)
                     raise
-        if in_sync_call():
-            await asyncio.to_thread(self.index.delete, name)
-        else:
-            await self.index.adelete(name)
-        if records is not None:
-            await asyncio.to_thread(self.index.add, **records)
+        try:
+            if in_sync_call():
+                await asyncio.to_thread(self.index.delete, name)
+            else:
+                await self.index.adelete(name)
+            if records is not None:
+                await asyncio.to_thread(self.index.add, **records)
+        except BaseException:
+            if records is not None:
+                # the stored rows still hold the old encoding (a failed delete changed
+                # nothing): put back the model they were encoded with
+                self.sparse_encoder.fit(stored)
+            raise
         await self.arefresh()
 
     async def _query(
