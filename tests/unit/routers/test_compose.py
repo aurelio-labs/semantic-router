@@ -78,10 +78,30 @@ def test_merge_wants_one_weight_per_router(weights):
         Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
 
 
-@pytest.mark.parametrize("weights", [[0, 0], [-1, 2], [1, float("nan")]])
+@pytest.mark.parametrize(
+    "weights",
+    [[0, 0], [-1, 2], [1, float("nan")], [float("inf"), 1], [1, float("-inf")]],
+)
 def test_merge_wants_weights_that_add_up(weights):
-    with pytest.raises(ValueError, match="weights must be 0 or more"):
+    with pytest.raises(ValueError, match="weights must be finite"):
         Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
+
+
+def test_merge_takes_huge_weights_without_overflow():
+    m = Merge(
+        routers=[Canned({"a": 0.75}), Canned({"a": 0.75})], weights=[1e308, 1e308]
+    )
+    assert m("q").confidence == pytest.approx(0.75)
+
+
+def test_merge_reads_the_weights_at_each_call():
+    m = Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=[1, 1])
+    assert m("q").confidence == pytest.approx(0.5)
+    m.weights[0] = 3
+    assert m("q").confidence == pytest.approx(0.75)
+    m.weights[0] = float("inf")
+    with pytest.raises(ValueError, match="weights must be finite"):
+        m("q")
 
 
 def test_chain_checks_the_top_routes_own_bar():

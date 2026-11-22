@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from typing import Sequence
 
 from semantic_router.route import Route
@@ -78,20 +79,30 @@ class Merge(BaseRouter):
         confidence_threshold: float | None = None,
     ):
         self.routers = list(routers)
-        if weights is None:
-            weights = [1.0] * len(self.routers)
-        elif len(weights) != len(self.routers):
+        self.weights = [1.0] * len(self.routers) if weights is None else list(weights)
+        self._shares()  # fail at construction, not at the first call
+        super().__init__([], confidence_threshold)
+
+    def _shares(self) -> list[float]:
+        """each router's share of the mean, from the current `weights`."""
+        weights = self.weights
+        if len(weights) != len(self.routers):
             # zip would drop routers past a short list, and a long one only adds to the total
             raise ValueError(
                 f"got {len(weights)} weights for {len(self.routers)} routers; "
                 "give one weight per router"
             )
-        elif any(w < 0 for w in weights) or not sum(weights) > 0:
+        if any(not (math.isfinite(w) and w >= 0) for w in weights) or not any(
+            w > 0 for w in weights
+        ):
             raise ValueError(
-                f"weights must be 0 or more and add up to more than 0, got {weights}"
+                f"weights must be finite, 0 or more, and not all 0, got {weights}"
             )
-        self.weights = list(weights)
-        super().__init__([], confidence_threshold)
+        # scaled by the largest first, so huge weights can't overflow the sum
+        top = max(weights)
+        scaled = [w / top for w in weights]
+        total = sum(scaled)
+        return [w / total for w in scaled]
 
     @property
     def routes(self) -> list[Route]:
@@ -113,15 +124,14 @@ class Merge(BaseRouter):
         # every router scores the whole batch at once, so an indexed router makes one
         # embed call for it rather than one per query
         results = await asyncio.gather(*(r._scores_many(queries) for r in self.routers))
-        total = sum(self.weights)
+        shares = self._shares()
         out = []
         for per_router in zip(*results):
             probs = [r._probs(s) for r, s in zip(self.routers, per_router)]
             names = dict.fromkeys(n for p in probs for n in p)
             out.append(
                 {
-                    n: sum(w * p.get(n, 0.0) for w, p in zip(self.weights, probs))
-                    / total
+                    n: sum(w * p.get(n, 0.0) for w, p in zip(shares, probs))
                     for n in names
                 }
             )
