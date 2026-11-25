@@ -3,6 +3,14 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.3.0
+
+`1.3.0` adds one decision model. There are no breaking changes, and nothing to change in code written for `1.2.0`.
+
+#### Feature: Nace Drex
+
+- `NaceDecisionModel` calls nace.ai's Drex over the same `/v1/systemone` API as Jev. Pass it as `DecisionRouter(model=NaceDecisionModel(), routes=routes)`. It reads its key from `NACE_API_KEY`, and router files save it as `type: nace`. ([#825](https://github.com/aurelio-labs/semantic-router/issues/825))
+
 ### v1.2.0
 
 `1.2.0` adds one feature: a router can tell you which stored utterances matched a query. It's off by default: code written for `1.1.3` keeps working, and a call that doesn't ask runs no extra search. `RouteChoice` has a new `matched_utterances` field, so `model_dump()` and JSON output include `matched_utterances: None`.
