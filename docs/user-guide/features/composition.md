@@ -67,7 +67,7 @@ router = Merge(routers=[fast, smart], weights=[1, 2])
 router("I was billed for a plan I cancelled")
 ```
 
-Merge runs every router at the same time and returns, for each route, the weighted mean of their confidences: `(1 × fast + 2 × smart) / 3` here. Without `weights`, every router counts equally. A call always takes as long as the slowest router.
+Merge runs every router at the same time and returns, for each route, the weighted mean of their confidences: `(1 × fast + 2 × smart) / 3` here. Without `weights`, every router counts equally. Give one weight per router, none below 0, adding up to more than 0. A call always takes as long as the slowest router.
 
 Average only like with like. A raw cosine similarity and a probability are different units, so calibrate every router before you merge them.
 

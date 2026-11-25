@@ -534,3 +534,38 @@ class TestReadiness:
         assert await idx.ais_ready() is True
         idx.aclient.collection_exists = AsyncMock(return_value=False)
         assert await idx.ais_ready() is False
+
+
+def test_sync_writes_wait_until_they_are_applied(mocker):
+    # upload_collection defaults to wait=False, which lets a read straight after a
+    # write see the old payload on a Qdrant server
+    idx = make_index()
+    upload = mocker.spy(idx.client, "upload_collection")
+    delete = mocker.spy(idx.client, "delete")
+
+    idx.add(embeddings=rand_vecs(2), routes=["a", "b"], utterances=["x", "y"])
+    idx.delete("a")
+
+    assert upload.call_args.kwargs["wait"] is True
+    # delete waits unless told not to
+    assert delete.call_args.kwargs.get("wait", True) is True
+
+
+class OldQuery(QdrantIndex):
+    """overrides query with 1.x's signature, its own parameter names and all."""
+
+    def query(self, v, k=5, f=None):
+        return super().query(vector=v, top_k=k, route_filter=f)
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_an_in_memory_index_that_overrides_query_works_async(matches):
+    import asyncio
+
+    idx = OldQuery(index_name=f"test-{uuid.uuid4().hex[:8]}", dimensions=DIMS)
+    idx.add(embeddings=rand_vecs(1), routes=["a"], utterances=["x"])
+    result = asyncio.run(
+        idx.aquery(vector=np.array(rand_vecs(1)[0]), top_k=1, return_utterances=matches)
+    )
+    assert len(result) == 2  # it can't return utterances, so it doesn't
+    assert list(result[1]) == ["a"]

@@ -3,6 +3,58 @@ title: Changelog
 description: What changed in each Semantic Router release.
 ---
 
+### v1.2.0
+
+`1.2.0` adds one feature: a router can tell you which stored utterances matched a query. It's off by default: code written for `1.1.3` keeps working, and a call that doesn't ask runs no extra search. `RouteChoice` has a new `matched_utterances` field, so `model_dump()` and JSON output include `matched_utterances: None`.
+
+#### Feature: Matched utterances
+
+- `router(query, return_utterances=True)` (and `acall`) fills each `RouteChoice.matched_utterances` with the stored utterances behind it, as `MatchedUtterance(text, score, route)`. Scores are the index's raw similarity scores, never calibrated. Use it to debug a misroute or tune a threshold. ([#479](https://github.com/aurelio-labs/semantic-router/issues/479))
+- `matched_utterances` is `None` when you didn't ask, when nothing cleared the threshold, or when the router can't say (a `DecisionRouter`, or a custom index that doesn't return utterances). It's `[]` when you asked but none of the route's utterances were in the index's `top_k` hits.
+- An `IndexedRouter` lists each route's matches best first. `Chain` gives the matches of the router that answered. `Merge` gives every sub-router's, router by router in the order you passed them (so not sorted across routers), each with its own router's score.
+- Every built-in index takes `return_utterances=True` on `query` and `aquery`, and then returns `(scores, routes, utterances)`. Without it, they return `(scores, routes)` as before.
+- A custom index whose `query` doesn't take `return_utterances` keeps working: the router routes as before, leaves `matched_utterances` as `None`, and logs a warning once per index class.
+- A custom router that implements `_scores` keeps working. To return matches from your own router, override the new `_results_many(queries, return_utterances)` hook, which returns a `QueryResult` per query.
+
+### v1.1.3
+
+`1.1.3` fixes bugs in five encoders, in hybrid routers reusing an index, in `Chain` and `Merge`, in the Pinecone and Qdrant indexes, in calibration, and in router files on Windows. It also patches locked dependencies with security advisories. Check the two **Stricter** changes below, and router files saved on Windows before `1.1.3` in a legacy encoding, which may need converting to UTF-8.
+
+#### Fixes
+
+- `OpenAIEncoder` and `AzureOpenAIEncoder` send at most 2,048 texts per request, OpenAI's limit for one embeddings call, and return the embeddings in input order. Each request retries on its own.
+- `VoyageEncoder` sends at most 1,000 texts per request, Voyage's limit.
+- `GoogleEncoder` sends at most 250 texts per request, and one per request for `gemini-embedding` models, which take a single text. It used to send every text in one request, which Vertex AI rejects for large route sets.
+- `OllamaEncoder` and `GoogleEncoder` now have an async `acall`. Async routers already ran their sync methods in a worker thread, so routing behaves as before; `acall` can now be called directly. Ollama keeps one async client per event loop, so repeated `asyncio.run()` calls work. Google runs its sync client in a worker thread and batches as above.
+- `AzureOpenAIEncoder` raises a clear `ValueError` before any call for an empty list, an empty string, or an item that isn't a string, as `OpenAIEncoder` does since `1.1.2`. It used to retry, then fail with the API's error. **Stricter:** a bare string, outside the `List[str]` signature, now raises too.
+- A hybrid `IndexedRouter` (TF-IDF or BM25) built on an index that already holds routes refits its sparse encoder and rewrites the stored rows when the new routes bring new utterances. The stored rows used to keep the old vocabulary, so queries were misrouted. Reopening an index with the routes it already holds writes nothing. `add()` and `remove()` encode every row before writing anything. `add()` writes over the stored rows by id. `remove()` deletes the removed route, then writes the remaining rows over by id. On Pinecone, `add()` on a hybrid router no longer deletes the whole index, with every other namespace in it. If encoding fails, the index is left as it was. ([#854](https://github.com/aurelio-labs/semantic-router/issues/854))
+- `Chain` passes a query on to its next router when a router returns no candidates. It used to raise `ValueError` from `max()`. If every router returns nothing, the chain returns an empty `RouteChoice()`.
+- `Merge` raises a `ValueError` unless there is one weight per router, each finite and at least 0, adding up to more than 0. A short list used to drop the routers past its end, a long one lowered every confidence, and weights adding up to 0 raised `ZeroDivisionError` on the first call. `weights=None` still means equal weights, and changing `merge.weights` after construction is checked on the next call. **Stricter:** weights that used to be silently misapplied now raise, and `weights=[]`, which used to mean equal weights, now raises too: pass `None` instead.
+- `PineconeIndex.adelete()` raises when Pinecone answers a delete with an error, as the sync `delete()` does. It used to report the vectors as deleted.
+- `PineconeIndex`'s async paging raises when a page fails, instead of returning an empty or partial list. `adelete()`, `aget_routes()` and a hybrid router's `aadd()` could act on that partial list. A 404 still reads as an empty index. ([#794](https://github.com/aurelio-labs/semantic-router/issues/794))
+- `QdrantIndex.add()` waits for its write to land before returning, so a read straight after sees it.
+- Calibration pools tied scores before fitting, so the same labelled scores give the same calibrator in any order. Output without ties is unchanged, and saved calibrators load as before. ([#788](https://github.com/aurelio-labs/semantic-router/issues/788))
+- Router files are written and read as UTF-8. On Windows, saving a router with characters outside the locale's code page used to raise `UnicodeEncodeError`, and loading a file written elsewhere could misread it. A file saved on Windows by an earlier version, in a legacy encoding with non-ASCII characters, may need converting to UTF-8 before it loads.
+
+#### Security
+
+- The lockfile moves litellm to 1.103.1, pyasn1 to 0.6.5, and, on Python 3.11 and later, dnspython to 2.9.2 and filelock to 4.3.0, for their advisories. On Python 3.10, filelock is 4.0.12 and dnspython stays on 2.8.0: the patched releases need Python 3.11. The package's declared dependency ranges don't change.
+
+### v1.1.2
+
+`1.1.2` fixes bugs in five encoders, in loading encoders from router files, and in calibration. Code and files written for `1.1.1` work unchanged.
+
+#### Fixes
+
+- `CohereEncoder` sends at most 96 texts per request, Cohere's limit for one embed call, and returns the embeddings in input order. A router with more than 96 utterances used to fail to encode them.
+- `BedrockEncoder` with a Cohere model returns one embedding per document. It used to return one per 20-word chunk, so it gave back more embeddings than documents. Each document is now sent whole, up to 96 per request. Embed v3 takes at most 2,048 characters per text, so a longer document is cut to fit following `truncate` in `model_kwargs`. `END`, the default, keeps the start; `START` keeps the end; and `NONE` raises a `ValueError` before any call. Embed v4 texts are sent uncut. ([#824](https://github.com/aurelio-labs/semantic-router/issues/824))
+- `OpenAIEncoder` raises a clear `ValueError` before any call for an empty list, an empty string, or an item that isn't a string. It used to retry, then fail with `$.input is invalid`. Whitespace-only strings are still sent. ([#530](https://github.com/aurelio-labs/semantic-router/issues/530))
+- `OpenAIEncoder` accepts models that tiktoken doesn't know, such as `nomic-embed-text` on an OpenAI-compatible server. It counts tokens with `cl100k_base` for them, where it used to raise `KeyError`.
+- `HFEndpointEncoder` stops resending a request once it succeeds. It used to send a successful request again until its retries ran out, three times by default. When an endpoint still answers 503 after the retries, it raises a `ValueError`; it used to return the error body as embeddings.
+- `GoogleEncoder` defaults to `text-embedding-005`, because Google retired the old default, `textembedding-gecko@003`. Both give 768-dimensional embeddings. `GOOGLE_EMBEDDING_MODEL` still overrides it.
+- An encoder block in a router file can leave out `name`, and the encoder then uses its default model. `AutoEncoder` does the same when passed `name=None`. This used to fail validation for `FastEmbedEncoder`, `HuggingFaceEncoder`, `VitEncoder`, `CLIPEncoder`, `BedrockEncoder` and `LocalEncoder`.
+- `fit` and `afit` raise a clear `ValueError` when a query scores no route, as on a router with no routes. They used to fail with `max() iterable argument is empty`. ([#806](https://github.com/aurelio-labs/semantic-router/issues/806))
+
 ### v1.1.1
 
 #### Security

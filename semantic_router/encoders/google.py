@@ -1,8 +1,29 @@
+import asyncio
 import os
 from typing import Any, List, Optional
 
 from semantic_router.encoders import DenseEncoder
 from semantic_router.utils.defaults import EncoderDefault
+
+# Google's embeddings guide gives 250 input texts per request (and 20,000 tokens)
+# as the ceiling; its REST reference still lists five texts per request. The
+# gemini-embedding models accept a single input text per request.
+# https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings
+GOOGLE_MAX_EMBED_BATCH = 250
+GEMINI_MAX_EMBED_BATCH = 1
+
+
+def max_embed_batch(model_name: str) -> int:
+    """Return the most input texts one embedding request may hold for a model.
+
+    :param model_name: The name of the embedding model.
+    :type model_name: str
+    :return: The maximum number of texts per request.
+    :rtype: int
+    """
+    if "gemini-embedding" in model_name:
+        return GEMINI_MAX_EMBED_BATCH
+    return GOOGLE_MAX_EMBED_BATCH
 
 
 class GoogleEncoder(DenseEncoder):
@@ -123,7 +144,30 @@ class GoogleEncoder(DenseEncoder):
         if self.client is None:
             raise ValueError("Google AI Platform client is not initialized.")
         try:
-            embeddings = self.client.get_embeddings(docs)
-            return [embedding.values for embedding in embeddings]
+            embeddings: List[List[float]] = []
+            size = max_embed_batch(self.name)
+            for start in range(0, len(docs), size):
+                batch = docs[start : start + size]
+                embeddings.extend(
+                    embedding.values for embedding in self.client.get_embeddings(batch)
+                )
+            return embeddings
         except Exception as e:
             raise ValueError(f"Google AI Platform API call failed. Error: {e}") from e
+
+    async def acall(self, docs: List[str]) -> List[List[float]]:
+        """Generates embeddings for the given documents asynchronously.
+
+        Runs the sync client in a worker thread. The SDK's async client caches a gRPC
+        channel bound to the first event loop it runs on, so a second
+        ``asyncio.run(...)`` would fail with ``Event loop is closed``.
+
+        :param docs: A list of strings representing the documents to embed.
+        :type docs: List[str]
+        :return: A list of lists, where each inner list contains the embedding values for a
+            document.
+        :rtype: List[List[float]]
+        :raise ValueError: If the Google AI Platform client is not initialized or if the
+            API call fails.
+        """
+        return await asyncio.to_thread(self.__call__, docs)

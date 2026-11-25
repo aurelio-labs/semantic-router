@@ -16,9 +16,15 @@ from semantic_router.encoders.base import (
     FittableMixin,
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
+from semantic_router.index.base import _takes_utterances
 from semantic_router.route import Route
-from semantic_router.routers.base import BaseRouter, FitReport, in_sync_call
-from semantic_router.schema import SparseEmbedding
+from semantic_router.routers.base import (
+    BaseRouter,
+    FitReport,
+    QueryResult,
+    in_sync_call,
+)
+from semantic_router.schema import MatchedUtterance, SparseEmbedding
 from semantic_router.utils.logger import logger
 
 Kind = Literal["queries", "documents"]
@@ -71,6 +77,17 @@ def _record_metadata(route: Route) -> dict:
     return meta
 
 
+def _held(stored: dict[str, Route], route: Route) -> bool:
+    """the index holds `route` already: its fields as given, and every utterance."""
+    old = stored.get(route.name)
+    return (
+        old is not None
+        and {str(u) for u in route.utterances} <= {str(u) for u in old.utterances}
+        and route.model_dump(exclude={"utterances"})
+        == old.model_dump(exclude={"utterances"})
+    )
+
+
 def _merge(stored: list[Route], new: list[Route]) -> list[Route]:
     """the routes the index holds once `new` is upserted onto `stored`: a new route
     replaces a stored one's fields, and their utterances add up."""
@@ -116,11 +133,12 @@ class IndexedRouter(BaseRouter):
         self.index = index
         # build synchronously so a constructed router is ready to call; the given routes
         # are upserted onto whatever the index already holds
-        if isinstance(self.sparse_encoder, FittableMixin) and (
-            corpus := _merge(self.index.get_routes(), list(routes))
-        ):
-            self.sparse_encoder.fit(corpus)
-        self._index(list(routes))
+        stored: list[Route] = (
+            self.index.get_routes()
+            if isinstance(self.sparse_encoder, FittableMixin)
+            else []
+        )
+        self._upsert(stored, list(routes))
         self.refresh()
 
     @property
@@ -174,18 +192,19 @@ class IndexedRouter(BaseRouter):
             return route.confidence_threshold
         return self.confidence_threshold
 
-    def _index(self, routes: list[Route]) -> None:
+    def _records(self, routes: list[Route]) -> dict | None:
+        """everything index.add takes for `routes`, encoded; None if there is nothing."""
         names = [r.name for r in routes for _ in r.utterances]
         # encoders get the utterances as given (images for multimodal routes), the index text
         items = [u for r in routes for u in r.utterances]
         if not items:
-            return
+            return None
         sparse = (
             _encode(self.sparse_encoder, items, "documents")
             if self.sparse_encoder
             else None
         )
-        self.index.add(
+        return dict(
             embeddings=_encode(self.encoder, items, "documents"),
             routes=names,
             utterances=[str(u) for u in items],
@@ -193,28 +212,107 @@ class IndexedRouter(BaseRouter):
             sparse_embeddings=sparse,
         )
 
+    def _index(self, routes: list[Route]) -> None:
+        # encode everything before the index is written, so a failed encode writes nothing
+        if (records := self._records(routes)) is not None:
+            self.index.add(**records)
+
+    def _upsert(
+        self, stored: list[Route], routes: list[Route], rewrite: bool = False
+    ) -> None:
+        """write `routes` onto the `stored` ones (the index's routes, read fresh).
+
+        a fitted sparse model (TF-IDF, BM25) refits on the merged corpus. it fits on the
+        utterances alone, whatever their order, so the same corpus gives the same model
+        and the stored rows stay valid: only routes the index doesn't hold yet are
+        written. new utterances move the vocabulary, so then every row is encoded again
+        and upserted over the old one, as it is whenever `rewrite` is set (add() sets
+        it, so retrying an add whose write failed part way repairs every row). ids are
+        deterministic, so nothing is deleted, and a failed encode leaves the index as
+        it was.
+        """
+        if not isinstance(self.sparse_encoder, FittableMixin):
+            self._index(routes)
+            return
+        corpus = _merge(stored, routes)
+        if not corpus:
+            return
+        pairs = {(r.name, str(u)) for r in stored for u in r.utterances}
+        grows = any((r.name, str(u)) not in pairs for r in routes for u in r.utterances)
+        held = {r.name: r for r in stored}
+        merged = {r.name: r for r in corpus}
+        # a changed route is written whole, so all its rows get its new fields
+        todo = (
+            corpus
+            if grows or rewrite
+            else [
+                merged[n]
+                for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
+            ]
+        )
+        self.sparse_encoder.fit(corpus)
+        try:
+            records = self._records(todo)
+        except BaseException:
+            # the index is as it was: put back the model its rows were encoded with
+            if stored:
+                self.sparse_encoder.fit(stored)
+            raise
+        # a write that fails part way keeps the new model: it is what the rows already
+        # written hold, and what a retried add() writes everywhere
+        if records is not None:
+            self.index.add(**records)
+
     async def _on_add(self, routes: list[Route]) -> None:
-        if isinstance(self.sparse_encoder, FittableMixin):
-            # a fitted sparse model changes its vocabulary with the corpus, which makes every
-            # stored sparse vector stale; the only correct move is to refit and rebuild.
-            # read every stored route fresh before deleting the index, which is where
-            # they live
-            routes = _merge(await self._aget_routes(), routes)
-            self.sparse_encoder.fit(routes)
-            self.index.delete_index()
-        await asyncio.to_thread(self._index, routes)
+        # read the stored routes fresh: another router may have written since this one
+        stored: list[Route] = (
+            await self._aget_routes()
+            if isinstance(self.sparse_encoder, FittableMixin)
+            else []
+        )
+        await asyncio.to_thread(self._upsert, stored, routes, True)
         await self.arefresh()
 
     async def _on_remove(self, name: str) -> None:
-        if in_sync_call():
-            await asyncio.to_thread(self.index.delete, name)
-        else:
-            await self.index.adelete(name)
+        records = None
+        stored: list[Route] = []
+        rest: list[Route] = []
+        if isinstance(self.sparse_encoder, FittableMixin):
+            # fewer utterances move a fitted vocabulary too, so the remaining rows are
+            # encoded with the refit model before anything is deleted. they are written
+            # even when the route is already gone, so a retry after a failed write
+            # finishes the job: ids are deterministic, so it only overwrites
+            stored = await self._aget_routes()
+            rest = [r for r in stored if r.name != name]
+            if rest:
+                self.sparse_encoder.fit(rest)
+                try:
+                    records = await asyncio.to_thread(self._records, rest)
+                except BaseException:
+                    self.sparse_encoder.fit(stored)
+                    raise
+        deleted = False
+        try:
+            if in_sync_call():
+                await asyncio.to_thread(self.index.delete, name)
+            else:
+                await self.index.adelete(name)
+            deleted = True
+            if records is not None:
+                await asyncio.to_thread(self.index.add, **records)
+        except BaseException:
+            if records is not None:
+                # match what a reopen fits on: the routes the index holds now
+                self.sparse_encoder.fit(rest if deleted else stored)
+            raise
         await self.arefresh()
 
     async def _query(
-        self, dense: list[float], sparse: SparseEmbedding | None
-    ) -> dict[str, float]:
+        self,
+        dense: list[float],
+        sparse: SparseEmbedding | None,
+        return_utterances: bool = False,
+    ) -> QueryResult:
         vec = np.array(dense)
         if sparse is not None:
             # convex mix: alpha on dense, the rest on sparse, summed inside the hybrid index
@@ -222,20 +320,42 @@ class IndexedRouter(BaseRouter):
             sparse = SparseEmbedding.from_dict(
                 {k: v * (1 - self.alpha) for k, v in sparse.to_dict().items()}
             )
-        if in_sync_call():
-            scores, names = await asyncio.to_thread(
-                self.index.query, vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+        sync = in_sync_call()
+        kwargs: dict = {"vector": vec, "top_k": self.top_k, "sparse_vector": sparse}
+        # a custom index written before return_utterances existed doesn't take it:
+        # ask only an index that does, so nothing is searched twice
+        if return_utterances and _takes_utterances(
+            self.index.query if sync else self.index.aquery
+        ):
+            kwargs["return_utterances"] = True
+        result: tuple
+        if sync:
+            result = await asyncio.to_thread(lambda: self.index.query(**kwargs))
         else:
-            scores, names = await self.index.aquery(
-                vector=vec, top_k=self.top_k, sparse_vector=sparse
-            )
+            result = await self.index.aquery(**kwargs)
+        scores, names = result[0], result[1]
+        matches: dict[str, list[MatchedUtterance]] | None = None
+        if return_utterances:
+            if len(result) == 3:
+                matches = {}
+                for n, sc, u in zip(names, scores, result[2]):
+                    matches.setdefault(n, []).append(
+                        MatchedUtterance(text=str(u), score=float(sc), route=n)
+                    )
+                for found in matches.values():
+                    # best first: some indexes return their hits worst first
+                    found.sort(key=lambda m: m.score, reverse=True)
+            else:
+                _warn_no_utterances(self.index)
         # every cached route scores, 0.0 if it isn't a hit; a hit on a route that isn't
         # cached yet still counts, because the search always runs against the index
         hits: dict[str, list[float]] = {name: [] for name in self._cache}
-        for n, s in zip(names, scores):
-            hits.setdefault(n, []).append(float(s))
-        return {n: self.aggregate(v) if v else 0.0 for n, v in hits.items()}
+        for n, sc in zip(names, scores):
+            hits.setdefault(n, []).append(float(sc))
+        return QueryResult(
+            scores={n: self.aggregate(v) if v else 0.0 for n, v in hits.items()},
+            matched_utterances=matches,
+        )
 
     async def afit(
         self, X: Sequence[str], y: Sequence[str | None], method: Method = "platt"
@@ -256,6 +376,19 @@ class IndexedRouter(BaseRouter):
         return (await self._scores_many([query]))[0]
 
     async def _scores_many(self, queries: Sequence[str]) -> list[dict[str, float]]:
+        return [r.scores for r in await self._search_many(queries)]
+
+    async def _results_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
+        custom = await self._custom_results(IndexedRouter, queries)
+        if custom is not None:
+            return custom
+        return await self._search_many(queries, return_utterances=return_utterances)
+
+    async def _search_many(
+        self, queries: Sequence[str], return_utterances: bool = False
+    ) -> list[QueryResult]:
         # one encoder call for the whole batch, then a cheap index query per vector
         texts = list(queries)
         if self._stale():
@@ -271,5 +404,22 @@ class IndexedRouter(BaseRouter):
             else [None] * len(texts)
         )
         return list(
-            await asyncio.gather(*(self._query(d, s) for d, s in zip(dense, sparse)))
+            await asyncio.gather(
+                *(
+                    self._query(d, s, return_utterances=return_utterances)
+                    for d, s in zip(dense, sparse)
+                )
+            )
+        )
+
+
+_warned: set[type] = set()
+
+
+def _warn_no_utterances(index: BaseIndex) -> None:
+    if type(index) not in _warned:
+        _warned.add(type(index))
+        logger.warning(
+            f"{type(index).__name__} doesn't return matched utterances, so "
+            "matched_utterances stays None"
         )

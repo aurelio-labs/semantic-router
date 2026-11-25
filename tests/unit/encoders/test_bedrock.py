@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from io import BytesIO
@@ -270,3 +271,216 @@ class TestBedrockEncoderWithCohere:
         result = bedrock_encoder_with_cohere(["test with different input type"])
         assert isinstance(result, list), "Result should be a list"
         assert result == [[0.1, 0.2, 0.3]], "Expected specific embeddings"
+
+    @staticmethod
+    def _one_embedding_per_text(**kwargs):
+        texts = json.loads(kwargs["body"])["texts"]
+        body = json.dumps({"embeddings": [[float(len(t))] for t in texts]})
+        return {"body": BytesIO(body.encode("utf-8"))}
+
+    def test_cohere_one_embedding_per_document(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = ["word " * 100, "short"]
+
+        result = bedrock_encoder_with_cohere(docs)
+
+        assert len(result) == len(docs)
+        assert result == [[500.0], [5.0]]
+        # one call, with each document sent whole
+        assert client.invoke_model.call_count == 1
+        sent = json.loads(client.invoke_model.call_args.kwargs["body"])
+        assert sent == {"texts": docs, "input_type": "search_query"}
+
+    def test_cohere_batches_at_most_96_texts(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = [f"doc {i}" for i in range(97)]
+
+        result = bedrock_encoder_with_cohere(docs)
+
+        assert len(result) == len(docs)
+        batches = [
+            json.loads(c.kwargs["body"])["texts"]
+            for c in client.invoke_model.call_args_list
+        ]
+        assert [len(b) for b in batches] == [96, 1]
+        assert sum(batches, []) == docs
+
+    def test_cohere_model_kwargs_reach_the_request(self, bedrock_encoder_with_cohere):
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+
+        bedrock_encoder_with_cohere(
+            ["a"], model_kwargs={"truncate": "START", "input_type": "search_document"}
+        )
+
+        sent = json.loads(client.invoke_model.call_args.kwargs["body"])
+        assert sent == {
+            "texts": ["a"],
+            "input_type": "search_document",
+            "truncate": "START",
+        }
+
+    @pytest.mark.asyncio
+    async def test_cohere_one_embedding_per_document_async(
+        self, bedrock_encoder_with_cohere
+    ):
+        # Bedrock has no async client: a router's async path runs the sync call
+        from semantic_router.routers.indexed import _aencode
+
+        client = bedrock_encoder_with_cohere.client
+        client.invoke_model.side_effect = self._one_embedding_per_text
+        docs = ["word " * 100, "short"]
+
+        result = await _aencode(bedrock_encoder_with_cohere, docs, "documents")
+
+        assert len(result) == len(docs)
+        assert result == [[500.0], [5.0]]
+
+
+# 2,400 characters: the first 2,048 end in "B"s, the last 2,048 start with "A"s
+LONG_DOC = "A" * 1200 + "B" * 1200
+
+
+def _cohere_encoder(mocker, name):
+    mocker.patch("semantic_router.encoders.bedrock.BedrockEncoder._initialize_client")
+    mocker.patch("semantic_router.encoders.bedrock.sleep")
+    return BedrockEncoder(
+        name=name,
+        access_key_id="fake_id",
+        secret_access_key="fake_secret",
+        session_token="fake_token",
+        region="us-west-2",
+    )
+
+
+def _bedrock_cohere(max_chars=None):
+    """invoke_model as Bedrock answers it: one embedding per text (its length),
+    and a ValidationException for any text over `max_chars`."""
+    from botocore.exceptions import ClientError
+
+    def invoke_model(**kwargs):
+        texts = json.loads(kwargs["body"])["texts"]
+        if max_chars is not None and any(len(t) > max_chars for t in texts):
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ValidationException",
+                        "Message": f"expected maxLength: {max_chars}",
+                    }
+                },
+                "InvokeModel",
+            )
+        body = json.dumps({"embeddings": [[float(len(t))] for t in texts]})
+        return {"body": BytesIO(body.encode("utf-8"))}
+
+    return invoke_model
+
+
+def _sent(encoder):
+    return json.loads(encoder.client.invoke_model.call_args.kwargs["body"])
+
+
+class TestBedrockCohereV3TextLimit:
+    @pytest.mark.parametrize(
+        "name", ["cohere.embed-english-v3", "cohere.embed-multilingual-v3"]
+    )
+    def test_default_keeps_the_start(self, mocker, name):
+        encoder = _cohere_encoder(mocker, name)
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+        docs = [LONG_DOC, "short"]
+
+        result = encoder(docs)
+
+        assert len(result) == len(docs)
+        assert result == [[2048.0], [5.0]]
+        assert _sent(encoder)["texts"] == [LONG_DOC[:2048], "short"]
+        assert "truncate" not in _sent(encoder)
+
+    @pytest.mark.parametrize(
+        "truncate, kept",
+        [("END", LONG_DOC[:2048]), ("START", LONG_DOC[-2048:])],
+        ids=["END", "START"],
+    )
+    def test_truncate_end_and_start(self, mocker, truncate, kept):
+        encoder = _cohere_encoder(mocker, "cohere.embed-english-v3")
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+        docs = [LONG_DOC, "short"]
+
+        result = encoder(docs, model_kwargs={"truncate": truncate})
+
+        assert len(result) == len(docs)
+        assert result == [[2048.0], [5.0]]
+        assert _sent(encoder)["texts"] == [kept, "short"]
+        assert _sent(encoder)["truncate"] == truncate
+
+    def test_truncate_none_fails_before_any_call(self, mocker):
+        encoder = _cohere_encoder(mocker, "cohere.embed-english-v3")
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+
+        with pytest.raises(ValueError, match="index 1 has 2400 characters"):
+            encoder(["short", LONG_DOC], model_kwargs={"truncate": "NONE"})
+        encoder.client.invoke_model.assert_not_called()
+
+    def test_truncate_none_sends_a_text_at_the_limit(self, mocker):
+        encoder = _cohere_encoder(mocker, "cohere.embed-english-v3")
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+        doc = "x" * 2048
+
+        assert encoder([doc], model_kwargs={"truncate": "NONE"}) == [[2048.0]]
+        assert _sent(encoder)["texts"] == [doc]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "truncate, kept",
+        [("END", LONG_DOC[:2048]), ("START", LONG_DOC[-2048:]), ("NONE", None)],
+        ids=["END", "START", "NONE"],
+    )
+    async def test_truncate_async(self, mocker, truncate, kept):
+        # Bedrock has no async client: async callers run the sync call in a thread
+        encoder = _cohere_encoder(mocker, "cohere.embed-english-v3")
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+        docs = [LONG_DOC, "short"]
+
+        def call():
+            return encoder(docs, model_kwargs={"truncate": truncate})
+
+        if kept is None:
+            with pytest.raises(ValueError, match="index 0 has 2400 characters"):
+                await asyncio.to_thread(call)
+            encoder.client.invoke_model.assert_not_called()
+            return
+        result = await asyncio.to_thread(call)
+        assert len(result) == len(docs)
+        assert _sent(encoder)["texts"] == [kept, "short"]
+
+    @pytest.mark.asyncio
+    async def test_router_async_path_keeps_the_start(self, mocker):
+        from semantic_router.routers.indexed import _aencode
+
+        encoder = _cohere_encoder(mocker, "cohere.embed-english-v3")
+        encoder.client.invoke_model.side_effect = _bedrock_cohere(max_chars=2048)
+        docs = [LONG_DOC, "short"]
+
+        result = await _aencode(encoder, docs, "documents")
+
+        assert len(result) == len(docs)
+        assert result == [[2048.0], [5.0]]
+
+
+class TestBedrockCohereV4:
+    @pytest.mark.parametrize(
+        "name",
+        ["cohere.embed-v4:0", "us.cohere.embed-v4:0", "global.cohere.embed-v4:0"],
+    )
+    def test_v4_sends_long_documents_whole(self, mocker, name):
+        encoder = _cohere_encoder(mocker, name)
+        encoder.client.invoke_model.side_effect = _bedrock_cohere()
+        docs = [LONG_DOC, "short"]
+
+        result = encoder(docs, model_kwargs={"truncate": "RIGHT"})
+
+        assert result == [[2400.0], [5.0]]
+        assert _sent(encoder)["texts"] == docs
+        assert _sent(encoder)["truncate"] == "RIGHT"

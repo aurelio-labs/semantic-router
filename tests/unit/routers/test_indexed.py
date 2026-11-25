@@ -5,8 +5,9 @@ import numpy as np
 import pytest
 
 from semantic_router.encoders import DenseEncoder
+from semantic_router.index import LocalIndex
 from semantic_router.route import Route
-from semantic_router.routers import IndexedRouter
+from semantic_router.routers import BaseRouter, Chain, IndexedRouter, Merge
 
 # each keyword owns an axis, so "refund" is near "charged" and far from "crash"
 AXES = {
@@ -268,3 +269,261 @@ def test_sync_calls_use_the_index_sync_api(router, monkeypatch):
     router.add(routes=Route(name="support", utterances=["call a human"]))
     router.remove(name="support")
     assert [r.name for r in router.routes] == ["billing", "technical"]
+
+
+def test_hybrid_router_built_on_a_populated_index_rebuilds_stale_sparse_rows():
+    from semantic_router.encoders import TfidfEncoder
+    from semantic_router.index import HybridLocalIndex
+
+    class ConstantEncoder(DenseEncoder):
+        name: str = "constant"
+
+        def __call__(self, docs):
+            return [[1.0, 0.0] for _ in docs]
+
+    def build(routes, index):
+        return IndexedRouter(
+            ConstantEncoder(),
+            routes,
+            index=index,
+            sparse_encoder=TfidfEncoder(),
+            alpha=0.5,
+            confidence_threshold=0.8,
+        )
+
+    shared = HybridLocalIndex()
+    first = build([Route(name="existing", utterances=["zebra"])], shared)
+    assert first("zebra").name == "existing"
+
+    # a second router on the same index refits on the merged corpus; the stored
+    # "zebra" row must be re-encoded with the new vocabulary, not left stale
+    reopened = build([Route(name="new", utterances=["apple"])], shared)
+    assert reopened("zebra").name == "existing"
+    assert reopened("apple").name == "new"
+    assert len(shared) == 2
+
+
+# matched utterances (#479)
+
+
+def test_matched_utterances_are_off_unless_asked(router):
+    choice = router("i want a refund")
+    assert choice.name == "billing"
+    assert choice.matched_utterances is None
+
+
+def test_matched_utterances_are_the_hits_behind_the_choice(router):
+    choice = router("i want a refund", return_utterances=True)
+    assert choice.name == "billing"
+    texts = [u.text for u in choice.matched_utterances]
+    # every billing utterance sits on the refund axis, so all three are hits
+    assert sorted(texts) == sorted(str(u) for u in ROUTES[0].utterances)
+    assert {u.route for u in choice.matched_utterances} == {"billing"}
+    assert all(u.score == pytest.approx(1.0) for u in choice.matched_utterances)
+
+
+def test_matched_utterances_come_best_first():
+    mixed = Route(name="mixed", utterances=["refund", "refund crash", "crash"])
+    choice = IndexedRouter(FakeEncoder(), [mixed])("refund", return_utterances=True)
+    # LocalIndex returns its hits worst first; the choice lists them best first
+    assert [u.text for u in choice.matched_utterances] == [
+        "refund",
+        "refund crash",
+        "crash",
+    ]
+
+
+def test_a_route_with_no_hit_in_top_k_has_an_empty_list():
+    r = IndexedRouter(FakeEncoder(), ROUTES, top_k=3)
+    choices = r("i want a refund", limit=None, return_utterances=True)
+    by_name = {c.name: c.matched_utterances for c in choices}
+    assert len(by_name["billing"]) == 3
+    # asked for, but none of technical's utterances made the top 3: [] rather than None
+    assert by_name["technical"] == []
+
+
+def test_matched_utterances_keep_the_raw_score_after_calibration(router):
+    router.fit(X_FIT, Y_FIT)
+    choice = router("refund please", return_utterances=True)
+    assert choice.calibrated
+    assert max(u.score for u in choice.matched_utterances) == pytest.approx(1.0)
+
+
+def test_an_empty_choice_has_no_matched_utterances(router):
+    choice = router("hello there", threshold=0.99, return_utterances=True)
+    assert choice.name is None
+    assert choice.matched_utterances is None
+
+
+def test_hybrid_router_returns_matched_utterances():
+    from semantic_router.encoders import TfidfEncoder
+
+    r = IndexedRouter(FakeEncoder(), ROUTES, sparse_encoder=TfidfEncoder(), alpha=0.5)
+    choice = r("i want a refund", return_utterances=True)
+    assert choice.name == "billing"
+    assert "refund please" in [u.text for u in choice.matched_utterances]
+
+
+class SlowEncoder(FakeEncoder):
+    async def acall(self, docs):
+        # yield to the loop, so overlapping calls interleave between embed and search
+        await asyncio.sleep(0.005)
+        return self(docs)
+
+
+def test_overlapping_calls_each_get_their_own_utterances():
+    r = IndexedRouter(SlowEncoder(), ROUTES, top_k=3)
+    queries = ["refund", "crash"] * 50
+
+    async def go():
+        return await asyncio.gather(
+            *(r.acall(q, return_utterances=True) for q in queries)
+        )
+
+    want = {"refund": "billing", "crash": "technical"}
+    for q, choice in zip(queries, asyncio.run(go())):
+        assert choice.name == want[q]
+        assert {u.route for u in choice.matched_utterances} == {want[q]}
+
+
+class OldIndex(LocalIndex):
+    """a custom index written before return_utterances existed."""
+
+    calls: int = 0
+
+    def query(self, vector, top_k=5, route_filter=None, sparse_vector=None):
+        self.calls += 1
+        return super().query(vector=vector, top_k=top_k, route_filter=route_filter)
+
+    async def aquery(self, vector, top_k=5, route_filter=None, sparse_vector=None):
+        return self.query(vector=vector, top_k=top_k, route_filter=route_filter)
+
+
+def test_an_index_without_the_flag_still_routes_and_searches_once():
+    index = OldIndex()
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=index)
+    before = index.calls
+    choice = r("i want a refund", return_utterances=True)
+    assert choice.name == "billing"
+    assert choice.matched_utterances is None  # the index can't say
+    assert index.calls == before + 1
+
+
+class BrokenIndex(LocalIndex):
+    broken: bool = False
+    calls: int = 0
+
+    def query(self, *args, **kwargs):
+        if not self.broken:
+            return super().query(*args, **kwargs)
+        self.calls += 1  # the search ran, then something inside it went wrong
+        raise TypeError("a bug inside the index")
+
+
+def test_a_type_error_inside_the_index_is_raised_not_searched_again():
+    index = BrokenIndex()
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=index)
+    index.broken = True
+    with pytest.raises(TypeError, match="a bug inside the index"):
+        r("i want a refund", return_utterances=True)
+    assert index.calls == 1
+
+
+class Keywords(BaseRouter):
+    """a custom router as the docs write one: _scores only."""
+
+    async def _scores(self, query):
+        return {"billing": float("refund" in query), "technical": 0.0}
+
+
+def test_a_custom_router_takes_the_flag_and_has_no_utterances():
+    choice = Keywords(ROUTES)("refund", return_utterances=True)
+    assert choice.name == "billing"
+    assert choice.matched_utterances is None
+
+
+def test_chain_gives_the_utterances_of_the_router_that_answered(router):
+    chain = Chain(routers=[Keywords(ROUTES, confidence_threshold=0.5), router])
+    # the keyword router is sure: no index search is behind its answer
+    assert chain("refund", return_utterances=True).matched_utterances is None
+    # it isn't sure about this one, so the indexed router answers, with its hits
+    choice = chain("app crash", return_utterances=True)
+    assert choice.name == "technical"
+    assert "app crash" in [u.text for u in choice.matched_utterances]
+
+
+def test_merge_gives_the_utterances_of_every_router_that_has_them(router):
+    other = IndexedRouter(FakeEncoder(), ROUTES)
+    merge = Merge(routers=[Keywords(ROUTES), router, other])
+    choice = merge("found a bug", return_utterances=True)
+    assert choice.name == "technical"
+    texts = [u.text for u in choice.matched_utterances]
+    # both indexed routers found it; the keyword router adds nothing
+    assert texts.count("found a bug") == 2
+    assert merge("found a bug").matched_utterances is None
+
+
+# routers and indexes written for 1.x, before matches existed
+
+
+class Overruled(IndexedRouter):
+    """overrides the documented batch hook: its scores, not the index's, decide."""
+
+    async def _scores_many(self, queries):
+        return [{"billing": 0.0, "technical": 1.0} for _ in queries]
+
+
+class OverruledOne(IndexedRouter):
+    async def _scores(self, query):
+        return {"billing": 0.0, "technical": 1.0}
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_a_router_that_overrides_its_scoring_keeps_it_everywhere(matches):
+    r = Overruled(FakeEncoder(), ROUTES)
+    for router in [r, Chain(routers=[r]), Merge(routers=[r])]:
+        choice = router("i want a refund", return_utterances=matches)
+        assert choice.name == "technical", type(router).__name__
+        # matches from the index would explain a choice the scores didn't make
+        assert choice.matched_utterances is None
+
+
+def test_a_router_that_overrides_scores_keeps_it_with_matches_on():
+    r = OverruledOne(FakeEncoder(), ROUTES)
+    assert r("i want a refund").name == "technical"
+    choice = r("i want a refund", return_utterances=True)
+    assert choice.name == "technical"
+    assert choice.matched_utterances is None
+
+
+class QueryOnlyIndex(LocalIndex):
+    """overrides query only, with 1.x's signature; aquery is inherited."""
+
+    def query(self, vector, top_k=5, route_filter=None, sparse_vector=None):
+        return super().query(vector=vector, top_k=top_k, route_filter=route_filter)
+
+
+@pytest.mark.parametrize("matches", [False, True])
+def test_an_index_that_overrides_only_query_works_async(matches):
+    index = QueryOnlyIndex()
+    index.add(embeddings=[[1.0, 0.0]], routes=["a"], utterances=["x"])
+    result = asyncio.run(
+        index.aquery(vector=np.array([1.0, 0.0]), top_k=1, return_utterances=matches)
+    )
+    assert len(result) == 2  # it can't return utterances, so it doesn't
+    r = IndexedRouter(FakeEncoder(), ROUTES, index=QueryOnlyIndex())
+    choice = asyncio.run(r.acall("i want a refund", return_utterances=matches))
+    assert choice.name == "billing"
+    assert choice.matched_utterances is None
+
+
+class OldCall(Keywords):
+    """overrides acall with 1.x's signature, its own parameter names and all."""
+
+    async def acall(self, q, lim=1, thr=None):
+        return await super().acall(q, lim, thr)
+
+
+def test_a_router_with_an_old_acall_still_works_when_called():
+    assert OldCall(ROUTES)("refund").name == "billing"
+    assert OldCall(ROUTES)("refund", limit=None)[0].name == "billing"

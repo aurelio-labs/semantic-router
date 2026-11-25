@@ -33,6 +33,19 @@ class TestOpenAIEncoder:
         encoder = OpenAIEncoder()
         assert encoder._client is not None
 
+    def test_openai_encoder_init_unknown_model_name(
+        self, mock_openai_client, mock_openai_async_client
+    ):
+        # a model served through openai_base_url (not an OpenAI model) has no
+        # tiktoken mapping; the encoder must still build and truncate
+        encoder = OpenAIEncoder(
+            name="nomic-embed-text",
+            openai_api_key="fake_key",
+            openai_base_url="http://localhost:11434/v1",
+        )
+        assert encoder.name == "nomic-embed-text"
+        assert encoder._truncate("hello world") == "hello world"
+
     def test_openai_encoder_init_no_api_key(self, mocker):
         mocker.patch("os.getenv", return_value=None)
         with pytest.raises(ValueError) as _:
@@ -94,6 +107,66 @@ class TestOpenAIEncoder:
                 openai_encoder(["test document"])
 
         assert "OpenAI API call failed. Error: Non-OpenAIError" in str(e.value)
+
+    def test_openai_encoder_call_rejects_empty_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder([])
+
+        assert "OpenAI encoder input cannot be empty." in str(e.value)
+        openai_encoder._client.embeddings.create.assert_not_called()
+
+    def test_openai_encoder_call_rejects_empty_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["ok", ""])
+
+        assert "contains an empty string at index 1" in str(e.value)
+        openai_encoder._client.embeddings.create.assert_not_called()
+
+    def test_openai_encoder_call_rejects_non_string_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder(["ok", 123])  # type: ignore[list-item]
+
+        assert "must contain only strings" in str(e.value)
+
+    def test_openai_encoder_call_rejects_bare_string(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            openai_encoder("test document")  # type: ignore[arg-type]
+
+        assert "must be a list of strings" in str(e.value)
+
+    def test_openai_encoder_call_sends_whitespace_unchanged(self, openai_encoder):
+        # the API embeds whitespace-only input, and " hi " differently from "hi"
+        openai_encoder._client.embeddings.create.return_value = CreateEmbeddingResponse(
+            data=[
+                Embedding(embedding=[0.1], index=0, object="embedding"),
+                Embedding(embedding=[0.2], index=1, object="embedding"),
+            ],
+            model="text-embedding-3-small",
+            object="list",
+            usage=Usage(prompt_tokens=2, total_tokens=2),
+        )
+
+        assert openai_encoder([" hi ", "   "]) == [[0.1], [0.2]]
+        _, kwargs = openai_encoder._client.embeddings.create.call_args
+        assert kwargs["input"] == [" hi ", "   "]
+
+    @pytest.mark.asyncio
+    async def test_openai_encoder_acall_rejects_empty_input(self, openai_encoder):
+        with pytest.raises(ValueError) as e:
+            await openai_encoder.acall([])
+
+        assert "OpenAI encoder input cannot be empty." in str(e.value)
+        openai_encoder._async_client.embeddings.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_openai_encoder_acall_rejects_empty_string_input(
+        self, openai_encoder
+    ):
+        with pytest.raises(ValueError) as e:
+            await openai_encoder.acall([""])
+
+        assert "contains an empty string at index 0" in str(e.value)
+        openai_encoder._async_client.embeddings.create.assert_not_called()
 
     def test_openai_encoder_call_successful_retry(self, openai_encoder, mocker):
         mock_embeddings = mocker.Mock()
@@ -242,3 +315,44 @@ class TestOpenAIEncoder:
             await openai_encoder.acall(["test document"])
 
         assert mock_create.call_count == 1  # Only the initial attempt, no retries
+
+
+def _embedding_response(docs):
+    return CreateEmbeddingResponse(
+        data=[
+            Embedding(embedding=[float(d)], index=i, object="embedding")
+            for i, d in enumerate(docs)
+        ],
+        model="text-embedding-3-small",
+        object="list",
+        usage=Usage(prompt_tokens=len(docs), total_tokens=len(docs)),
+    )
+
+
+class TestEmbedBatching:
+    """The embeddings endpoint accepts at most 2048 inputs per request."""
+
+    def test_call_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 * 2 + 5)]
+        create = openai_encoder._client.embeddings.create
+        create.side_effect = lambda input, **kw: _embedding_response(input)
+
+        result = openai_encoder(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [
+            2048,
+            2048,
+            5,
+        ]
+        assert result == [[float(d)] for d in docs]
+
+    @pytest.mark.asyncio
+    async def test_acall_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 + 1)]
+        create = AsyncMock(side_effect=lambda input, **kw: _embedding_response(input))
+        openai_encoder._async_client.embeddings.create = create
+
+        result = await openai_encoder.acall(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [2048, 1]
+        assert result == [[float(d)] for d in docs]

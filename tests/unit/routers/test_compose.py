@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from semantic_router.route import Route
 from semantic_router.routers import Chain, Merge
 from semantic_router.routers.base import BaseRouter
@@ -30,6 +32,30 @@ def test_chain_stops_at_first_confident_router():
     assert Chain(routers=[first, second])("q").name == "a" and second.calls == 0
 
 
+def test_chain_falls_through_an_empty_router():
+    empty = Canned({})
+    fallback = Canned({"b": 0.9})
+    choice = Chain(routers=[empty, fallback])("q")
+    assert choice.name == "b" and choice.confidence == 0.9
+    assert empty.calls == fallback.calls == 1
+
+
+@pytest.mark.parametrize("limit", [1, None])
+def test_chain_empty_final_scores_return_no_route(limit):
+    unsure = Canned({"a": 0.1}, confidence_threshold=0.8)
+    chain = Chain(routers=[unsure, Canned({})])
+    choice = asyncio.run(chain.acall("q", limit=limit))
+    if limit == 1:
+        assert choice.name is None and choice.confidence is None
+    else:
+        assert choice == []
+
+
+def test_chain_all_empty_scores_return_no_route():
+    chain = Chain(routers=[Canned({}), Canned({})])
+    assert chain("q").name is None
+
+
 def test_chain_is_calibrated_only_when_every_link_is():
     mixed = [Canned({"a": 1}), Canned({"a": 1}, probabilistic=True)]
     assert not Chain(routers=mixed).calibrated
@@ -44,6 +70,40 @@ def test_merge_takes_a_weighted_mean():
     )
     picks = m("q", limit=None)
     assert {p.name: round(p.confidence, 2) for p in picks} == {"a": 0.75, "b": 0.25}
+
+
+@pytest.mark.parametrize("weights", [[1], [1, 1, 1], []])
+def test_merge_wants_one_weight_per_router(weights):
+    with pytest.raises(ValueError, match=f"{len(weights)} weights for 2 routers"):
+        Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
+
+
+@pytest.mark.parametrize(
+    "weights",
+    [[0, 0], [-1, 2], [1, float("nan")], [float("inf"), 1], [1, float("-inf")]],
+)
+def test_merge_wants_weights_that_add_up(weights):
+    with pytest.raises(ValueError, match="weights must be finite"):
+        Merge(routers=[Canned({"a": 1.0}), Canned({"a": 0.0})], weights=weights)
+
+
+def test_merge_takes_huge_weights_without_overflow():
+    m = Merge(
+        routers=[Canned({"a": 0.75}), Canned({"a": 0.75})], weights=[1e308, 1e308]
+    )
+    assert m("q").confidence == pytest.approx(0.75)
+
+
+def test_merge_reads_the_weights_at_each_call():
+    routers = [Canned({"a": 1.0}), Canned({"a": 0.0})]
+    m = Merge(routers=routers, weights=[1, 1])
+    assert m("q").confidence == pytest.approx(0.5)
+    m.weights[0] = 3
+    assert m("q").confidence == pytest.approx(0.75)
+    m.weights[0] = float("inf")
+    with pytest.raises(ValueError, match="weights must be finite"):
+        m("q")
+    assert [r.calls for r in routers] == [2, 2]  # no router ran for the bad call
 
 
 def test_chain_checks_the_top_routes_own_bar():
@@ -116,3 +176,16 @@ def test_merge_scores_the_whole_batch_once_per_router():
     scored = asyncio.run(merge._scores_many(["q1", "q2"]))
     assert one.batches == [2] and two.batches == [2]
     assert [max(s, key=s.get) for s in scored] == ["a", "b"]
+
+
+def test_chain_preserves_batch_order_with_empty_results():
+    first = Batched(
+        {"early": {"a": 0.9}, "fallback": {}, "missing": {}},
+        confidence_threshold=0.8,
+    )
+    second = Batched({"fallback": {"b": 0.9}, "missing": {}})
+    chain = Chain(routers=[first, second])
+    queries = ["missing", "early", "fallback"]
+    assert asyncio.run(chain._scores_many(queries)) == [{}, {"a": 0.9}, {"b": 0.9}]
+    assert first.batches == [3] and second.batches == [2]
+    assert chain.evaluate(queries, [None, "a", "b"]) == 1.0

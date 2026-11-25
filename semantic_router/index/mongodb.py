@@ -9,7 +9,7 @@ import asyncio
 import os
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, overload
 
 import numpy as np
 from pydantic import Field, PrivateAttr
@@ -273,23 +273,61 @@ class MongoDbIndex(BaseIndex):
             search["filter"] = scope
         return [
             {"$vectorSearch": search},
-            {"$project": {"score": {"$meta": "vectorSearchScore"}, ROUTE_FIELD: 1}},
+            {
+                "$project": {
+                    "score": {"$meta": "vectorSearchScore"},
+                    ROUTE_FIELD: 1,
+                    UTTERANCE_FIELD: 1,
+                }
+            },
         ]
 
+    @overload
     def query(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    def query(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Search the index with ``$vectorSearch``.
 
         :param vector: The query vector.
         :param top_k: The number of results to return.
         :param route_filter: Only search these routes.
         :param sparse_vector: Not used: MongoDbIndex is dense only.
-        :return: The scores and route names of the top_k results.
+        :param return_utterances: If True, also return the matched utterance texts.
+        :return: The scores and route names of the top_k results, and their
+            utterances when ``return_utterances`` is True.
         """
         extra = {ROUTE_FIELD: {"$in": route_filter}} if route_filter is not None else {}
         docs = list(self._collection.aggregate(self._pipeline(vector, top_k, extra)))
@@ -297,22 +335,58 @@ class MongoDbIndex(BaseIndex):
         if self.metric is not Metric.EUCLIDEAN:
             # atlas reports (1 + similarity) / 2; the other indexes report the similarity
             scores = scores * 2 - 1
-        return scores, [d[ROUTE_FIELD] for d in docs]
+        routes = [d[ROUTE_FIELD] for d in docs]
+        if return_utterances:
+            return scores, routes, [str(d.get(UTTERANCE_FIELD, "")) for d in docs]
+        return scores, routes
 
+    @overload
     async def aquery(
         self,
         vector: np.ndarray,
         top_k: int = 5,
         route_filter: Optional[List[str]] = None,
         sparse_vector: dict[int, float] | SparseEmbedding | None = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+        return_utterances: Literal[False] = False,
+    ) -> Tuple[np.ndarray, List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: Literal[True] = ...,
+    ) -> Tuple[np.ndarray, List[str], List[str]]: ...
+
+    @overload
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = ...,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]: ...
+    async def aquery(
+        self,
+        vector: np.ndarray,
+        top_k: int = 5,
+        route_filter: Optional[List[str]] = None,
+        sparse_vector: dict[int, float] | SparseEmbedding | None = None,
+        return_utterances: bool = False,
+    ) -> Tuple[np.ndarray, List[str]] | Tuple[np.ndarray, List[str], List[str]]:
         """Async :meth:`query`."""
+        flag = self._utterances_kwarg(return_utterances)
         return await asyncio.to_thread(
-            self.query,
-            vector=vector,
-            top_k=top_k,
-            route_filter=route_filter,
-            sparse_vector=sparse_vector,
+            lambda: self.query(
+                vector=vector,
+                top_k=top_k,
+                route_filter=route_filter,
+                sparse_vector=sparse_vector,
+                **flag,
+            )
         )
 
     # --------------------------------------------------------------- delete

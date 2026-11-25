@@ -250,3 +250,79 @@ class TestAzureOpenAIEncoder:
             await openai_encoder.acall(["test document"])
 
         assert mock_create.call_count == 1  # Only the initial attempt, no retries
+
+
+def _embedding_response(docs):
+    return CreateEmbeddingResponse(
+        data=[
+            Embedding(embedding=[float(d)], index=i, object="embedding")
+            for i, d in enumerate(docs)
+        ],
+        model="test-deployment",
+        object="list",
+        usage=Usage(prompt_tokens=len(docs), total_tokens=len(docs)),
+    )
+
+
+class TestEmbedBatching:
+    """The embeddings endpoint accepts at most 2048 inputs per request."""
+
+    def test_call_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 * 2 + 5)]
+        create = openai_encoder.client.embeddings.create
+        create.side_effect = lambda input, **kw: _embedding_response(input)
+
+        result = openai_encoder(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [
+            2048,
+            2048,
+            5,
+        ]
+        assert result == [[float(d)] for d in docs]
+
+    @pytest.mark.asyncio
+    async def test_acall_splits_large_input_into_batches(self, openai_encoder):
+        docs = [str(i) for i in range(2048 + 1)]
+        create = AsyncMock(side_effect=lambda input, **kw: _embedding_response(input))
+        openai_encoder.async_client.embeddings.create = create
+
+        result = await openai_encoder.acall(docs)
+
+        assert [len(c.kwargs["input"]) for c in create.call_args_list] == [2048, 1]
+        assert result == [[float(d)] for d in docs]
+
+
+class TestAzureOpenAIEncoderInputValidation:
+    @pytest.mark.parametrize(
+        "docs, message",
+        [
+            ([], "cannot be empty"),
+            (["ok", ""], "contains an empty string at index 1"),
+            ("a single string", "must be a list of strings"),
+            (["ok", 42], "got int at index 1"),
+        ],
+    )
+    def test_call_rejects_invalid_input(self, openai_encoder, docs, message):
+        mock_create = Mock()
+        openai_encoder.client.embeddings.create = mock_create
+        with pytest.raises(ValueError, match=message):
+            openai_encoder(docs)
+        mock_create.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "docs, message",
+        [
+            ([], "cannot be empty"),
+            (["ok", ""], "contains an empty string at index 1"),
+            ("a single string", "must be a list of strings"),
+            (["ok", 42], "got int at index 1"),
+        ],
+    )
+    async def test_acall_rejects_invalid_input(self, openai_encoder, docs, message):
+        mock_create = AsyncMock()
+        openai_encoder.async_client.embeddings.create = mock_create
+        with pytest.raises(ValueError, match=message):
+            await openai_encoder.acall(docs)
+        mock_create.assert_not_called()
