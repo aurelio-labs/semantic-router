@@ -56,21 +56,9 @@ The model holds the connection settings:
 | `retries` | `3` | Retries on rate limits (429, 529), server errors and timeouts, with exponential backoff and jitter. |
 | `concurrency` | `8` | Requests in flight when scoring a batch (`fit`, `evaluate`, `Chain`, `Merge`). Each query is one request, so this caps a batch's throughput: raise it as far as your rate limit allows. |
 
-## Use Nace Drex
-
-`NaceDecisionModel` is nace.ai's [Drex](https://console.nace.ai/docs/drex/guides/drex-max) with its defaults filled in: `drex-max` at `https://console.nace.ai`, with the key read from `NACE_API_KEY`. It takes the same `timeout`, `retries` and `concurrency`.
-
-```python
-from semantic_router.decision_models import NaceDecisionModel
-
-router = DecisionRouter(model=NaceDecisionModel(), routes=routes)  # reads NACE_API_KEY
-```
-
-It answers the same `choice`, `noul` and `score` questions, so `aask()` works the same way, with up to 512 questions in one call. `drex-max` can also read images, but this model sends the text `state` only. To call the separately served `drex-max-v1.1` instead, pass `name="drex-max-v1.1"`. Files save it as `model: {type: nace, name: drex-max}`.
-
 ## Use another server
 
-`TypeSafeDecisionModel` and `NaceDecisionModel` are Jev and Drex with their defaults filled in. For a Laya or Von deployment, or a server of your own that speaks `/v1/systemone`, use `SystemOneDecisionModel` and say where it is:
+`TypeSafeDecisionModel` is TypeSafe's Jev with its defaults filled in, and `NaceDecisionModel` does the same for nace.ai's Drex (key from `NACE_API_KEY`). For a Laya or Von deployment, or a server of your own that speaks `/v1/systemone`, use `SystemOneDecisionModel` and say where it is:
 
 ```python
 from semantic_router.decision_models import SystemOneDecisionModel

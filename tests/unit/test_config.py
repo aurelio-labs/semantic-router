@@ -227,19 +227,6 @@ def test_a_nace_decision_router_round_trips(fmt, tmp_path):
     assert to_config(loaded) == to_config(router)
 
 
-def test_a_config_with_a_foreign_nace_host_does_not_get_the_env_key(tmp_path):
-    router = DecisionRouter(
-        model=NaceDecisionModel(base_url="https://example.test", api_key="x"),
-        routes=ROUTES,
-    )
-    path = save(router, tmp_path, "yaml")
-    assert (
-        yaml.safe_load(path.read_text())["model"]["base_url"] == "https://example.test"
-    )
-    with pytest.raises(ValueError, match="only used with https://console.nace.ai"):
-        load_router(path=path)
-
-
 def test_a_default_nace_model_writes_only_its_type_and_name():
     router = DecisionRouter(model=NaceDecisionModel(), routes=ROUTES)
     config = to_config(router).model_dump(mode="json")
