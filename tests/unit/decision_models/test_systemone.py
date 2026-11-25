@@ -4,6 +4,7 @@ import json
 import pytest
 
 from semantic_router.decision_models import (
+    NaceDecisionModel,
     SystemOneDecisionModel,
     TypeSafeDecisionModel,
     choice,
@@ -143,6 +144,42 @@ def test_a_server_with_no_key_gets_no_auth_header():
     own = SystemOneDecisionModel(name="local", base_url="http://x", session=s)
     asyncio.run(own.aask("hi", {"route": choice("pick", {"billing": "b", "x": "y"})}))
     assert s.headers[0] == {}
+
+
+# --- nace.ai's Drex: the same protocol, with its own defaults and key ---
+
+
+def drex(session, **kwargs):
+    return NaceDecisionModel(api_key="k", session=session, **kwargs)
+
+
+def test_nace_url_and_defaults():
+    m = NaceDecisionModel(api_key="k")
+    assert m.url == "https://console.nace.ai/v1/systemone"
+    assert m.name == "drex-max" and m.type == "nace"
+
+
+def test_nace_request_carries_the_model_the_key_and_text_only():
+    s = FakeSession(answer({"billing": 0.9, "technical": 0.1}))
+    r = DecisionRouter(model=drex(s), routes=ROUTES)
+    assert r("why was i charged twice").name == "billing"
+    assert s.calls[0]["model"] == "drex-max"
+    assert set(s.calls[0]) == {"state", "model", "questions"}  # no images array
+    assert s.headers[0] == {"Authorization": "Bearer k"}
+
+
+def test_nace_reads_its_key_from_the_environment(monkeypatch):
+    monkeypatch.setenv("NACE_API_KEY", "nace-env-SECRET")
+    m = NaceDecisionModel()
+    assert m.api_key == "nace-env-SECRET"
+    assert "nace-env-SECRET" not in repr(m)
+    assert "nace-env-SECRET" not in json.dumps(m.model_dump(mode="json"))
+
+
+def test_nace_missing_api_key_fails_at_construction(monkeypatch):
+    monkeypatch.delenv("NACE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="NACE_API_KEY"):
+        NaceDecisionModel()
 
 
 # --- against a real local http server, so session reuse across sync calls is exercised ---

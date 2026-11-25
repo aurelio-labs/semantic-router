@@ -155,3 +155,17 @@ class TypeSafeDecisionModel(SystemOneDecisionModel):
 
     api_key_env: ClassVar[str | None] = "JEV_API_KEY"
     requires_key: ClassVar[bool] = True
+
+
+class NaceDecisionModel(SystemOneDecisionModel):
+    """nace.ai's Drex over its API. Reads `NACE_API_KEY` when no key is passed.
+
+    :param name: The Drex model to call.
+    """
+
+    type: str = "nace"
+    name: str = "drex-max"
+    base_url: str = "https://console.nace.ai"
+
+    api_key_env: ClassVar[str | None] = "NACE_API_KEY"
+    requires_key: ClassVar[bool] = True

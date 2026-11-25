@@ -5,7 +5,7 @@ description: Route with a decision model, and ask several typed questions about 
 
 Some routing decisions depend on instructions rather than resemblance: "refunds and charges, but not pricing questions before a purchase". Example utterances struggle to draw lines like that. A decision model can: it's a small, fast model trained to answer typed questions about a piece of text, with a probability for every answer.
 
-`DecisionRouter` routes with one. The model is a component you pass in, the way you pass an encoder to an `IndexedRouter`. The models that ship speak the `/v1/systemone` API that TypeSafe's **Jev** introduced, which **Laya** and **Von** also implement.
+`DecisionRouter` routes with one. The model is a component you pass in, the way you pass an encoder to an `IndexedRouter`. The models that ship speak the `/v1/systemone` API that TypeSafe's **Jev** introduced, which nace.ai's **Drex**, **Laya** and **Von** also implement.
 
 ## Learn about decision models
 
@@ -58,7 +58,7 @@ The model holds the connection settings:
 
 ## Use another server
 
-`TypeSafeDecisionModel` is TypeSafe's Jev with its defaults filled in. For a Laya or Von deployment, or a server of your own that speaks `/v1/systemone`, use `SystemOneDecisionModel` and say where it is:
+`TypeSafeDecisionModel` is TypeSafe's Jev with its defaults filled in, and `NaceDecisionModel` does the same for nace.ai's Drex (key from `NACE_API_KEY`). For a Laya or Von deployment, or a server of your own that speaks `/v1/systemone`, use `SystemOneDecisionModel` and say where it is:
 
 ```python
 from semantic_router.decision_models import SystemOneDecisionModel
