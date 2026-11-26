@@ -225,8 +225,9 @@ def test_retrying_a_remove_whose_write_failed_repairs_the_index(
         assert router("zebra").name == "existing"
 
 
-def test_retrying_an_add_whose_write_failed_repairs_the_index(
-    index_cls, make_index, mocker
+@pytest.mark.parametrize("recovery", ["retry", "reopen"])
+def test_recovering_from_a_partial_add_repairs_the_index(
+    index_cls, make_index, mocker, recovery
 ):
     index = make_index(index_cls)
     router = build([ZEBRA], index)
@@ -245,11 +246,16 @@ def test_retrying_an_add_whose_write_failed_repairs_the_index(
     assert {u.route for u in index.get_utterances()} == {"existing", "new"}
     mocker.stopall()
     rewrite = mocker.spy(index_cls, "add")
-    router.add(routes=APPLE)
+    delete = mocker.spy(index_cls, "delete")
+    if recovery == "retry":
+        router.add(routes=APPLE)
+    else:
+        router = build([], reopen(index, make_index))
 
     # every row is written again, not only the new route's
     assert rewrite.call_count == 1
     assert sorted(rewrite.call_args.kwargs["routes"]) == ["existing", "new"]
+    assert delete.call_count == 0
     fresh = build([], reopen(index, make_index))
     assert {r.name for r in fresh.routes} == {"existing", "new"}
     if routes_sparse(fresh):
