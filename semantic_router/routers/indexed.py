@@ -316,10 +316,11 @@ class IndexedRouter(BaseRouter):
             )
             stored = to_routes(rows)
             rest = [r for r in stored if r.name != name]
-            if rest and {row.metadata.get(_SPARSE_FIT) for row in rows} == {None}:
-                # an index written before fit marks existed: mark it on its current fit
-                # first, so a write that fails after the delete leaves marks a reopen
-                # sees as stale. its vectors don't change, only their metadata
+            if rest and None in {row.metadata.get(_SPARSE_FIT) for row in rows}:
+                # rows without a fit mark (an index written before marks existed, or one
+                # whose marking failed part way): mark them all on the current fit first,
+                # so a write that fails after the delete leaves marks a reopen sees as
+                # stale. the vectors don't change, only their metadata
                 await asyncio.to_thread(self._upsert, rows, [], True)
             if rest:
                 self.sparse_encoder.fit(rest)

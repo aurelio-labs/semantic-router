@@ -361,3 +361,44 @@ def test_a_failed_remove_on_an_index_written_before_fingerprints_is_repaired_on_
     if routes_sparse(fresh):
         assert fresh("zebra").name == "existing"
         assert fresh("apple").name == "new"
+
+
+def test_retrying_a_remove_whose_marking_failed_part_way_still_marks_first(
+    make_index, mocker
+):
+    index = make_index(HybridLocalIndex)
+    unfingerprinted(mocker)
+    router = build([ZEBRA, APPLE, MANGO], index)
+    mocker.stopall()
+    real = HybridLocalIndex.add
+
+    def mark_only_fruit(self, **kwargs):
+        keep = [i for i, r in enumerate(kwargs["routes"]) if r == "fruit"]
+        part = {
+            k: [v[i] for i in keep] if isinstance(v, list) else v
+            for k, v in kwargs.items()
+        }
+        real(self, **part)
+        raise RuntimeError("down")
+
+    mocker.patch.object(HybridLocalIndex, "add", mark_only_fruit)
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+    # the retry deletes the route, then fails before rewriting any survivor
+    real_add = HybridLocalIndex.add
+
+    def fail_after_marking(self, *args, **kwargs):
+        if "fruit" not in kwargs["routes"]:
+            raise RuntimeError("down")
+        return real_add(self, *args, **kwargs)
+
+    mocker.patch.object(HybridLocalIndex, "add", fail_after_marking)
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+
+    fresh = build([], index)
+    assert {r.name for r in fresh.routes} == {"existing", "new"}
+    assert fresh("zebra").name == "existing"
+    assert fresh("apple").name == "new"
