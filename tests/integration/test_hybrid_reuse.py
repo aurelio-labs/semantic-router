@@ -261,3 +261,48 @@ def test_recovering_from_a_partial_add_repairs_the_index(
     if routes_sparse(fresh):
         assert fresh("zebra").name == "existing"
         assert fresh("apple").name == "new"
+
+
+def unfingerprinted(mocker):
+    """rows as an index written before fit fingerprints existed holds them"""
+    import semantic_router.routers.indexed as indexed
+
+    plain = indexed._record_metadata
+    mocker.patch.object(
+        indexed, "_record_metadata", lambda route, sparse_fit=None: plain(route)
+    )
+
+
+def test_reopening_an_index_written_before_fingerprints_makes_no_writes(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA, APPLE], index)
+    mocker.stopall()
+    add = mocker.spy(index_cls, "add")
+
+    router = build([ZEBRA], reopen(index, make_index))
+
+    assert add.call_count == 0
+    assert {r.name for r in router.routes} == {"existing", "new"}
+
+
+def test_growing_an_index_written_before_fingerprints_stamps_every_row(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA], index)
+    mocker.stopall()
+
+    build([APPLE], reopen(index, make_index))
+    add = mocker.spy(index_cls, "add")
+    router = build([], reopen(index, make_index))
+
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    assert add.call_count == 0
+    if routes_sparse(router):
+        assert router("zebra").name == "existing"
+        assert router("apple").name == "new"

@@ -70,7 +70,7 @@ async def _aencode(
         return await asyncio.to_thread(_encode, enc, texts, kind)
 
 
-def _record_metadata(route: Route, sparse_fit: str | None) -> dict:
+def _record_metadata(route: Route, sparse_fit: str | None = None) -> dict:
     # route-level fields ride on every record, so the index alone can rebuild the route
     meta = dict(route.metadata)
     if route.description is not None:
@@ -144,7 +144,7 @@ class IndexedRouter(BaseRouter):
         self.index = index
         # build synchronously so a constructed router is ready to call; the given routes
         # are upserted onto whatever the index already holds
-        stored = (
+        stored: list[Utterance] = (
             self.index.get_utterances()
             if isinstance(self.sparse_encoder, FittableMixin)
             else []
@@ -241,8 +241,11 @@ class IndexedRouter(BaseRouter):
         utterances alone, whatever their order, so the same corpus gives the same model
         and the stored rows stay valid: only routes the index doesn't hold yet are
         written. new utterances move the vocabulary, so then every row is encoded again
-        and upserted over the old one. A different or missing fit fingerprint also
-        triggers a rewrite, including on reopen after a partial write. ids are
+        and upserted over the old one. Each row also carries a fingerprint of the
+        fit; rows whose fingerprints differ from each other or from the current fit
+        are rewritten too, so a reopen repairs a write that failed part way (an
+        index with no fingerprints at all, written before they existed, is trusted
+        until its next full rewrite stamps it). ids are
         deterministic, so nothing is deleted, and a failed encode leaves the index as
         it was.
         """
@@ -254,7 +257,13 @@ class IndexedRouter(BaseRouter):
         if not corpus:
             return
         fingerprint = _fit_fingerprint(self.sparse_encoder, corpus)
-        stale = any(row.metadata.get(_SPARSE_FIT) != fingerprint for row in stored_rows)
+        pairs = {(r.name, str(u)) for r in stored for u in r.utterances}
+        grows = any((r.name, str(u)) not in pairs for r in routes for u in r.utterances)
+        marks = {row.metadata.get(_SPARSE_FIT) for row in stored_rows}
+        # rows written before fingerprints existed carry none: trust them as before
+        # rather than re-encode a whole index on upgrade. the next full rewrite stamps
+        # them, and from then on a mixed or changed mark means a write failed part way
+        stale = grows or (marks != {None} and marks != {fingerprint})
         held = {r.name: r for r in stored}
         merged = {r.name: r for r in corpus}
         # a changed route is written whole, so all its rows get its new fields
