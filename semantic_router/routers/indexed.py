@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import time
 from typing import Callable, Literal, Sequence
 
@@ -16,7 +18,7 @@ from semantic_router.encoders.base import (
     FittableMixin,
 )
 from semantic_router.index import BaseIndex, HybridLocalIndex, LocalIndex
-from semantic_router.index.base import _takes_utterances
+from semantic_router.index.base import _takes_utterances, to_routes
 from semantic_router.route import Route
 from semantic_router.routers.base import (
     BaseRouter,
@@ -24,7 +26,7 @@ from semantic_router.routers.base import (
     QueryResult,
     in_sync_call,
 )
-from semantic_router.schema import MatchedUtterance, SparseEmbedding
+from semantic_router.schema import MatchedUtterance, SparseEmbedding, Utterance
 from semantic_router.utils.logger import logger
 
 Kind = Literal["queries", "documents"]
@@ -34,6 +36,7 @@ _AGG: dict[str, Callable[[list[float]], float]] = {
     "max": max,
     "sum": sum,
 }
+_SPARSE_FIT = "sr_sparse_fit"
 
 
 def _encode(enc: DenseEncoder | SparseEncoder, texts: list[str], kind: Kind) -> list:
@@ -67,14 +70,22 @@ async def _aencode(
         return await asyncio.to_thread(_encode, enc, texts, kind)
 
 
-def _record_metadata(route: Route) -> dict:
+def _record_metadata(route: Route, sparse_fit: str | None = None) -> dict:
     # route-level fields ride on every record, so the index alone can rebuild the route
     meta = dict(route.metadata)
     if route.description is not None:
         meta["sr_description"] = route.description
     if route.confidence_threshold is not None:
         meta["sr_confidence_threshold"] = route.confidence_threshold
+    if sparse_fit is not None:
+        meta[_SPARSE_FIT] = sparse_fit
     return meta
+
+
+def _fit_fingerprint(encoder: SparseEncoder, routes: list[Route]) -> str:
+    texts = sorted(str(u) for route in routes for u in route.utterances)
+    kind = f"{type(encoder).__module__}.{type(encoder).__qualname__}"
+    return hashlib.sha256(json.dumps([kind, texts]).encode("utf-8")).hexdigest()
 
 
 def _held(stored: dict[str, Route], route: Route) -> bool:
@@ -133,8 +144,8 @@ class IndexedRouter(BaseRouter):
         self.index = index
         # build synchronously so a constructed router is ready to call; the given routes
         # are upserted onto whatever the index already holds
-        stored: list[Route] = (
-            self.index.get_routes()
+        stored: list[Utterance] = (
+            self.index.get_utterances()
             if isinstance(self.sparse_encoder, FittableMixin)
             else []
         )
@@ -192,7 +203,9 @@ class IndexedRouter(BaseRouter):
             return route.confidence_threshold
         return self.confidence_threshold
 
-    def _records(self, routes: list[Route]) -> dict | None:
+    def _records(
+        self, routes: list[Route], sparse_fit: str | None = None
+    ) -> dict | None:
         """everything index.add takes for `routes`, encoded; None if there is nothing."""
         names = [r.name for r in routes for _ in r.utterances]
         # encoders get the utterances as given (images for multimodal routes), the index text
@@ -208,7 +221,9 @@ class IndexedRouter(BaseRouter):
             embeddings=_encode(self.encoder, items, "documents"),
             routes=names,
             utterances=[str(u) for u in items],
-            metadata_list=[_record_metadata(r) for r in routes for _ in r.utterances],
+            metadata_list=[
+                _record_metadata(r, sparse_fit) for r in routes for _ in r.utterances
+            ],
             sparse_embeddings=sparse,
         )
 
@@ -218,7 +233,7 @@ class IndexedRouter(BaseRouter):
             self.index.add(**records)
 
     def _upsert(
-        self, stored: list[Route], routes: list[Route], rewrite: bool = False
+        self, stored_rows: list[Utterance], routes: list[Route], rewrite: bool = False
     ) -> None:
         """write `routes` onto the `stored` ones (the index's routes, read fresh).
 
@@ -226,33 +241,43 @@ class IndexedRouter(BaseRouter):
         utterances alone, whatever their order, so the same corpus gives the same model
         and the stored rows stay valid: only routes the index doesn't hold yet are
         written. new utterances move the vocabulary, so then every row is encoded again
-        and upserted over the old one, as it is whenever `rewrite` is set (add() sets
-        it, so retrying an add whose write failed part way repairs every row). ids are
+        and upserted over the old one. Each row also carries a fingerprint of the
+        fit; rows whose fingerprints differ from each other or from the current fit
+        are rewritten too, so a reopen repairs a write that failed part way (an
+        index with no fingerprints at all, written before they existed, is trusted
+        until its next full rewrite stamps it). ids are
         deterministic, so nothing is deleted, and a failed encode leaves the index as
         it was.
         """
         if not isinstance(self.sparse_encoder, FittableMixin):
             self._index(routes)
             return
+        stored = to_routes(stored_rows)
         corpus = _merge(stored, routes)
         if not corpus:
             return
+        fingerprint = _fit_fingerprint(self.sparse_encoder, corpus)
         pairs = {(r.name, str(u)) for r in stored for u in r.utterances}
         grows = any((r.name, str(u)) not in pairs for r in routes for u in r.utterances)
+        marks = {row.metadata.get(_SPARSE_FIT) for row in stored_rows}
+        # rows written before fingerprints existed carry none: trust them as before
+        # rather than re-encode a whole index on upgrade. from then on a mixed or
+        # changed mark means a write failed part way
+        legacy = marks == {None}
+        stale = grows or (not legacy and marks != {fingerprint})
         held = {r.name: r for r in stored}
         merged = {r.name: r for r in corpus}
         # a changed route is written whole, so all its rows get its new fields
-        todo = (
-            corpus
-            if grows or rewrite
-            else [
-                merged[n]
-                for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
-            ]
-        )
+        changed = [
+            merged[n]
+            for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
+        ]
+        # an unmarked index is stamped whole the first time anything is written to it,
+        # so a partly stamped one always means a failed write
+        todo = corpus if stale or rewrite or (legacy and changed) else changed
         self.sparse_encoder.fit(corpus)
         try:
-            records = self._records(todo)
+            records = self._records(todo, fingerprint)
         except BaseException:
             # the index is as it was: put back the model its rows were encoded with
             if stored:
@@ -265,11 +290,13 @@ class IndexedRouter(BaseRouter):
 
     async def _on_add(self, routes: list[Route]) -> None:
         # read the stored routes fresh: another router may have written since this one
-        stored: list[Route] = (
-            await self._aget_routes()
-            if isinstance(self.sparse_encoder, FittableMixin)
-            else []
-        )
+        stored: list[Utterance] = []
+        if isinstance(self.sparse_encoder, FittableMixin):
+            stored = (
+                await asyncio.to_thread(self.index.get_utterances)
+                if in_sync_call()
+                else await self.index.aget_utterances()
+            )
         await asyncio.to_thread(self._upsert, stored, routes, True)
         await self.arefresh()
 
@@ -282,12 +309,24 @@ class IndexedRouter(BaseRouter):
             # encoded with the refit model before anything is deleted. they are written
             # even when the route is already gone, so a retry after a failed write
             # finishes the job: ids are deterministic, so it only overwrites
-            stored = await self._aget_routes()
+            rows = (
+                await asyncio.to_thread(self.index.get_utterances)
+                if in_sync_call()
+                else await self.index.aget_utterances()
+            )
+            stored = to_routes(rows)
             rest = [r for r in stored if r.name != name]
+            if rest and None in {row.metadata.get(_SPARSE_FIT) for row in rows}:
+                # rows without a fit mark (an index written before marks existed, or one
+                # whose marking failed part way): mark them all on the current fit first,
+                # so a write that fails after the delete leaves marks a reopen sees as
+                # stale. the vectors don't change, only their metadata
+                await asyncio.to_thread(self._upsert, rows, [], True)
             if rest:
                 self.sparse_encoder.fit(rest)
                 try:
-                    records = await asyncio.to_thread(self._records, rest)
+                    fingerprint = _fit_fingerprint(self.sparse_encoder, rest)
+                    records = await asyncio.to_thread(self._records, rest, fingerprint)
                 except BaseException:
                     self.sparse_encoder.fit(stored)
                     raise

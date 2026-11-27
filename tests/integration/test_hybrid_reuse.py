@@ -225,8 +225,9 @@ def test_retrying_a_remove_whose_write_failed_repairs_the_index(
         assert router("zebra").name == "existing"
 
 
-def test_retrying_an_add_whose_write_failed_repairs_the_index(
-    index_cls, make_index, mocker
+@pytest.mark.parametrize("recovery", ["retry", "reopen"])
+def test_recovering_from_a_partial_add_repairs_the_index(
+    index_cls, make_index, mocker, recovery
 ):
     index = make_index(index_cls)
     router = build([ZEBRA], index)
@@ -245,13 +246,159 @@ def test_retrying_an_add_whose_write_failed_repairs_the_index(
     assert {u.route for u in index.get_utterances()} == {"existing", "new"}
     mocker.stopall()
     rewrite = mocker.spy(index_cls, "add")
-    router.add(routes=APPLE)
+    delete = mocker.spy(index_cls, "delete")
+    if recovery == "retry":
+        router.add(routes=APPLE)
+    else:
+        router = build([], reopen(index, make_index))
 
     # every row is written again, not only the new route's
     assert rewrite.call_count == 1
     assert sorted(rewrite.call_args.kwargs["routes"]) == ["existing", "new"]
+    assert delete.call_count == 0
     fresh = build([], reopen(index, make_index))
     assert {r.name for r in fresh.routes} == {"existing", "new"}
     if routes_sparse(fresh):
         assert fresh("zebra").name == "existing"
         assert fresh("apple").name == "new"
+
+
+def unfingerprinted(mocker):
+    """rows as an index written before fit fingerprints existed holds them"""
+    import semantic_router.routers.indexed as indexed
+
+    plain = indexed._record_metadata
+    mocker.patch.object(
+        indexed, "_record_metadata", lambda route, sparse_fit=None: plain(route)
+    )
+
+
+def test_reopening_an_index_written_before_fingerprints_makes_no_writes(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA, APPLE], index)
+    mocker.stopall()
+    add = mocker.spy(index_cls, "add")
+
+    router = build([ZEBRA], reopen(index, make_index))
+
+    assert add.call_count == 0
+    assert {r.name for r in router.routes} == {"existing", "new"}
+
+
+def test_growing_an_index_written_before_fingerprints_stamps_every_row(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA], index)
+    mocker.stopall()
+
+    build([APPLE], reopen(index, make_index))
+    add = mocker.spy(index_cls, "add")
+    router = build([], reopen(index, make_index))
+
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    assert add.call_count == 0
+    if routes_sparse(router):
+        assert router("zebra").name == "existing"
+        assert router("apple").name == "new"
+
+
+def test_a_metadata_change_on_an_index_written_before_fingerprints_stamps_every_row(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA, APPLE], index)
+    mocker.stopall()
+
+    described = Route(name="new", utterances=["apple"], description="fruit")
+    build([described], reopen(index, make_index))
+    add = mocker.spy(index_cls, "add")
+    build([], reopen(index, make_index))
+
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    assert add.call_count == 0
+
+
+@pytest.mark.parametrize("fails", ["add", "delete"])
+def test_a_failed_remove_on_an_index_written_before_fingerprints_is_repaired_on_reopen(
+    index_cls, make_index, mocker, fails
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    router = build([ZEBRA, APPLE, MANGO], index)
+    mocker.stopall()
+    if fails == "add":
+        # the delete lands and not one surviving row is rewritten
+        real = index_cls.add
+        calls = []
+
+        def add(self, *args, **kwargs):
+            calls.append(kwargs["routes"])
+            if len(calls) > 1:
+                raise RuntimeError("down")
+            return real(self, *args, **kwargs)
+
+        mocker.patch.object(index_cls, "add", add)
+    else:
+        mocker.patch.object(index_cls, "delete", side_effect=RuntimeError("down"))
+
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+
+    fresh = build([], reopen(index, make_index))
+    names = {"existing", "new"} | ({"fruit"} if fails == "delete" else set())
+    assert {r.name for r in fresh.routes} == names
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    if routes_sparse(fresh):
+        assert fresh("zebra").name == "existing"
+        assert fresh("apple").name == "new"
+
+
+def test_retrying_a_remove_whose_marking_failed_part_way_still_marks_first(
+    make_index, mocker
+):
+    index = make_index(HybridLocalIndex)
+    unfingerprinted(mocker)
+    router = build([ZEBRA, APPLE, MANGO], index)
+    mocker.stopall()
+    real = HybridLocalIndex.add
+
+    def mark_only_fruit(self, **kwargs):
+        keep = [i for i, r in enumerate(kwargs["routes"]) if r == "fruit"]
+        part = {
+            k: [v[i] for i in keep] if isinstance(v, list) else v
+            for k, v in kwargs.items()
+        }
+        real(self, **part)
+        raise RuntimeError("down")
+
+    mocker.patch.object(HybridLocalIndex, "add", mark_only_fruit)
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+    # the retry deletes the route, then fails before rewriting any survivor
+    real_add = HybridLocalIndex.add
+
+    def fail_after_marking(self, *args, **kwargs):
+        if "fruit" not in kwargs["routes"]:
+            raise RuntimeError("down")
+        return real_add(self, *args, **kwargs)
+
+    mocker.patch.object(HybridLocalIndex, "add", fail_after_marking)
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+
+    fresh = build([], index)
+    assert {r.name for r in fresh.routes} == {"existing", "new"}
+    assert fresh("zebra").name == "existing"
+    assert fresh("apple").name == "new"
