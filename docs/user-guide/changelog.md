@@ -10,7 +10,7 @@ description: What changed in each Semantic Router release.
 #### Fix: Reopening repairs a write that failed part way
 
 - Every stored row now records which fit of the sparse encoder it was encoded with, in a reserved `sr_sparse_fit` metadata key that never appears in route metadata. If an `add()` or `remove()` failed part way and was never retried, the next router opened on that index finds the rows that don't match and re-encodes them in place. Before, it kept their stale sparse vectors until the next write. A consistent index still opens with no writes. ([#873](https://github.com/aurelio-labs/semantic-router/issues/873))
-- Indexes written before `1.3.1` have no fit marks. They open as before, with nothing re-encoded on upgrade. The first write to one marks every row. An `add()` re-encoded every row already. A change to an existing route now re-encodes the whole index once, and the first `remove()` encodes it twice: once to mark it, then again after the delete.
+- Indexes written before `1.3.1` have no fit marks. They open as before, with nothing re-encoded on upgrade. The first write to one marks every row. An `add()` re-encoded every row already. A change to an existing route now re-encodes the whole index once, and if rows will remain, the first `remove()` marks the whole index before deleting and rewrites the surviving rows afterward.
 - The mark covers the encoder's class and the utterances it was fitted on, not its settings. If you change a BM25 or TF-IDF setting on an existing index without changing its utterances, rebuild the index.
 
 ### v1.3.0
