@@ -306,3 +306,58 @@ def test_growing_an_index_written_before_fingerprints_stamps_every_row(
     if routes_sparse(router):
         assert router("zebra").name == "existing"
         assert router("apple").name == "new"
+
+
+def test_a_metadata_change_on_an_index_written_before_fingerprints_stamps_every_row(
+    index_cls, make_index, mocker
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    build([ZEBRA, APPLE], index)
+    mocker.stopall()
+
+    described = Route(name="new", utterances=["apple"], description="fruit")
+    build([described], reopen(index, make_index))
+    add = mocker.spy(index_cls, "add")
+    build([], reopen(index, make_index))
+
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    assert add.call_count == 0
+
+
+@pytest.mark.parametrize("fails", ["add", "delete"])
+def test_a_failed_remove_on_an_index_written_before_fingerprints_is_repaired_on_reopen(
+    index_cls, make_index, mocker, fails
+):
+    index = make_index(index_cls)
+    unfingerprinted(mocker)
+    router = build([ZEBRA, APPLE, MANGO], index)
+    mocker.stopall()
+    if fails == "add":
+        # the delete lands and not one surviving row is rewritten
+        real = index_cls.add
+        calls = []
+
+        def add(self, *args, **kwargs):
+            calls.append(kwargs["routes"])
+            if len(calls) > 1:
+                raise RuntimeError("down")
+            return real(self, *args, **kwargs)
+
+        mocker.patch.object(index_cls, "add", add)
+    else:
+        mocker.patch.object(index_cls, "delete", side_effect=RuntimeError("down"))
+
+    with pytest.raises(RuntimeError, match="down"):
+        router.remove(name="fruit")
+    mocker.stopall()
+
+    fresh = build([], reopen(index, make_index))
+    names = {"existing", "new"} | ({"fruit"} if fails == "delete" else set())
+    assert {r.name for r in fresh.routes} == names
+    marks = {u.metadata.get("sr_sparse_fit") for u in index.get_utterances()}
+    assert len(marks) == 1 and None not in marks
+    if routes_sparse(fresh):
+        assert fresh("zebra").name == "existing"
+        assert fresh("apple").name == "new"

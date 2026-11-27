@@ -261,20 +261,20 @@ class IndexedRouter(BaseRouter):
         grows = any((r.name, str(u)) not in pairs for r in routes for u in r.utterances)
         marks = {row.metadata.get(_SPARSE_FIT) for row in stored_rows}
         # rows written before fingerprints existed carry none: trust them as before
-        # rather than re-encode a whole index on upgrade. the next full rewrite stamps
-        # them, and from then on a mixed or changed mark means a write failed part way
-        stale = grows or (marks != {None} and marks != {fingerprint})
+        # rather than re-encode a whole index on upgrade. from then on a mixed or
+        # changed mark means a write failed part way
+        legacy = marks == {None}
+        stale = grows or (not legacy and marks != {fingerprint})
         held = {r.name: r for r in stored}
         merged = {r.name: r for r in corpus}
         # a changed route is written whole, so all its rows get its new fields
-        todo = (
-            corpus
-            if stale or rewrite
-            else [
-                merged[n]
-                for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
-            ]
-        )
+        changed = [
+            merged[n]
+            for n in dict.fromkeys(r.name for r in routes if not _held(held, r))
+        ]
+        # an unmarked index is stamped whole the first time anything is written to it,
+        # so a partly stamped one always means a failed write
+        todo = corpus if stale or rewrite or (legacy and changed) else changed
         self.sparse_encoder.fit(corpus)
         try:
             records = self._records(todo, fingerprint)
@@ -309,8 +309,18 @@ class IndexedRouter(BaseRouter):
             # encoded with the refit model before anything is deleted. they are written
             # even when the route is already gone, so a retry after a failed write
             # finishes the job: ids are deterministic, so it only overwrites
-            stored = await self._aget_routes()
+            rows = (
+                await asyncio.to_thread(self.index.get_utterances)
+                if in_sync_call()
+                else await self.index.aget_utterances()
+            )
+            stored = to_routes(rows)
             rest = [r for r in stored if r.name != name]
+            if rest and {row.metadata.get(_SPARSE_FIT) for row in rows} == {None}:
+                # an index written before fit marks existed: mark it on its current fit
+                # first, so a write that fails after the delete leaves marks a reopen
+                # sees as stale. its vectors don't change, only their metadata
+                await asyncio.to_thread(self._upsert, rows, [], True)
             if rest:
                 self.sparse_encoder.fit(rest)
                 try:
